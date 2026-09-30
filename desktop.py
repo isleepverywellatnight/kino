@@ -27,6 +27,8 @@ else:
 
 import app
 
+PORT = app.PORT
+
 def get_resource_dir():
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         return Path(sys._MEIPASS)
