@@ -20,14 +20,14 @@ def build():
 
     # Nettoyage des dossiers de build précédents
     build_dir = ROOT / "build"
-    dist_dir = ROOT / "dist"
+    kino_dist = ROOT / "dist" / "KINO"
     
     if build_dir.exists():
         print("[1/4] Nettoyage du dossier build/...")
         shutil.rmtree(build_dir, ignore_errors=True)
-    if dist_dir.exists():
-        print("[2/4] Nettoyage du dossier dist/...")
-        shutil.rmtree(dist_dir, ignore_errors=True)
+    if kino_dist.exists():
+        print("[2/4] Nettoyage du dossier dist/KINO/...")
+        shutil.rmtree(kino_dist, ignore_errors=True)
 
     print("[3/4] Lancement de PyInstaller avec kino.spec...")
     cmd = [

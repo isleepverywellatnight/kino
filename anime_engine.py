@@ -100,12 +100,193 @@ def is_episode_filler(series_title: str, ep_number: int) -> Dict[str, Any]:
     }
 
 
+FALLBACK_ANIMES: List[Dict[str, Any]] = [
+    {
+        "kitsu_id": "7442",
+        "id": "7442",
+        "title": "Attack on Titan",
+        "canonical_title": "Attack on Titan",
+        "title_jp": "進撃の巨人",
+        "title_romaji": "Shingeki no Kyojin",
+        "synopsis": "Dans un monde où les humains vivent enfermés dans des cités entourées de gigantesques remparts pour se protéger de créatures colossales nommées Titans, le jeune Eren Jaeger jure d'éradiquer ces prédateurs.",
+        "rating": "8.5",
+        "score": "8.5",
+        "episode_count": 25,
+        "status": "finished",
+        "show_type": "TV",
+        "year": "2013",
+        "poster": "https://media.kitsu.app/anime/poster_images/7442/medium.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/7442/large.jpg"
+    },
+    {
+        "kitsu_id": "42765",
+        "id": "42765",
+        "title": "Jujutsu Kaisen",
+        "canonical_title": "Jujutsu Kaisen",
+        "title_jp": "呪術廻戦",
+        "title_romaji": "Jujutsu Kaisen",
+        "synopsis": "Yuji Itadori, lycéen aux aptitudes physiques exceptionnelles, avale une relique maudite de rang S pour sauver ses amis et se retrouve possédé par Ryomen Sukuna, le Roi des Fléaux.",
+        "rating": "8.6",
+        "score": "8.6",
+        "episode_count": 24,
+        "status": "finished",
+        "show_type": "TV",
+        "year": "2020",
+        "poster": "https://media.kitsu.app/anime/poster_images/42765/medium.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/42765/large.jpg"
+    },
+    {
+        "kitsu_id": "41370",
+        "id": "41370",
+        "title": "Demon Slayer: Kimetsu no Yaiba",
+        "canonical_title": "Demon Slayer: Kimetsu no Yaiba",
+        "title_jp": "鬼滅の刃",
+        "title_romaji": "Kimetsu no Yaiba",
+        "synopsis": "Après le massacre de sa famille par un démon et la transformation de sa jeune sœur Nezuko, Tanjiro Kamado devient pourfendeur de démons pour la délivrer de cette malédiction.",
+        "rating": "8.5",
+        "score": "8.5",
+        "episode_count": 26,
+        "status": "finished",
+        "show_type": "TV",
+        "year": "2019",
+        "poster": "https://media.kitsu.app/anime/poster_images/41370/medium.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/41370/large.jpg"
+    },
+    {
+        "kitsu_id": "1376",
+        "id": "1376",
+        "title": "Death Note",
+        "canonical_title": "Death Note",
+        "title_jp": "デスノート",
+        "title_romaji": "Death Note",
+        "synopsis": "Light Yagami, brillant lycéen, trouve un carnet surnaturel permettant de tuer quiconque dont on connaît le nom et le visage. Il entreprend d'éradiquer la criminalité sous le pseudonyme de Kira.",
+        "rating": "8.7",
+        "score": "8.7",
+        "episode_count": 37,
+        "status": "finished",
+        "show_type": "TV",
+        "year": "2006",
+        "poster": "https://media.kitsu.app/anime/poster_images/1376/medium.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/1376/large.jpg"
+    },
+    {
+        "kitsu_id": "3936",
+        "id": "3936",
+        "title": "Fullmetal Alchemist: Brotherhood",
+        "canonical_title": "Fullmetal Alchemist: Brotherhood",
+        "title_jp": "鋼の錬金術師 FULLMETAL ALCHEMIST",
+        "title_romaji": "Hagane no Renkinjutsushi: Brotherhood",
+        "synopsis": "Edward et Alphonse Elric parcourent le monde à la recherche de la Pierre Philosophale pour restaurer leurs corps perdus lors d'une tentative désastreuse de transmutation humaine.",
+        "rating": "9.0",
+        "score": "9.0",
+        "episode_count": 64,
+        "status": "finished",
+        "show_type": "TV",
+        "year": "2009",
+        "poster": "https://media.kitsu.app/anime/poster_images/3936/medium.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/3936/large.jpg"
+    },
+    {
+        "kitsu_id": "46474",
+        "id": "46474",
+        "title": "Frieren: Beyond Journey's End",
+        "canonical_title": "Frieren: Beyond Journey's End",
+        "title_jp": "葬送のフリーレン",
+        "title_romaji": "Sousou no Frieren",
+        "synopsis": "Après la défaite du Roi Démon par le groupe de héros, l'elfe magicienne Frieren entame un nouveau voyage pour comprendre la valeur éphémère du temps et des liens humains.",
+        "rating": "9.1",
+        "score": "9.1",
+        "episode_count": 28,
+        "status": "finished",
+        "show_type": "TV",
+        "year": "2023",
+        "poster": "https://media.kitsu.app/anime/poster_images/46474/medium.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/46474/large.jpg"
+    },
+    {
+        "kitsu_id": "43608",
+        "id": "43608",
+        "title": "Chainsaw Man",
+        "canonical_title": "Chainsaw Man",
+        "title_jp": "チェンソーマン",
+        "title_romaji": "Chainsaw Man",
+        "synopsis": "Denji, jeune homme criblé de dettes vivant avec son démon-tronçonneuse Pochita, fusionne avec ce dernier après avoir été trahi, devenant l'arme absolue de la Sécurité Publique.",
+        "rating": "8.5",
+        "score": "8.5",
+        "episode_count": 12,
+        "status": "finished",
+        "show_type": "TV",
+        "year": "2022",
+        "poster": "https://media.kitsu.app/anime/poster_images/43608/medium.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/43608/large.jpg"
+    },
+    {
+        "kitsu_id": "47098",
+        "id": "47098",
+        "title": "Solo Leveling",
+        "canonical_title": "Solo Leveling",
+        "title_jp": "俺だけレベルアップな件",
+        "title_romaji": "Ore dake Level Up na Ken",
+        "synopsis": "Sung Jinwoo, le chasseur de rang E le plus faible de toute l'humanité, reçoit la capacité unique d'évoluer sans limite via une interface de jeu invisible aux autres.",
+        "rating": "8.4",
+        "score": "8.4",
+        "episode_count": 12,
+        "status": "finished",
+        "show_type": "TV",
+        "year": "2024",
+        "poster": "https://media.kitsu.app/anime/poster_images/47098/medium.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/47098/large.jpg"
+    },
+    {
+        "kitsu_id": "12",
+        "id": "12",
+        "title": "One Piece",
+        "canonical_title": "One Piece",
+        "title_jp": "ONE PIECE",
+        "title_romaji": "One Piece",
+        "synopsis": "Monkey D. Luffy prend la mer à la recherche du trésor légendaire, le One Piece, avec l'ambition suprême de devenir le Roi des Pirates.",
+        "rating": "8.6",
+        "score": "8.6",
+        "episode_count": 1100,
+        "status": "current",
+        "show_type": "TV",
+        "year": "1999",
+        "poster": "https://media.kitsu.app/anime/poster_images/12/medium.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/12/large.jpg"
+    },
+    {
+        "kitsu_id": "6448",
+        "id": "6448",
+        "title": "Hunter x Hunter (2011)",
+        "canonical_title": "Hunter x Hunter (2011)",
+        "title_jp": "HUNTER×HUNTER（2011）",
+        "title_romaji": "Hunter x Hunter (2011)",
+        "synopsis": "Gon Freecss décide de passer le redoutable examen de Hunter dans l'espoir de retrouver son père Ging, l'un des Hunters les plus mystérieux et renommés au monde.",
+        "rating": "8.9",
+        "score": "8.9",
+        "episode_count": 148,
+        "status": "finished",
+        "show_type": "TV",
+        "year": "2011",
+        "poster": "https://media.kitsu.app/anime/poster_images/6448/medium.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/6448/large.jpg"
+    }
+]
+
+
 def fetch_kitsu_anime(endpoint: str, params: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-    query_str = urllib.parse.urlencode(params) if params else ""
+    safe_params = {}
+    if params:
+        for k, v in params.items():
+            if k == "page[limit]":
+                safe_params[k] = min(max(1, int(v)), 20)
+            else:
+                safe_params[k] = v
+    query_str = urllib.parse.urlencode(safe_params, safe="[]:") if safe_params else ""
     url = f"{KITSU_API}/{endpoint}?{query_str}" if query_str else f"{KITSU_API}/{endpoint}"
     req = urllib.request.Request(url, headers=HEADERS)
     try:
-        with urllib.request.urlopen(req, timeout=8) as resp:
+        with urllib.request.urlopen(req, timeout=7) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             results = []
             for item in data.get("data", []):
@@ -113,14 +294,19 @@ def fetch_kitsu_anime(endpoint: str, params: Dict[str, Any] = None) -> List[Dict
                 titles = attr.get("titles", {})
                 canonical = attr.get("canonicalTitle") or titles.get("en") or titles.get("en_jp") or ""
                 poster = (attr.get("posterImage") or {}).get("medium") or (attr.get("posterImage") or {}).get("original") or ""
+                avg = attr.get("averageRating")
+                score_str = f"{float(avg)/10:.1f}" if avg else ""
 
                 results.append({
                     "kitsu_id": item.get("id"),
+                    "id": item.get("id"),
                     "title": canonical,
+                    "canonical_title": canonical,
                     "title_jp": titles.get("ja_jp", ""),
                     "title_romaji": titles.get("en_jp", ""),
                     "synopsis": attr.get("synopsis", ""),
-                    "rating": str(attr.get("averageRating") or ""),
+                    "rating": score_str,
+                    "score": score_str,
                     "episode_count": attr.get("episodeCount") or 0,
                     "status": attr.get("status"),
                     "show_type": attr.get("showType"),
@@ -128,28 +314,38 @@ def fetch_kitsu_anime(endpoint: str, params: Dict[str, Any] = None) -> List[Dict
                     "poster": poster,
                     "cover": (attr.get("coverImage") or {}).get("large") or "",
                 })
-            return results
+            return results if results else []
     except Exception as e:
         logger.error(f"Erreur Kitsu API ({url}): {e}")
         return []
 
 
 def get_trending_anime() -> List[Dict[str, Any]]:
-    """Récupère les 10 animes les plus populaires du moment."""
-    return fetch_kitsu_anime("trending/anime")
+    """Récupère les animes tendance du moment."""
+    res = fetch_kitsu_anime("trending/anime")
+    return res if res else list(FALLBACK_ANIMES)
 
 
-def get_popular_anime(limit: int = 24) -> List[Dict[str, Any]]:
+def get_popular_anime(limit: int = 20) -> List[Dict[str, Any]]:
     """Récupère les animes les plus populaires de tous les temps."""
-    return fetch_kitsu_anime("anime", {
+    clamped_limit = min(max(1, limit), 20)
+    res = fetch_kitsu_anime("anime", {
         "sort": "-userCount",
-        "page[limit]": limit,
+        "page[limit]": clamped_limit,
     })
+    return res if res else list(FALLBACK_ANIMES)
 
 
 def search_anime(query: str, limit: int = 20) -> List[Dict[str, Any]]:
     """Recherche un anime par titre (français, anglais ou romaji)."""
-    return fetch_kitsu_anime("anime", {
+    clamped_limit = min(max(1, limit), 20)
+    res = fetch_kitsu_anime("anime", {
         "filter[text]": query,
-        "page[limit]": limit,
+        "page[limit]": clamped_limit,
     })
+    if not res:
+        q_lower = query.lower()
+        matched = [a for a in FALLBACK_ANIMES if q_lower in a["title"].lower() or q_lower in a.get("title_romaji", "").lower()]
+        return matched if matched else []
+    return res
+

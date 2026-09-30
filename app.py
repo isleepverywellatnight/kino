@@ -520,6 +520,18 @@ def search_cinemeta(query, media_type="movie"):
     cache_key = f"search:{media_type}:{q_norm}"
 
     def _fetch():
+        if media_type == "anime":
+            s_metas = search_cinemeta(query, "series") or []
+            m_metas = search_cinemeta(query, "movie") or []
+            seen = set()
+            combined = []
+            for m in s_metas + m_metas:
+                mid = m.get("id")
+                if mid and mid not in seen:
+                    seen.add(mid)
+                    combined.append(m)
+            return combined
+
         encoded = urllib.parse.quote(query)
         url = f"https://v3-cinemeta.strem.io/catalog/{media_type}/top/search={encoded}.json"
         data = http_json(url)
@@ -3362,10 +3374,16 @@ HTML_PAGE = r"""<!DOCTYPE html>
     background: rgba(255, 255, 255, 0.07);
   }
   .header-dropdown-item .hdi-icon {
-    font-size: 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
     width: 22px;
-    text-align: center;
+    height: 22px;
+    color: var(--muted);
+  }
+  .header-dropdown-item:hover .hdi-icon {
+    color: var(--text);
   }
   .header-dropdown-item .hdi-content {
     display: flex;
@@ -3618,29 +3636,100 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
   .nav-tabs {
     display: flex;
-    gap: 6px;
-    margin-top: 16px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 12px;
-    flex-wrap: wrap;
+    justify-content: space-between;
     align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    flex-wrap: nowrap;
   }
+  .nav-tabs-primary {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-tabs-primary::-webkit-scrollbar { display: none; }
   .nav-tab {
-    padding: 6px 13px;
-    font-size: 0.82rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    font-size: 0.83rem;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .nav-tab:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .nav-tab.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+    font-weight: 600;
+  }
+  .nav-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    opacity: 0.85;
+    margin-left: 2px;
+  }
+
+  /* Sous-navigation Bibliothèque */
+  .library-subnav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 3px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    animation: fadeInSub 0.15s ease-out;
+  }
+  @keyframes fadeInSub {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .library-subnav::-webkit-scrollbar { display: none; }
+  .lib-subtab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    font-size: 0.79rem;
     font-weight: 500;
     border-radius: 6px;
     cursor: pointer;
     color: var(--muted);
     background: transparent;
-    border: 1px solid transparent;
-    transition: 0.15s;
+    border: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    user-select: none;
   }
-  .nav-tab:hover { color: var(--text); background: var(--surface); }
-  .nav-tab.active {
-    background: var(--text);
-    color: var(--bg);
-    border-color: var(--text);
+  .lib-subtab:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .lib-subtab.active {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text);
+    font-weight: 600;
   }
 
   .section-header {
@@ -3768,6 +3857,218 @@ HTML_PAGE = r"""<!DOCTYPE html>
     background: var(--text);
     color: var(--bg);
     border-color: var(--text);
+  }
+
+  /* ==========================================================================
+     Unified Media Cards (Anime, Tendances Communauté, Custom Letterboxd Lists)
+     ========================================================================== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    user-select: none;
+  }
+  .card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  .card-poster-wrap,
+  .card-thumb {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2/3;
+    background: var(--surface-2);
+    overflow: hidden;
+    display: block;
+  }
+  .card-poster-wrap img,
+  .card-thumb img,
+  .card-img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 2/3;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.95);
+    transition: transform 0.25s ease;
+  }
+  .card:hover .card-poster-wrap img,
+  .card:hover .card-thumb img,
+  .card:hover .card-img {
+    transform: scale(1.04);
+  }
+  .card-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 3px 7px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 4px;
+    background: rgba(9, 9, 11, 0.85);
+    backdrop-filter: blur(6px);
+    color: #eab308;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+  .card-badge-right {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 3px 7px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 4px;
+    background: rgba(9, 9, 11, 0.85);
+    backdrop-filter: blur(6px);
+    color: #fafafa;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+  .card-rating {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 3px 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 4px;
+    background: rgba(9, 9, 11, 0.85);
+    backdrop-filter: blur(6px);
+    color: #eab308;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    z-index: 2;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+  .card-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 5px;
+    z-index: 3;
+  }
+  .card-action-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    background: rgba(9, 9, 11, 0.85);
+    backdrop-filter: blur(4px);
+    border: 1px solid var(--border-hover);
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s;
+  }
+  .card-action-btn:hover,
+  .card-action-btn.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+  .card-play-btn {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    padding: 6px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(6px);
+    color: #fafafa;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+    z-index: 3;
+  }
+  .card-play-btn:hover {
+    background: #fafafa;
+    color: #09090b;
+  }
+  .card:hover .card-play-btn {
+    opacity: 1;
+  }
+  .card-wl-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    background: rgba(9, 9, 11, 0.85);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--border-hover);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    z-index: 3;
+    transition: all 0.15s ease;
+  }
+  .card-wl-btn:hover,
+  .card-wl-btn.in-list {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+  .card-info {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 4px;
+  }
+  .card-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    line-height: 1.3;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--dim);
+    font-size: 0.74rem;
+  }
+  .card-sub {
+    color: var(--dim);
+    font-size: 0.74rem;
+    padding: 0 10px 10px 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .panel {
@@ -4581,7 +4882,13 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <!-- Overlay Glisser-Déposer (.torrent / Magnet) -->
 <div id="dropZoneOverlay" class="drop-zone-overlay">
   <div class="drop-zone-box">
-    <div style="font-size:2.1rem; margin-bottom:10px;">📂</div>
+    <div style="margin-bottom:12px;">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text); opacity:0.85;">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
     <div style="font-size:1.1rem; font-weight:600; color:#fafafa;">Déposez votre fichier .torrent ou lien Magnet</div>
     <div style="font-size:0.82rem; color:var(--muted); margin-top:6px;">Débridage et lecture instantanée via votre compte Cloud</div>
   </div>
@@ -4645,23 +4952,23 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <span>Torrent</span>
     </button>
 
-    <!-- Groupe de fonctionnalités sociales & extensions -->
+    <!-- Groupe de fonctionnalités sociales & extensions (icônes vectorielles épurées) -->
     <div class="header-action-group">
       <button class="header-tool-btn" onclick="openRemoteModal()" title="Télécommande smartphone sans fil via QR Code">
-        <span class="btn-icon">📱</span>
+        <svg class="btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
         <span class="btn-text">Remote</span>
       </button>
       <button class="header-tool-btn" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P (Code à 6 lettres)">
-        <span class="btn-icon">🍿</span>
+        <svg class="btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span class="btn-text">Watch Party</span>
       </button>
       <button class="header-tool-btn" onclick="openAddonsModal()" title="Add-ons et Scrapers Communautaires">
-        <span class="btn-icon">🧩</span>
+        <svg class="btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
         <span class="btn-text">Add-ons</span>
       </button>
     </div>
 
-    <!-- Menu Déroulant Réglages & Outils (remplace la prolifération de boutons) -->
+    <!-- Menu Déroulant Réglages & Outils -->
     <div class="header-menu-wrap">
       <button id="headerSettingsBtn" class="header-tool-btn header-btn-settings" onclick="toggleHeaderMenu(event)" title="Réglages et Outils">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4674,21 +4981,27 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
       <div id="headerDropdownMenu" class="header-dropdown-menu">
         <div class="header-dropdown-item" onclick="openConfig(); closeHeaderMenu();">
-          <span class="hdi-icon">⚙️</span>
+          <span class="hdi-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>
           <div class="hdi-content">
             <span class="hdi-title">Configuration</span>
             <span class="hdi-desc">Débrideurs, Trakt.tv, Qualité vidéo</span>
           </div>
         </div>
         <div class="header-dropdown-item" onclick="openFolder(); closeHeaderMenu();">
-          <span class="hdi-icon">📂</span>
+          <span class="hdi-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </span>
           <div class="hdi-content">
             <span class="hdi-title">Dossier Téléchargements</span>
             <span class="hdi-desc">Ouvrir l'emplacement local des vidéos</span>
           </div>
         </div>
         <div class="header-dropdown-item" onclick="triggerGdriveSync(); closeHeaderMenu();">
-          <span class="hdi-icon">☁️</span>
+          <span class="hdi-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+          </span>
           <div class="hdi-content">
             <span class="hdi-title">Synchronisation Cloud</span>
             <span class="hdi-desc">Synchroniser Google Drive (Mac ⇄ PC)</span>
@@ -4696,7 +5009,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
         </div>
         <div class="header-dropdown-divider"></div>
         <div class="header-dropdown-item" onclick="toggleShortcutsModal(); closeHeaderMenu();">
-          <span class="hdi-icon">⌨️</span>
+          <span class="hdi-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+          </span>
           <div class="hdi-content">
             <span class="hdi-title">Raccourcis Clavier &amp; Aide</span>
             <span class="hdi-desc">Commandes du lecteur et raccourcis</span>
@@ -4724,18 +5039,27 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <button class="btn" onclick="runSearch()">Rechercher</button>
   </div>
 
-  <!-- Navigation principale -->
+  <!-- Navigation principale épurée (5 onglets primaires sans encombrement) -->
   <div class="nav-tabs">
-    <button class="nav-tab active" id="tab-movies" onclick="switchTab('movies')">Films populaires</button>
-    <button class="nav-tab" id="tab-series" onclick="switchTab('series')">Séries populaires</button>
-    <button class="nav-tab" id="tab-community" onclick="switchTab('community')">✨ Tendances Commu</button>
-    <button class="nav-tab" id="tab-anime" onclick="switchTab('anime')">🎌 Espace Anime</button>
-    <button class="nav-tab" id="tab-classics" onclick="switchTab('classics')">Classiques</button>
-    <button class="nav-tab" id="tab-watchlist" onclick="switchTab('watchlist')">Ma Liste <span id="wlCount"></span></button>
-    <button class="nav-tab" id="tab-history" onclick="switchTab('history')">Reprendre <span id="histCount"></span></button>
-    <button class="nav-tab" id="tab-watched" onclick="switchTab('watched')">Déjà vus <span id="watchedCount"></span></button>
-    <button class="nav-tab" id="tab-customlists" onclick="switchTab('customlists')">Listes Letterboxd <span id="customListsCount"></span></button>
-    <button class="nav-tab" id="tab-rdcloud" onclick="switchTab('rdcloud')">Cloud RD</button>
+    <div class="nav-tabs-primary">
+      <button class="nav-tab active" id="tab-movies" onclick="switchTab('movies')">Films</button>
+      <button class="nav-tab" id="tab-series" onclick="switchTab('series')">Séries</button>
+      <button class="nav-tab" id="tab-anime" onclick="switchTab('anime')">Anime</button>
+      <button class="nav-tab" id="tab-community" onclick="switchTab('community')">Tendances</button>
+      <button class="nav-tab" id="tab-library" onclick="switchTab('library')">
+        <span>Ma Bibliothèque</span>
+        <span id="libraryTotalBadge" class="nav-badge"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Sous-navigation Bibliothèque (contextuelle, propre et fluide) -->
+  <div id="librarySubNav" class="library-subnav" style="display:none;">
+    <button class="lib-subtab active" id="subtab-watchlist" onclick="switchTab('watchlist')">Ma Liste <span id="wlCount"></span></button>
+    <button class="lib-subtab" id="subtab-history" onclick="switchTab('history')">Reprendre <span id="histCount"></span></button>
+    <button class="lib-subtab" id="subtab-watched" onclick="switchTab('watched')">Déjà vus <span id="watchedCount"></span></button>
+    <button class="lib-subtab" id="subtab-customlists" onclick="switchTab('customlists')">Listes Letterboxd <span id="customListsCount"></span></button>
+    <button class="lib-subtab" id="subtab-rdcloud" onclick="switchTab('rdcloud')">Cloud RD</button>
   </div>
 
   <!-- Téléchargements PC actifs -->
@@ -4902,7 +5226,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <div id="communityPanel" class="panel" style="display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
       <div>
-        <h3 style="font-size:1.15rem; font-weight:700;">✨ Tendances Cinéphiles de la Communauté</h3>
+        <h3 style="font-size:1.15rem; font-weight:700;">Tendances Cinéphiles &amp; Collections</h3>
         <p style="color:var(--dim); font-size:0.8rem; margin-top:3px;">Collections cultes, palmarès Letterboxd et pépites sélectionnées par la communauté.</p>
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; width:100%; max-width:540px;">
@@ -4931,12 +5255,12 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <div id="animePanel" class="panel" style="display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
       <div>
-        <h3 style="font-size:1.15rem; font-weight:700;">🎌 Espace Animation Japonaise</h3>
+        <h3 style="font-size:1.15rem; font-weight:700;">Animation Japonaise</h3>
         <p style="color:var(--dim); font-size:0.8rem; margin-top:3px;">Catalogue Kitsu &amp; AniList avec détection des épisodes fillers (canon vs hors-série) et priorité fansub VOSTFR.</p>
       </div>
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-        <span class="chip active" id="animeChipTrending" onclick="switchAnimeSubTab('trending', this)">🔥 Tendances</span>
-        <span class="chip" id="animeChipPopular" onclick="switchAnimeSubTab('popular', this)">🏆 Plus Populaires</span>
+        <span class="chip active" id="animeChipTrending" onclick="switchAnimeSubTab('trending', this)">Tendances</span>
+        <span class="chip" id="animeChipPopular" onclick="switchAnimeSubTab('popular', this)">Populaires</span>
         <div style="display:flex; gap:6px; margin-left:8px;">
           <input type="text" id="animeSearchInput" placeholder="Rechercher un anime..." onkeydown="if(event.key==='Enter') runAnimeSearch()" style="padding:5px 10px; font-size:0.78rem; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--text); width:170px;">
           <button class="btn btn-secondary" style="padding:5px 10px; font-size:0.78rem;" onclick="runAnimeSearch()">Chercher</button>
@@ -5017,22 +5341,22 @@ HTML_PAGE = r"""<!DOCTYPE html>
     </div>
     <div id="inAppTitle" style="font-weight:600; font-size:0.95rem; color:#fafafa; text-align:center; flex:1; margin:0 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
     <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;" class="no-drag">
-      <button class="inapp-btn" id="inAppMpvSuggestBtn" onclick="switchToExternalPlayer()" style="display:none; border-color:rgba(124,58,237,0.8); background:rgba(124,58,237,0.18);" title="Optimisé pour 4K HDR & DTS sans saccades">🚀 Basculer MPV</button>
-      <button class="inapp-btn" id="inAppSubsBtn" onclick="cycleInAppSubtitles()" title="Sous-titres OpenSubtitles FR / EN (Touche C)">💬 CC : Off</button>
+      <button class="inapp-btn" id="inAppMpvSuggestBtn" onclick="switchToExternalPlayer()" style="display:none; border-color:rgba(124,58,237,0.8); background:rgba(124,58,237,0.18);" title="Optimisé pour 4K HDR & DTS sans saccades"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Basculer MPV</button>
+      <button class="inapp-btn" id="inAppSubsBtn" onclick="cycleInAppSubtitles()" title="Sous-titres OpenSubtitles FR / EN (Touche C)">CC : Off</button>
       <button class="inapp-btn" id="inAppSubSizeBtn" onclick="cycleInAppSubSize()" title="Taille des sous-titres (S / M / L / XL)">A±</button>
-      <button class="inapp-btn" id="inAppAudioBtn" onclick="cycleInAppAudioBoost()" title="Boost des dialogues / Mode Audio Nuit (Touche V)">🔊 Voix : Normal</button>
-      <button class="inapp-btn" id="inAppClarityBtn" onclick="cycleInAppClarity()" title="Déboucher les noirs / Éclaircir les scènes sombres (Touche B)">☀ Clarté : Normal</button>
+      <button class="inapp-btn" id="inAppAudioBtn" onclick="cycleInAppAudioBoost()" title="Boost des dialogues / Mode Audio Nuit (Touche V)">Voix : Normal</button>
+      <button class="inapp-btn" id="inAppClarityBtn" onclick="cycleInAppClarity()" title="Déboucher les noirs / Éclaircir les scènes sombres (Touche B)">Clarté : Normal</button>
       <button class="inapp-btn" id="inAppSpeedBtn" onclick="cycleInAppSpeed()" title="Vitesse de lecture (Touches [ et ])">1.0x</button>
-      <button class="inapp-btn" id="inAppShotBtn" onclick="captureInAppScreenshot()" title="Capturer une image du film dans Téléchargements">📸</button>
-      <button class="inapp-btn" id="inAppRemoteBtn" onclick="openRemoteModal()" title="Télécommande smartphone tactile via QR Code">📱 Remote</button>
-      <button class="inapp-btn" id="inAppWpBtn" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P (Code à 6 lettres)">🍿 Watch Party</button>
+      <button class="inapp-btn" id="inAppShotBtn" onclick="captureInAppScreenshot()" title="Capturer une image du film dans Téléchargements"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+      <button class="inapp-btn" id="inAppRemoteBtn" onclick="openRemoteModal()" title="Télécommande smartphone tactile via QR Code"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>Remote</button>
+      <button class="inapp-btn" id="inAppWpBtn" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P (Code à 6 lettres)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Watch Party</button>
       <button class="inapp-btn" id="inAppExternalBtn" onclick="switchToExternalPlayer()">Lecteur externe</button>
     </div>
   </div>
   <!-- Volet Chat Watch Party dans le lecteur -->
   <div id="inAppWpChatBox" style="position:absolute; right:20px; bottom:90px; width:280px; max-height:260px; background:rgba(18,18,21,0.92); backdrop-filter:blur(10px); border:1px solid var(--border); border-radius:12px; display:none; flex-direction:column; z-index:25; box-shadow:0 8px 30px rgba(0,0,0,0.8);">
     <div style="padding:10px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-size:0.8rem; font-weight:600; color:#fafafa;">🍿 Watch Party Chat</span>
+      <span style="font-size:0.8rem; font-weight:600; color:#fafafa;">Watch Party Chat</span>
       <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.7rem;" onclick="toggleWpChat()">✕</button>
     </div>
     <div id="inAppWpMessages" style="flex:1; overflow-y:auto; padding:10px; font-size:0.78rem; display:flex; flex-direction:column; gap:6px; max-height:160px;"></div>
@@ -5169,7 +5493,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
         <div style="display:flex; align-items:center; justify-content:space-between; padding-top:2px; font-size:0.74rem;">
           <input type="file" id="lbxCsvFileInput" accept=".csv,.txt" style="display:none;" onchange="handleLetterboxdCsvFile(this.files)">
           <button type="button" onclick="document.getElementById('lbxCsvFileInput').click()" style="background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:0; font-size:0.74rem; display:inline-flex; align-items:center; gap:5px;">
-            <span>📄</span> Importer un export .csv
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>Importer un export .csv</span>
           </button>
           <div style="display:inline-flex; align-items:center; gap:4px; max-width:210px; overflow:hidden;">
             <span id="lbxCsvFileName" style="font-size:0.74rem; color:#00e054; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"></span>
@@ -5358,7 +5683,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <div class="modal" style="max-width:440px; text-align:center; padding:22px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
-        <span>📱</span> KINO Remote
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        <span>KINO Remote</span>
       </h3>
       <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeRemoteModal()">✕</button>
     </div>
@@ -5380,7 +5706,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <div class="modal" style="max-width:480px; padding:20px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
       <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
-        <span>🍿</span> Mode Watch Party P2P
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Mode Watch Party P2P</span>
       </h3>
       <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeWatchPartyModal()">✕</button>
     </div>
@@ -5392,10 +5719,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <div id="wpSetupView">
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
         <button class="btn" style="padding:10px 14px; font-size:0.82rem; font-weight:600;" onclick="createWatchPartyRoom()">
-          ✨ Créer une Salle
+          Créer une Salle
         </button>
         <button class="btn btn-secondary" style="padding:10px 14px; font-size:0.82rem;" onclick="showJoinWatchParty()">
-          🔗 Rejoindre une Salle
+          Rejoindre une Salle
         </button>
       </div>
       <div id="wpJoinBox" style="display:none; padding:12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
@@ -5435,7 +5762,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <div class="modal" style="max-width:640px; padding:20px; max-height:85vh; display:flex; flex-direction:column;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
-        <span>🧩</span> Add-ons &amp; Scrapers Communautaires
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Add-ons &amp; Scrapers Communautaires</span>
       </h3>
       <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeAddonsModal()">✕</button>
     </div>
@@ -5932,7 +6260,7 @@ function drawHeroSpotlightSlide() {
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
         <button class="btn" onclick='oneClickCard(event, this, ${payload})'>Play</button>
         <button class="btn btn-secondary" onclick='selectMedia(${payload})'>Fiche &amp; Sources</button>
-        <button class="btn btn-secondary" onclick='openTrailerModal("", ${safeNameJs}, ${safeYearJs}, "vf")'>🎬 Bande-annonce</button>
+        <button class="btn btn-secondary" onclick='openTrailerModal("", ${safeNameJs}, ${safeYearJs}, "vf")'><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>Bande-annonce</button>
         <button class="btn-surprise" onclick="surpriseMeMedia()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="3"/>
@@ -6566,7 +6894,7 @@ function finishCaseSpin(skipped = false) {
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <button class="btn" onclick="casePlayOneClick(event, this)">Play</button>
         <button class="btn btn-secondary" onclick="caseOpenDetails()">Fiche &amp; Sources</button>
-        <button class="btn btn-secondary" onclick="caseOpenTrailer()">🎬 Bande-annonce</button>
+        <button class="btn btn-secondary" onclick="caseOpenTrailer()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>Bande-annonce</button>
         <button class="btn btn-secondary" id="caseWlBtn" onclick="caseToggleWatchlist(this)" title="Ajouter ou retirer ce titre de Ma Liste">${inWl ? '✓ Dans Ma Liste' : '+ Ma Liste'}</button>
         ${poolMode !== 'watched' ? `<button class="btn btn-secondary" onclick="caseMarkWatchedAndRespin(this)" title="Marquer ce titre comme Déjà vu, le retirer de la roulette et relancer un tirage">✓ Déjà vu</button>` : ''}
         <button class="btn-surprise" onclick="surpriseMeMedia('${poolMode || 'catalog'}')">Relancer</button>
@@ -6719,6 +7047,11 @@ function updateListBadges() {
   const watchedList = getWatchedHistory();
   const watchedEl = document.getElementById('watchedCount');
   if (watchedEl) watchedEl.textContent = watchedList.length ? `(${watchedList.length})` : '';
+  const clEl = document.getElementById('customListsCount');
+  if (clEl && window.customLists) clEl.textContent = window.customLists.length ? `(${window.customLists.length})` : '';
+  const total = userWatchlist.length + inProg.length + watchedList.length;
+  const libTotalEl = document.getElementById('libraryTotalBadge');
+  if (libTotalEl) libTotalEl.textContent = total > 0 ? `(${total})` : '';
 }
 
 async function toggleCardWatched(ev, media) {
@@ -7048,7 +7381,7 @@ function renderCustomListsTab() {
                   ${m.poster ? `<img class="card-img" src="${m.poster}" alt="${escapeJsString(m.name)}" loading="lazy">` : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:0.75rem;">KINO</div>`}
                   ${ratingVal > 0 ? `<div class="card-rating">★ ${m.imdbRating}</div>` : ''}
                   <div class="card-actions">
-                    <button class="card-action-btn ${isW ? 'active' : ''}" onclick="toggleCardWatched(event, {id:'${m.id}', name:'${escapeJsString(m.name)}', type:'movie', poster:'${m.poster || ''}', year:'${m.year || ''}', imdbRating:'${m.imdbRating || ''}'})" title="${isW ? 'Marqué comme vu' : 'Marquer comme vu'}">${isW ? '✓' : '👁'}</button>
+                    <button class="card-action-btn ${isW ? 'active' : ''}" onclick="toggleCardWatched(event, {id:'${m.id}', name:'${escapeJsString(m.name)}', type:'movie', poster:'${m.poster || ''}', year:'${m.year || ''}', imdbRating:'${m.imdbRating || ''}'})" title="${isW ? 'Marqué comme vu' : 'Marquer comme vu'}">${isW ? '✓' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'}</button>
                     <button class="card-action-btn ${inWl ? 'active' : ''}" onclick="toggleWatchlist(event, {id:'${m.id}', name:'${escapeJsString(m.name)}', type:'movie', poster:'${m.poster || ''}', year:'${m.year || ''}', imdbRating:'${m.imdbRating || ''}'})" title="${inWl ? 'Dans Ma Liste' : 'Ajouter à Ma Liste'}">${inWl ? '✓' : '+'}</button>
                   </div>
                   <button class="card-play-btn" onclick="oneClickCard(event, this, {id:'${m.id}', name:'${escapeJsString(m.name)}', type:'movie', poster:'${m.poster || ''}', year:'${m.year || ''}', imdbRating:'${m.imdbRating || ''}'})" title="Lecture 1-Clic">Play</button>
@@ -7075,11 +7408,43 @@ function surpriseMeFromCustomList(listId) {
   surpriseMeMedia({ items: pool, title: l.title });
 }
 
+let lastActiveLibraryTab = 'watchlist';
+
 async function switchTab(tab) {
+  const isLibraryTab = ['watchlist', 'history', 'watched', 'customlists', 'rdcloud', 'library'].includes(tab);
+  if (isLibraryTab) {
+    if (tab === 'library') {
+      tab = lastActiveLibraryTab || 'watchlist';
+    } else {
+      lastActiveLibraryTab = tab;
+    }
+  }
+
   activeTab = tab;
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const activeEl = document.getElementById('tab-' + tab);
-  if (activeEl) activeEl.classList.add('active');
+
+  // Active state for primary tabs
+  document.querySelectorAll('.nav-tabs-primary .nav-tab').forEach(t => t.classList.remove('active'));
+  if (isLibraryTab) {
+    const libEl = document.getElementById('tab-library');
+    if (libEl) libEl.classList.add('active');
+  } else if (tab === 'classics') {
+    const movEl = document.getElementById('tab-movies');
+    if (movEl) movEl.classList.add('active');
+  } else {
+    const activeEl = document.getElementById('tab-' + tab);
+    if (activeEl) activeEl.classList.add('active');
+  }
+
+  // Subnav visibility & active state
+  const libSubNav = document.getElementById('librarySubNav');
+  if (libSubNav) {
+    libSubNav.style.display = isLibraryTab ? 'flex' : 'none';
+  }
+  if (isLibraryTab) {
+    document.querySelectorAll('.lib-subtab').forEach(t => t.classList.remove('active'));
+    const activeSub = document.getElementById('subtab-' + tab);
+    if (activeSub) activeSub.classList.add('active');
+  }
 
   document.getElementById('detailPanel').style.display = 'none';
   document.getElementById('torrentsPanel').style.display = 'none';
@@ -8042,7 +8407,7 @@ function appendWpChatMessage(user, text) {
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
   }
-  showInAppToast(`💬 ${user}: ${text.length > 25 ? text.substring(0,25) + '...' : text}`);
+  showInAppToast(`<strong>${escapeHtml(user)} :</strong> ${text.length > 25 ? text.substring(0,25) + '...' : text}`);
 }
 
 // --- Gestionnaire d'Add-ons ---
@@ -8150,7 +8515,8 @@ async function loadAnimeTab(subTab = 'trending') {
   try {
     const ep = (subTab === 'popular') ? '/api/anime/popular' : '/api/anime/trending';
     const data = await api(ep);
-    renderAnimeGrid(data.animes || []);
+    const list = data.animes || data.items || [];
+    renderAnimeGrid(list);
   } catch(e) {
     grid.innerHTML = `<p style="color:#ef4444; font-size:0.84rem; grid-column:1/-1; text-align:center; padding:30px;">Erreur : ${e.message}</p>`;
   }
@@ -8175,7 +8541,8 @@ async function runAnimeSearch() {
 
   try {
     const data = await api(`/api/anime/search?q=${encodeURIComponent(q)}`);
-    renderAnimeGrid(data.animes || []);
+    const list = data.animes || data.items || [];
+    renderAnimeGrid(list);
   } catch(e) {
     grid.innerHTML = `<p style="color:#ef4444; font-size:0.84rem; grid-column:1/-1; text-align:center; padding:30px;">Erreur : ${e.message}</p>`;
   }
@@ -8192,7 +8559,8 @@ function renderAnimeGrid(animes) {
   grid.innerHTML = animes.map(anime => {
     const poster = anime.poster || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>';
     const title = anime.title || anime.canonical_title || '';
-    const score = anime.score ? `★ ${anime.score}` : '';
+    const scoreVal = anime.score || (anime.rating ? anime.rating : '');
+    const score = scoreVal ? `★ ${scoreVal}` : '';
     const eps = anime.episode_count ? `${anime.episode_count} eps` : 'En cours';
     const year = anime.year || '';
     const searchTarget = anime.canonical_title || title;
@@ -8201,14 +8569,14 @@ function renderAnimeGrid(animes) {
       <div class="card" onclick="openAnimeInKino('${escapeJsString(searchTarget)}')">
         <div class="card-poster-wrap">
           <img src="${poster}" alt="${escapeHtml(title)}" loading="lazy">
-          ${score ? `<span class="card-badge" style="background:rgba(234,179,8,0.9); color:#000; font-weight:800;">${score}</span>` : ''}
-          <span class="card-badge-right" style="background:rgba(0,0,0,0.7);">${eps}</span>
+          ${score ? `<span class="card-badge">${score}</span>` : ''}
+          <span class="card-badge-right">${eps}</span>
         </div>
         <div class="card-info">
           <div class="card-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
           <div class="card-meta">
             <span>${year}</span>
-            <span style="color:#38bdf8;">VOSTFR</span>
+            <span style="color:#38bdf8; font-weight:600;">VOSTFR</span>
           </div>
         </div>
       </div>
@@ -8217,10 +8585,14 @@ function renderAnimeGrid(animes) {
 }
 
 function openAnimeInKino(title) {
-  document.getElementById('searchType').value = 'anime';
+  const st = document.getElementById('searchType');
+  if (st) st.value = 'anime';
   const inp = document.getElementById('searchInput');
   if (inp) inp.value = title;
-  switchTab('series');
+  const aniP = document.getElementById('animePanel');
+  if (aniP) aniP.style.display = 'none';
+  document.getElementById('postersGrid').style.display = 'grid';
+  document.getElementById('catalogHeader').style.display = 'flex';
   runSearch();
 }
 
@@ -8234,7 +8606,24 @@ async function loadCommunityTab() {
 
   try {
     const data = await api('/api/community/curated');
-    currentCommunityLists = data.collections || [];
+    let curated = data.collections || [];
+
+    // Ajouter également les listes Letterboxd personnalisées déjà importées par l'utilisateur
+    try {
+      const customData = await api('/api/letterboxd/custom-lists');
+      const customLists = (customData.lists || []).map(l => ({
+        id: l.id,
+        title: l.title || 'Ma liste Letterboxd',
+        badge: 'IMPORTÉ',
+        author: l.user ? `@${l.user}` : 'Vous',
+        description: l.description || `${l.items ? l.items.length : 0} films importés depuis Letterboxd.`,
+        count: l.items ? l.items.length : 0,
+        items: l.items || [],
+      }));
+      curated = [...customLists, ...curated];
+    } catch(err) {}
+
+    currentCommunityLists = curated;
     renderCommunityListsGrid(currentCommunityLists);
   } catch(e) {
     grid.innerHTML = `<p style="color:#ef4444; font-size:0.84rem; grid-column:1/-1; text-align:center; padding:30px;">Erreur : ${e.message}</p>`;
@@ -8254,7 +8643,7 @@ function renderCommunityListsGrid(lists) {
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; cursor:pointer; transition:transform 0.15s, border-color 0.15s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.25)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border)'; this.style.transform='translateY(0)';" onclick="openCommunityList('${col.id}')">
         <div>
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-            <span style="font-size:1.4rem;">${col.icon || '🎬'}</span>
+            <span class="badge" style="font-size:0.68rem; font-weight:700; background:rgba(255,255,255,0.08); color:var(--text); letter-spacing:0.5px;">${escapeHtml(col.badge || 'COLLECTION')}</span>
             <span class="badge" style="font-size:0.7rem; background:rgba(0,224,84,0.12); color:#00e054; border-color:rgba(0,224,84,0.25);">${col.count || (col.items ? col.items.length : 0)} films</span>
           </div>
           <h4 style="font-size:1.02rem; font-weight:700; margin:0 0 6px 0; color:#fafafa;">${escapeHtml(col.title)}</h4>
@@ -8277,7 +8666,7 @@ function openCommunityList(listId) {
   const descEl = document.getElementById('communityActiveListDesc');
   const grid = document.getElementById('communityActiveListGrid');
 
-  if (titleEl) titleEl.textContent = `${col.icon || '🎬'} ${col.title}`;
+  if (titleEl) titleEl.textContent = col.title;
   if (descEl) descEl.textContent = col.description;
   if (activeSec) {
     activeSec.style.display = 'block';
@@ -8422,7 +8811,7 @@ async function handleTorrentFileSelect(files) {
   if (box) {
     box.style.display = 'block';
     box.scrollIntoView({ behavior: 'smooth' });
-    box.innerHTML = `<h3>📂 Lecture du fichier ${file.name}...</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">Extraction de l'empreinte BitTorrent et débridage Cloud...</p>`;
+    box.innerHTML = `<h3>Lecture du fichier ${file.name}...</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">Extraction de l'empreinte BitTorrent et débridage Cloud...</p>`;
   }
   try {
     const buf = await file.arrayBuffer();
@@ -8915,11 +9304,11 @@ async function selectMedia(media) {
         <div class="detail-credits">
           ${dirLinks ? `<div><strong>Réalisation :</strong> ${dirLinks}</div>` : ''}
           ${castLinks ? `<div><strong>Distribution :</strong> ${castLinks}</div>` : ''}
-          ${awards ? `<div style="color:var(--dim); margin-top:2px;">🏆 ${awards}</div>` : ''}
+          ${awards ? `<div style="color:var(--dim); margin-top:2px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H8v2h8v-2h-1c-.55 0-1-.45-1-1v-2.34c3.27-.47 5.73-3.23 6-6.66H4c.27 3.43 2.73 6.19 6 6.66z"/></svg>${awards}</div>` : ''}
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center;">
           <button class="btn" id="detailMainPlayBtn" onclick='oneClickCard(event, this, ${mediaPayload})'>${playBtnLabel}</button>
-          <button class="btn btn-secondary" onclick='openTrailerModal(${JSON.stringify(trailerId)}, ${safeNameJs}, ${safeYearJs}, "vf")'>🎬 Bande-annonce</button>
+          <button class="btn btn-secondary" onclick='openTrailerModal(${JSON.stringify(trailerId)}, ${safeNameJs}, ${safeYearJs}, "vf")'><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>Bande-annonce</button>
           <button class="btn btn-secondary" id="detailWlBtn" onclick='toggleWatchlist(event, ${mediaPayload})'>${inList ? '✓ Dans ma liste' : '+ Ma Liste'}</button>
           ${media.type !== 'series' ? `<button class="btn btn-secondary" style="${isMovieDone ? 'border-color:var(--text); color:var(--text);' : ''}" onclick='toggleWatchedItem(${mediaPayload})'>${isMovieDone ? '✓ Vu' : '✓ Marquer comme vu'}</button>` : ''}
           ${media.id && String(media.id).startsWith('tt') ? `<a class="btn btn-secondary" href="https://www.imdb.com/title/${encodeURIComponent(media.id)}/" target="_blank" style="padding:7px 11px; font-size:0.76rem;" title="Voir la fiche sur IMDb">IMDb ↗</a>` : ''}
@@ -9036,9 +9425,9 @@ function renderDetailEpisodes(seasonNum) {
         const badgeEl = document.getElementById(`filler-badge-${seasonNum}-${epNum}`);
         if (badgeEl && res && res.checked) {
           if (res.is_filler) {
-            badgeEl.innerHTML = `<span class="badge" style="background:rgba(249,115,22,0.18); color:#f97316; border-color:rgba(249,115,22,0.4);" title="${res.type || 'Filler'}">🟠 Hors-Série</span>`;
+            badgeEl.innerHTML = `<span class="badge" style="background:rgba(249,115,22,0.18); color:#f97316; border-color:rgba(249,115,22,0.4);" title="${res.type || 'Filler'}">Hors-Série</span>`;
           } else {
-            badgeEl.innerHTML = `<span class="badge" style="background:rgba(74,222,128,0.18); color:#4ade80; border-color:rgba(74,222,128,0.4);" title="Manga Canon">🟢 Canon</span>`;
+            badgeEl.innerHTML = `<span class="badge" style="background:rgba(74,222,128,0.18); color:#4ade80; border-color:rgba(74,222,128,0.4);" title="Manga Canon">Canon</span>`;
           }
         }
       }).catch(() => {});
@@ -9252,7 +9641,7 @@ function renderTorrents() {
 
   list.innerHTML = filtered.slice(0, 75).map((t, idx) => {
     const isBest = (idx === bestIdx && maxScore >= 120);
-    const recBadge = isBest ? '<span class="badge badge-recommended" title="Équilibre optimal Seeders + Résolution + Langue">✨ Recommandé</span>' : '';
+    const recBadge = isBest ? '<span class="badge badge-recommended" title="Équilibre optimal Seeders + Résolution + Langue">Recommandé</span>' : '';
     const qualBadges = (t.qualities || []).map(q => {
       const isHi = q.endsWith('+') || (q === 'SDR' && (window.kinoHdrMode || 'sdr_pref') === 'sdr_pref');
       const tip = q === 'DV' ? ' title="Dolby Vision (Tone-Mapping anti-noirs bouchés actif)"'
@@ -9780,10 +10169,10 @@ function inAppWheelVolume(delta) {
 }
 
 const INAPP_CLARITY_PRESETS = [
-  { id: 'normal', label: '☀ Clarté : Normal', filter: 'none', note: 'Étalonnage standard' },
-  { id: 'boost1', label: '☀ Clarté : Ombres +', filter: 'url(#kinoShadowBoost1) brightness(1.08) contrast(1.03) saturate(1.04)', note: 'Débouche les scènes sombres (Gamma +25%)' },
-  { id: 'boost2', label: '🔆 Clarté : Nuit ++', filter: 'url(#kinoShadowBoost2) brightness(1.16) contrast(1.05) saturate(1.07)', note: 'Anti-noirs bouchés intensif (Gamma +45%)' },
-  { id: 'boost3', label: '⚡ Clarté : HDR Max', filter: 'url(#kinoShadowBoost3) brightness(1.26) contrast(1.07) saturate(1.10)', note: 'Correction maximale flux HDR / Dolby Vision très sombres' }
+  { id: 'normal', label: 'Clarté : Normal', filter: 'none', note: 'Étalonnage standard' },
+  { id: 'boost1', label: 'Clarté : Ombres +', filter: 'url(#kinoShadowBoost1) brightness(1.08) contrast(1.03) saturate(1.04)', note: 'Débouche les scènes sombres (Gamma +25%)' },
+  { id: 'boost2', label: 'Clarté : Nuit ++', filter: 'url(#kinoShadowBoost2) brightness(1.16) contrast(1.05) saturate(1.07)', note: 'Anti-noirs bouchés intensif (Gamma +45%)' },
+  { id: 'boost3', label: 'Clarté : HDR Max', filter: 'url(#kinoShadowBoost3) brightness(1.26) contrast(1.07) saturate(1.10)', note: 'Correction maximale flux HDR / Dolby Vision très sombres' }
 ];
 let inAppClarityIdx = 0;
 
@@ -9810,21 +10199,21 @@ function cycleInAppClarity() {
 }
 
 // --- Sous-titres OpenSubtitles v3 (FR / EN) ---
-let inAppAvailableSubs = [{ label: '💬 CC : Off', lang: 'off', url: '' }];
+let inAppAvailableSubs = [{ label: 'CC : Off', lang: 'off', url: '' }];
 let inAppActiveSubIdx = 0;
 let inAppActiveCues = [];
 let inAppSubDelaySec = 0;
 const inAppSubCuesCache = {};
 
 async function loadInAppSubtitlesForCurrentMedia() {
-  inAppAvailableSubs = [{ label: '💬 CC : Off', lang: 'off', url: '' }];
+  inAppAvailableSubs = [{ label: 'CC : Off', lang: 'off', url: '' }];
   inAppActiveSubIdx = 0;
   inAppActiveCues = [];
   inAppSubDelaySec = 0;
   const subOverlay = document.getElementById('inAppSubOverlay');
   if (subOverlay) { subOverlay.style.display = 'none'; subOverlay.innerHTML = ''; }
   const btn = document.getElementById('inAppSubsBtn');
-  if (btn) { btn.textContent = '💬 CC : Off'; btn.style.borderColor = ''; }
+  if (btn) { btn.textContent = 'CC : Off'; btn.style.borderColor = ''; }
 
   if (!inAppCurrentMedia || !inAppCurrentMedia.id) return;
   const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : 1);
@@ -9837,14 +10226,14 @@ async function loadInAppSubtitlesForCurrentMedia() {
     const enList = subs.filter(x => x.lang === 'en').slice(0, 2);
     frList.forEach((item, idx) => {
       inAppAvailableSubs.push({
-        label: frList.length > 1 ? `💬 CC : Français #${idx + 1}` : '💬 CC : Français',
+        label: frList.length > 1 ? `CC : Français #${idx + 1}` : 'CC : Français',
         lang: 'fr',
         url: item.url
       });
     });
     enList.forEach((item, idx) => {
       inAppAvailableSubs.push({
-        label: enList.length > 1 ? `💬 CC : English #${idx + 1}` : '💬 CC : English',
+        label: enList.length > 1 ? `CC : English #${idx + 1}` : 'CC : English',
         lang: 'en',
         url: item.url
       });
@@ -9862,7 +10251,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
 async function cycleInAppSubtitles() {
   resetInAppIdleTimer();
   if (inAppAvailableSubs.length <= 1) {
-    showInAppToast(`<strong>💬 Sous-titres</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucun sous-titre OpenSubtitles trouvé pour ce titre</span>`, 1800);
+    showInAppToast(`<strong>Sous-titres</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucun sous-titre OpenSubtitles trouvé pour ce titre</span>`, 1800);
     return;
   }
   inAppActiveSubIdx = (inAppActiveSubIdx + 1) % inAppAvailableSubs.length;
@@ -9876,7 +10265,7 @@ async function cycleInAppSubtitles() {
   if (sub.lang === 'off' || !sub.url) {
     inAppActiveCues = [];
     if (subOverlay) { subOverlay.style.display = 'none'; subOverlay.innerHTML = ''; }
-    showInAppToast(`<strong>💬 Sous-titres désactivés</strong>`, 1400);
+    showInAppToast(`<strong>Sous-titres désactivés</strong>`, 1400);
     return;
   }
   showInAppToast(`<strong>${sub.label}</strong><br><span style="font-size:0.78rem; color:var(--muted);">Chargement OpenSubtitles... (G / H pour décaler ±0.5s)</span>`, 1800);
@@ -9915,14 +10304,14 @@ function cycleInAppSubSize() {
   if (subOverlay) subOverlay.style.fontSize = cfg.size;
   const btn = document.getElementById('inAppSubSizeBtn');
   if (btn) btn.textContent = cfg.label;
-  showInAppToast(`<strong>💬 Taille sous-titres : ${cfg.name}</strong>`, 1400);
+  showInAppToast(`<strong>Taille sous-titres : ${cfg.name}</strong>`, 1400);
 }
 
 function adjustInAppSubDelay(deltaSec) {
   if (!inAppActiveCues.length) return;
   inAppSubDelaySec = Math.round((inAppSubDelaySec + deltaSec) * 100) / 100;
   const sign = inAppSubDelaySec >= 0 ? '+' : '';
-  showInAppToast(`<strong>💬 Décalage sous-titres : ${sign}${inAppSubDelaySec}s</strong> (Z / X)`, 1400);
+  showInAppToast(`<strong>Décalage sous-titres : ${sign}${inAppSubDelaySec}s</strong> (Z / X)`, 1400);
   const v = document.getElementById('inAppVideo');
   if (v) updateInAppSubtitleOverlay(v.currentTime);
 }
@@ -9960,7 +10349,7 @@ function applyInAppAudioUI(mode, showToast = false) {
   const btn = document.getElementById('inAppAudioBtn');
   const isBoost = window.kinoAudioMode === 'voice_boost';
   if (btn) {
-    btn.textContent = isBoost ? '🔊 Voix : Boost' : '🔊 Voix : Normal';
+    btn.textContent = isBoost ? 'Voix : Boost' : 'Voix : Normal';
     btn.style.borderColor = isBoost ? '#fafafa' : '';
   }
   const sel = document.getElementById('cfgAudioMode');
@@ -9968,8 +10357,8 @@ function applyInAppAudioUI(mode, showToast = false) {
   if (showToast) {
     showInAppToast(
       isBoost
-        ? `<strong>🔊 Boost Voix / Audio Nuit activé</strong><br><span style="font-size:0.78rem; color:var(--muted);">Dialogues rehaussés & explosions adoucies (normalisation dynamique)</span>`
-        : `<strong>🔊 Audio : Standard</strong><br><span style="font-size:0.78rem; color:var(--muted);">Plage dynamique cinéma originale sans compression</span>`,
+        ? `<strong>Boost Voix / Audio Nuit activé</strong><br><span style="font-size:0.78rem; color:var(--muted);">Dialogues rehaussés & explosions adoucies (normalisation dynamique)</span>`
+        : `<strong>Audio : Standard</strong><br><span style="font-size:0.78rem; color:var(--muted);">Plage dynamique cinéma originale sans compression</span>`,
       1900
     );
   }
@@ -9986,7 +10375,7 @@ function cycleInAppAudioBoost() {
   }).catch(() => {});
 }
 
-// --- Vitesse de lecture (0.75x à 2.0x) & Capture d'écran (📸) ---
+// --- Vitesse de lecture (0.75x à 2.0x) & Capture d'écran ---
 const INAPP_SPEED_PRESETS = [0.75, 1.0, 1.25, 1.5, 2.0];
 let inAppSpeedIdx = 1;
 let inAppSkipIntroDismissed = false;
@@ -10007,7 +10396,7 @@ function applyInAppSpeed(idx, showToast = false) {
     btn.style.borderColor = spd !== 1.0 ? '#fafafa' : '';
   }
   if (showToast) {
-    showInAppToast(`<strong>⚡ Vitesse : ${spd}x</strong>`, 1300);
+    showInAppToast(`<strong>Vitesse : ${spd}x</strong>`, 1300);
   }
 }
 
@@ -10020,7 +10409,7 @@ async function captureInAppScreenshot() {
   resetInAppIdleTimer();
   const video = document.getElementById('inAppVideo');
   if (!video || !video.videoWidth || !video.videoHeight) {
-    showInAppToast(`<strong>📸 Capture impossible</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucune image vidéo active</span>`, 1600);
+    showInAppToast(`<strong>Capture impossible</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucune image vidéo active</span>`, 1600);
     return;
   }
   try {
@@ -10041,10 +10430,10 @@ async function captureInAppScreenshot() {
       })
     });
     if (res && res.filename) {
-      showInAppToast(`<strong>📸 Capture enregistrée</strong><br><span style="font-size:0.78rem; color:var(--muted);">${res.filename}</span>`, 2200);
+      showInAppToast(`<strong>Capture enregistrée</strong><br><span style="font-size:0.78rem; color:var(--muted);">${res.filename}</span>`, 2200);
     }
   } catch (e) {
-    showInAppToast(`<strong>📸 Capture protégée (CORS)</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez ⇧⌘4 ou le Moteur KINO (touche S dans IINA)</span>`, 2200);
+    showInAppToast(`<strong>Capture protégée (CORS)</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez ⇧⌘4 ou le Moteur KINO (touche S dans IINA)</span>`, 2200);
   }
 }
 
@@ -10054,7 +10443,7 @@ function skipInAppIntro() {
   const card = document.getElementById('inAppSkipIntroCard');
   if (card) card.style.display = 'none';
   inAppSeekRel(85);
-  showInAppToast(`<strong>⏭ Intro passée (+85s)</strong>`, 1400);
+  showInAppToast(`<strong>Intro passée (+85s)</strong>`, 1400);
 }
 
 function dismissSkipIntro() {
@@ -10148,7 +10537,7 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
   }
   if (isHeavyCodec) {
     setTimeout(() => {
-      showInAppToast(`<strong>💡 Format 4K HDR / DTS détecté</strong><br><span style="font-size:0.78rem; color:var(--muted);">Touche E ou bouton 🚀 pour basculer sur MPV sans perte</span>`, 2800);
+      showInAppToast(`<strong>Format 4K HDR / DTS détecté</strong><br><span style="font-size:0.78rem; color:var(--muted);">Touche E ou bouton dédié pour basculer sur MPV sans perte</span>`, 2800);
     }, 1200);
   }
 
@@ -10784,19 +11173,19 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             if parsed.path == "/api/anime/trending":
                 items = anime_engine.get_trending_anime()
-                self.send_json({"status": "ok", "items": items})
+                self.send_json({"status": "ok", "items": items, "animes": items})
                 return
 
             if parsed.path == "/api/anime/popular":
-                limit = int(params.get("limit", 24))
+                limit = int(params.get("limit", 20))
                 items = anime_engine.get_popular_anime(limit=limit)
-                self.send_json({"status": "ok", "items": items})
+                self.send_json({"status": "ok", "items": items, "animes": items})
                 return
 
             if parsed.path == "/api/anime/search":
                 q = params.get("q", "").strip()
                 items = anime_engine.search_anime(q) if q else []
-                self.send_json({"status": "ok", "items": items})
+                self.send_json({"status": "ok", "items": items, "animes": items})
                 return
 
             if parsed.path == "/api/anime/filler":
