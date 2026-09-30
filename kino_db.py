@@ -414,11 +414,11 @@ def db_index_media(items):
             conn.close()
 
 
-def db_search_fast(query, limit=25):
+def db_search_fast(query, media_type=None, limit=25):
     """Recherche instantanée via FTS5 dans le catalogue local."""
-    if not query or not query.strip():
+    if not query or not str(query).strip():
         return []
-    clean_q = "".join(c for c in query.strip() if c.isalnum() or c.isspace())
+    clean_q = "".join(c for c in str(query).strip() if c.isalnum() or c.isspace())
     if not clean_q:
         return []
     tokens = clean_q.split()
@@ -427,22 +427,64 @@ def db_search_fast(query, limit=25):
     with _DB_LOCK:
         conn = get_connection()
         try:
-            rows = conn.execute(
-                """
-                SELECT c.imdb_id as id, c.title as name, c.media_type as type, c.year, c.poster, c.rating as imdbRating, c.overview
-                FROM media_catalog c
-                JOIN media_fts s ON c.id = s.rowid
-                WHERE media_fts MATCH ?
-                ORDER BY rank
-                LIMIT ?;
-                """,
-                (fts_expr, limit),
-            ).fetchall()
+            if media_type and media_type in ("movie", "series"):
+                rows = conn.execute(
+                    """
+                    SELECT c.imdb_id as id, c.title as name, c.media_type as type, c.year, c.poster, c.rating as imdbRating, c.overview
+                    FROM media_catalog c
+                    JOIN media_fts s ON c.id = s.rowid
+                    WHERE media_fts MATCH ? AND c.media_type = ?
+                    ORDER BY rank
+                    LIMIT ?;
+                    """,
+                    (fts_expr, media_type, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT c.imdb_id as id, c.title as name, c.media_type as type, c.year, c.poster, c.rating as imdbRating, c.overview
+                    FROM media_catalog c
+                    JOIN media_fts s ON c.id = s.rowid
+                    WHERE media_fts MATCH ?
+                    ORDER BY rank
+                    LIMIT ?;
+                    """,
+                    (fts_expr, limit),
+                ).fetchall()
             return [dict(r) for r in rows]
         except Exception:
             return []
         finally:
             conn.close()
+
+
+def db_seed_classics(classics_list):
+    """Initialise le catalogue FTS5 local avec le panthéon des classiques."""
+    if not classics_list:
+        return
+    items = []
+    for item in classics_list:
+        if isinstance(item, (list, tuple)) and len(item) >= 4:
+            imdb_id = item[0]
+            title = item[1]
+            year = item[2]
+            rating = item[3]
+            genres = item[4] if len(item) > 4 else []
+            overview = item[5] if len(item) > 5 else ""
+            items.append({
+                "imdb_id": imdb_id,
+                "title": title,
+                "media_type": "movie",
+                "year": year,
+                "rating": rating,
+                "genres": genres,
+                "overview": overview,
+                "poster": f"https://images.metahub.space/poster/medium/{imdb_id}/img",
+            })
+        elif isinstance(item, dict):
+            items.append(item)
+    if items:
+        db_index_media(items)
 
 
 # =========================================================================

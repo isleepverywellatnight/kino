@@ -423,8 +423,13 @@ KINO_CLASSICS_RAW = [
     ("tt0167404", "The Sixth Sense (Sixième Sens)", "1999", "8.2", ["Drama", "Thriller"], "Un psychologue pour enfants marqué par un échec tente d'aider Cole, un garçon de huit ans terrorisé par un lourd secret : il voit des morts."),
     ("tt0071853", "Monty Python and the Holy Grail (Sacré Graal !)", "1975", "8.2", ["Adventure", "Comedy", "Fantasy"], "Le roi Arthur et ses chevaliers de la Table Ronde se lancent dans une quête surréaliste et hilarante à la recherche du Saint Graal."),
     ("tt0073195", "Jaws (Les Dents de la mer)", "1975", "8.1", ["Adventure", "Thriller"], "Lorsqu'un grand requin blanc sème la terreur sur les plages d'une île touristique, le chef de la police, un océanographe et un chasseur prennent la mer."),
-    ("tt0095016", "Die Hard (Piège de cristal)", "1988", "8.2", ["Action", "Thriller"], "Un policier new-yorkais venu passer Noël à Los Angeles se retrouve seul pour affronter un commando preneur d'otages dans un gratte-ciel."),
 ]
+
+# Initialisation en arrière-plan du catalogue local FTS5 avec les classiques
+try:
+    threading.Thread(target=kino_db.db_seed_classics, args=(KINO_CLASSICS_RAW,), daemon=True).start()
+except Exception:
+    pass
 
 
 def get_classics_catalog(genre="", sort="top"):
@@ -477,6 +482,11 @@ def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
         url = f"https://v3-cinemeta.strem.io/catalog/{media_type}/{catalog_id}{extra}.json"
         data = http_json(url)
         metas = data.get("metas", [])
+        if metas:
+            try:
+                threading.Thread(target=kino_db.db_index_media, args=(metas,), daemon=True).start()
+            except Exception:
+                pass
         if sort == "imdbRating":
             metas = sorted(
                 metas,
@@ -507,7 +517,13 @@ def search_cinemeta(query, media_type="movie"):
         encoded = urllib.parse.quote(query)
         url = f"https://v3-cinemeta.strem.io/catalog/{media_type}/top/search={encoded}.json"
         data = http_json(url)
-        return data.get("metas", [])
+        metas = data.get("metas", [])
+        if metas:
+            try:
+                threading.Thread(target=kino_db.db_index_media, args=(metas,), daemon=True).start()
+            except Exception:
+                pass
+        return metas
 
     return cached_get(cache_key, 600, _fetch)
 
@@ -3395,6 +3411,147 @@ HTML_PAGE = r"""<!DOCTYPE html>
     border-color: var(--border-hover);
   }
 
+  /* Suggestions de recherche instantanée FTS5 */
+  .search-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: rgba(17, 17, 19, 0.98);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    z-index: 100;
+    max-height: 420px;
+    overflow-y: auto;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
+  }
+  .search-suggest-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.12s;
+  }
+  .search-suggest-item:last-child { border-bottom: none; }
+  .search-suggest-item:hover, .search-suggest-item.selected {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .search-suggest-poster {
+    width: 36px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #18181b;
+    flex-shrink: 0;
+  }
+  .search-suggest-info {
+    flex: 1;
+    overflow: hidden;
+  }
+  .search-suggest-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .search-suggest-meta {
+    font-size: 0.74rem;
+    color: var(--muted);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 3px;
+  }
+
+  /* Torrent recommandé & Filtres rapides */
+  .torrent-item.is-recommended {
+    border-color: rgba(124, 58, 237, 0.5) !important;
+    background: linear-gradient(90deg, rgba(124, 58, 237, 0.07), transparent) !important;
+    box-shadow: 0 0 16px rgba(124, 58, 237, 0.12);
+  }
+  .badge-recommended {
+    background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    border: none !important;
+    box-shadow: 0 0 10px rgba(124, 58, 237, 0.45);
+  }
+  .torrent-quick-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .quick-chip {
+    padding: 4px 10px;
+    font-size: 0.76rem;
+    border-radius: 9999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .quick-chip:hover {
+    color: var(--text);
+    border-color: var(--border-hover);
+  }
+  .quick-chip.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+    font-weight: 600;
+  }
+
+  /* Modal Raccourcis Clavier */
+  .shortcuts-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: 250;
+    align-items: center;
+    justify-content: center;
+  }
+  .shortcuts-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    max-width: 580px;
+    width: 90%;
+    padding: 24px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+  }
+  .shortcuts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+    margin-top: 16px;
+  }
+  .shortcut-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+  }
+  kbd {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 0.75rem;
+    font-family: inherit;
+    color: var(--text);
+  }
+
   .nav-tabs {
     display: flex;
     gap: 6px;
@@ -4414,6 +4571,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <button class="btn btn-secondary" onclick="document.getElementById('torrentFileInput').click()" title="Ouvrir un fichier .torrent (ou glisser-déposer dans la fenêtre)">+ .torrent</button>
     <button class="btn btn-secondary" onclick="openFolder()">Dossier</button>
     <button class="btn btn-secondary" onclick="openConfig()">Configuration</button>
+    <button class="btn btn-secondary" onclick="toggleShortcutsModal()" title="Raccourcis clavier (?)">⌨ Aide (?)</button>
   </div>
 </header>
 
@@ -4426,7 +4584,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <option value="raw">Mots-clés</option>
       <option value="magnet">Magnet</option>
     </select>
-    <input type="text" id="searchInput" placeholder="Rechercher un film ou une série... (⌘K)" oninput="onSearchInput()" onkeydown="if(event.key==='Enter') runSearch()">
+    <div style="flex:1; position:relative; display:flex;">
+      <input type="text" id="searchInput" placeholder="Rechercher un film ou une série... (⌘K)" oninput="onSearchInput()" onkeydown="onSearchKeyDown(event)" autocomplete="off" style="width:100%;">
+      <div id="searchDropdown" class="search-dropdown" style="display:none;"></div>
+    </div>
     <button class="btn" onclick="runSearch()">Rechercher</button>
   </div>
 
@@ -4672,7 +4833,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
     </div>
     <div id="inAppTitle" style="font-weight:600; font-size:0.95rem; color:#fafafa; text-align:center; flex:1; margin:0 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
     <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;" class="no-drag">
+      <button class="inapp-btn" id="inAppMpvSuggestBtn" onclick="switchToExternalPlayer()" style="display:none; border-color:rgba(124,58,237,0.8); background:rgba(124,58,237,0.18);" title="Optimisé pour 4K HDR & DTS sans saccades">🚀 Basculer MPV</button>
       <button class="inapp-btn" id="inAppSubsBtn" onclick="cycleInAppSubtitles()" title="Sous-titres OpenSubtitles FR / EN (Touche C)">💬 CC : Off</button>
+      <button class="inapp-btn" id="inAppSubSizeBtn" onclick="cycleInAppSubSize()" title="Taille des sous-titres (S / M / L / XL)">A±</button>
       <button class="inapp-btn" id="inAppAudioBtn" onclick="cycleInAppAudioBoost()" title="Boost des dialogues / Mode Audio Nuit (Touche V)">🔊 Voix : Normal</button>
       <button class="inapp-btn" id="inAppClarityBtn" onclick="cycleInAppClarity()" title="Déboucher les noirs / Éclaircir les scènes sombres (Touche B)">☀ Clarté : Normal</button>
       <button class="inapp-btn" id="inAppSpeedBtn" onclick="cycleInAppSpeed()" title="Vitesse de lecture (Touches [ et ])">1.0x</button>
@@ -4901,6 +5064,31 @@ HTML_PAGE = r"""<!DOCTYPE html>
         <button class="btn btn-secondary" onclick="closeConfig()">Annuler</button>
         <button class="btn" onclick="saveConfig()">Enregistrer</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Raccourcis Clavier -->
+<div id="shortcutsModal" class="shortcuts-modal" onclick="if(event.target===this) toggleShortcutsModal()">
+  <div class="shortcuts-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <h3 style="font-size:1rem; font-weight:600;">⌨ Raccourcis Clavier KINO</h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="toggleShortcutsModal()">Fermer (Échap)</button>
+    </div>
+    <div class="shortcuts-grid">
+      <div class="shortcut-row"><span>Lecture / Pause</span><kbd>Espace</kbd></div>
+      <div class="shortcut-row"><span>Plein écran</span><kbd>F</kbd></div>
+      <div class="shortcut-row"><span>Reculer / Avancer 10s</span><div><kbd>←</kbd> <kbd>→</kbd></div></div>
+      <div class="shortcut-row"><span>Volume +/-</span><div><kbd>↑</kbd> <kbd>↓</kbd></div></div>
+      <div class="shortcut-row"><span>Activer / Couper son</span><kbd>M</kbd></div>
+      <div class="shortcut-row"><span>Sous-titres On / Off</span><kbd>C</kbd></div>
+      <div class="shortcut-row"><span>Synchro sous-titres (±250ms)</span><div><kbd>Z</kbd> <kbd>X</kbd></div></div>
+      <div class="shortcut-row"><span>Vitesse de lecture</span><div><kbd>[</kbd> <kbd>]</kbd></div></div>
+      <div class="shortcut-row"><span>Bascule MPV (Flux 4K HDR)</span><kbd>E</kbd></div>
+      <div class="shortcut-row"><span>Épisode suivant</span><kbd>N</kbd></div>
+      <div class="shortcut-row"><span>Passer l'intro (+85s)</span><kbd>S</kbd></div>
+      <div class="shortcut-row"><span>Picture-in-Picture</span><kbd>I</kbd></div>
+      <div class="shortcut-row"><span>Focus recherche</span><div><kbd>⌘K</kbd> / <kbd>/</kbd></div></div>
     </div>
   </div>
 </div>
@@ -6781,9 +6969,20 @@ window.addEventListener('drop', async (e) => {
   }
 });
 
+let searchSuggestItems = [];
+let searchSuggestIndex = -1;
+
+function toggleShortcutsModal() {
+  const m = document.getElementById('shortcutsModal');
+  if (!m) return;
+  const isOpen = m.style.display === 'flex';
+  m.style.display = isOpen ? 'none' : 'flex';
+}
+
 function toggleSearchMode() {
   const mode = document.getElementById('searchType').value;
   const inp = document.getElementById('searchInput');
+  hideSearchDropdown();
   if (mode === 'magnet') inp.placeholder = 'Coller un lien magnet:?xt=urn:btih:...';
   else if (mode === 'raw') inp.placeholder = 'Recherche par mots-clés...';
   else inp.placeholder = 'Rechercher un film ou une série... (⌘K)';
@@ -6793,18 +6992,134 @@ function onSearchInput() {
   clearTimeout(searchDebounceTimer);
   const mode = document.getElementById('searchType').value;
   const q = document.getElementById('searchInput').value.trim();
-  if (mode === 'magnet' || mode === 'raw') return;
+  if (mode === 'magnet' || mode === 'raw') {
+    hideSearchDropdown();
+    return;
+  }
   if (!q) {
+    hideSearchDropdown();
     if (activeTab === 'movies' || activeTab === 'series') {
       switchTab(activeTab);
     }
     return;
   }
-  if (q.length < 2) return;
-  searchDebounceTimer = setTimeout(() => {
-    runSearch();
-  }, 350);
+  if (q.length < 2) {
+    hideSearchDropdown();
+    return;
+  }
+  // Interroger immédiatement SQLite FTS5 pour autocomplétion instantanée
+  fetchSearchSuggestions(q, mode);
 }
+
+async function fetchSearchSuggestions(q, mode) {
+  try {
+    const res = await api(`/api/search-suggest?q=${encodeURIComponent(q)}&type=${encodeURIComponent(mode)}`);
+    const results = (res && res.results) || [];
+    renderSearchDropdown(results, q);
+  } catch (e) {
+    hideSearchDropdown();
+  }
+}
+
+function renderSearchDropdown(items, query) {
+  const dd = document.getElementById('searchDropdown');
+  if (!dd) return;
+  searchSuggestItems = items || [];
+  searchSuggestIndex = -1;
+  if (!items.length) {
+    dd.style.display = 'none';
+    dd.innerHTML = '';
+    return;
+  }
+  dd.innerHTML = items.map((it, idx) => {
+    const poster = it.poster || '';
+    const typeLabel = it.type === 'series' ? 'Série' : 'Film';
+    const rating = it.imdbRating ? `★ ${it.imdbRating}` : '';
+    return `
+      <div class="search-suggest-item" id="suggestItem_${idx}" onclick="selectSearchSuggest(${idx})">
+        <img class="search-suggest-poster" src="${poster}" alt="" onerror="this.style.opacity=0.08">
+        <div class="search-suggest-info">
+          <div class="search-suggest-title">${it.name}</div>
+          <div class="search-suggest-meta">
+            <span class="badge" style="font-size:0.68rem; padding:1px 5px;">${typeLabel}</span>
+            ${it.year ? `<span>${it.year}</span>` : ''}
+            ${rating ? `<span style="color:#fafafa; font-weight:600;">${rating}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  dd.style.display = 'block';
+}
+
+function hideSearchDropdown() {
+  const dd = document.getElementById('searchDropdown');
+  if (dd) {
+    dd.style.display = 'none';
+    dd.innerHTML = '';
+  }
+  searchSuggestItems = [];
+  searchSuggestIndex = -1;
+}
+
+function selectSearchSuggest(idx) {
+  const it = searchSuggestItems[idx];
+  hideSearchDropdown();
+  if (!it) return;
+  const inp = document.getElementById('searchInput');
+  if (inp) inp.value = it.name;
+  selectMedia(it);
+}
+
+function onSearchKeyDown(e) {
+  const dd = document.getElementById('searchDropdown');
+  const isDropdownVisible = dd && dd.style.display === 'block';
+
+  if (isDropdownVisible) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      searchSuggestIndex = (searchSuggestIndex + 1) % searchSuggestItems.length;
+      updateSelectedSuggest();
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      searchSuggestIndex = (searchSuggestIndex - 1 + searchSuggestItems.length) % searchSuggestItems.length;
+      updateSelectedSuggest();
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (searchSuggestIndex >= 0 && searchSuggestIndex < searchSuggestItems.length) {
+        selectSearchSuggest(searchSuggestIndex);
+      } else {
+        hideSearchDropdown();
+        runSearch();
+      }
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      hideSearchDropdown();
+      return;
+    }
+  } else if (e.key === 'Enter') {
+    hideSearchDropdown();
+    runSearch();
+  }
+}
+
+function updateSelectedSuggest() {
+  document.querySelectorAll('.search-suggest-item').forEach((el, idx) => {
+    el.classList.toggle('selected', idx === searchSuggestIndex);
+  });
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-box')) {
+    hideSearchDropdown();
+  }
+});
 
 async function runSearch() {
   clearTimeout(searchDebounceTimer);
@@ -7358,6 +7673,29 @@ function getFilteredTorrents() {
   return filtered;
 }
 
+function scoreTorrent(t) {
+  let score = 0;
+  const seeds = extractTorrentSeeders(t);
+  score += Math.min(seeds * 2, 80);
+
+  const isCached = (t.source && t.source.includes('+')) || (t.qualities && t.qualities.some(q => q.endsWith('+')));
+  if (isCached) score += 150;
+
+  const titleUpper = (t.title || '').toUpperCase();
+  const langs = (t.langs || []).map(l => l.toUpperCase());
+  if (langs.includes('MULTI') || titleUpper.includes('MULTI') || langs.includes('VFF') || langs.includes('VF') || titleUpper.includes('FRENCH')) {
+    score += 60;
+  } else if (langs.includes('VOSTFR') || titleUpper.includes('VOSTFR')) {
+    score += 40;
+  }
+
+  if (t.qualities && (t.qualities.includes('1080p') || t.qualities.includes('4K'))) {
+    score += 30;
+  }
+
+  return score;
+}
+
 function renderTorrents() {
   const list = document.getElementById('torrentsList');
   const filtered = getFilteredTorrents();
@@ -7372,7 +7710,19 @@ function renderTorrents() {
     return;
   }
 
+  let bestIdx = -1;
+  let maxScore = -1;
+  filtered.forEach((t, i) => {
+    const sc = scoreTorrent(t);
+    if (sc > maxScore) {
+      maxScore = sc;
+      bestIdx = i;
+    }
+  });
+
   list.innerHTML = filtered.slice(0, 75).map((t, idx) => {
+    const isBest = (idx === bestIdx && maxScore >= 120);
+    const recBadge = isBest ? '<span class="badge badge-recommended" title="Équilibre optimal Seeders + Résolution + Langue">✨ Recommandé</span>' : '';
     const qualBadges = (t.qualities || []).map(q => {
       const isHi = q.endsWith('+') || (q === 'SDR' && (window.kinoHdrMode || 'sdr_pref') === 'sdr_pref');
       const tip = q === 'DV' ? ' title="Dolby Vision (Tone-Mapping anti-noirs bouchés actif)"'
@@ -7382,16 +7732,16 @@ function renderTorrents() {
     }).join('');
     const langBadges = (t.langs || []).map(l => `<span class="badge badge-hi">${l}</span>`).join('');
     return `
-      <div class="torrent-item">
+      <div class="torrent-item ${isBest ? 'is-recommended' : ''}">
         <div style="flex:1; min-width:260px;">
           <div class="torrent-title">
-            ${qualBadges}${langBadges}${t.title}
+            ${recBadge}${qualBadges}${langBadges}${t.title}
           </div>
           <div class="torrent-meta">${t.source}${t.meta ? ' • ' + t.meta : ''}</div>
         </div>
         <div style="display:flex; gap:6px; align-items:center;">
           ${t.magnet ? `<button class="btn btn-secondary" style="padding:6px 10px; font-size:0.75rem;" onclick="copyTorrentMagnet(event, this, ${idx})" title="Copier le lien Magnet">Magnet</button>` : ''}
-          <button class="btn btn-secondary" onclick="debridFromIndex(${idx})">Sélectionner</button>
+          <button class="btn ${isBest ? '' : 'btn-secondary'}" style="${isBest ? 'font-weight:600;' : ''}" onclick="debridFromIndex(${idx})">${isBest ? '▶ Lancer' : 'Sélectionner'}</button>
         </div>
       </div>
     `;
@@ -8019,11 +8369,30 @@ async function cycleInAppSubtitles() {
   }
 }
 
+let inAppSubSizeIdx = 1;
+const SUB_SIZES = [
+  { label: 'A-', size: '1.1rem', name: 'Petite' },
+  { label: 'A', size: '1.32rem', name: 'Standard' },
+  { label: 'A+', size: '1.6rem', name: 'Grande' },
+  { label: 'A++', size: '1.9rem', name: 'Très grande' }
+];
+
+function cycleInAppSubSize() {
+  resetInAppIdleTimer();
+  inAppSubSizeIdx = (inAppSubSizeIdx + 1) % SUB_SIZES.length;
+  const cfg = SUB_SIZES[inAppSubSizeIdx];
+  const subOverlay = document.getElementById('inAppSubOverlay');
+  if (subOverlay) subOverlay.style.fontSize = cfg.size;
+  const btn = document.getElementById('inAppSubSizeBtn');
+  if (btn) btn.textContent = cfg.label;
+  showInAppToast(`<strong>💬 Taille sous-titres : ${cfg.name}</strong>`, 1400);
+}
+
 function adjustInAppSubDelay(deltaSec) {
   if (!inAppActiveCues.length) return;
-  inAppSubDelaySec = Math.round((inAppSubDelaySec + deltaSec) * 10) / 10;
+  inAppSubDelaySec = Math.round((inAppSubDelaySec + deltaSec) * 100) / 100;
   const sign = inAppSubDelaySec >= 0 ? '+' : '';
-  showInAppToast(`<strong>💬 Décalage sous-titres : ${sign}${inAppSubDelaySec}s</strong>`, 1400);
+  showInAppToast(`<strong>💬 Décalage sous-titres : ${sign}${inAppSubDelaySec}s</strong> (Z / X)`, 1400);
   const v = document.getElementById('inAppVideo');
   if (v) updateInAppSubtitleOverlay(v.currentTime);
 }
@@ -8236,6 +8605,18 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
     applyInAppClarity(1, true);
   } else {
     applyInAppClarity(inAppClarityIdx, false);
+  }
+
+  // Détection des formats exigeants (HEVC / 10-bit / DTS) et proposition MPV
+  const isHeavyCodec = /\b(hevc|h\.?265|10bit|hdr|dv|dovi|dts|truehd|remux)\b/i.test(`${title || ''} ${streamUrl || ''}`);
+  const mpvBtn = document.getElementById('inAppMpvSuggestBtn');
+  if (mpvBtn) {
+    mpvBtn.style.display = isHeavyCodec ? 'inline-flex' : 'none';
+  }
+  if (isHeavyCodec) {
+    setTimeout(() => {
+      showInAppToast(`<strong>💡 Format 4K HDR / DTS détecté</strong><br><span style="font-size:0.78rem; color:var(--muted);">Touche E ou bouton 🚀 pour basculer sur MPV sans perte</span>`, 2800);
+    }, 1200);
   }
 
   applyInAppAudioUI(window.kinoAudioMode || 'voice_boost', false);
@@ -8581,7 +8962,17 @@ window.addEventListener('keydown', (e) => {
         return;
       }
     }
+    if (e.key === '?' && !isInput) {
+      e.preventDefault();
+      toggleShortcutsModal();
+      return;
+    }
     if (e.key === 'Escape') {
+      const sm = document.getElementById('shortcutsModal');
+      if (sm && sm.style.display === 'flex') {
+        toggleShortcutsModal();
+        return;
+      }
       const lbm = document.getElementById('letterboxdModal');
       if (lbm && (lbm.classList.contains('active') || lbm.style.display === 'flex')) {
         closeLetterboxdModal();
@@ -8644,6 +9035,11 @@ window.addEventListener('keydown', (e) => {
     toggleInAppMute();
   } else if (e.key === 'Escape') {
     e.preventDefault();
+    const sm = document.getElementById('shortcutsModal');
+    if (sm && sm.style.display === 'flex') {
+      toggleShortcutsModal();
+      return;
+    }
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     } else {
@@ -8676,6 +9072,18 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === '[') {
     e.preventDefault();
     cycleInAppSpeed(-1);
+  } else if (e.key === 'z' || e.key === 'Z') {
+    e.preventDefault();
+    adjustInAppSubDelay(-0.25);
+  } else if (e.key === 'x' || e.key === 'X') {
+    e.preventDefault();
+    adjustInAppSubDelay(0.25);
+  } else if (e.key === 'e' || e.key === 'E') {
+    e.preventDefault();
+    switchToExternalPlayer();
+  } else if (e.key === '?') {
+    e.preventDefault();
+    toggleShortcutsModal();
   } else if (e.key === 'g' || e.key === 'G') {
     e.preventDefault();
     adjustInAppSubDelay(-0.5);
@@ -8886,10 +9294,21 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_json(info)
                 return
 
+            if parsed.path == "/api/search-suggest":
+                q = params.get("q", "").strip()
+                mtype = params.get("type", "")
+                results = kino_db.db_search_fast(q, media_type=mtype if mtype in ("movie", "series") else None, limit=8)
+                self.send_json({"ok": True, "results": results})
+                return
+
             if parsed.path == "/api/search":
                 q = params.get("q", "")
                 mtype = params.get("type", "movie")
                 metas = search_cinemeta(q, mtype)
+                if not metas:
+                    local_matches = kino_db.db_search_fast(q, media_type=mtype if mtype in ("movie", "series") else None, limit=20)
+                    if local_matches:
+                        metas = local_matches
                 self.send_json({"metas": metas})
                 return
 

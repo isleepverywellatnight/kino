@@ -27,7 +27,40 @@ else:
 
 import app
 
-PORT = app.PORT
+_single_instance_mutex = None
+
+
+def check_single_instance():
+    """Vérifie si une instance de KINO est déjà active. Si oui, l'amène au premier plan et quitte proprement."""
+    global _single_instance_mutex
+    if IS_WIN and user32:
+        kernel32 = ctypes.windll.kernel32
+        ERROR_ALREADY_EXISTS = 183
+        mutex_name = "Local\\KINO_SINGLE_INSTANCE_MUTEX"
+        _single_instance_mutex = kernel32.CreateMutexW(None, False, mutex_name)
+        if kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+            hwnd = user32.FindWindowW(None, "KINO")
+            if hwnd:
+                user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                user32.SetForegroundWindow(hwnd)
+            sys.exit(0)
+
+
+def find_available_port(start_port=8080, max_tries=10):
+    """Trouve un port TCP local disponible pour éviter tout blocage."""
+    import socket
+    for p in range(start_port, start_port + max_tries):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", p))
+                return p
+            except OSError:
+                continue
+    return start_port
+
+
+PORT = find_available_port(app.PORT)
+app.PORT = PORT
 
 def get_resource_dir():
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
@@ -492,6 +525,7 @@ def save_current_window_bounds():
 
 def main():
     global desktop_window, window_api_instance
+    check_single_instance()
     app.WINDOW_ACTION_CALLBACK = handle_backend_window_action
     app.GET_WINDOW_GEOMETRY = get_window_geometry
 
