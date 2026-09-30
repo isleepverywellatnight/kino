@@ -3218,6 +3218,180 @@ HTML_PAGE = r"""<!DOCTYPE html>
     flex-wrap: wrap;
     gap: 12px;
   }
+  /* Header Toolbar & Controls redesign */
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .header-user-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    padding: 5px 12px 5px 9px;
+    font-size: 0.77rem;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    user-select: none;
+  }
+  .header-user-pill:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+    transform: translateY(-1px);
+  }
+  .user-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.65);
+    flex-shrink: 0;
+  }
+  .user-badge-exp {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #4ade80;
+    background: rgba(34, 197, 94, 0.12);
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    letter-spacing: 0.02em;
+    margin-left: 2px;
+  }
+  .header-v-divider {
+    width: 1px;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 0 2px;
+  }
+  .header-tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 11px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .header-tool-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+  .header-tool-btn:active {
+    transform: scale(0.97);
+  }
+  .header-btn-torrent {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  .header-action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 3px;
+  }
+  .header-action-group .header-tool-btn {
+    border: none;
+    background: transparent;
+    padding: 5px 9px;
+    border-radius: 6px;
+  }
+  .header-action-group .header-tool-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .header-menu-wrap {
+    position: relative;
+  }
+  .header-btn-settings {
+    gap: 7px;
+  }
+  .header-btn-settings .chevron-icon {
+    opacity: 0.6;
+    transition: transform 0.2s;
+  }
+  .header-menu-wrap.active .header-btn-settings .chevron-icon {
+    transform: rotate(180deg);
+  }
+  .header-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 260px;
+    background: rgba(18, 18, 22, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    animation: menuFadeIn 0.15s ease-out;
+  }
+  @keyframes menuFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .header-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    user-select: none;
+  }
+  .header-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .header-dropdown-item .hdi-icon {
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    width: 22px;
+    text-align: center;
+  }
+  .header-dropdown-item .hdi-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .header-dropdown-item .hdi-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .header-dropdown-item .hdi-desc {
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .header-dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 4px 6px;
+  }
+  @media (max-width: 960px) {
+    .header-action-group .btn-text,
+    .header-btn-settings .btn-text {
+      display: none;
+    }
+  }
   .logo {
     display: flex;
     align-items: center;
@@ -4455,16 +4629,81 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <span class="logo-sub" id="logoProviderSub">Real-Debrid</span>
     </div>
   </div>
-  <div class="no-drag" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-    <span id="userBadge" style="font-size:0.8rem; color:var(--muted); margin-right:6px;"></span>
+  <div class="header-right no-drag">
+    <!-- Badge Utilisateur interactif / statut -->
+    <div id="userBadge" class="header-user-pill" onclick="openConfig()" title="Gérer le compte et la configuration">
+      <span class="user-status-dot"></span>
+      <span style="color:var(--muted); font-size:0.75rem;">Chargement...</span>
+    </div>
+
+    <div class="header-v-divider"></div>
+
+    <!-- Bouton rapide + Torrent -->
     <input type="file" id="torrentFileInput" accept=".torrent" style="display:none;" onchange="handleTorrentFileSelect(this.files)">
-    <button class="btn btn-secondary" onclick="document.getElementById('torrentFileInput').click()" title="Ouvrir un fichier .torrent (ou glisser-déposer dans la fenêtre)">+ .torrent</button>
-    <button class="btn btn-secondary" onclick="openRemoteModal()" title="Télécommande smartphone sans fil via QR Code">📱 Remote</button>
-    <button class="btn btn-secondary" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P avec un ami (Code à 6 lettres)">🍿 Watch Party</button>
-    <button class="btn btn-secondary" onclick="openAddonsModal()" title="Add-ons et Scrapers Communautaires">🧩 Add-ons</button>
-    <button class="btn btn-secondary" onclick="openFolder()">Dossier</button>
-    <button class="btn btn-secondary" onclick="openConfig()">Configuration</button>
-    <button class="btn btn-secondary" onclick="toggleShortcutsModal()" title="Raccourcis clavier (?)">⌨ Aide (?)</button>
+    <button class="header-tool-btn header-btn-torrent" onclick="document.getElementById('torrentFileInput').click()" title="Ouvrir un fichier .torrent (ou glisser-déposer)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Torrent</span>
+    </button>
+
+    <!-- Groupe de fonctionnalités sociales & extensions -->
+    <div class="header-action-group">
+      <button class="header-tool-btn" onclick="openRemoteModal()" title="Télécommande smartphone sans fil via QR Code">
+        <span class="btn-icon">📱</span>
+        <span class="btn-text">Remote</span>
+      </button>
+      <button class="header-tool-btn" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P (Code à 6 lettres)">
+        <span class="btn-icon">🍿</span>
+        <span class="btn-text">Watch Party</span>
+      </button>
+      <button class="header-tool-btn" onclick="openAddonsModal()" title="Add-ons et Scrapers Communautaires">
+        <span class="btn-icon">🧩</span>
+        <span class="btn-text">Add-ons</span>
+      </button>
+    </div>
+
+    <!-- Menu Déroulant Réglages & Outils (remplace la prolifération de boutons) -->
+    <div class="header-menu-wrap">
+      <button id="headerSettingsBtn" class="header-tool-btn header-btn-settings" onclick="toggleHeaderMenu(event)" title="Réglages et Outils">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="btn-text">Réglages</span>
+        <svg class="chevron-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+
+      <div id="headerDropdownMenu" class="header-dropdown-menu">
+        <div class="header-dropdown-item" onclick="openConfig(); closeHeaderMenu();">
+          <span class="hdi-icon">⚙️</span>
+          <div class="hdi-content">
+            <span class="hdi-title">Configuration</span>
+            <span class="hdi-desc">Débrideurs, Trakt.tv, Qualité vidéo</span>
+          </div>
+        </div>
+        <div class="header-dropdown-item" onclick="openFolder(); closeHeaderMenu();">
+          <span class="hdi-icon">📂</span>
+          <div class="hdi-content">
+            <span class="hdi-title">Dossier Téléchargements</span>
+            <span class="hdi-desc">Ouvrir l'emplacement local des vidéos</span>
+          </div>
+        </div>
+        <div class="header-dropdown-item" onclick="triggerGdriveSync(); closeHeaderMenu();">
+          <span class="hdi-icon">☁️</span>
+          <div class="hdi-content">
+            <span class="hdi-title">Synchronisation Cloud</span>
+            <span class="hdi-desc">Synchroniser Google Drive (Mac ⇄ PC)</span>
+          </div>
+        </div>
+        <div class="header-dropdown-divider"></div>
+        <div class="header-dropdown-item" onclick="toggleShortcutsModal(); closeHeaderMenu();">
+          <span class="hdi-icon">⌨️</span>
+          <div class="hdi-content">
+            <span class="hdi-title">Raccourcis Clavier &amp; Aide</span>
+            <span class="hdi-desc">Commandes du lecteur et raccourcis</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -5322,14 +5561,31 @@ async function checkConfig() {
     }
     window.kinoPlayerMode = cfg.player_mode || 'kino';
     const badge = document.getElementById('userBadge');
-    if (cfg.user) {
-      const exp = cfg.user.premium > 0 ? Math.ceil(cfg.user.premium / 86400) + 'j' : 'Gratuit';
-      badge.textContent = `${pmeta.short} • ${cfg.user.username} (${exp})`;
-    } else if (cfg.has_token) {
-      badge.textContent = `${pmeta.short} • Clé invalide`;
-    } else {
-      badge.textContent = 'Non configuré';
-      openConfig();
+    if (badge) {
+      if (cfg.user) {
+        const exp = cfg.user.premium > 0 ? Math.ceil(cfg.user.premium / 86400) + 'j' : 'Gratuit';
+        badge.innerHTML = `
+          <span class="user-status-dot"></span>
+          <span style="font-weight:600; color:#fafafa;">${pmeta.short}</span>
+          <span style="color:var(--muted); opacity:0.8;">•</span>
+          <span style="color:var(--text);">${escapeHtml(cfg.user.username)}</span>
+          <span class="user-badge-exp">${exp}</span>
+        `;
+        badge.title = `Connecté à ${pmeta.name} — Compte actif (${exp} restants). Cliquer pour ouvrir la configuration.`;
+      } else if (cfg.has_token) {
+        badge.innerHTML = `
+          <span class="user-status-dot" style="background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.6);"></span>
+          <span style="color:#ef4444; font-weight:600;">${pmeta.short} • Clé invalide</span>
+        `;
+        badge.title = 'Clé API invalide ou expirée. Cliquer pour reconfigurer.';
+      } else {
+        badge.innerHTML = `
+          <span class="user-status-dot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.6);"></span>
+          <span style="color:#eab308; font-weight:600;">Non configuré</span>
+        `;
+        badge.title = 'Cliquez pour configurer votre clé débrideur';
+        openConfig();
+      }
     }
   } catch (e) {
     console.error(e);
@@ -7209,6 +7465,35 @@ function closeTrailerModal() {
   if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
   if (modal) modal.style.display = 'none';
 }
+
+function toggleHeaderMenu(e) {
+  if (e) e.stopPropagation();
+  const wrap = document.querySelector('.header-menu-wrap');
+  const menu = document.getElementById('headerDropdownMenu');
+  if (!menu) return;
+  const isShown = (menu.style.display === 'flex');
+  if (isShown) {
+    menu.style.display = 'none';
+    if (wrap) wrap.classList.remove('active');
+  } else {
+    menu.style.display = 'flex';
+    if (wrap) wrap.classList.add('active');
+  }
+}
+
+function closeHeaderMenu() {
+  const wrap = document.querySelector('.header-menu-wrap');
+  const menu = document.getElementById('headerDropdownMenu');
+  if (menu) menu.style.display = 'none';
+  if (wrap) wrap.classList.remove('active');
+}
+
+window.addEventListener('click', (e) => {
+  const wrap = document.querySelector('.header-menu-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    closeHeaderMenu();
+  }
+});
 
 function openConfig() { 
   document.getElementById('configModal').style.display = 'flex'; 
