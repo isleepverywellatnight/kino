@@ -153,6 +153,7 @@ exec "$PYTHON_BIN" "$DIR/desktop.py"
         "app.py",
         "desktop.py",
         "kino_db.py",
+        "torrent_engine.py",
         "requirements.txt",
         "kino.png",
         "kino.ico",

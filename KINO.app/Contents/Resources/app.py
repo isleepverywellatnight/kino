@@ -22,6 +22,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import kino_db
+import torrent_engine
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -1184,6 +1185,129 @@ def import_letterboxd_watchlist(payload):
     }
 
 
+def import_letterboxd_custom_list(list_url):
+    """
+    Importe n'importe quelle liste publique Letterboxd par URL :
+    Exemples :
+    - https://letterboxd.com/official/list/letterboxds-top-500-films/
+    - https://letterboxd.com/username/list/my-custom-list/
+    - https://boxd.it/...
+    """
+    raw_url = (list_url or "").strip()
+    if not raw_url:
+        raise ValueError("URL Letterboxd requise.")
+
+    if "boxd.it" in raw_url:
+        try:
+            req = urllib.request.Request(raw_url, headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
+            })
+            with urllib.request.urlopen(req, timeout=10) as r:
+                raw_url = r.geturl()
+        except Exception:
+            pass
+
+    clean_url = raw_url.split("?")[0].rstrip("/") + "/"
+    req_headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8",
+    }
+
+    list_title = ""
+    list_description = ""
+    extracted_movies = []
+    seen_keys = set()
+
+    for page in range(1, 4):
+        page_url = clean_url if page == 1 else f"{clean_url}page/{page}/"
+        try:
+            req = urllib.request.Request(page_url, headers=req_headers)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                body = resp.read().decode("utf-8", errors="ignore")
+        except Exception as e:
+            if page == 1:
+                raise RuntimeError(f"Impossible de lire la page Letterboxd ({clean_url}) : {e}")
+            break
+
+        if page == 1:
+            m_title = re.search(r'<meta property="og:title" content="([^"]+)"', body) or re.search(r'<h1[^>]*>([^<]+)</h1>', body)
+            if m_title:
+                list_title = html_unescape(m_title.group(1)).replace("&#039;", "'").replace("&amp;", "&").strip()
+            m_desc = re.search(r'<meta property="og:description" content="([^"]+)"', body)
+            if m_desc:
+                list_description = html_unescape(m_desc.group(1)).replace("&#039;", "'").replace("&amp;", "&").strip()
+
+        page_found = 0
+        for raw_item in re.findall(r'data-item-name="([^"]+)"', body):
+            title, year = _parse_title_year_str(raw_item)
+            if title:
+                k = f"{title.lower()}|{year}"
+                if k not in seen_keys:
+                    seen_keys.add(k)
+                    extracted_movies.append({"title": title, "year": year})
+                    page_found += 1
+
+        if page_found == 0:
+            for m in re.finditer(r'data-film-name="([^"]+)"[^>]*?(?:data-film-release-year="(\d{4})")?', body):
+                title = html_unescape(m.group(1).strip())
+                year = (m.group(2) or "").strip()
+                if title:
+                    k = f"{title.lower()}|{year}"
+                    if k not in seen_keys:
+                        seen_keys.add(k)
+                        extracted_movies.append({"title": title, "year": year})
+                        page_found += 1
+
+        if page_found == 0 or f"/page/{page + 1}/" not in body:
+            break
+
+    if not extracted_movies:
+        raise RuntimeError(f"Aucun film n'a pu être extrait de cette liste Letterboxd ({clean_url}).")
+
+    if not list_title:
+        parts = [p for p in urllib.parse.urlparse(clean_url).path.split("/") if p]
+        list_title = (parts[-1] if parts else "Liste Letterboxd").replace("-", " ").title()
+
+    resolved_items = _resolve_letterboxd_entries(extracted_movies, max_items=120)
+
+    list_id = re.sub(r"[^a-zA-Z0-9_\-]", "_", urllib.parse.urlparse(clean_url).path.strip("/"))
+    if not list_id:
+        list_id = f"list_{int(time.time())}"
+
+    list_entry = {
+        "id": list_id,
+        "title": list_title,
+        "description": list_description,
+        "url": clean_url,
+        "items": resolved_items,
+        "count": len(resolved_items),
+        "updated_at": int(time.time()),
+    }
+
+    cfg = load_config()
+    custom_lists = list(cfg.get("custom_lists", []))
+    custom_lists = [l for l in custom_lists if l.get("id") != list_id and l.get("url") != clean_url]
+    custom_lists.insert(0, list_entry)
+    custom_lists = custom_lists[:20]
+    save_config({"custom_lists": custom_lists})
+
+    return {
+        "status": "ok",
+        "list": list_entry,
+        "custom_lists": custom_lists,
+        "total_extracted": len(extracted_movies),
+        "total_resolved": len(resolved_items),
+    }
+
+
+def delete_letterboxd_custom_list(list_id):
+    cfg = load_config()
+    custom_lists = [l for l in cfg.get("custom_lists", []) if l.get("id") != list_id]
+    save_config({"custom_lists": custom_lists})
+    return custom_lists
+
+
 def record_history(entry):
     s_num = entry.get("season")
     e_num = entry.get("episode")
@@ -1721,51 +1845,13 @@ def rd_cleanup_cloud(token=None, max_age_days=None, provider=None):
 
 
 def parse_torrent_tags(text):
-    t = text.lower()
-    qualities = []
-    for b in ("rd+", "ad+", "tb+", "dl+", "pm+", "oc+", "ed+"):
-        if f"[{b}]" in t:
-            qualities.append(b.upper())
-            break
-    if "2160p" in t or "4k" in t or "uhd" in t:
-        qualities.append("4K")
-    elif "1080p" in t:
-        qualities.append("1080p")
-    elif "720p" in t:
-        qualities.append("720p")
-
-    has_dv = bool(re.search(r"\b(dv|dovi|dolby[\s\.\-]*vision)\b", t))
-    has_hdr = bool(re.search(r"\b(hdr|hdr10|hdr10\+|hdr10plus|hlg)\b", t))
-    if has_hdr:
-        qualities.append("HDR")
-    if has_dv:
-        qualities.append("DV")
-    if not has_hdr and not has_dv:
-        qualities.append("SDR")
-    if "x265" in t or "hevc" in t:
-        qualities.append("HEVC")
-
-    langs = []
-    if "multi" in t or ("french" in t and ("english" in t or "eng" in t)):
-        langs.append("MULTI")
-    if re.search(r"(french|vff|vfq|truefrench|\bvf\b)", t):
-        langs.append("VF")
-    elif re.search(r"(🇫🇷|\bfr\b)", t) and not langs:
-        langs.append("FR")
-    if "vostfr" in t or "subfrench" in t or "multisub" in t:
-        langs.append("VOSTFR")
-
-    return qualities, langs
+    p = torrent_engine.parse_release_details(text)
+    return p.get("display_badges", []), p.get("langs", [])
 
 
 def clean_meta_text(text):
     """Nettoie les métadonnées pour un affichage sobre, précis et sans emojis superflus."""
-    text = re.sub(r"👤\s*(\d+)", r"\1 seeders", text)
-    text = text.replace("💾", " • ").replace("⚙️", " • ")
-    text = re.sub(r"[\U0001F1E6-\U0001F1FF]{2}", "", text)
-    text = re.sub(r"\s*•\s*•\s*", " • ", text)
-    text = re.sub(r"\s+", " ", text).strip(" •/")
-    return text
+    return torrent_engine.clean_meta_text(text)
 
 
 def _parse_stremio_streams(streams, default_source="Torrentio"):
@@ -1839,72 +1925,19 @@ def _parse_stremio_streams(streams, default_source="Torrentio"):
 
 
 def is_plausible_torrent_size(t, media_type="movie", runtime_minutes=None):
-    """
-    Vérifie si le torrent a une taille réaliste pour ses caractéristiques annoncées.
-    Élimine les faux torrents (souvent des CAM/téléphone réencodés) trop légers.
-    """
-    title_up = (t.get("title") or "").upper()
-    # Élimine directement les enregistrements salle / caméras téléphone
-    if re.search(r"\b(CAM|HDCAM|CAMRIP|TS|HDTS|TELESYNC|TELECINE|SCR|SCREENER|DVDSCREENER|WP|WORKPRINT)\b", title_up):
-        return False
-
-    size_gb = float(t.get("size_gb") or 0.0)
-    if not size_gb:
-        meta = t.get("meta") or ""
-        m_gb = re.search(r"(\d+(?:\.\d+)?)\s*(?:GB|GiB)", meta, re.IGNORECASE)
-        m_mb = re.search(r"(\d+(?:\.\d+)?)\s*(?:MB|MiB)", meta, re.IGNORECASE)
-        if m_gb:
-            size_gb = float(m_gb.group(1))
-        elif m_mb:
-            size_gb = float(m_mb.group(1)) / 1024.0
-
-    if not size_gb:
-        return True
-
-    quals = t.get("qualities") or []
-    is_4k = "4K" in quals or bool(re.search(r"\b(2160p|4k|uhd)\b", title_up))
-    is_1080p = "1080p" in quals or bool(re.search(r"\b(1080p|fhd)\b", title_up))
-
-    is_movie = (media_type != "series")
-    rm = float(runtime_minutes or 0)
-
-    if is_movie:
-        # Fichiers samples / fragments infimes
-        if size_gb < 0.15:
-            return False
-
-        if is_4k:
-            # 4K réel sur un film : minimum absolu 4.8 GB, et proportionnel à la durée (~6 Mbps mini)
-            min_gb = 4.8
-            if rm > 70:
-                min_gb = max(4.8, (rm * 60 * 6.0) / (8 * 1024))
-            if size_gb < min_gb:
-                return False
-        elif is_1080p:
-            min_gb = 0.75
-            if rm > 70:
-                min_gb = max(0.75, (rm * 60 * 1.5) / (8 * 1024))
-            if size_gb < min_gb:
-                return False
-        else:
-            if size_gb < 0.35:
-                return False
-    else:
-        # Épisode de série
-        if is_4k and size_gb < 1.3:
-            return False
-        if is_1080p and size_gb < 0.22:
-            return False
-        if size_gb < 0.08:
-            return False
-
-    return True
+    """Vérifie via torrent_engine la plausibilité physique et l'absence de CAM/fakes."""
+    return torrent_engine.is_plausible_torrent_size(t, media_type=media_type, runtime_minutes=runtime_minutes)
 
 
-def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=None, provider=None, runtime_minutes=None):
+def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=None, provider=None, runtime_minutes=None, sort_by="score"):
     prov, token = _get_provider_and_token(rd_token, provider)
     prov_meta = DEBRID_PROVIDERS.get(prov, DEBRID_PROVIDERS["realdebrid"])
     tio_key = prov_meta.get("torrentio_key", "")
+
+    cfg = load_config()
+    pref_lang = cfg.get("pref_lang", "vf")
+    pref_quality = cfg.get("pref_quality", "4k")
+    hdr_mode = cfg.get("hdr_mode", "sdr_pref")
 
     if runtime_minutes is None and imdb_id and media_type == "movie":
         try:
@@ -1916,86 +1949,27 @@ def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=
         except Exception:
             pass
 
-    if media_type == "series":
-        target = f"series/{imdb_id}:{int(season)}:{int(episode)}"
-    else:
-        target = f"movie/{imdb_id}"
-
-    cache_key = f"multi_idx:{prov}:{target}:{bool(token)}"
+    cache_key = f"multi_engine:{prov}:{media_type}:{imdb_id}:{season}:{episode}:{bool(token)}:{sort_by}"
 
     def _fetch():
-        if token and tio_key:
-            tio_main_url = f"https://torrentio.strem.fun/{tio_key}={token}/stream/{target}.json"
-            tio_fr_url = f"https://torrentio.strem.fun/providers=torrent9,c411,nyaasi|language=french|{tio_key}={token}/stream/{target}.json"
-        else:
-            tio_main_url = f"https://torrentio.strem.fun/stream/{target}.json"
-            tio_fr_url = f"https://torrentio.strem.fun/providers=torrent9,c411,nyaasi|language=french/stream/{target}.json"
+        return torrent_engine.search_multi_torrents(
+            imdb_id=imdb_id,
+            media_type=media_type,
+            season=season,
+            episode=episode,
+            token=token,
+            tio_key=tio_key,
+            provider=prov,
+            runtime_minutes=runtime_minutes,
+            sort_by=sort_by,
+            pref_lang=pref_lang,
+            pref_quality=pref_quality,
+            hdr_mode=hdr_mode,
+            http_json_fn=http_json,
+            search_apibay_fn=search_apibay,
+        )
 
-        tpb_url = f"https://thepiratebay-plus.strem.fun/stream/{target}.json"
-        peerflix_url = f"https://peerflix.mov/stream/{target}.json"
-
-        buckets = {"main": [], "fr": [], "tpb": [], "peerflix": [], "apibay": []}
-
-        def _job_stremio(key, url, label, timeout_s):
-            try:
-                data = http_json(url, timeout=timeout_s)
-                buckets[key] = _parse_stremio_streams(data.get("streams", []), label)
-            except Exception:
-                pass
-
-        def _job_apibay():
-            try:
-                raw_items = search_apibay(imdb_id)
-                if media_type == "series":
-                    ep_pat = _build_ep_pattern(season, episode)
-                    raw_items = [it for it in raw_items if ep_pat and ep_pat.search(it.get("title", ""))]
-                buckets["apibay"] = raw_items[:25]
-            except Exception:
-                pass
-
-        threads = [
-            threading.Thread(target=_job_stremio, args=("main", tio_main_url, "Torrentio", 20), daemon=True),
-            threading.Thread(target=_job_stremio, args=("fr", tio_fr_url, "Torrentio FR", 10), daemon=True),
-            threading.Thread(target=_job_stremio, args=("tpb", tpb_url, "TPB+", 6), daemon=True),
-            threading.Thread(target=_job_stremio, args=("peerflix", peerflix_url, "Peerflix", 6), daemon=True),
-            threading.Thread(target=_job_apibay, daemon=True),
-        ]
-        for th in threads:
-            th.start()
-        threads[0].join(timeout=20)
-        threads[1].join(timeout=8)
-        for th in threads[2:]:
-            th.join(timeout=3)
-
-        merged = []
-        seen_hashes = {}
-        for key in ("fr", "main", "tpb", "peerflix", "apibay"):
-            for item in buckets[key]:
-                ih = (item.get("info_hash") or "").lower()
-                if not ih:
-                    merged.append(item)
-                    continue
-                if ih in seen_hashes:
-                    existing = seen_hashes[ih]
-                    if item.get("is_instant") and not existing.get("is_instant"):
-                        existing["is_instant"] = True
-                        existing["resolve_url"] = item.get("resolve_url") or existing.get("resolve_url")
-                        for q in item.get("qualities") or []:
-                            if q not in existing["qualities"]:
-                                existing["qualities"].insert(0, q)
-                    for lg in item.get("langs") or []:
-                        if lg not in existing["langs"]:
-                            existing["langs"].append(lg)
-                    continue
-                seen_hashes[ih] = item
-                merged.append(item)
-
-        merged = [t for t in merged if is_plausible_torrent_size(t, media_type=media_type, runtime_minutes=runtime_minutes)]
-        return merged
-
-    res = list(cached_get(cache_key, 300, _fetch) or [])
-    res = [t for t in res if is_plausible_torrent_size(t, media_type=media_type, runtime_minutes=runtime_minutes)]
-    res.sort(key=score_torrent_for_one_click, reverse=True)
+    res = list(cached_get(cache_key, 180, _fetch) or [])
     return res
 
 
@@ -2015,14 +1989,14 @@ def search_apibay(query):
         size_bytes = int(item.get("size", 0) or 0)
         size_gb = round(size_bytes / (1024.0 * 1024.0 * 1024.0), 2)
         size_str = format_size(size_bytes)
-        qualities, langs = parse_torrent_tags(name)
+        details = torrent_engine.parse_release_details(name)
         magnet = f"magnet:?xt=urn:btih:{info_hash}&dn={urllib.parse.quote(name)}"
         t_entry = {
             "source": "APIBay",
             "title": name,
             "meta": f"{seeders} seeders • {size_str}",
-            "qualities": qualities,
-            "langs": langs,
+            "qualities": details["display_badges"],
+            "langs": details["langs"],
             "magnet": magnet,
             "resolve_url": "",
             "is_instant": False,
@@ -2031,8 +2005,9 @@ def search_apibay(query):
             "seeders": seeders,
             "size_gb": size_gb,
             "size_str": size_str,
+            "parsed_details": details,
         }
-        if is_plausible_torrent_size(t_entry, media_type="movie"):
+        if torrent_engine.is_plausible_torrent_size(t_entry, media_type="movie"):
             results.append(t_entry)
     return results
 
@@ -2043,97 +2018,7 @@ def score_torrent_for_one_click(t):
     pref_lang = cfg.get("pref_lang", "vf")
     pref_quality = cfg.get("pref_quality", "4k")
     hdr_mode = cfg.get("hdr_mode", "sdr_pref")
-
-    score = 0
-    quals = t.get("qualities") or []
-    if t.get("is_instant") or any(b in quals for b in INSTANT_BADGES):
-        score += 2000
-
-    langs = t.get("langs") or []
-    if pref_lang == "vostfr":
-        if "VOSTFR" in langs or "MULTI" in langs:
-            score += 600
-        elif not langs:
-            score += 400
-        elif "VF" in langs or "FR" in langs:
-            score += 200
-    else:
-        if "MULTI" in langs or "VF" in langs:
-            score += 600
-        elif "FR" in langs:
-            score += 450
-        elif "VOSTFR" in langs:
-            score += 250
-
-    if pref_quality == "1080p":
-        if "1080p" in quals:
-            score += 240
-        elif "4K" in quals:
-            score += 80
-        elif "720p" in quals:
-            score += 60
-    else:
-        if "4K" in quals:
-            score += 180
-        elif "1080p" in quals:
-            score += 150
-        elif "720p" in quals:
-            score += 60
-
-    if hdr_mode == "hdr_native":
-        if "HDR" in quals:
-            score += 30
-        if "DV" in quals:
-            score += 15
-        if "ATMOS" in quals or "ATMOS" in (t.get("title") or "").upper():
-            score += 25
-    elif hdr_mode == "hdr_boost":
-        if "SDR" in quals:
-            score += 80
-        if "DV" in quals and "HDR" not in quals:
-            score -= 180
-    else:
-        # sdr_pref (par défaut) : privilégie les sources SDR claires et pénalise le Dolby Vision / HDR sombre
-        if "SDR" in quals:
-            score += 120
-        if "HDR" in quals:
-            score -= 140
-        if "DV" in quals:
-            score -= 180 if "HDR" in quals else 320
-
-    if not is_plausible_torrent_size(t):
-        score -= 5000
-
-    title_up = (t.get("title") or "").upper()
-    if re.search(r"\b(CAM|HDCAM|TS|HDTS|TELESYNC|TELECINE)\b", title_up):
-        score -= 2000
-    if re.search(r"\b(3D|SBS|HSBS)\b", title_up):
-        score -= 400
-
-    size_gb = float(t.get("size_gb") or 0.0)
-    if not size_gb:
-        meta = t.get("meta") or ""
-        m_gb = re.search(r"(\d+(?:\.\d+)?)\s*GB", meta, re.IGNORECASE)
-        m_mb = re.search(r"(\d+(?:\.\d+)?)\s*MB", meta, re.IGNORECASE)
-        if m_gb:
-            size_gb = float(m_gb.group(1))
-        elif m_mb:
-            size_gb = float(m_mb.group(1)) / 1024.0
-
-    if pref_quality == "1080p":
-        if 0.8 <= size_gb <= 12.0:
-            score += 80
-        elif size_gb > 20.0:
-            score -= 120
-    else:
-        if 1.2 <= size_gb <= 28.0:
-            score += 55
-        elif 28.0 < size_gb <= 45.0:
-            score += 20
-        elif size_gb > 55.0:
-            score -= 75
-
-    return score
+    return torrent_engine.score_torrent(t, pref_lang=pref_lang, pref_quality=pref_quality, hdr_mode=hdr_mode)
 
 
 # ==========================================
@@ -4599,6 +4484,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <button class="nav-tab" id="tab-watchlist" onclick="switchTab('watchlist')">Ma Liste <span id="wlCount"></span></button>
     <button class="nav-tab" id="tab-history" onclick="switchTab('history')">Reprendre <span id="histCount"></span></button>
     <button class="nav-tab" id="tab-watched" onclick="switchTab('watched')">Déjà vus <span id="watchedCount"></span></button>
+    <button class="nav-tab" id="tab-customlists" onclick="switchTab('customlists')">Listes Letterboxd <span id="customListsCount"></span></button>
     <button class="nav-tab" id="tab-rdcloud" onclick="switchTab('rdcloud')">Cloud RD</button>
   </div>
 
@@ -4940,40 +4826,73 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
 <!-- Modal Importation Watchlist & Films Déjà Vus Letterboxd -->
 <div id="letterboxdModal" class="modal-bg" onclick="if(event.target===this) closeLetterboxdModal()">
-  <div class="modal" style="max-width:440px; width:92%; padding:20px 22px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+  <div class="modal" style="max-width:480px; width:92%; padding:20px 22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
       <div style="display:flex; align-items:center; gap:8px;">
         <svg width="22" height="11" viewBox="0 0 30 12" fill="none">
           <circle cx="6" cy="6" r="5" fill="#ff8000"/>
           <circle cx="15" cy="6" r="5" fill="#00e054"/>
           <circle cx="24" cy="6" r="5" fill="#40bcf4"/>
         </svg>
-        <h3 style="font-size:0.96rem; font-weight:600; margin:0;">Synchroniser Letterboxd</h3>
+        <h3 style="font-size:0.96rem; font-weight:600; margin:0;">Letterboxd</h3>
       </div>
       <button onclick="closeLetterboxdModal()" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem; line-height:1; padding:2px 6px;" title="Fermer">✕</button>
     </div>
-    <p style="color:var(--muted); font-size:0.78rem; line-height:1.45; margin:0 0 14px 0;">
-      Importe automatiquement votre <strong>Watchlist</strong> (dans <em>Ma Liste</em>) et vos <strong>Films visionnés</strong> (dans <em>Déjà vus</em>, exclus de la roulette).
-    </p>
-    <div style="display:flex; flex-direction:column; gap:11px;">
-      <div>
-        <label for="lbxUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;">Pseudo Letterboxd</label>
-        <input type="text" id="lbxUrlInput" placeholder="Ex: passionia ou lien public" style="width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter') submitLetterboxdImport()">
-      </div>
-      <div style="display:flex; align-items:center; justify-content:space-between; padding-top:2px; font-size:0.74rem;">
-        <input type="file" id="lbxCsvFileInput" accept=".csv,.txt" style="display:none;" onchange="handleLetterboxdCsvFile(this.files)">
-        <button type="button" onclick="document.getElementById('lbxCsvFileInput').click()" style="background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:0; font-size:0.74rem; display:inline-flex; align-items:center; gap:5px;">
-          <span>📄</span> Importer un export .csv
-        </button>
-        <div style="display:inline-flex; align-items:center; gap:4px; max-width:210px; overflow:hidden;">
-          <span id="lbxCsvFileName" style="font-size:0.74rem; color:#00e054; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"></span>
-          <button type="button" id="lbxCsvClearBtn" onclick="clearLetterboxdCsv(event)" style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:0.75rem;" title="Retirer">✕</button>
+
+    <!-- Onglets du modal -->
+    <div style="display:flex; gap:6px; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:14px;">
+      <button type="button" id="lbxTabBtnProfile" class="chip active" onclick="switchLbxModalTab('profile')" style="padding:4px 11px; font-size:0.76rem;">Profil &amp; Watchlist</button>
+      <button type="button" id="lbxTabBtnList" class="chip" onclick="switchLbxModalTab('list')" style="padding:4px 11px; font-size:0.76rem;">Importer une Liste publique</button>
+    </div>
+
+    <!-- Section 1 : Profil & Watchlist -->
+    <div id="lbxSectionProfile">
+      <p style="color:var(--muted); font-size:0.78rem; line-height:1.45; margin:0 0 14px 0;">
+        Importe automatiquement votre <strong>Watchlist</strong> (dans <em>Ma Liste</em>) et vos <strong>Films visionnés</strong> (dans <em>Déjà vus</em>, exclus de la roulette).
+      </p>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div>
+          <label for="lbxUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;">Pseudo Letterboxd</label>
+          <input type="text" id="lbxUrlInput" placeholder="Ex: passionia ou lien public" style="width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter') submitLetterboxdImport()">
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; padding-top:2px; font-size:0.74rem;">
+          <input type="file" id="lbxCsvFileInput" accept=".csv,.txt" style="display:none;" onchange="handleLetterboxdCsvFile(this.files)">
+          <button type="button" onclick="document.getElementById('lbxCsvFileInput').click()" style="background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:0; font-size:0.74rem; display:inline-flex; align-items:center; gap:5px;">
+            <span>📄</span> Importer un export .csv
+          </button>
+          <div style="display:inline-flex; align-items:center; gap:4px; max-width:210px; overflow:hidden;">
+            <span id="lbxCsvFileName" style="font-size:0.74rem; color:#00e054; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"></span>
+            <button type="button" id="lbxCsvClearBtn" onclick="clearLetterboxdCsv(event)" style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:0.75rem;" title="Retirer">✕</button>
+          </div>
+        </div>
+        <div id="lbxImportStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+          <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" onclick="closeLetterboxdModal()">Annuler</button>
+          <button id="lbxSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" onclick="submitLetterboxdImport()">Synchroniser</button>
         </div>
       </div>
-      <div id="lbxImportStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
-      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
-        <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" onclick="closeLetterboxdModal()">Annuler</button>
-        <button id="lbxSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" onclick="submitLetterboxdImport()">Synchroniser</button>
+    </div>
+
+    <!-- Section 2 : Liste publique Letterboxd -->
+    <div id="lbxSectionList" style="display:none;">
+      <p style="color:var(--muted); font-size:0.78rem; line-height:1.45; margin:0 0 14px 0;">
+        Collez l'URL de n'importe quelle liste Letterboxd (ex: <em>Top 250</em>, <em>A24</em>, <em>Films cultes</em>). Elle sera consultable et disponible pour la Roulette !
+      </p>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div>
+          <label for="lbxCustomListUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;">URL de la liste Letterboxd</label>
+          <input type="text" id="lbxCustomListUrlInput" placeholder="https://letterboxd.com/username/list/nom-de-la-liste/" style="width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter') submitLetterboxdCustomListImport()">
+        </div>
+        <div id="lbxCustomListStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+          <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" onclick="closeLetterboxdModal()">Fermer</button>
+          <button id="lbxCustomListSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" onclick="submitLetterboxdCustomListImport()">Importer cette liste</button>
+        </div>
+
+        <div id="lbxSavedListsWrap" style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px; display:none;">
+          <div style="font-size:0.74rem; font-weight:600; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.04em;">Listes enregistrées</div>
+          <div id="lbxSavedListsContainer" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto;"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -5060,6 +4979,16 @@ HTML_PAGE = r"""<!DOCTYPE html>
         <option value="kino">Lecteur KINO / IINA</option>
         <option value="integrated">Lecteur intégré</option>
       </select>
+      <!-- Section Synchronisation Google Drive -->
+      <div style="margin-top:6px; padding:10px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <span style="font-size:0.82rem; font-weight:600; color:var(--text);">Synchronisation Cloud (Mac ⇄ Windows)</span>
+            <p id="gdriveSyncStatus" style="font-size:0.74rem; color:var(--dim); margin:2px 0 0;">Détection automatique du Google Drive...</p>
+          </div>
+          <button class="btn btn-secondary" style="padding:4px 9px; font-size:0.74rem;" onclick="triggerGdriveSync(this)">Synchroniser</button>
+        </div>
+      </div>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
         <button class="btn btn-secondary" onclick="closeConfig()">Annuler</button>
         <button class="btn" onclick="saveConfig()">Enregistrer</button>
@@ -5233,6 +5162,7 @@ async function refreshUserLists() {
     if (data.letterboxd_user) {
       window.savedLetterboxdUser = data.letterboxd_user;
     }
+    await fetchCustomLists();
     updateListBadges();
     renderHomeResume();
   } catch (e) {
@@ -5859,7 +5789,19 @@ function renderActiveListTab() {
 
 async function surpriseMeMedia(poolArg = null) {
   let poolMode = 'catalog';
-  if (poolArg === true || poolArg === 'watchlist') {
+  let customListItems = null;
+
+  if (typeof poolArg === 'object' && poolArg && poolArg.items) {
+    poolMode = 'customlist';
+    customListItems = poolArg.items;
+    window._customListRouletteTitle = poolArg.title || 'Liste Letterboxd';
+  } else if (typeof poolArg === 'string' && poolArg.startsWith('customlist:')) {
+    poolMode = 'customlist';
+    const lid = poolArg.split(':')[1];
+    const l = userCustomLists.find(x => x.id === lid);
+    customListItems = l?.items || [];
+    window._customListRouletteTitle = l?.title || 'Liste Letterboxd';
+  } else if (poolArg === true || poolArg === 'watchlist') {
     poolMode = 'watchlist';
   } else if (poolArg === 'watched' || poolArg === 'classics' || poolArg === 'prestige' || poolArg === 'catalog') {
     poolMode = poolArg === 'prestige' ? 'classics' : poolArg;
@@ -5877,7 +5819,9 @@ async function surpriseMeMedia(poolArg = null) {
   });
 
   let sourceItems = [];
-  if (poolMode === 'watchlist') {
+  if (poolMode === 'customlist') {
+    sourceItems = customListItems || [];
+  } else if (poolMode === 'watchlist') {
     sourceItems = (userWatchlist && userWatchlist.length) ? userWatchlist : catalogItems;
   } else if (poolMode === 'watched') {
     const wList = getWatchedHistory();
@@ -6028,6 +5972,7 @@ async function surpriseMeMedia(poolArg = null) {
     if (poolMode === 'watchlist') kickerEl.textContent = 'TIRAGE · MA LISTE';
     else if (poolMode === 'watched') kickerEl.textContent = 'TIRAGE · DÉJÀ VUS';
     else if (poolMode === 'classics') kickerEl.textContent = 'TIRAGE · CLASSIQUES À VOIR DANS SA VIE';
+    else if (poolMode === 'customlist') kickerEl.textContent = `TIRAGE · ${(window._customListRouletteTitle || 'LISTE LETTERBOXD').toUpperCase()}`;
     else kickerEl.textContent = activeGenre ? `TIRAGE · ${activeGenre.toUpperCase()}` : (fallbackType === 'series' ? 'TIRAGE · SÉRIES' : 'TIRAGE · FILMS');
   }
   if (titleEl) titleEl.textContent = 'Sélection en cours...';
@@ -6428,6 +6373,253 @@ async function submitLetterboxdImport() {
   }
 }
 
+let userCustomLists = [];
+
+function switchLbxModalTab(tab) {
+  const btnProf = document.getElementById('lbxTabBtnProfile');
+  const btnList = document.getElementById('lbxTabBtnList');
+  const secProf = document.getElementById('lbxSectionProfile');
+  const secList = document.getElementById('lbxSectionList');
+  if (tab === 'profile') {
+    if (btnProf) btnProf.classList.add('active');
+    if (btnList) btnList.classList.remove('active');
+    if (secProf) secProf.style.display = 'block';
+    if (secList) secList.style.display = 'none';
+  } else {
+    if (btnList) btnList.classList.add('active');
+    if (btnProf) btnProf.classList.remove('active');
+    if (secList) secList.style.display = 'block';
+    if (secProf) secProf.style.display = 'none';
+    renderSavedListsInModal();
+  }
+}
+
+async function fetchCustomLists() {
+  try {
+    const data = await api('/api/letterboxd/custom-lists');
+    userCustomLists = data.custom_lists || [];
+    const cntEl = document.getElementById('customListsCount');
+    if (cntEl) cntEl.textContent = userCustomLists.length ? `(${userCustomLists.length})` : '';
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+function renderSavedListsInModal() {
+  const wrap = document.getElementById('lbxSavedListsWrap');
+  const container = document.getElementById('lbxSavedListsContainer');
+  if (!wrap || !container) return;
+  if (!userCustomLists.length) {
+    wrap.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  wrap.style.display = 'block';
+  container.innerHTML = userCustomLists.map(l => `
+    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--border); padding:6px 10px; border-radius:6px;">
+      <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:320px;">
+        <span style="font-size:0.78rem; font-weight:600; color:#fafafa;">${l.title}</span>
+        <span style="font-size:0.72rem; color:var(--muted); margin-left:6px;">(${l.count} films)</span>
+      </div>
+      <button type="button" class="btn btn-secondary" style="padding:2px 7px; font-size:0.7rem; color:#f87171;" onclick="deleteLetterboxdCustomList('${l.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+async function submitLetterboxdCustomListImport() {
+  const urlInp = document.getElementById('lbxCustomListUrlInput');
+  const url = (urlInp?.value || '').trim();
+  const st = document.getElementById('lbxCustomListStatus');
+  const btn = document.getElementById('lbxCustomListSubmitBtn');
+
+  if (!url) {
+    if (st) {
+      st.style.color = '#f87171';
+      st.textContent = 'Veuillez coller une URL de liste Letterboxd valide.';
+      st.style.display = 'block';
+    }
+    return;
+  }
+
+  const origTxt = btn ? btn.textContent : 'Importer cette liste';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Importation en cours...';
+  }
+  if (st) {
+    st.style.color = '#fbbf24';
+    st.textContent = 'Analyse de la liste et résolution des métadonnées (1-2 min max)...';
+    st.style.display = 'block';
+  }
+
+  try {
+    const res = await api('/api/letterboxd/import-list', {
+      method: 'POST',
+      body: JSON.stringify({ url })
+    });
+    userCustomLists = res.custom_lists || [];
+    const cntEl = document.getElementById('customListsCount');
+    if (cntEl) cntEl.textContent = userCustomLists.length ? `(${userCustomLists.length})` : '';
+
+    if (st) {
+      st.style.color = '#00e054';
+      st.textContent = `✓ Liste "${res.list.title}" importée avec succès (${res.total_resolved} films résolus) !`;
+      st.style.display = 'block';
+    }
+    renderSavedListsInModal();
+    if (urlInp) urlInp.value = '';
+
+    if (activeTab === 'customlists') {
+      renderCustomListsTab();
+    }
+  } catch (e) {
+    if (st) {
+      st.style.color = '#f87171';
+      st.textContent = 'Erreur : ' + e.message;
+      st.style.display = 'block';
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = origTxt;
+    }
+  }
+}
+
+async function deleteLetterboxdCustomList(listId) {
+  if (!confirm('Voulez-vous vraiment retirer cette liste importée ?')) return;
+  try {
+    const res = await api('/api/letterboxd/delete-list', {
+      method: 'POST',
+      body: JSON.stringify({ id: listId })
+    });
+    userCustomLists = res.custom_lists || [];
+    const cntEl = document.getElementById('customListsCount');
+    if (cntEl) cntEl.textContent = userCustomLists.length ? `(${userCustomLists.length})` : '';
+    renderSavedListsInModal();
+    if (activeTab === 'customlists') {
+      renderCustomListsTab();
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+function renderCustomListsTab() {
+  const grid = document.getElementById('postersGrid');
+  const catTitle = document.getElementById('catalogTitle');
+  const lm = document.getElementById('loadMoreWrap');
+  const gf = document.getElementById('genreFilters');
+  const sw = document.getElementById('catalogSortWrap');
+  const wlw = document.getElementById('watchlistActionsWrap');
+  const hs = document.getElementById('heroSpotlight');
+
+  if (gf) gf.style.display = 'none';
+  if (sw) sw.style.display = 'none';
+  if (wlw) wlw.style.display = 'none';
+  if (lm) lm.style.display = 'none';
+  if (hs) hs.style.display = 'none';
+  document.getElementById('homeResumeSection').style.display = 'none';
+
+  if (catTitle) {
+    catTitle.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between; width:100%; flex-wrap:wrap; gap:10px;">
+        <span>Listes Letterboxd importées</span>
+        <button class="btn btn-secondary" onclick="openLetterboxdModal(); switchLbxModalTab('list');" style="display:inline-flex; align-items:center; gap:6px; padding:5px 12px; font-size:0.78rem; border-color:rgba(0,224,84,0.4);">
+          <span>+</span> Importer une nouvelle liste
+        </button>
+      </div>
+    `;
+  }
+
+  if (!userCustomLists.length) {
+    grid.style.display = 'block';
+    grid.innerHTML = `
+      <div style="padding:48px 24px; text-align:center; max-width:540px; margin:0 auto; background:rgba(255,255,255,0.02); border:1px dashed var(--border); border-radius:10px;">
+        <svg width="40" height="20" viewBox="0 0 30 12" fill="none" style="margin-bottom:12px;">
+          <circle cx="6" cy="6" r="5" fill="#ff8000"/>
+          <circle cx="15" cy="6" r="5" fill="#00e054"/>
+          <circle cx="24" cy="6" r="5" fill="#40bcf4"/>
+        </svg>
+        <h3 style="font-size:1.05rem; font-weight:600; margin:0 0 8px 0; color:#fafafa;">Aucune liste Letterboxd importée</h3>
+        <p style="color:var(--muted); font-size:0.82rem; line-height:1.5; margin:0 0 18px 0;">
+          Collez le lien de n'importe quelle liste Letterboxd publique (Top 250, A24, films par ambiance ou réalisateur) pour la transformer en collection streamable avec tirage Roulette dédié !
+        </p>
+        <button class="btn" onclick="openLetterboxdModal(); switchLbxModalTab('list');" style="padding:8px 18px; font-size:0.82rem;">
+          Importer une liste Letterboxd
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  grid.style.display = 'flex';
+  grid.style.flexDirection = 'column';
+  grid.style.gap = '32px';
+
+  grid.innerHTML = userCustomLists.map(list => {
+    const items = list.items || [];
+    return `
+      <div class="custom-list-shelf" style="display:flex; flex-direction:column; gap:12px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.02rem; font-weight:700; color:#fafafa;">${list.title}</span>
+              <span class="badge" style="font-size:0.7rem; background:rgba(0,224,84,0.12); color:#00e054; border-color:rgba(0,224,84,0.25);">${items.length} films</span>
+            </div>
+            ${list.description ? `<p style="color:var(--muted); font-size:0.76rem; margin:3px 0 0 0; max-width:650px;">${list.description}</p>` : ''}
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn-surprise" onclick="surpriseMeFromCustomList('${list.id}')" title="Lancer la roulette KINO sur cette liste">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="3"/>
+                <line x1="12" y1="4" x2="12" y2="20"/>
+              </svg>
+              <span>Roulette sur cette liste</span>
+            </button>
+            <a href="${list.url}" target="_blank" class="btn btn-secondary" style="padding:4px 9px; font-size:0.74rem;">Letterboxd ↗</a>
+            <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.74rem; color:#f87171;" onclick="deleteLetterboxdCustomList('${list.id}')" title="Retirer cette liste">✕</button>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(135px, 1fr)); gap:12px;">
+          ${items.map(m => {
+            const inWl = isInWatchlist(m.id);
+            const isW = isWatchedMedia(m.id);
+            const ratingVal = parseFloat(m.imdbRating || '0') || 0;
+            return `
+              <div class="card" onclick="selectMedia({id:'${m.id}', name:'${escapeJsString(m.name)}', type:'movie', poster:'${m.poster || ''}', year:'${m.year || ''}', imdbRating:'${m.imdbRating || ''}'})">
+                <div class="card-thumb">
+                  ${m.poster ? `<img class="card-img" src="${m.poster}" alt="${escapeJsString(m.name)}" loading="lazy">` : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:0.75rem;">KINO</div>`}
+                  ${ratingVal > 0 ? `<div class="card-rating">★ ${m.imdbRating}</div>` : ''}
+                  <div class="card-actions">
+                    <button class="card-action-btn ${isW ? 'active' : ''}" onclick="toggleCardWatched(event, {id:'${m.id}', name:'${escapeJsString(m.name)}', type:'movie', poster:'${m.poster || ''}', year:'${m.year || ''}', imdbRating:'${m.imdbRating || ''}'})" title="${isW ? 'Marqué comme vu' : 'Marquer comme vu'}">${isW ? '✓' : '👁'}</button>
+                    <button class="card-action-btn ${inWl ? 'active' : ''}" onclick="toggleWatchlist(event, {id:'${m.id}', name:'${escapeJsString(m.name)}', type:'movie', poster:'${m.poster || ''}', year:'${m.year || ''}', imdbRating:'${m.imdbRating || ''}'})" title="${inWl ? 'Dans Ma Liste' : 'Ajouter à Ma Liste'}">${inWl ? '✓' : '+'}</button>
+                  </div>
+                  <button class="card-play-btn" onclick="oneClickCard(event, this, {id:'${m.id}', name:'${escapeJsString(m.name)}', type:'movie', poster:'${m.poster || ''}', year:'${m.year || ''}', imdbRating:'${m.imdbRating || ''}'})" title="Lecture 1-Clic">Play</button>
+                </div>
+                <div class="card-title" title="${escapeJsString(m.name)}">${m.name || 'Sans titre'}</div>
+                <div class="card-sub">${m.year || 'Film'}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function surpriseMeFromCustomList(listId) {
+  const l = userCustomLists.find(x => x.id === listId);
+  if (!l || !l.items || !l.items.length) {
+    alert('Cette liste ne contient aucun film.');
+    return;
+  }
+  const unviewed = l.items.filter(m => !isWatchedMedia(m.id));
+  const pool = unviewed.length ? unviewed : l.items;
+  surpriseMeMedia({ items: pool, title: l.title });
+}
+
 async function switchTab(tab) {
   activeTab = tab;
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -6490,6 +6682,17 @@ async function switchTab(tab) {
     document.getElementById('homeResumeSection').style.display = 'none';
     document.getElementById('catalogTitle').textContent = 'Déjà vus';
     renderActiveListTab();
+  } else if (tab === 'customlists') {
+    if (gf) gf.style.display = 'none';
+    if (sw) sw.style.display = 'none';
+    if (wlw) wlw.style.display = 'none';
+    if (lm) lm.style.display = 'none';
+    if (hs) hs.style.display = 'none';
+    if (statsEl) statsEl.style.display = 'none';
+    document.getElementById('homeResumeSection').style.display = 'none';
+    document.getElementById('catalogHeader').style.display = 'flex';
+    document.getElementById('postersGrid').style.display = 'flex';
+    renderCustomListsTab();
   } else if (tab === 'history') {
     if (gf) gf.style.display = 'none';
     if (sw) sw.style.display = 'none';
@@ -6780,8 +6983,32 @@ function closeTrailerModal() {
   if (modal) modal.style.display = 'none';
 }
 
-function openConfig() { document.getElementById('configModal').style.display = 'flex'; }
+function openConfig() { 
+  document.getElementById('configModal').style.display = 'flex'; 
+  triggerGdriveSync();
+}
 function closeConfig() { document.getElementById('configModal').style.display = 'none'; }
+
+async function triggerGdriveSync(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'En cours...'; }
+  try {
+    const res = await api('/api/sync/gdrive');
+    const el = document.getElementById('gdriveSyncStatus');
+    if (res && res.status === 'synced') {
+      const d = new Date((res.updated_at || Date.now()/1000) * 1000);
+      const timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      if (el) el.innerHTML = `<span style="color:#4ade80;">✓ Synchronisé (${res.history_count || 0} films, ${res.watchlist_count || 0} favoris) à ${timeStr}</span>`;
+      if (typeof loadUserData === 'function') await loadUserData();
+    } else {
+      if (el) el.innerHTML = `<span style="color:var(--muted);">${(res && res.message) ? res.message : 'Google Drive non détecté'}</span>`;
+    }
+  } catch(e) {
+    const el = document.getElementById('gdriveSyncStatus');
+    if (el) el.innerHTML = `<span style="color:#ef4444;">Erreur : ${e.message}</span>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Synchroniser'; }
+  }
+}
 
 async function saveConfig() {
   const debrid_provider = document.getElementById('cfgProvider') ? document.getElementById('cfgProvider').value : 'realdebrid';
@@ -9334,6 +9561,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                 })
                 return
 
+            if parsed.path == "/api/sync/gdrive":
+                res = kino_db.db_sync_gdrive()
+                self.send_json(res)
+                return
+
             if parsed.path == "/api/rd-history":
                 cfg = load_config()
                 prov = cfg.get("debrid_provider", "realdebrid")
@@ -9353,6 +9585,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 episode = params.get("episode", 1)
                 q = params.get("q") or params.get("title", "")
                 runtime = params.get("runtime", "")
+                sort_by = params.get("sort_by", "score")
 
                 runtime_min = 0
                 if runtime:
@@ -9363,7 +9596,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 torrents = []
                 if imdb_id:
                     try:
-                        torrents.extend(search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min))
+                        torrents.extend(search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, sort_by=sort_by))
                     except Exception:
                         pass
                 if not torrents and q:
@@ -9371,6 +9604,11 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 torrents = [t for t in torrents if is_plausible_torrent_size(t, media_type=mtype, runtime_minutes=runtime_min)]
                 self.send_json({"torrents": torrents})
+                return
+
+            if parsed.path == "/api/letterboxd/custom-lists":
+                cfg = load_config()
+                self.send_json({"custom_lists": cfg.get("custom_lists", [])})
                 return
 
             if parsed.path == "/api/downloads":
@@ -9472,6 +9710,18 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": True, **res})
                 return
 
+            if parsed.path == "/api/letterboxd/import-list":
+                url = body.get("url", "")
+                res = import_letterboxd_custom_list(url)
+                self.send_json({"ok": True, **res})
+                return
+
+            if parsed.path == "/api/letterboxd/delete-list":
+                lid = body.get("id", "")
+                lists = delete_letterboxd_custom_list(lid)
+                self.send_json({"ok": True, "custom_lists": lists})
+                return
+
             if parsed.path == "/api/history-remove":
                 hist = remove_history(body.get("id", ""))
                 self.send_json({"ok": True, "history": hist})
@@ -9484,6 +9734,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                     self.send_json({"ok": True, "history": hist})
                     return
                 self.send_json({"ok": True})
+                return
+
+            if parsed.path == "/api/sync/gdrive":
+                res = kino_db.db_sync_gdrive()
+                self.send_json(res)
                 return
 
             if parsed.path == "/api/window/action":

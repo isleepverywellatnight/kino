@@ -13,6 +13,7 @@ datas = [
 # Dépendances cachées requises pour pywebview sous Windows (Edge WebView2 / pythonnet)
 hiddenimports = [
     'kino_db',
+    'torrent_engine',
     'app',
     'sqlite3',
     'clr',
