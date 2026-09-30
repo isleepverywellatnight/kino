@@ -5545,7 +5545,7 @@ function drawHeroSpotlightSlide() {
       </div>
       ${desc ? `<div class="hero-desc">${desc}</div>` : ''}
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
-        <button class="btn" onclick='oneClickCard(event, this, ${payload})'>▶ Lecture 1-Clic</button>
+        <button class="btn" onclick='oneClickCard(event, this, ${payload})'>Play</button>
         <button class="btn btn-secondary" onclick='selectMedia(${payload})'>Fiche &amp; Sources</button>
         <button class="btn btn-secondary" onclick='openTrailerModal("", ${safeNameJs}, ${safeYearJs}, "vf")'>🎬 Bande-annonce</button>
         <button class="btn-surprise" onclick="surpriseMeMedia()">
@@ -6164,7 +6164,7 @@ function finishCaseSpin(skipped = false) {
         </div>
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <button class="btn" onclick="casePlayOneClick(event, this)">▶ Lecture 1-Clic</button>
+        <button class="btn" onclick="casePlayOneClick(event, this)">Play</button>
         <button class="btn btn-secondary" onclick="caseOpenDetails()">Fiche &amp; Sources</button>
         <button class="btn btn-secondary" onclick="caseOpenTrailer()">🎬 Bande-annonce</button>
         <button class="btn btn-secondary" id="caseWlBtn" onclick="caseToggleWatchlist(this)" title="Ajouter ou retirer ce titre de Ma Liste">${inWl ? '✓ Dans Ma Liste' : '+ Ma Liste'}</button>
@@ -7319,7 +7319,7 @@ async function selectMedia(media) {
 
   let targetSeason = 1;
   let targetEpisode = 1;
-  let playBtnLabel = '▶ Lecture 1-Clic';
+  let playBtnLabel = 'Play';
   if (media.type === 'series') {
     const targetEp = getSeriesTargetEpisode(histItem);
     targetSeason = targetEp.season;
