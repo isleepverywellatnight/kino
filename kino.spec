@@ -8,6 +8,7 @@ project_root = Path.cwd()
 datas = [
     (str(project_root / 'kino.ico'), '.'),
     (str(project_root / 'kino.png'), '.'),
+    (str(project_root / 'qrcode.min.js'), '.'),
     (str(project_root / 'addons'), 'addons'),
 ]
 

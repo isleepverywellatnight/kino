@@ -52,7 +52,7 @@ def find_available_port(start_port=8080, max_tries=10):
     for p in range(start_port, start_port + max_tries):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
-                s.bind(("127.0.0.1", p))
+                s.bind(("0.0.0.0", p))
                 return p
             except OSError:
                 continue
@@ -94,10 +94,14 @@ HIT_TEST_MAP = {
 def run_server():
     global server_instance
     try:
-        server_instance = app.ThreadingHTTPServer(("127.0.0.1", PORT), app.RequestHandler)
+        server_instance = app.ThreadingHTTPServer(("0.0.0.0", PORT), app.RequestHandler)
         server_instance.serve_forever()
-    except OSError:
-        pass
+    except Exception:
+        try:
+            server_instance = app.ThreadingHTTPServer(("127.0.0.1", PORT), app.RequestHandler)
+            server_instance.serve_forever()
+        except OSError:
+            pass
 
 
 def on_closed():

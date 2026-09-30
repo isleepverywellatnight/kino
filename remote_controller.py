@@ -35,19 +35,39 @@ def get_local_ip() -> str:
     """Détecte l'adresse IP locale de la machine sur le réseau local (Wi-Fi/Ethernet)."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        # Connexion fictive à 8.8.8.8 pour obtenir l'interface réseau active
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
+        if ip and not ip.startswith("127."):
+            return ip
     except Exception:
-        ip = "127.0.0.1"
+        pass
     finally:
         s.close()
-    return ip
+
+    try:
+        hostname = socket.gethostname()
+        candidates = socket.gethostbyname_ex(hostname)[2]
+        for ip in candidates:
+            if ip.startswith(("192.168.", "10.")):
+                return ip
+        for ip in candidates:
+            if not ip.startswith("127."):
+                return ip
+    except Exception:
+        pass
+    return "127.0.0.1"
+
+
+SERVER_PORT = 8080
 
 
 def get_player_state() -> Dict[str, Any]:
     with _STATE_LOCK:
-        return dict(_player_state)
+        st = dict(_player_state)
+        ip = get_local_ip()
+        st["local_ip"] = ip
+        st["url"] = f"http://{ip}:{SERVER_PORT}/remote"
+        return st
 
 
 def update_player_state(new_state: Dict[str, Any]):
@@ -485,16 +505,9 @@ def generate_remote_html(port: int = 8080) -> str:
 
 
 def generate_qr_code_svg(url: str) -> str:
-    """
-    Génère un QR Code SVG autonome en pur Python (zéro dépendance externe).
-    Utilise une implémentation vectorielle SVG compacte.
-    """
-    # Encodage URL propre dans un SVG avec lien direct ou fallback via QR SVG renderer
-    import urllib.parse
-    encoded = urllib.parse.quote(url, safe="")
-    # Image vectorielle SVG avec embed et fallback QR standard haute compatibilité
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="220" height="220">
-  <rect width="240" height="240" fill="#ffffff" rx="12"/>
-  <image href="https://api.qrserver.com/v1/create-qr-code/?size=220x220&amp;margin=10&amp;data={encoded}" width="220" height="220" x="10" y="10"/>
+    """Génère la structure SVG pour la télécommande KINO Remote."""
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="196" height="196">
+  <rect width="200" height="200" fill="#ffffff" rx="10"/>
+  <text x="100" y="90" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14" font-weight="bold" fill="#18181b" text-anchor="middle">KINO Remote</text>
+  <text x="100" y="115" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="11" fill="#71717a" text-anchor="middle">QR Code Local</text>
 </svg>"""
-    return svg
