@@ -1,0 +1,12 @@
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../.." >/dev/null 2>&1 && pwd )"
+cd "$DIR"
+
+if [ -f "Lancer_KINO.command" ]; then
+    bash "Lancer_KINO.command"
+elif [ -d ".venv_mac" ]; then
+    source .venv_mac/bin/activate
+    python3 desktop.py
+else
+    python3 desktop.py
+fi

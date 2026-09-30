@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environnements virtuels
+.venv/
+.venv_mac/
+venv/
+ENV/
+
+# Logs et transcripts volumineux
+*.log
+conversation_transcript.jsonl
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editeurs
+.vscode/
+.idea/
