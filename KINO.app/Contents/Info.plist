@@ -24,6 +24,8 @@
     <string>10.15</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>

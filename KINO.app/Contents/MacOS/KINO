@@ -1,12 +1,42 @@
 #!/bin/bash
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../.." >/dev/null 2>&1 && pwd )"
+# ==============================================================================
+# KINO macOS Launcher
+# ==============================================================================
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+# Répertoire des ressources de l'application
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../Resources" && pwd)"
 cd "$DIR"
 
-if [ -f "Lancer_KINO.command" ]; then
-    bash "Lancer_KINO.command"
-elif [ -d ".venv_mac" ]; then
-    source .venv_mac/bin/activate
-    python3 desktop.py
-else
-    python3 desktop.py
+# Recherche d'un interpréteur Python 3 valide sur le Mac
+PYTHON_BIN=""
+for candidate in     "/opt/homebrew/bin/python3"     "/usr/local/bin/python3"     "/usr/bin/python3"     "$(which python3 2>/dev/null)"; do
+    if [ -x "$candidate" ]; then
+        PYTHON_BIN="$candidate"
+        break
+    fi
+done
+
+if [ -z "$PYTHON_BIN" ]; then
+    osascript -e 'display alert "Python 3 requis pour KINO" message "Veuillez installer Python 3 sur votre Mac pour utiliser KINO.\n\nTéléchargement gratuit : https://www.python.org/downloads/macos/\nOu avec Homebrew dans le Terminal : brew install python" as critical'
+    open "https://www.python.org/downloads/macos/"
+    exit 1
 fi
+
+# Vérification et initialisation de l'environnement pywebview si nécessaire
+if ! "$PYTHON_BIN" -c "import webview" 2>/dev/null; then
+    USER_VENV="$HOME/.kino/venv_mac"
+    mkdir -p "$HOME/.kino"
+    
+    if [ ! -d "$USER_VENV" ] || [ ! -f "$USER_VENV/bin/python3" ]; then
+        osascript -e 'display notification "Initialisation de KINO en cours (installation automatique de pywebview)..." with title "KINO Desktop"' 2>/dev/null || true
+        "$PYTHON_BIN" -m venv "$USER_VENV"
+        "$USER_VENV/bin/pip" install --upgrade pip --quiet
+        "$USER_VENV/bin/pip" install -r requirements.txt --quiet
+    fi
+    PYTHON_BIN="$USER_VENV/bin/python3"
+fi
+
+# Lancement de KINO Desktop
+exec "$PYTHON_BIN" "$DIR/desktop.py"

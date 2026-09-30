@@ -1,60 +1,68 @@
 # Guide d'utilisation de KINO sur macOS (Apple Silicon M1/M2/M3/M4 & Intel)
 
-L'application **KINO** est désormais 100 % compatible et optimisée pour macOS !
+L'application **KINO** est 100 % optimisée pour macOS avec accélération matérielle Apple WebKit (Metal), intégration Cocoa native, recherche instantanée SQLite FTS5, gestionnaire de téléchargements multithreads et lecteur vidéo complet.
 
 ---
 
-## 🚀 Méthode 1 : Lancement en 1 clic (Recommandé)
+## 💿 Méthode 1 : Image Disque `KINO.dmg` (Le standard Mac)
 
-1. Transférez le dossier `rd-app` sur votre Mac (via AirDrop, clé USB, Google Drive, etc.).
-2. Double-cliquez sur le fichier :
-   ```
-   Lancer_KINO.command
-   ```
-3. **Au premier lancement uniquement :**
-   - Le script configure automatiquement l'environnement Python pour macOS (`pywebview` + moteur natif WebKit Cocoa).
-   - L'application s'ouvre ensuite dans sa fenêtre native macOS.
+Le fichier `dist/KINO.dmg` est l'image disque prête à l'emploi :
 
-> **Astuce macOS au 1er clic :** Si macOS affiche *"Impossible d'ouvrir le fichier car il provient d'un développeur non identifié"* :
-> - Faites un **Clic droit** sur `Lancer_KINO.command` > Cliquez sur **Ouvrir** > Confirmez **Ouvrir**.
+1. Transférez `KINO.dmg` sur votre Mac (AirDrop, Clé USB, NAS, Google Drive...).
+2. **Double-cliquez sur `KINO.dmg`** : l'image disque se monte automatiquement sur votre Mac.
+3. Glissez simplement l'icône **KINO.app** dans votre dossier **Applications**.
+4. Éjectez l'image disque et lancez KINO depuis votre Launchpad ou dossier Applications !
+
+> **Note de sécurité macOS (Gatekeeper) au 1er lancement :**
+> Comme KINO est un projet open source autonome sans certificat payant Apple ($99/an), macOS peut afficher :  
+> *"KINO ne peut pas être ouvert car l'éveloppeur ne peut pas être vérifié"*
+>
+> **Pour l'autoriser en 1 seconde :**
+> - **Option Graphique :** Faites un **Clic-Droit** (ou Ctrl + Clic) sur `KINO.app` > Cliquez sur **Ouvrir** > Confirmez **Ouvrir**.
+> - **Option Terminal :** Ouvrez le Terminal et tapez :
+>   ```bash
+>   xattr -cr /Applications/KINO.app
+>   ```
 
 ---
 
-## 🍏 Méthode 2 : L'application `KINO.app`
+## 📦 Méthode 2 : Archive directe `KINO-macOS.zip`
 
-Le dossier contient également `KINO.app` :
-- Vous pouvez glisser `KINO.app` dans votre dossier `/Applications` ou sur votre Bureau.
-- Elle se comporte comme n'importe quelle application Mac native.
+Si vous préférez extraire directement l'application :
+1. Décompressez `dist/KINO-macOS.zip` sur votre Mac.
+2. Glissez `KINO.app` dans `/Applications`.
+3. Lancez KINO ! Les permissions d'exécution POSIX (`0755`) sont déjà configurées dans l'archive.
+
+---
+
+## 🚀 Méthode 3 : Lanceur script `Lancer_KINO.command`
+
+Si vous utilisez le code source complet :
+1. Double-cliquez sur `Lancer_KINO.command`.
+2. Le script configure automatiquement l'environnement virtuel macOS et démarre KINO Desktop.
 
 ---
 
 ## 🎬 Lecteurs multimédias pris en charge sur macOS
 
 1. **Lecteur KINO intégré (In-App) :**
-   - Fonctionne directement sans rien installer.
-   - Utilise le moteur matériel natif Apple WebKit (Metal / accélération GPU).
-   - Contrôle du volume fluide, pistes audio, sous-titres, gestion des épisodes.
+   - Fonctionne immédiatement sans aucune installation externe.
+   - Moteur Apple WebKit avec accélération GPU Metal.
+   - Synchronisation et personnalisation des sous-titres, changement audio dynamique, gestion des épisodes.
 
-2. **Lecteurs externes recommandés pour macOS :**
-   - **IINA** (Le meilleur lecteur moderne pour Mac, basé sur mpv avec support HDR Apple Silicon) :  
-     Téléchargeable sur [iina.io](https://iina.io) ou via Terminal : `brew install --cask iina`
+2. **Lecteurs externes compatibles :**
+   - **IINA** (Le lecteur le plus populaire sur Mac, moteur mpv avec HDR & Touch Bar) :  
+     Téléchargeable sur [iina.io](https://iina.io) ou `brew install --cask iina`.
    - **VLC pour Mac** :  
-     Téléchargeable sur [videolan.org](https://www.videolan.org) ou via `brew install --cask vlc`
+     Téléchargeable sur [videolan.org](https://www.videolan.org) ou `brew install --cask vlc`.
    - **MPV natif macOS** :  
-     Installable via Homebrew : `brew install mpv`
+     Installable via `brew install mpv`.
 
 ---
 
-## 🛠️ Lancement manuel via le Terminal (Alternative)
+## 🛠️ Recompilation du DMG natif sur Mac (Optionnel)
 
-Si vous préférez utiliser le Terminal :
-
+Si vous disposez de macOS et souhaitez créer un DMG compressé UDZO via l'utilitaire système Apple `hdiutil` :
 ```bash
-cd rd-app
-
-# 1. Installer les dépendances macOS
-pip3 install -r requirements.txt
-
-# 2. Lancer l'application
-python3 desktop.py
+bash dist/creer_dmg_natif_mac.sh
 ```
