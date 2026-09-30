@@ -134,6 +134,58 @@ def init_db():
 
 
 # =========================================================================
+# GESTION DE LA CONFIGURATION CLÉ-VALEUR
+# =========================================================================
+
+def get_config(key, default=None):
+    """Récupère une valeur de configuration depuis SQLite."""
+    with _DB_LOCK:
+        conn = get_connection()
+        try:
+            row = conn.execute("SELECT value_json FROM app_config WHERE key = ?", (key,)).fetchone()
+            if row and row["value_json"]:
+                return json.loads(row["value_json"])
+            return default
+        except Exception:
+            return default
+        finally:
+            conn.close()
+
+
+def save_config(key, value):
+    """Enregistre ou met à jour une valeur de configuration dans SQLite."""
+    with _DB_LOCK:
+        conn = get_connection()
+        try:
+            val_json = json.dumps(value, ensure_ascii=False)
+            with conn:
+                conn.execute(
+                    "INSERT INTO app_config (key, value_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) "
+                    "ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = CURRENT_TIMESTAMP",
+                    (key, val_json),
+                )
+            return True
+        except Exception:
+            return False
+        finally:
+            conn.close()
+
+
+def delete_config(key):
+    """Supprime une clé de configuration dans SQLite."""
+    with _DB_LOCK:
+        conn = get_connection()
+        try:
+            with conn:
+                conn.execute("DELETE FROM app_config WHERE key = ?", (key,))
+            return True
+        except Exception:
+            return False
+        finally:
+            conn.close()
+
+
+# =========================================================================
 # GESTION DU CACHE PERSISTANT (TTL)
 # =========================================================================
 

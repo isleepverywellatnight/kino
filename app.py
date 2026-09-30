@@ -23,6 +23,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import kino_db
 import torrent_engine
+import remote_controller
+import trakt_engine
+import addon_manager
+import anime_engine
+import community_lists
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -4454,6 +4459,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <span id="userBadge" style="font-size:0.8rem; color:var(--muted); margin-right:6px;"></span>
     <input type="file" id="torrentFileInput" accept=".torrent" style="display:none;" onchange="handleTorrentFileSelect(this.files)">
     <button class="btn btn-secondary" onclick="document.getElementById('torrentFileInput').click()" title="Ouvrir un fichier .torrent (ou glisser-déposer dans la fenêtre)">+ .torrent</button>
+    <button class="btn btn-secondary" onclick="openRemoteModal()" title="Télécommande smartphone sans fil via QR Code">📱 Remote</button>
+    <button class="btn btn-secondary" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P avec un ami (Code à 6 lettres)">🍿 Watch Party</button>
+    <button class="btn btn-secondary" onclick="openAddonsModal()" title="Add-ons et Scrapers Communautaires">🧩 Add-ons</button>
     <button class="btn btn-secondary" onclick="openFolder()">Dossier</button>
     <button class="btn btn-secondary" onclick="openConfig()">Configuration</button>
     <button class="btn btn-secondary" onclick="toggleShortcutsModal()" title="Raccourcis clavier (?)">⌨ Aide (?)</button>
@@ -4466,11 +4474,12 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <select id="searchType" onchange="toggleSearchMode()">
       <option value="movie">Film</option>
       <option value="series">Série</option>
+      <option value="anime">Anime (Kitsu)</option>
       <option value="raw">Mots-clés</option>
       <option value="magnet">Magnet</option>
     </select>
     <div style="flex:1; position:relative; display:flex;">
-      <input type="text" id="searchInput" placeholder="Rechercher un film ou une série... (⌘K)" oninput="onSearchInput()" onkeydown="onSearchKeyDown(event)" autocomplete="off" style="width:100%;">
+      <input type="text" id="searchInput" placeholder="Rechercher un film, une série ou un anime... (⌘K)" oninput="onSearchInput()" onkeydown="onSearchKeyDown(event)" autocomplete="off" style="width:100%;">
       <div id="searchDropdown" class="search-dropdown" style="display:none;"></div>
     </div>
     <button class="btn" onclick="runSearch()">Rechercher</button>
@@ -4480,6 +4489,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <div class="nav-tabs">
     <button class="nav-tab active" id="tab-movies" onclick="switchTab('movies')">Films populaires</button>
     <button class="nav-tab" id="tab-series" onclick="switchTab('series')">Séries populaires</button>
+    <button class="nav-tab" id="tab-community" onclick="switchTab('community')">✨ Tendances Commu</button>
+    <button class="nav-tab" id="tab-anime" onclick="switchTab('anime')">🎌 Espace Anime</button>
     <button class="nav-tab" id="tab-classics" onclick="switchTab('classics')">Classiques</button>
     <button class="nav-tab" id="tab-watchlist" onclick="switchTab('watchlist')">Ma Liste <span id="wlCount"></span></button>
     <button class="nav-tab" id="tab-history" onclick="switchTab('history')">Reprendre <span id="histCount"></span></button>
@@ -4647,6 +4658,54 @@ HTML_PAGE = r"""<!DOCTYPE html>
     </div>
     <div id="rdCloudList" class="torrent-list"></div>
   </div>
+
+  <!-- Panneau Communauté & Tendances Letterboxd -->
+  <div id="communityPanel" class="panel" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+      <div>
+        <h3 style="font-size:1.15rem; font-weight:700;">✨ Tendances Cinéphiles de la Communauté</h3>
+        <p style="color:var(--dim); font-size:0.8rem; margin-top:3px;">Collections cultes, palmarès Letterboxd et pépites sélectionnées par la communauté.</p>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; width:100%; max-width:540px;">
+        <input type="text" id="communityLetterboxdInput" placeholder="Coller une URL Letterboxd (ex: https://letterboxd.com/... ou boxd.it/...)" style="flex:1; padding:7px 12px; font-size:0.8rem; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--text);">
+        <button class="btn" style="padding:7px 14px; font-size:0.8rem;" onclick="importCustomLetterboxdFromInput()">Importer</button>
+      </div>
+    </div>
+
+    <!-- Grille des sélections communautaires -->
+    <div id="communityListsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:14px; margin-bottom:24px;"></div>
+
+    <!-- Titres de la liste sélectionnée -->
+    <div id="communityActiveListSection" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:14px;">
+        <div>
+          <h4 id="communityActiveListTitle" style="font-size:1rem; font-weight:700;"></h4>
+          <p id="communityActiveListDesc" style="color:var(--muted); font-size:0.78rem; margin-top:3px;"></p>
+        </div>
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" onclick="closeCommunityActiveList()">← Fermer la sélection</button>
+      </div>
+      <div id="communityActiveListGrid" class="posters-grid"></div>
+    </div>
+  </div>
+
+  <!-- Panneau Espace Anime Spécialisé -->
+  <div id="animePanel" class="panel" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+      <div>
+        <h3 style="font-size:1.15rem; font-weight:700;">🎌 Espace Animation Japonaise</h3>
+        <p style="color:var(--dim); font-size:0.8rem; margin-top:3px;">Catalogue Kitsu &amp; AniList avec détection des épisodes fillers (canon vs hors-série) et priorité fansub VOSTFR.</p>
+      </div>
+      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+        <span class="chip active" id="animeChipTrending" onclick="switchAnimeSubTab('trending', this)">🔥 Tendances</span>
+        <span class="chip" id="animeChipPopular" onclick="switchAnimeSubTab('popular', this)">🏆 Plus Populaires</span>
+        <div style="display:flex; gap:6px; margin-left:8px;">
+          <input type="text" id="animeSearchInput" placeholder="Rechercher un anime..." onkeydown="if(event.key==='Enter') runAnimeSearch()" style="padding:5px 10px; font-size:0.78rem; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--text); width:170px;">
+          <button class="btn btn-secondary" style="padding:5px 10px; font-size:0.78rem;" onclick="runAnimeSearch()">Chercher</button>
+        </div>
+      </div>
+    </div>
+    <div id="animeGrid" class="posters-grid"></div>
+  </div>
 </div>
 
 <!-- Filtres SVG Gamma pour déboucher les ombres / scènes sombres sans brûler les blancs -->
@@ -4726,8 +4785,21 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <button class="inapp-btn" id="inAppClarityBtn" onclick="cycleInAppClarity()" title="Déboucher les noirs / Éclaircir les scènes sombres (Touche B)">☀ Clarté : Normal</button>
       <button class="inapp-btn" id="inAppSpeedBtn" onclick="cycleInAppSpeed()" title="Vitesse de lecture (Touches [ et ])">1.0x</button>
       <button class="inapp-btn" id="inAppShotBtn" onclick="captureInAppScreenshot()" title="Capturer une image du film dans Téléchargements">📸</button>
-      <button class="inapp-btn" id="inAppPipBtn" onclick="toggleInAppPiP()" title="Fenêtre flottante Picture-in-Picture (Touche I)">⧉ PiP</button>
+      <button class="inapp-btn" id="inAppRemoteBtn" onclick="openRemoteModal()" title="Télécommande smartphone tactile via QR Code">📱 Remote</button>
+      <button class="inapp-btn" id="inAppWpBtn" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P (Code à 6 lettres)">🍿 Watch Party</button>
       <button class="inapp-btn" id="inAppExternalBtn" onclick="switchToExternalPlayer()">Lecteur externe</button>
+    </div>
+  </div>
+  <!-- Volet Chat Watch Party dans le lecteur -->
+  <div id="inAppWpChatBox" style="position:absolute; right:20px; bottom:90px; width:280px; max-height:260px; background:rgba(18,18,21,0.92); backdrop-filter:blur(10px); border:1px solid var(--border); border-radius:12px; display:none; flex-direction:column; z-index:25; box-shadow:0 8px 30px rgba(0,0,0,0.8);">
+    <div style="padding:10px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.8rem; font-weight:600; color:#fafafa;">🍿 Watch Party Chat</span>
+      <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.7rem;" onclick="toggleWpChat()">✕</button>
+    </div>
+    <div id="inAppWpMessages" style="flex:1; overflow-y:auto; padding:10px; font-size:0.78rem; display:flex; flex-direction:column; gap:6px; max-height:160px;"></div>
+    <div style="padding:8px 10px; border-top:1px solid var(--border); display:flex; gap:6px;">
+      <input type="text" id="inAppWpInput" placeholder="Message..." onkeydown="if(event.key==='Enter') sendWpMessage()" style="flex:1; padding:4px 8px; font-size:0.78rem; border-radius:6px; background:var(--surface-2); border:1px solid var(--border); color:#fafafa;">
+      <button class="btn" style="padding:4px 9px; font-size:0.75rem;" onclick="sendWpMessage()">Envoyer</button>
     </div>
   </div>
   <div class="inapp-hud-bottom">
@@ -4989,6 +5061,26 @@ HTML_PAGE = r"""<!DOCTYPE html>
           <button class="btn btn-secondary" style="padding:4px 9px; font-size:0.74rem;" onclick="triggerGdriveSync(this)">Synchroniser</button>
         </div>
       </div>
+      <!-- Section Synchronisation Trakt.tv -->
+      <div style="margin-top:8px; padding:10px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <span style="font-size:0.82rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:6px;">
+              <span style="color:#ed1c24; font-weight:800;">Trakt.tv</span> Scrobble &amp; Watchlist
+            </span>
+            <p id="traktSyncStatus" style="font-size:0.74rem; color:var(--dim); margin:2px 0 0;">Non connecté</p>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button id="traktConnectBtn" class="btn btn-secondary" style="padding:4px 9px; font-size:0.74rem;" onclick="toggleTraktAuth(this)">Connecter</button>
+            <button id="traktSyncBtn" class="btn btn-secondary" style="padding:4px 9px; font-size:0.74rem; display:none;" onclick="triggerTraktSync(this)">Synchroniser</button>
+          </div>
+        </div>
+        <div id="traktAuthBox" style="display:none; margin-top:8px; padding:8px; background:rgba(237,28,36,0.08); border-radius:6px; border:1px dashed rgba(237,28,36,0.3); font-size:0.75rem;">
+          <p style="margin:0 0 4px; color:var(--text);">1. Rendez-vous sur <a id="traktAuthUrl" href="https://trakt.tv/activate" target="_blank" style="color:#ed1c24; text-decoration:underline; font-weight:bold;">trakt.tv/activate</a></p>
+          <p style="margin:0; color:var(--text);">2. Entrez ce code : <b id="traktUserCode" style="font-size:1rem; letter-spacing:2px; color:#fff; background:#18181b; padding:2px 6px; border-radius:4px;">------</b></p>
+          <p id="traktAuthCountdown" style="margin:4px 0 0; color:var(--muted); font-size:0.7rem;">En attente de validation sur votre compte Trakt...</p>
+        </div>
+      </div>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
         <button class="btn btn-secondary" onclick="closeConfig()">Annuler</button>
         <button class="btn" onclick="saveConfig()">Enregistrer</button>
@@ -5022,6 +5114,113 @@ HTML_PAGE = r"""<!DOCTYPE html>
   </div>
 </div>
 
+<!-- Modal Télécommande Smartphone -->
+<div id="remoteModal" class="modal-bg" onclick="if(event.target===this) closeRemoteModal()">
+  <div class="modal" style="max-width:440px; text-align:center; padding:22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+        <span>📱</span> KINO Remote
+      </h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeRemoteModal()">✕</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;">
+      Scannez ce QR Code avec votre smartphone connecté au même Wi-Fi pour contrôler la lecture, le volume et naviguer depuis votre canapé.
+    </p>
+    <div id="remoteQrContainer" style="display:flex; justify-content:center; align-items:center; margin:0 auto 14px; background:#fff; padding:12px; border-radius:12px; width:220px; height:220px; box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+      <div style="color:#666; font-size:0.8rem;">Génération du QR Code...</div>
+    </div>
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+      <span id="remoteDirectUrl" style="font-size:0.78rem; color:var(--dim); word-break:break-all; text-align:left; font-family:monospace;">http://...</span>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem; white-space:nowrap;" onclick="copyRemoteUrl()">Copier</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Watch Party P2P -->
+<div id="watchPartyModal" class="modal-bg" onclick="if(event.target===this) closeWatchPartyModal()">
+  <div class="modal" style="max-width:480px; padding:20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+        <span>🍿</span> Mode Watch Party P2P
+      </h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeWatchPartyModal()">✕</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 16px;">
+      Regardez vos films et séries en parfaite synchronisation avec vos amis. Play, pause et temps de lecture calés à la seconde près sans serveur tiers (P2P direct).
+    </p>
+
+    <!-- Zone Non Connecté -->
+    <div id="wpSetupView">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+        <button class="btn" style="padding:10px 14px; font-size:0.82rem; font-weight:600;" onclick="createWatchPartyRoom()">
+          ✨ Créer une Salle
+        </button>
+        <button class="btn btn-secondary" style="padding:10px 14px; font-size:0.82rem;" onclick="showJoinWatchParty()">
+          🔗 Rejoindre une Salle
+        </button>
+      </div>
+      <div id="wpJoinBox" style="display:none; padding:12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
+        <label style="font-size:0.76rem; color:var(--muted); display:block; margin-bottom:6px;">Entrez le code de salle :</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="wpJoinCodeInput" placeholder="Ex: KINO9X" maxlength="12" style="text-transform:uppercase; font-weight:bold; letter-spacing:2px; font-size:0.95rem; text-align:center;">
+          <button class="btn" style="padding:6px 14px; font-size:0.8rem;" onclick="joinWatchPartyRoom()">Rejoindre</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zone Connecté / Salle Active -->
+    <div id="wpActiveView" style="display:none;">
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:14px; text-align:center;">
+        <span style="font-size:0.72rem; color:var(--dim); text-transform:uppercase; letter-spacing:1px;">Code de votre Salle</span>
+        <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin:6px 0;">
+          <span id="wpRoomCodeDisplay" style="font-size:1.6rem; font-weight:800; letter-spacing:4px; color:#4ade80; font-family:monospace;">------</span>
+          <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem;" onclick="copyWpRoomCode()">Copier</button>
+        </div>
+        <p style="font-size:0.72rem; color:var(--muted); margin:0;">Partagez ce code à vos amis pour synchroniser vos lecteurs instantanément.</p>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:0.8rem;">
+        <span style="color:var(--muted);">Statut : <b id="wpConnectionStatus" style="color:#4ade80;">Connecté</b></span>
+        <span style="color:var(--muted);">Pairs connectés : <b id="wpPeersCount" style="color:var(--text);">1</b></span>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem; color:#ef4444;" onclick="leaveWatchPartyRoom()">Quitter la salle</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Gestionnaire d'Add-ons -->
+<div id="addonsModal" class="modal-bg" onclick="if(event.target===this) closeAddonsModal()">
+  <div class="modal" style="max-width:640px; padding:20px; max-height:85vh; display:flex; flex-direction:column;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+        <span>🧩</span> Add-ons &amp; Scrapers Communautaires
+      </h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeAddonsModal()">✕</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;">
+      Activez ou ajoutez des indexeurs et scrapers communautaires pour démultiplier les sources de recherche (Nyaa Anime VOSTFR, YggTorrent, Sharewood, etc.).
+    </p>
+
+    <!-- Bouton d'importation d'add-on -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
+      <span style="font-size:0.78rem; color:var(--dim);">Installer un add-on externe (.kino / .json)</span>
+      <div>
+        <input type="file" id="addonFileInput" accept=".kino,.json,.zip" style="display:none;" onchange="uploadAddonFile(this)">
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" onclick="document.getElementById('addonFileInput').click()">+ Installer un Add-on</button>
+      </div>
+    </div>
+
+    <!-- Liste des addons avec scroll -->
+    <div id="addonsListContainer" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
+      <div style="color:var(--dim); font-size:0.8rem; text-align:center; padding:20px;">Chargement des add-ons...</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 let allTorrents = [];
 let activeFilter = '';
@@ -6629,6 +6828,10 @@ async function switchTab(tab) {
   document.getElementById('detailPanel').style.display = 'none';
   document.getElementById('torrentsPanel').style.display = 'none';
   document.getElementById('rdCloudPanel').style.display = 'none';
+  const comP = document.getElementById('communityPanel');
+  if (comP) comP.style.display = 'none';
+  const aniP = document.getElementById('animePanel');
+  if (aniP) aniP.style.display = 'none';
   document.getElementById('postersGrid').style.display = 'grid';
   document.getElementById('catalogHeader').style.display = 'flex';
   const gf = document.getElementById('genreFilters');
@@ -6715,6 +6918,30 @@ async function switchTab(tab) {
     document.getElementById('catalogHeader').style.display = 'none';
     document.getElementById('rdCloudPanel').style.display = 'block';
     await loadRdCloud();
+  } else if (tab === 'community') {
+    if (gf) gf.style.display = 'none';
+    if (sw) sw.style.display = 'none';
+    if (wlw) wlw.style.display = 'none';
+    if (lm) lm.style.display = 'none';
+    if (hs) hs.style.display = 'none';
+    if (statsEl) statsEl.style.display = 'none';
+    document.getElementById('homeResumeSection').style.display = 'none';
+    document.getElementById('postersGrid').style.display = 'none';
+    document.getElementById('catalogHeader').style.display = 'none';
+    if (comP) comP.style.display = 'block';
+    await loadCommunityTab();
+  } else if (tab === 'anime') {
+    if (gf) gf.style.display = 'none';
+    if (sw) sw.style.display = 'none';
+    if (wlw) wlw.style.display = 'none';
+    if (lm) lm.style.display = 'none';
+    if (hs) hs.style.display = 'none';
+    if (statsEl) statsEl.style.display = 'none';
+    document.getElementById('homeResumeSection').style.display = 'none';
+    document.getElementById('postersGrid').style.display = 'none';
+    document.getElementById('catalogHeader').style.display = 'none';
+    if (aniP) aniP.style.display = 'block';
+    await loadAnimeTab();
   }
 }
 
@@ -6986,6 +7213,7 @@ function closeTrailerModal() {
 function openConfig() { 
   document.getElementById('configModal').style.display = 'flex'; 
   triggerGdriveSync();
+  checkTraktStatus();
 }
 function closeConfig() { document.getElementById('configModal').style.display = 'none'; }
 
@@ -7036,6 +7264,779 @@ async function saveConfig() {
 
 async function openFolder() {
   await api('/api/open-folder', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+}
+
+// ==========================================
+// --- KINO SOCIAL, REMOTE, TRAKT & ADDONS ---
+// ==========================================
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeJsString(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"');
+}
+
+// --- Trakt.tv Integration ---
+let traktAuthPollTimer = null;
+let traktScrobbledStarted = false;
+let traktScrobbledStop = false;
+
+async function checkTraktStatus() {
+  try {
+    const res = await api('/api/trakt/status');
+    const statusEl = document.getElementById('traktSyncStatus');
+    const connectBtn = document.getElementById('traktConnectBtn');
+    const syncBtn = document.getElementById('traktSyncBtn');
+    const authBox = document.getElementById('traktAuthBox');
+    
+    if (res && res.authenticated) {
+      if (statusEl) statusEl.innerHTML = `<span style="color:#4ade80;">✓ Connecté (${res.username ? '@' + res.username : 'Actif'})</span>`;
+      if (connectBtn) { connectBtn.textContent = 'Déconnecter'; connectBtn.style.color = '#ef4444'; }
+      if (syncBtn) syncBtn.style.display = 'inline-block';
+      if (authBox) authBox.style.display = 'none';
+      if (traktAuthPollTimer) { clearInterval(traktAuthPollTimer); traktAuthPollTimer = null; }
+    } else {
+      if (statusEl) statusEl.textContent = 'Non connecté';
+      if (connectBtn) { connectBtn.textContent = 'Connecter'; connectBtn.style.color = ''; }
+      if (syncBtn) syncBtn.style.display = 'none';
+    }
+    return Boolean(res && res.authenticated);
+  } catch (e) {
+    return false;
+  }
+}
+
+async function toggleTraktAuth(btn) {
+  const statusEl = document.getElementById('traktSyncStatus');
+  const authBox = document.getElementById('traktAuthBox');
+  const codeEl = document.getElementById('traktUserCode');
+  const cdEl = document.getElementById('traktAuthCountdown');
+
+  if (btn && btn.textContent.trim() === 'Déconnecter') {
+    if (!confirm('Voulez-vous déconnecter votre compte Trakt.tv ?')) return;
+    try {
+      await api('/api/trakt/disconnect', {method: 'POST'});
+      await checkTraktStatus();
+    } catch(e) {
+      alert('Erreur déconnexion Trakt : ' + e.message);
+    }
+    return;
+  }
+
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = 'Connexion...'; }
+    const res = await api('/api/trakt/auth/start', {method: 'POST'});
+    if (res && res.user_code) {
+      if (codeEl) codeEl.textContent = res.user_code;
+      if (authBox) authBox.style.display = 'block';
+      let expires = res.expires_in || 600;
+      if (cdEl) cdEl.textContent = `En attente de validation (expire dans ${Math.round(expires/60)} min)...`;
+
+      if (traktAuthPollTimer) clearInterval(traktAuthPollTimer);
+      traktAuthPollTimer = setInterval(async () => {
+        try {
+          const pollRes = await api('/api/trakt/auth/poll', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({device_code: res.device_code})
+          });
+          if (pollRes && pollRes.status === 'authenticated') {
+            clearInterval(traktAuthPollTimer);
+            traktAuthPollTimer = null;
+            if (authBox) authBox.style.display = 'none';
+            await checkTraktStatus();
+            alert('Compte Trakt.tv connecté avec succès ! Scrobble automatique et synchronisation activés.');
+          } else if (pollRes && (pollRes.status === 'expired' || pollRes.status === 'denied')) {
+            clearInterval(traktAuthPollTimer);
+            traktAuthPollTimer = null;
+            if (cdEl) cdEl.textContent = 'Code expiré ou refusé. Réessayez.';
+          }
+        } catch(err) {}
+      }, (res.interval || 5) * 1000);
+    }
+  } catch(e) {
+    alert('Erreur initialisation Trakt : ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Connecter'; }
+  }
+}
+
+async function triggerTraktSync(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Sync...'; }
+  try {
+    const res = await api('/api/trakt/sync', {method: 'POST'});
+    if (res && res.success) {
+      alert(`Synchronisation Trakt terminée !\n${res.added_to_kino || 0} éléments ajoutés à votre liste KINO.\n${res.synced_to_trakt || 0} éléments synchronisés vers Trakt.`);
+      await refreshUserLists();
+    } else {
+      alert('Erreur lors de la synchronisation Trakt : ' + (res.error || 'inconnue'));
+    }
+  } catch(e) {
+    alert('Erreur Trakt sync : ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Synchroniser'; }
+  }
+}
+
+async function scrobbleTrakt(action, media, progressPct) {
+  try {
+    if (!media) return;
+    const name = media.name || media.title || '';
+    if (!name) return;
+    const s = media.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : null);
+    const e = media.episode || (document.getElementById('episodeSelect') ? parseInt(document.getElementById('episodeSelect').value) : null);
+    await api('/api/trakt/scrobble', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        action: action,
+        title: name,
+        year: media.year || '',
+        type: media.type || 'movie',
+        season: s,
+        episode: e,
+        progress: progressPct || 0
+      })
+    });
+  } catch(err) {}
+}
+
+// --- KINO Remote Smartphone ---
+let remotePollingInterval = null;
+
+async function openRemoteModal() {
+  const modal = document.getElementById('remoteModal');
+  const qrBox = document.getElementById('remoteQrContainer');
+  const urlBox = document.getElementById('remoteDirectUrl');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  
+  if (qrBox) {
+    qrBox.innerHTML = '<img src="/api/remote/qr?t=' + Date.now() + '" style="width:100%; height:100%; object-fit:contain;" alt="QR Code Télécommande">';
+  }
+  try {
+    const res = await api('/api/remote/state');
+    if (res && res.url && urlBox) {
+      urlBox.textContent = res.url;
+    }
+  } catch(e) {}
+}
+
+function closeRemoteModal() {
+  const modal = document.getElementById('remoteModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function copyRemoteUrl() {
+  const urlBox = document.getElementById('remoteDirectUrl');
+  if (!urlBox) return;
+  navigator.clipboard.writeText(urlBox.textContent).then(() => {
+    alert('Adresse de la télécommande copiée ! Ouvrez-la sur votre smartphone connecté au même Wi-Fi.');
+  }).catch(() => {});
+}
+
+function startRemotePolling() {
+  if (remotePollingInterval) return;
+  remotePollingInterval = setInterval(async () => {
+    const v = document.getElementById('inAppVideo');
+    const overlay = document.getElementById('inAppPlayerOverlay');
+    const isPlayerActive = Boolean(overlay && overlay.classList.contains('active') && v && v.src);
+
+    if (isPlayerActive) {
+      try {
+        const curT = v.currentTime || 0;
+        const durT = v.duration || 0;
+        const s = (inAppCurrentMedia && inAppCurrentMedia.season) ? inAppCurrentMedia.season : null;
+        const e = (inAppCurrentMedia && inAppCurrentMedia.episode) ? inAppCurrentMedia.episode : null;
+        await fetch('/api/player/state', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            title: inAppCurrentTitle || (inAppCurrentMedia ? inAppCurrentMedia.name : 'Lecture KINO'),
+            season: s,
+            episode: e,
+            currentTime: curT,
+            duration: durT,
+            paused: v.paused,
+            volume: v.volume,
+            muted: v.muted
+          })
+        });
+      } catch(e) {}
+    }
+
+    try {
+      const res = await fetch('/api/player/commands');
+      const data = await res.json();
+      if (data && data.commands && data.commands.length > 0) {
+        for (const cmd of data.commands) {
+          handleRemoteCommand(cmd);
+        }
+      }
+    } catch(e) {}
+  }, 1000);
+}
+
+function handleRemoteCommand(cmd) {
+  const v = document.getElementById('inAppVideo');
+  if (!v) return;
+  const action = cmd.action;
+  if (action === 'play') {
+    v.play().catch(() => {});
+  } else if (action === 'pause') {
+    v.pause();
+  } else if (action === 'toggle_play') {
+    toggleInAppPlay();
+  } else if (action === 'seek') {
+    if (cmd.delta !== undefined) {
+      v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + Number(cmd.delta)));
+    } else if (cmd.time !== undefined) {
+      v.currentTime = Math.max(0, Math.min(v.duration || 0, Number(cmd.time)));
+    }
+  } else if (action === 'volume') {
+    if (cmd.level !== undefined) {
+      v.volume = Math.max(0, Math.min(1, Number(cmd.level)));
+      v.muted = false;
+      showInAppToast(`Volume : ${Math.round(v.volume * 100)}%`);
+    }
+  } else if (action === 'mute') {
+    v.muted = !v.muted;
+    showInAppToast(v.muted ? 'Son coupé' : `Volume : ${Math.round(v.volume * 100)}%`);
+  } else if (action === 'next_ep') {
+    if (typeof inAppNextTrack === 'function') inAppNextTrack();
+  } else if (action === 'prev_ep') {
+    if (typeof inAppPrevTrack === 'function') inAppPrevTrack();
+  }
+}
+
+// --- Watch Party P2P (PeerJS) ---
+let wpPeer = null;
+let wpConnections = [];
+let wpRoomCode = null;
+let wpIsSyncing = false;
+
+function openWatchPartyModal() {
+  const modal = document.getElementById('watchPartyModal');
+  if (modal) modal.style.display = 'flex';
+  updateWpModalUI();
+}
+
+function closeWatchPartyModal() {
+  const modal = document.getElementById('watchPartyModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function updateWpModalUI() {
+  const setupView = document.getElementById('wpSetupView');
+  const activeView = document.getElementById('wpActiveView');
+  const codeDisplay = document.getElementById('wpRoomCodeDisplay');
+  const countEl = document.getElementById('wpPeersCount');
+  
+  if (wpRoomCode) {
+    if (setupView) setupView.style.display = 'none';
+    if (activeView) activeView.style.display = 'block';
+    if (codeDisplay) codeDisplay.textContent = wpRoomCode;
+    if (countEl) countEl.textContent = String(wpConnections.length + 1);
+  } else {
+    if (setupView) setupView.style.display = 'block';
+    if (activeView) activeView.style.display = 'none';
+  }
+}
+
+function createWatchPartyRoom() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  wpRoomCode = code;
+  initWpPeer('kino-room-' + code.toLowerCase());
+}
+
+function showJoinWatchParty() {
+  const box = document.getElementById('wpJoinBox');
+  if (box) box.style.display = (box.style.display === 'none' ? 'block' : 'none');
+  const inp = document.getElementById('wpJoinCodeInput');
+  if (inp) inp.focus();
+}
+
+function joinWatchPartyRoom() {
+  const inp = document.getElementById('wpJoinCodeInput');
+  const code = (inp ? inp.value.trim().toUpperCase() : '');
+  if (!code || code.length < 4) {
+    alert('Veuillez entrer un code de salle valide (ex: KINO9X).');
+    return;
+  }
+  wpRoomCode = code;
+  initWpPeer(null, 'kino-room-' + code.toLowerCase());
+}
+
+function copyWpRoomCode() {
+  if (!wpRoomCode) return;
+  navigator.clipboard.writeText(wpRoomCode).then(() => {
+    alert(`Code de salle [ ${wpRoomCode} ] copié ! Partagez-le avec vos amis.`);
+  }).catch(() => {});
+}
+
+function leaveWatchPartyRoom() {
+  if (wpPeer) {
+    wpPeer.destroy();
+    wpPeer = null;
+  }
+  wpConnections = [];
+  wpRoomCode = null;
+  updateWpModalUI();
+  const chatBox = document.getElementById('inAppWpChatBox');
+  if (chatBox) chatBox.style.display = 'none';
+  showInAppToast('Vous avez quitté la Watch Party');
+}
+
+function initWpPeer(hostPeerId, joinHostPeerId) {
+  if (typeof Peer === 'undefined') {
+    alert("PeerJS n'a pas pu être chargé depuis le CDN. Vérifiez votre connexion internet.");
+    return;
+  }
+  if (wpPeer) {
+    wpPeer.destroy();
+    wpPeer = null;
+  }
+  wpConnections = [];
+
+  const peerOpts = {
+    debug: 1,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    }
+  };
+
+  try {
+    if (hostPeerId) {
+      wpPeer = new Peer(hostPeerId, peerOpts);
+    } else {
+      wpPeer = new Peer(peerOpts);
+    }
+
+    wpPeer.on('open', (id) => {
+      updateWpModalUI();
+      showInAppToast(`Watch Party prête ! Code : ${wpRoomCode}`);
+      if (joinHostPeerId) {
+        const conn = wpPeer.connect(joinHostPeerId, { reliable: true });
+        setupWpConnection(conn);
+      }
+    });
+
+    wpPeer.on('connection', (conn) => {
+      setupWpConnection(conn);
+      const v = document.getElementById('inAppVideo');
+      if (v) {
+        conn.on('open', () => {
+          conn.send({
+            type: 'sync',
+            time: v.currentTime,
+            paused: v.paused,
+            title: inAppCurrentTitle || ''
+          });
+        });
+      }
+    });
+
+    wpPeer.on('error', (err) => {
+      console.warn('Watch Party error:', err);
+      if (err.type === 'unavailable-id') {
+        createWatchPartyRoom();
+      } else {
+        alert('Erreur Watch Party P2P : ' + err.message);
+      }
+    });
+  } catch(e) {
+    alert('Erreur Watch Party : ' + e.message);
+  }
+}
+
+function setupWpConnection(conn) {
+  conn.on('open', () => {
+    if (!wpConnections.includes(conn)) wpConnections.push(conn);
+    updateWpModalUI();
+    showInAppToast('Un ami a rejoint la Watch Party !');
+    const chatBox = document.getElementById('inAppWpChatBox');
+    if (chatBox) chatBox.style.display = 'flex';
+  });
+
+  conn.on('data', (data) => {
+    handleWpIncomingData(data, conn);
+  });
+
+  conn.on('close', () => {
+    wpConnections = wpConnections.filter(c => c !== conn);
+    updateWpModalUI();
+    showInAppToast('Un participant a quitté la session');
+  });
+}
+
+function handleWpIncomingData(data, fromConn) {
+  if (!data) return;
+  const v = document.getElementById('inAppVideo');
+  if (!v) return;
+
+  if (data.type === 'sync' || data.type === 'event') {
+    wpIsSyncing = true;
+    if (data.time !== undefined && Math.abs(v.currentTime - data.time) > 1.5) {
+      v.currentTime = data.time;
+    }
+    if (data.event === 'play' || (data.type === 'sync' && data.paused === false)) {
+      v.play().catch(() => {});
+      showInAppToast('▶ Reprise synchronisée');
+    } else if (data.event === 'pause' || (data.type === 'sync' && data.paused === true)) {
+      v.pause();
+      showInAppToast('⏸ Pause synchronisée');
+    }
+    setTimeout(() => { wpIsSyncing = false; }, 300);
+  } else if (data.type === 'chat') {
+    appendWpChatMessage(data.user || 'Ami', data.text || '');
+  }
+}
+
+function broadcastWpEvent(event, time) {
+  if (!wpRoomCode || wpConnections.length === 0 || wpIsSyncing) return;
+  const payload = {
+    type: 'event',
+    event: event,
+    time: time
+  };
+  wpConnections.forEach(conn => {
+    if (conn.open) conn.send(payload);
+  });
+}
+
+function toggleWpChat() {
+  const box = document.getElementById('inAppWpChatBox');
+  if (!box) return;
+  box.style.display = (box.style.display === 'none' ? 'flex' : 'none');
+}
+
+function sendWpMessage() {
+  const inp = document.getElementById('inAppWpInput');
+  if (!inp) return;
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  
+  appendWpChatMessage('Moi', text);
+  const payload = { type: 'chat', user: 'Ami', text: text };
+  wpConnections.forEach(conn => {
+    if (conn.open) conn.send(payload);
+  });
+}
+
+function appendWpChatMessage(user, text) {
+  const box = document.getElementById('inAppWpChatBox');
+  const msgs = document.getElementById('inAppWpMessages');
+  if (box) box.style.display = 'flex';
+  if (msgs) {
+    const div = document.createElement('div');
+    div.style.background = 'rgba(255,255,255,0.06)';
+    div.style.padding = '4px 8px';
+    div.style.borderRadius = '6px';
+    div.style.wordBreak = 'break-word';
+    div.innerHTML = `<b style="color:${user === 'Moi' ? '#4ade80' : '#38bdf8'}; font-size:0.75rem;">${user} :</b> <span style="color:#f4f4f5;">${escapeHtml(text)}</span>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  showInAppToast(`💬 ${user}: ${text.length > 25 ? text.substring(0,25) + '...' : text}`);
+}
+
+// --- Gestionnaire d'Add-ons ---
+async function openAddonsModal() {
+  const modal = document.getElementById('addonsModal');
+  if (modal) modal.style.display = 'flex';
+  await loadAddonsList();
+}
+
+function closeAddonsModal() {
+  const modal = document.getElementById('addonsModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function loadAddonsList() {
+  const container = document.getElementById('addonsListContainer');
+  if (!container) return;
+  container.innerHTML = '<div style="color:var(--dim); font-size:0.8rem; text-align:center; padding:20px;">Chargement des add-ons...</div>';
+
+  try {
+    const data = await api('/api/addons');
+    const addons = data.addons || [];
+    if (addons.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted); font-size:0.82rem; text-align:center; padding:30px;">Aucun add-on installé. Cliquez sur "+ Installer un Add-on" pour en ajouter.</div>';
+      return;
+    }
+
+    container.innerHTML = addons.map(addon => {
+      const isEnabled = Boolean(addon.enabled);
+      const isBuiltin = Boolean(addon.builtin);
+      return `
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:0.92rem; font-weight:700; color:var(--text);">${escapeHtml(addon.name || addon.id)}</span>
+              <span class="badge" style="font-size:0.68rem; background:rgba(255,255,255,0.06);">${escapeHtml(addon.version || '1.0.0')}</span>
+              ${isBuiltin ? `<span class="badge" style="font-size:0.68rem; background:rgba(56,189,248,0.15); color:#38bdf8;">Officiel</span>` : ''}
+              <span class="badge" style="font-size:0.68rem; background:rgba(74,222,128,0.15); color:#4ade80;">${escapeHtml(addon.type || 'scraper')}</span>
+            </div>
+            <p style="color:var(--muted); font-size:0.77rem; margin:4px 0 0; line-height:1.4;">${escapeHtml(addon.description || 'Add-on de recherche')}</p>
+            ${addon.author ? `<span style="font-size:0.7rem; color:var(--dim); margin-top:2px; display:block;">Par ${escapeHtml(addon.author)}</span>` : ''}
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <label style="position:relative; display:inline-block; width:38px; height:20px; cursor:pointer;">
+              <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleAddonSwitch('${addon.id}', this.checked)" style="opacity:0; width:0; height:0;">
+              <span style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:${isEnabled ? '#4ade80' : 'rgba(255,255,255,0.15)'}; border-radius:20px; transition:.2s;"></span>
+              <span style="position:absolute; content:''; height:14px; width:14px; left:${isEnabled ? '20px' : '3px'}; bottom:3px; background:white; border-radius:50%; transition:.2s;"></span>
+            </label>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = `<div style="color:#ef4444; font-size:0.8rem; text-align:center; padding:20px;">Erreur : ${e.message}</div>`;
+  }
+}
+
+async function toggleAddonSwitch(addonId, enabled) {
+  try {
+    await api('/api/addons/toggle', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({id: addonId, enabled: enabled})
+    });
+    await loadAddonsList();
+  } catch(e) {
+    alert('Erreur activation add-on : ' + e.message);
+    await loadAddonsList();
+  }
+}
+
+async function uploadAddonFile(input) {
+  if (!input || !input.files || input.files.length === 0) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const content = e.target.result;
+      const base64 = btoa(new Uint8Array(content).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+      await api('/api/addons/install', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({filename: file.name, data: base64})
+      });
+      alert(`Add-on [ ${file.name} ] installé avec succès !`);
+      await loadAddonsList();
+    } catch(err) {
+      alert("Erreur lors de l'installation de l'add-on : " + err.message);
+    } finally {
+      input.value = '';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// --- Espace Anime Spécialisé (Kitsu API & Fillers) ---
+let currentAnimeSubTab = 'trending';
+
+async function loadAnimeTab(subTab = 'trending') {
+  currentAnimeSubTab = subTab;
+  const grid = document.getElementById('animeGrid');
+  if (!grid) return;
+  grid.innerHTML = '<p style="color:var(--dim); font-size:0.84rem; grid-column:1/-1; text-align:center; padding:30px;">Chargement du catalogue Anime...</p>';
+
+  try {
+    const ep = (subTab === 'popular') ? '/api/anime/popular' : '/api/anime/trending';
+    const data = await api(ep);
+    renderAnimeGrid(data.animes || []);
+  } catch(e) {
+    grid.innerHTML = `<p style="color:#ef4444; font-size:0.84rem; grid-column:1/-1; text-align:center; padding:30px;">Erreur : ${e.message}</p>`;
+  }
+}
+
+function switchAnimeSubTab(subTab, el) {
+  document.querySelectorAll('#animePanel .chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  loadAnimeTab(subTab);
+}
+
+async function runAnimeSearch() {
+  const inp = document.getElementById('animeSearchInput');
+  const q = inp ? inp.value.trim() : '';
+  if (!q) {
+    loadAnimeTab('trending');
+    return;
+  }
+  const grid = document.getElementById('animeGrid');
+  if (!grid) return;
+  grid.innerHTML = `<p style="color:var(--dim); font-size:0.84rem; grid-column:1/-1; text-align:center; padding:30px;">Recherche de "${escapeHtml(q)}"...</p>`;
+
+  try {
+    const data = await api(`/api/anime/search?q=${encodeURIComponent(q)}`);
+    renderAnimeGrid(data.animes || []);
+  } catch(e) {
+    grid.innerHTML = `<p style="color:#ef4444; font-size:0.84rem; grid-column:1/-1; text-align:center; padding:30px;">Erreur : ${e.message}</p>`;
+  }
+}
+
+function renderAnimeGrid(animes) {
+  const grid = document.getElementById('animeGrid');
+  if (!grid) return;
+  if (!animes || animes.length === 0) {
+    grid.innerHTML = '<p style="color:var(--muted); font-size:0.84rem; grid-column:1/-1; text-align:center; padding:40px;">Aucun anime trouvé.</p>';
+    return;
+  }
+
+  grid.innerHTML = animes.map(anime => {
+    const poster = anime.poster || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>';
+    const title = anime.title || anime.canonical_title || '';
+    const score = anime.score ? `★ ${anime.score}` : '';
+    const eps = anime.episode_count ? `${anime.episode_count} eps` : 'En cours';
+    const year = anime.year || '';
+    const searchTarget = anime.canonical_title || title;
+
+    return `
+      <div class="card" onclick="openAnimeInKino('${escapeJsString(searchTarget)}')">
+        <div class="card-poster-wrap">
+          <img src="${poster}" alt="${escapeHtml(title)}" loading="lazy">
+          ${score ? `<span class="card-badge" style="background:rgba(234,179,8,0.9); color:#000; font-weight:800;">${score}</span>` : ''}
+          <span class="card-badge-right" style="background:rgba(0,0,0,0.7);">${eps}</span>
+        </div>
+        <div class="card-info">
+          <div class="card-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
+          <div class="card-meta">
+            <span>${year}</span>
+            <span style="color:#38bdf8;">VOSTFR</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openAnimeInKino(title) {
+  document.getElementById('searchType').value = 'anime';
+  const inp = document.getElementById('searchInput');
+  if (inp) inp.value = title;
+  switchTab('series');
+  runSearch();
+}
+
+// --- Collections Communauté & Letterboxd Curated ---
+let currentCommunityLists = [];
+
+async function loadCommunityTab() {
+  const grid = document.getElementById('communityListsGrid');
+  if (!grid) return;
+  grid.innerHTML = '<p style="color:var(--dim); font-size:0.84rem; grid-column:1/-1; text-align:center; padding:30px;">Chargement des tendances communautaires...</p>';
+
+  try {
+    const data = await api('/api/community/curated');
+    currentCommunityLists = data.collections || [];
+    renderCommunityListsGrid(currentCommunityLists);
+  } catch(e) {
+    grid.innerHTML = `<p style="color:#ef4444; font-size:0.84rem; grid-column:1/-1; text-align:center; padding:30px;">Erreur : ${e.message}</p>`;
+  }
+}
+
+function renderCommunityListsGrid(lists) {
+  const grid = document.getElementById('communityListsGrid');
+  if (!grid) return;
+  if (!lists || lists.length === 0) {
+    grid.innerHTML = '<p style="color:var(--muted); font-size:0.84rem; grid-column:1/-1; text-align:center; padding:40px;">Aucune sélection disponible.</p>';
+    return;
+  }
+
+  grid.innerHTML = lists.map(col => {
+    return `
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; cursor:pointer; transition:transform 0.15s, border-color 0.15s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.25)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border)'; this.style.transform='translateY(0)';" onclick="openCommunityList('${col.id}')">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+            <span style="font-size:1.4rem;">${col.icon || '🎬'}</span>
+            <span class="badge" style="font-size:0.7rem; background:rgba(0,224,84,0.12); color:#00e054; border-color:rgba(0,224,84,0.25);">${col.count || (col.items ? col.items.length : 0)} films</span>
+          </div>
+          <h4 style="font-size:1.02rem; font-weight:700; margin:0 0 6px 0; color:#fafafa;">${escapeHtml(col.title)}</h4>
+          <p style="color:var(--muted); font-size:0.78rem; line-height:1.4; margin:0;">${escapeHtml(col.description)}</p>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px; margin-top:4px;">
+          <span style="font-size:0.72rem; color:var(--dim);">Par ${escapeHtml(col.author || 'Communauté')}</span>
+          <span style="font-size:0.75rem; color:#4ade80; font-weight:600;">Découvrir →</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openCommunityList(listId) {
+  const col = currentCommunityLists.find(c => c.id === listId);
+  if (!col) return;
+  const activeSec = document.getElementById('communityActiveListSection');
+  const titleEl = document.getElementById('communityActiveListTitle');
+  const descEl = document.getElementById('communityActiveListDesc');
+  const grid = document.getElementById('communityActiveListGrid');
+
+  if (titleEl) titleEl.textContent = `${col.icon || '🎬'} ${col.title}`;
+  if (descEl) descEl.textContent = col.description;
+  if (activeSec) {
+    activeSec.style.display = 'block';
+    activeSec.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  if (grid) {
+    grid.innerHTML = (col.items || []).map(m => {
+      const inWl = isInWatchlist(m.id);
+      const rating = m.imdbRating ? `★ ${m.imdbRating}` : '';
+      return `
+        <div class="card" onclick="selectMedia({id:'${m.id}', name:'${escapeJsString(m.name)}', type:'movie', poster:'${m.poster || ''}', year:'${m.year || ''}', imdbRating:'${m.imdbRating || ''}'})">
+          <div class="card-poster-wrap">
+            <img src="${m.poster || 'data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\"/>'}" alt="${escapeHtml(m.name)}" loading="lazy">
+            ${rating ? `<span class="card-badge">${rating}</span>` : ''}
+            <button class="card-wl-btn ${inWl ? 'in-list' : ''}" data-wl-id="${m.id}" onclick="toggleWatchlist(event, {id:'${m.id}', name:'${escapeJsString(m.name)}', type:'movie', poster:'${m.poster || ''}', year:'${m.year || ''}', imdbRating:'${m.imdbRating || ''}'})" title="${inWl ? 'Retirer' : 'Ajouter'}">${inWl ? '✓' : '+'}</button>
+          </div>
+          <div class="card-info">
+            <div class="card-title">${escapeHtml(m.name)}</div>
+            <div class="card-meta"><span>${m.year || ''}</span></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+function closeCommunityActiveList() {
+  const activeSec = document.getElementById('communityActiveListSection');
+  if (activeSec) activeSec.style.display = 'none';
+}
+
+async function importCustomLetterboxdFromInput() {
+  const inp = document.getElementById('communityLetterboxdInput');
+  const val = inp ? inp.value.trim() : '';
+  if (!val) {
+    alert("Veuillez coller l'URL d'une liste Letterboxd.");
+    return;
+  }
+  openLetterboxdModal();
+  switchLbxModalTab('list');
+  const listInp = document.getElementById('lbxListInput');
+  if (listInp) listInp.value = val;
+  importLetterboxdList();
 }
 
 function searchByPerson(name, mtype) {
@@ -7729,7 +8730,7 @@ function renderDetailEpisodes(seasonNum) {
       <div class="ep-card" style="${isWatched ? 'opacity:0.75;' : ''}">
         <img class="ep-thumb" src="${thumb}" alt="" loading="lazy" onerror="this.style.opacity=0.08">
         <div class="ep-info">
-          <div class="ep-title"><span class="badge badge-hi">${code}</span> ${watchedBadge}${epTitle}</div>
+          <div class="ep-title"><span class="badge badge-hi">${code}</span> <span id="filler-badge-${seasonNum}-${epNum}"></span> ${watchedBadge}${epTitle}</div>
           ${epOverview ? `<div class="ep-desc">${epOverview}</div>` : ''}
           ${progBar}
         </div>
@@ -7741,6 +8742,23 @@ function renderDetailEpisodes(seasonNum) {
       </div>
     `;
   }).join('');
+
+  if (currentMedia && (currentMedia.type === 'series' || currentMedia.type === 'anime')) {
+    const title = currentMedia.name || '';
+    eps.forEach(v => {
+      const epNum = v.episode || v.number || 1;
+      api(`/api/anime/filler?title=${encodeURIComponent(title)}&episode=${epNum}`).then(res => {
+        const badgeEl = document.getElementById(`filler-badge-${seasonNum}-${epNum}`);
+        if (badgeEl && res && res.checked) {
+          if (res.is_filler) {
+            badgeEl.innerHTML = `<span class="badge" style="background:rgba(249,115,22,0.18); color:#f97316; border-color:rgba(249,115,22,0.4);" title="${res.type || 'Filler'}">🟠 Hors-Série</span>`;
+          } else {
+            badgeEl.innerHTML = `<span class="badge" style="background:rgba(74,222,128,0.18); color:#4ade80; border-color:rgba(74,222,128,0.4);" title="Manga Canon">🟢 Canon</span>`;
+          }
+        }
+      }).catch(() => {});
+    });
+  }
 }
 
 function pickSeriesEpisodeSources(s, e) {
@@ -8806,6 +9824,9 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
   inAppCurrentMedia = media || currentMedia;
   inAppSkipIntroDismissed = false;
   inAppNextEpCancelled = false;
+  traktScrobbledStarted = false;
+  traktScrobbledStop = false;
+  startRemotePolling();
   const skipCard = document.getElementById('inAppSkipIntroCard');
   if (skipCard) skipCard.style.display = 'none';
   const nextCard = document.getElementById('inAppNextEpCard');
@@ -8933,6 +9954,10 @@ function closeInAppPlayer() {
   const nextCard = document.getElementById('inAppNextEpCard');
   if (nextCard) nextCard.style.display = 'none';
   if (video) {
+    if (inAppCurrentMedia) {
+      const pct = (video.duration > 0) ? Math.round((video.currentTime / video.duration) * 100) : 0;
+      scrobbleTrakt('pause', inAppCurrentMedia, pct);
+    }
     if (document.pictureInPictureElement) {
       document.exitPictureInPicture().catch(() => {});
     }
@@ -9061,10 +10086,24 @@ let inAppLastSaveTime = 0;
 if (inAppVideoEl) {
   inAppVideoEl.addEventListener('play', () => {
     updatePlayPauseBtn(true);
+    if (!traktScrobbledStarted && inAppCurrentMedia) {
+      traktScrobbledStarted = true;
+      const pct = (inAppVideoEl.duration > 0) ? Math.round((inAppVideoEl.currentTime / inAppVideoEl.duration) * 100) : 0;
+      scrobbleTrakt('start', inAppCurrentMedia, pct);
+    }
+    broadcastWpEvent('play', inAppVideoEl.currentTime);
   });
   inAppVideoEl.addEventListener('pause', () => {
     updatePlayPauseBtn(false);
     if (inAppOverlayEl) inAppOverlayEl.classList.remove('idle');
+    if (inAppCurrentMedia) {
+      const pct = (inAppVideoEl.duration > 0) ? Math.round((inAppVideoEl.currentTime / inAppVideoEl.duration) * 100) : 0;
+      scrobbleTrakt('pause', inAppCurrentMedia, pct);
+    }
+    broadcastWpEvent('pause', inAppVideoEl.currentTime);
+  });
+  inAppVideoEl.addEventListener('seeked', () => {
+    broadcastWpEvent('seek', inAppVideoEl.currentTime);
   });
   inAppVideoEl.addEventListener('timeupdate', () => {
     if (inAppActiveCues.length > 0) {
@@ -9076,6 +10115,13 @@ if (inAppVideoEl) {
       const pct = (curT / durT) * 100;
       if (inAppSeekFillEl) inAppSeekFillEl.style.width = pct + '%';
       if (inAppTimeTextEl) inAppTimeTextEl.textContent = `${formatTime(curT)} / ${formatTime(durT)}`;
+
+      // Scrobble Trakt.tv automatique dès 80% de visionnage
+      if (pct >= 80 && !traktScrobbledStop && inAppCurrentMedia) {
+        traktScrobbledStop = true;
+        scrobbleTrakt('stop', inAppCurrentMedia, Math.round(pct));
+        showInAppToast('✓ Scrobblé sur Trakt.tv (80%)', 2200);
+      }
 
       // Bouton Skip Intro (+85s) pour les séries entre 15s et 150s
       const isSeriesNow = Boolean((inAppCurrentMedia && inAppCurrentMedia.type === 'series') || inAppPlaylist.length > 1);
@@ -9132,6 +10178,9 @@ if (inAppVideoEl) {
     }
   });
   inAppVideoEl.addEventListener('ended', () => {
+    if (inAppCurrentMedia) {
+      scrobbleTrakt('stop', inAppCurrentMedia, 100);
+    }
     if (inAppPlaylist.length > 1 && inAppPlaylistIndex < inAppPlaylist.length - 1) {
       inAppNextTrack();
     }
@@ -9354,6 +10403,8 @@ async function pollDownloads() {
 }
 
 checkConfig();
+checkTraktStatus();
+startRemotePolling();
 pollDownloads();
 switchTab('movies');
 initResizeHandles();
@@ -9414,6 +10465,72 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(raw)))
                 self.end_headers()
                 self.wfile.write(raw)
+                return
+
+            if parsed.path == "/remote":
+                remote_html = remote_controller.generate_remote_html(PORT).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(remote_html)))
+                self.end_headers()
+                self.wfile.write(remote_html)
+                return
+
+            if parsed.path == "/api/remote/state":
+                self.send_json(remote_controller.get_player_state())
+                return
+
+            if parsed.path == "/api/remote/qr":
+                local_ip = remote_controller.get_local_ip()
+                remote_url = f"http://{local_ip}:{PORT}/remote"
+                qr_svg = remote_controller.generate_qr_code_svg(remote_url)
+                self.send_json({"status": "ok", "url": remote_url, "local_ip": local_ip, "qr_svg": qr_svg})
+                return
+
+            if parsed.path == "/api/player/commands":
+                cmds = remote_controller.pop_commands()
+                self.send_json({"commands": cmds})
+                return
+
+            if parsed.path == "/api/addons":
+                addons = addon_manager.list_addons()
+                self.send_json({"status": "ok", "addons": addons})
+                return
+
+            if parsed.path == "/api/anime/trending":
+                items = anime_engine.get_trending_anime()
+                self.send_json({"status": "ok", "items": items})
+                return
+
+            if parsed.path == "/api/anime/popular":
+                limit = int(params.get("limit", 24))
+                items = anime_engine.get_popular_anime(limit=limit)
+                self.send_json({"status": "ok", "items": items})
+                return
+
+            if parsed.path == "/api/anime/search":
+                q = params.get("q", "").strip()
+                items = anime_engine.search_anime(q) if q else []
+                self.send_json({"status": "ok", "items": items})
+                return
+
+            if parsed.path == "/api/anime/filler":
+                title = params.get("title", "")
+                ep = int(params.get("episode", 1))
+                res = anime_engine.is_episode_filler(title, ep)
+                self.send_json({"status": "ok", "filler": res})
+                return
+
+            if parsed.path == "/api/community/curated":
+                curated = community_lists.get_curated_lists()
+                self.send_json({"status": "ok", "lists": curated, "collections": curated})
+                return
+
+            if parsed.path == "/api/trakt/status":
+                connected = trakt_engine.is_trakt_connected()
+                user_info = kino_db.get_config("trakt_user")
+                uname = user_info.get("username") if isinstance(user_info, dict) else None
+                self.send_json({"status": "ok", "authenticated": connected, "connected": connected, "username": uname, "user": user_info})
                 return
 
             if parsed.path == "/api/auto-stream":
@@ -9624,6 +10741,54 @@ class RequestHandler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         try:
             body = self.read_json_body()
+
+            if parsed.path == "/api/remote/control":
+                action = body.get("action", "")
+                val = body.get("value")
+                remote_controller.push_command(action, val)
+                self.send_json({"ok": True, "action": action})
+                return
+
+            if parsed.path == "/api/player/state":
+                remote_controller.update_player_state(body)
+                self.send_json({"ok": True})
+                return
+
+            if parsed.path == "/api/addons/toggle":
+                aid = body.get("id", "")
+                en = bool(body.get("enabled", True))
+                addon_manager.toggle_addon(aid, en)
+                self.send_json({"ok": True, "addons": addon_manager.list_addons()})
+                return
+
+            if parsed.path == "/api/trakt/auth/start":
+                res = trakt_engine.start_device_auth()
+                self.send_json(res)
+                return
+
+            if parsed.path == "/api/trakt/auth/poll":
+                dcode = body.get("device_code", "")
+                res = trakt_engine.poll_device_token(dcode)
+                self.send_json(res)
+                return
+
+            if parsed.path == "/api/trakt/disconnect":
+                res = trakt_engine.disconnect_trakt()
+                self.send_json(res)
+                return
+
+            if parsed.path == "/api/trakt/scrobble":
+                act = body.get("action", "start")
+                meta = body.get("media", {})
+                prog = float(body.get("progress", 0.0))
+                res = trakt_engine.scrobble_action(act, meta, prog)
+                self.send_json(res)
+                return
+
+            if parsed.path == "/api/trakt/sync":
+                res = trakt_engine.sync_trakt_watchlist()
+                self.send_json(res)
+                return
 
             if parsed.path == "/api/config":
                 updates = {}

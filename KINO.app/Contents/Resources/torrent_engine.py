@@ -562,6 +562,7 @@ def search_multi_torrents(
         "tpb": [],
         "peerflix": [],
         "apibay": [],
+        "addons": [],
     }
 
     def _fetch_stremio(key, url, label, timeout_s):
@@ -590,6 +591,23 @@ def search_multi_torrents(
         except Exception:
             pass
 
+    def _fetch_addons():
+        try:
+            import addon_manager
+            q = target.split(":")[0] if ":" in target else target
+            raw_addons = addon_manager.run_addons_search(
+                query=q, media_type=media_type, season=season, episode=episode
+            )
+            parsed_addons = []
+            for it in raw_addons:
+                name = it.get("name") or it.get("title") or ""
+                p = parse_release_details(name)
+                it.update(p)
+                parsed_addons.append(it)
+            buckets["addons"] = parsed_addons
+        except Exception:
+            pass
+
     threads = [
         threading.Thread(target=_fetch_stremio, args=("main", tio_main_url, "Torrentio", 20), daemon=True),
         threading.Thread(target=_fetch_stremio, args=("fr", tio_fr_url, "Torrentio FR", 10), daemon=True),
@@ -598,6 +616,7 @@ def search_multi_torrents(
         threading.Thread(target=_fetch_stremio, args=("tpb", tpb_url, "TPB+", 6), daemon=True),
         threading.Thread(target=_fetch_stremio, args=("peerflix", peerflix_url, "Peerflix", 6), daemon=True),
         threading.Thread(target=_fetch_apibay, daemon=True),
+        threading.Thread(target=_fetch_addons, daemon=True),
     ]
 
     for th in threads:
@@ -610,7 +629,7 @@ def search_multi_torrents(
     # Fusion et déduplication par info_hash
     merged = []
     seen_hashes = {}
-    for key in ("fr", "main", "comet", "knightcrawler", "tpb", "peerflix", "apibay"):
+    for key in ("fr", "main", "addons", "comet", "knightcrawler", "tpb", "peerflix", "apibay"):
         for item in buckets[key]:
             ih = (item.get("info_hash") or "").lower()
             if not ih:

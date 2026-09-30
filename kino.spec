@@ -8,12 +8,18 @@ project_root = Path.cwd()
 datas = [
     (str(project_root / 'kino.ico'), '.'),
     (str(project_root / 'kino.png'), '.'),
+    (str(project_root / 'addons'), 'addons'),
 ]
 
 # Dépendances cachées requises pour pywebview sous Windows (Edge WebView2 / pythonnet)
 hiddenimports = [
     'kino_db',
     'torrent_engine',
+    'remote_controller',
+    'trakt_engine',
+    'addon_manager',
+    'anime_engine',
+    'community_lists',
     'app',
     'sqlite3',
     'clr',

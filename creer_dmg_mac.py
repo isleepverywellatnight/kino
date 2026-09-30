@@ -154,6 +154,11 @@ exec "$PYTHON_BIN" "$DIR/desktop.py"
         "desktop.py",
         "kino_db.py",
         "torrent_engine.py",
+        "remote_controller.py",
+        "trakt_engine.py",
+        "addon_manager.py",
+        "anime_engine.py",
+        "community_lists.py",
         "requirements.txt",
         "kino.png",
         "kino.ico",
@@ -163,6 +168,14 @@ exec "$PYTHON_BIN" "$DIR/desktop.py"
         src = BASE_DIR / fname
         if src.exists():
             shutil.copy2(src, resources / fname)
+
+    # Copie du dossier addons
+    src_addons = BASE_DIR / "addons"
+    if src_addons.exists():
+        dst_addons = resources / "addons"
+        if dst_addons.exists():
+            shutil.rmtree(dst_addons)
+        shutil.copytree(src_addons, dst_addons)
 
     icns_file = ensure_icns()
     if icns_file and icns_file.exists():

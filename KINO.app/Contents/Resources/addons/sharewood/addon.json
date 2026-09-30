@@ -1,0 +1,11 @@
+{
+  "id": "sharewood",
+  "name": "Sharewood Tracker (FR)",
+  "version": "1.0.0",
+  "description": "Indexeur torrent communautaire libre et participatif en langue française.",
+  "author": "KINO Community",
+  "icon": "🌲",
+  "type": "scraper",
+  "enabled": false,
+  "entry_point": "scraper.py"
+}

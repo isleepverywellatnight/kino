@@ -1,0 +1,11 @@
+{
+  "id": "ygg_torrent",
+  "name": "YggTorrent Indexer (Communautaire)",
+  "version": "1.0.0",
+  "description": "Scraper torrent francophone pour indexer les releases VFF/TrueFrench et MULTI.",
+  "author": "KINO Community",
+  "icon": "🇫🇷",
+  "type": "scraper",
+  "enabled": false,
+  "entry_point": "scraper.py"
+}

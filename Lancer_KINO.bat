@@ -9,6 +9,7 @@ echo ========================================================
 echo.
 
 :: 1. Verifier si Python est installe
+set PYTHON_CMD=python
 python --version >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     py --version >nul 2>&1
@@ -23,34 +24,39 @@ if %ERRORLEVEL% neq 0 (
         pause
         exit /b 1
     )
-) else (
-    set PYTHON_CMD=python
 )
 
-:: 2. Configuration environnement virtuel local (.venv_win)
+:: 2. Verifier si pywebview est deja disponible directement
+%PYTHON_CMD% -c "import webview" >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    echo [OK] Environnement Python detecte avec succes.
+    echo Demarrage de KINO Desktop...
+    %PYTHON_CMD% desktop.py
+    goto FIN
+)
+
+:: 3. Sinon, utiliser ou creer l'environnement virtuel local (.venv_win)
 if not exist ".venv_win" (
-    echo [1/3] Creation de l'environnement virtuel local (.venv_win)...
+    echo Creation de l'environnement virtuel local (.venv_win)...
     %PYTHON_CMD% -m venv .venv_win
     if %ERRORLEVEL% neq 0 (
         echo [ERREUR] Impossible de creer l'environnement virtuel.
         pause
         exit /b 1
     )
-    echo [2/3] Installation des dependances (pywebview, etc.)...
+    echo Installation des dependances (pywebview, etc.)...
     call .venv_win\Scripts\activate.bat
     python -m pip install --upgrade pip --quiet
     python -m pip install -r requirements.txt --quiet
-    echo.
     echo [OK] Installation terminee avec succes !
-    echo.
 ) else (
     call .venv_win\Scripts\activate.bat
 )
 
-:: 3. Demarrage de l'application
-echo [3/3] Demarrage de KINO Desktop...
+echo Demarrage de KINO Desktop...
 python desktop.py
 
+:FIN
 if %ERRORLEVEL% neq 0 (
     echo.
     echo L'application s'est fermee avec un code d'erreur (%ERRORLEVEL%).
