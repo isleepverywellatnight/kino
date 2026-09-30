@@ -27,10 +27,15 @@ else:
 
 import app
 
-PORT = app.PORT
-ICON_PATH = Path(__file__).resolve().parent / ("kino.png" if IS_MAC else "kino.ico")
+def get_resource_dir():
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent
+
+RESOURCE_DIR = get_resource_dir()
+ICON_PATH = RESOURCE_DIR / ("kino.png" if IS_MAC else "kino.ico")
 if not ICON_PATH.exists():
-    ICON_PATH = Path(__file__).resolve().parent / "kino.ico"
+    ICON_PATH = RESOURCE_DIR / "kino.ico"
 
 server_instance = None
 desktop_window = None

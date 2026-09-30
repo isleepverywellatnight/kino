@@ -23,3 +23,13 @@ desktop.ini
 # IDE & Editeurs
 .vscode/
 .idea/
+
+# Builds PyInstaller
+build/
+dist/
+*.spec.bak
+
+# Base de données locale de test
+*.db
+*.db-wal
+*.db-shm

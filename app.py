@@ -21,6 +21,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import kino_db
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -44,21 +45,34 @@ AUTO_STREAM_CACHE = {}
 AUTO_STREAM_LOCK = threading.Lock()
 MEM_CACHE = {}
 MEM_CACHE_LOCK = threading.Lock()
-IPC_SOCK_PATH = "/tmp/kino_mpv.sock"
+IPC_SOCK_PATH = r"\\.\pipe\kino_mpv" if sys.platform == "win32" else "/tmp/kino_mpv.sock"
 WINDOW_ACTION_CALLBACK = None
 GET_WINDOW_GEOMETRY = None
 
+# Migration automatique douce de l'ancien fichier JSON vers SQLite au démarrage
+kino_db.migrate_from_json(CONFIG_FILE)
+
 
 def cached_get(key, ttl_sec, fetch_fn):
+    """Cache hybride L1 (RAM) + L2 (SQLite persistant entre redémarrages)."""
     now = time.time()
     with MEM_CACHE_LOCK:
         hit = MEM_CACHE.get(key)
         if hit and (now - hit["ts"] < ttl_sec):
             return hit["val"]
+
+    # Niveau 2 : SQLite persistant
+    db_hit = kino_db.db_cache_get(key)
+    if db_hit is not None:
+        with MEM_CACHE_LOCK:
+            MEM_CACHE[key] = {"val": db_hit, "ts": now}
+        return db_hit
+
     val = fetch_fn()
-    if val:
+    if val is not None:
         with MEM_CACHE_LOCK:
             MEM_CACHE[key] = {"val": val, "ts": now}
+        kino_db.db_cache_set(key, val, ttl_sec=ttl_sec)
     return val
 
 
@@ -142,6 +156,10 @@ def load_config():
 
     active_prov = cfg["debrid_provider"]
     cfg["rd_token"] = cfg["provider_tokens"].get(active_prov, "")
+
+    # Listes persistantes gérées par SQLite haute performance
+    cfg["watchlist"] = kino_db.db_get_watchlist()
+    cfg["history"] = kino_db.db_get_history()
     return cfg
 
 
@@ -157,11 +175,31 @@ def save_config(new_data):
         if tok_val:
             prov_tokens[target_prov] = tok_val
 
+    # Si watchlist ou history sont envoyés, synchroniser dans SQLite
+    if "watchlist" in new_data:
+        wl = new_data.get("watchlist")
+        if isinstance(wl, list):
+            for it in wl:
+                if isinstance(it, dict):
+                    kino_db.db_toggle_watchlist(it)
+    if "history" in new_data:
+        hist = new_data.get("history")
+        if isinstance(hist, list):
+            for entry in hist:
+                if isinstance(entry, dict):
+                    kino_db.db_record_history(entry)
+
     cfg.update(new_data)
     cfg["debrid_provider"] = target_prov
     cfg["provider_tokens"] = prov_tokens
     cfg["rd_token"] = prov_tokens.get(target_prov, "")
-    CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    # Exclure watchlist et history du JSON pour garder le fichier léger et ultra-rapide
+    file_cfg = dict(cfg)
+    file_cfg.pop("watchlist", None)
+    file_cfg.pop("history", None)
+    CONFIG_FILE.write_text(json.dumps(file_cfg, indent=2), encoding="utf-8")
+    cfg["watchlist"] = kino_db.db_get_watchlist()
+    cfg["history"] = kino_db.db_get_history()
     return cfg
 
 
@@ -803,25 +841,7 @@ def _compute_next_series_episode(imdb_id, season, episode):
 
 
 def toggle_watchlist(item):
-    cfg = load_config()
-    wl = cfg.get("watchlist", [])
-    item_id = item.get("id")
-    if not item_id:
-        return wl
-    exists = any(x.get("id") == item_id for x in wl)
-    if exists:
-        wl = [x for x in wl if x.get("id") != item_id]
-    else:
-        wl.insert(0, {
-            "id": item_id,
-            "name": item.get("name", ""),
-            "type": item.get("type", "movie"),
-            "year": item.get("year", ""),
-            "poster": item.get("poster", ""),
-            "imdbRating": item.get("imdbRating", ""),
-        })
-    save_config({"watchlist": wl[:500]})
-    return wl
+    return kino_db.db_toggle_watchlist(item)
 
 
 def _parse_title_year_str(raw_str):
@@ -1149,69 +1169,17 @@ def import_letterboxd_watchlist(payload):
 
 
 def record_history(entry):
-    cfg = load_config()
-    hist = cfg.get("history", [])
+    s_num = entry.get("season")
+    e_num = entry.get("episode")
     item_id = entry.get("id") or entry.get("filename")
-    if not item_id:
-        return hist
-    existing = next((x for x in hist if (x.get("id") or x.get("filename")) == item_id), {})
-    hist = [x for x in hist if (x.get("id") or x.get("filename")) != item_id]
-
-    merged = dict(existing)
-    merged.pop("imported_watched", None)
-    for k, v in entry.items():
-        if v is not None and v != "":
-            merged[k] = v
-
-    watched_eps = list(merged.get("watched_episodes") or [])
-    ep_positions = dict(merged.get("ep_positions") or {})
-
-    pos = entry.get("position")
-    dur = entry.get("duration")
-    s_num = merged.get("season")
-    e_num = merged.get("episode")
-    ep_code = f"S{int(s_num):02d}E{int(e_num):02d}" if (s_num and e_num) else None
-
-    if s_num and e_num:
-        ns, ne = _compute_next_series_episode(merged.get("id"), s_num, e_num)
-        merged["next_season"] = ns
-        merged["next_episode"] = ne
-
-    if pos is not None and dur is not None and float(dur) > 30:
-        pos_f = max(0.0, float(pos))
-        dur_f = float(dur)
-        pct = round(min(100.0, (pos_f / dur_f) * 100.0), 1)
-        merged["position"] = int(pos_f)
-        merged["duration"] = int(dur_f)
-        merged["progress_pct"] = pct
-        if ep_code:
-            ep_positions[ep_code] = {"pos": int(pos_f), "dur": int(dur_f), "pct": pct}
-        if pct >= 85.0:
-            merged["completed"] = True
-            if ep_code and ep_code not in watched_eps:
-                watched_eps.append(ep_code)
-        else:
-            merged["completed"] = False
-    elif ep_code and ep_code in ep_positions and entry.get("position") is None:
-        saved_ep = ep_positions[ep_code]
-        merged["position"] = saved_ep.get("pos", 0)
-        merged["duration"] = saved_ep.get("dur", 0)
-        merged["progress_pct"] = saved_ep.get("pct", 0)
-        merged["completed"] = bool(saved_ep.get("pct", 0) >= 85.0)
-    elif entry.get("position") is None and s_num and e_num and existing.get("season") == s_num and existing.get("episode") == e_num:
-        pass
-    elif entry.get("position") is None and s_num and e_num:
-        merged["position"] = 0
-        merged["progress_pct"] = 0
-        merged["completed"] = False
-
-    merged["watched_episodes"] = watched_eps[-300:]
-    merged["ep_positions"] = ep_positions
-    merged["updated_at"] = int(time.time())
-    hist.insert(0, merged)
-    hist = hist[:1000]
-    save_config({"history": hist})
-    return hist
+    if s_num and e_num and item_id:
+        try:
+            ns, ne = _compute_next_series_episode(item_id, s_num, e_num)
+            entry["next_season"] = ns
+            entry["next_episode"] = ne
+        except Exception:
+            pass
+    return kino_db.db_record_history(entry)
 
 
 def toggle_watched_status(payload):
@@ -1426,14 +1394,16 @@ def get_resume_position(imdb_id, season=None, episode=None):
 
 
 def remove_history(item_id):
-    cfg = load_config()
-    hist = cfg.get("history", [])
     if item_id == "__all__":
-        hist = []
-    else:
-        hist = [x for x in hist if (x.get("id") or x.get("filename")) != item_id]
-    save_config({"history": hist})
-    return hist
+        with kino_db._DB_LOCK:
+            conn = kino_db.get_connection()
+            try:
+                with conn:
+                    conn.execute("DELETE FROM watch_history;")
+            finally:
+                conn.close()
+        return []
+    return kino_db.db_remove_history(item_id)
 
 
 def _parse_rd_iso_age_days(iso_str):
@@ -2910,6 +2880,22 @@ def prefetch_next_episode(imdb_id, season, episode=None, next_ep=None, name="", 
 
 
 def query_mpv_ipc(sock_path, prop_name):
+    if not sock_path:
+        return None
+    payload = json.dumps({"command": ["get_property", prop_name]}) + "\n"
+    if sys.platform == "win32":
+        try:
+            with open(sock_path, "r+b", buffering=0) as f:
+                f.write(payload.encode("utf-8"))
+                line = f.readline()
+                if line:
+                    msg = json.loads(line.decode("utf-8", errors="ignore"))
+                    if msg.get("error") == "success":
+                        return msg.get("data")
+        except Exception:
+            return None
+        return None
+
     import socket
     if not hasattr(socket, "AF_UNIX") or not os.path.exists(sock_path):
         return None
@@ -2917,7 +2903,6 @@ def query_mpv_ipc(sock_path, prop_name):
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             s.settimeout(0.4)
             s.connect(sock_path)
-            payload = json.dumps({"command": ["get_property", prop_name]}) + "\n"
             s.sendall(payload.encode("utf-8"))
             data = b""
             while b"\n" not in data:
@@ -3108,8 +3093,7 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
             args.append(f"--config-dir={cfg_dir}")
         if sys.platform == "darwin":
             args.append("--hwdec=videotoolbox")
-        if sys.platform != "win32":
-            args.append(f"--input-ipc-server={IPC_SOCK_PATH}")
+        args.append(f"--input-ipc-server={IPC_SOCK_PATH}")
         if mpv_input_conf:
             args.append(f"--input-conf={mpv_input_conf}")
         args.extend([
@@ -8306,7 +8290,7 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
     if (!playbackStarted && (video.paused || video.readyState === 0 || video.currentTime === 0)) {
       onFallbackRequired('timeout');
     }
-  }, 2200);
+  }, 4500);
 
   if (inAppCurrentMedia && inAppCurrentMedia.id) {
     const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : null);
