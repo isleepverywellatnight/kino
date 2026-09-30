@@ -3311,10 +3311,13 @@ HTML_PAGE = r"""<!DOCTYPE html>
     min-height: 100vh;
     padding-bottom: 64px;
     -webkit-font-smoothing: antialiased;
+    border: none !important;
+    outline: none !important;
   }
   header {
     background: var(--bg);
-    border-bottom: 1px solid var(--border);
+    border-top: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     padding: 14px 28px;
     display: flex;
     justify-content: space-between;
@@ -3946,35 +3949,59 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .no-drag, .btn, .nav-tab, .chip, input, select, textarea, button, a {
     -webkit-app-region: no-drag;
   }
-  .win-controls {
+  /* En-tête gauche et boutons macOS (Traffic Lights) */
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .mac-controls {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    margin-left: 8px;
+    gap: 8px;
+    margin-right: 4px;
     -webkit-app-region: no-drag;
+    user-select: none;
   }
-  .win-btn {
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    width: 32px;
-    height: 28px;
+  .mac-btn {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.22);
+    padding: 0;
+    margin: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.85rem;
-    border-radius: 4px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    user-select: none;
+    outline: none;
+    box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.35);
+    transition: transform 0.08s ease, filter 0.12s ease;
   }
-  .win-btn:hover {
-    background: var(--surface-2);
-    color: #fafafa;
+  .mac-btn:hover {
+    filter: brightness(0.92);
   }
-  .win-btn-close:hover {
-    background: #ef4444 !important;
-    color: #ffffff !important;
+  .mac-btn:active {
+    transform: scale(0.9);
+    filter: brightness(0.8);
+  }
+  .mac-close {
+    background: #ff5f56;
+  }
+  .mac-min {
+    background: #ffbd2e;
+  }
+  .mac-max {
+    background: #27c93f;
+  }
+  .mac-icon {
+    opacity: 0;
+    transition: opacity 0.12s ease-in-out;
+    display: block;
+    pointer-events: none;
+  }
+  .mac-controls:hover .mac-icon {
+    opacity: 1;
   }
 
   /* Window resize handles for frameless native app */
@@ -4001,6 +4028,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
   body.is-maximized .win-resize-handles,
   body.is-fullscreen .win-resize-handles,
   body.is-mac-native .win-resize-handles,
+  body.is-mac-native .mac-controls,
   body.is-mac-native .win-controls {
     display: none !important;
   }
@@ -4366,15 +4394,35 @@ HTML_PAGE = r"""<!DOCTYPE html>
 </div>
 
 <header class="pywebview-drag-region" ondblclick="windowAction('maximize')">
-  <div class="logo no-drag" onclick="switchTab('movies')">
-    <svg class="logo-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="2" y="2" width="28" height="28" rx="3" stroke="#fafafa" stroke-width="2"/>
-      <line x1="10.5" y1="7.5" x2="10.5" y2="24.5" stroke="#fafafa" stroke-width="2.4"/>
-      <polygon points="12,16 23.5,7.5 23.5,24.5" fill="#fafafa"/>
-    </svg>
-    <span class="logo-wordmark">KINO</span>
-    <span class="logo-divider"></span>
-    <span class="logo-sub" id="logoProviderSub">Real-Debrid</span>
+  <div class="header-left">
+    <div class="mac-controls no-drag">
+      <button class="mac-btn mac-close" onclick="windowAction('close')" title="Fermer (Alt+F4)">
+        <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+          <path d="M2.2 2.2l7.6 7.6M9.8 2.2l-7.6 7.6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="mac-btn mac-min" onclick="windowAction('minimize')" title="Réduire (Ctrl+M)">
+        <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+          <line x1="2" y1="6" x2="10" y2="6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="mac-btn mac-max" onclick="windowAction('maximize')" title="Agrandir / Plein écran (F11)">
+        <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+          <polygon points="2.2,7.5 2.2,2.2 7.5,2.2" fill="rgba(0,0,0,0.65)"/>
+          <polygon points="9.8,4.5 9.8,9.8 4.5,9.8" fill="rgba(0,0,0,0.65)"/>
+        </svg>
+      </button>
+    </div>
+    <div class="logo no-drag" onclick="switchTab('movies')">
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="28" height="28" rx="3" stroke="#fafafa" stroke-width="2"/>
+        <line x1="10.5" y1="7.5" x2="10.5" y2="24.5" stroke="#fafafa" stroke-width="2.4"/>
+        <polygon points="12,16 23.5,7.5 23.5,24.5" fill="#fafafa"/>
+      </svg>
+      <span class="logo-wordmark">KINO</span>
+      <span class="logo-divider"></span>
+      <span class="logo-sub" id="logoProviderSub">Real-Debrid</span>
+    </div>
   </div>
   <div class="no-drag" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
     <span id="userBadge" style="font-size:0.8rem; color:var(--muted); margin-right:6px;"></span>
@@ -4382,11 +4430,6 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <button class="btn btn-secondary" onclick="document.getElementById('torrentFileInput').click()" title="Ouvrir un fichier .torrent (ou glisser-déposer dans la fenêtre)">+ .torrent</button>
     <button class="btn btn-secondary" onclick="openFolder()">Dossier</button>
     <button class="btn btn-secondary" onclick="openConfig()">Configuration</button>
-    <div class="win-controls">
-      <button class="win-btn" onclick="windowAction('minimize')" title="Réduire">−</button>
-      <button class="win-btn" onclick="windowAction('maximize')" title="Agrandir / Restaurer">□</button>
-      <button class="win-btn win-btn-close" onclick="windowAction('close')" title="Fermer">✕</button>
-    </div>
   </div>
 </header>
 
@@ -4622,7 +4665,27 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="cancelNextEpAuto()">Annuler</button>
   </div>
   <div class="inapp-hud-top pywebview-drag-region" ondblclick="windowAction('maximize')">
-    <button class="inapp-btn no-drag" onclick="closeInAppPlayer()">← Retour</button>
+    <div style="display:flex; align-items:center; gap:14px;" class="no-drag">
+      <div class="mac-controls">
+        <button class="mac-btn mac-close" onclick="windowAction('close')" title="Fermer (Alt+F4)">
+          <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+            <path d="M2.2 2.2l7.6 7.6M9.8 2.2l-7.6 7.6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="mac-btn mac-min" onclick="windowAction('minimize')" title="Réduire (Ctrl+M)">
+          <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+            <line x1="2" y1="6" x2="10" y2="6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="mac-btn mac-max" onclick="windowAction('maximize')" title="Agrandir / Plein écran (F11)">
+          <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+            <polygon points="2.2,7.5 2.2,2.2 7.5,2.2" fill="rgba(0,0,0,0.65)"/>
+            <polygon points="9.8,4.5 9.8,9.8 4.5,9.8" fill="rgba(0,0,0,0.65)"/>
+          </svg>
+        </button>
+      </div>
+      <button class="inapp-btn" onclick="closeInAppPlayer()">← Retour</button>
+    </div>
     <div id="inAppTitle" style="font-weight:600; font-size:0.95rem; color:#fafafa; text-align:center; flex:1; margin:0 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
     <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;" class="no-drag">
       <button class="inapp-btn" id="inAppSubsBtn" onclick="cycleInAppSubtitles()" title="Sous-titres OpenSubtitles FR / EN (Touche C)">💬 CC : Off</button>
@@ -4632,11 +4695,6 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <button class="inapp-btn" id="inAppShotBtn" onclick="captureInAppScreenshot()" title="Capturer une image du film dans Téléchargements">📸</button>
       <button class="inapp-btn" id="inAppPipBtn" onclick="toggleInAppPiP()" title="Fenêtre flottante Picture-in-Picture (Touche I)">⧉ PiP</button>
       <button class="inapp-btn" id="inAppExternalBtn" onclick="switchToExternalPlayer()">Lecteur externe</button>
-      <div class="win-controls" style="margin-left:8px;">
-        <button class="win-btn" onclick="windowAction('minimize')" title="Réduire">−</button>
-        <button class="win-btn" onclick="windowAction('maximize')" title="Agrandir / Restaurer">□</button>
-        <button class="win-btn win-btn-close" onclick="windowAction('close')" title="Fermer">✕</button>
-      </div>
     </div>
   </div>
   <div class="inapp-hud-bottom">
@@ -7622,11 +7680,6 @@ function initResizeHandles() {
       if (!window.pywebview || !window.pywebview.api) return;
       e.preventDefault();
       e.stopPropagation();
-
-      if (isWin && window.pywebview.api.start_resize) {
-        window.pywebview.api.start_resize(dir);
-        return;
-      }
 
       if (window.pywebview.api.get_state && window.pywebview.api.set_bounds) {
         const st = await window.pywebview.api.get_state();

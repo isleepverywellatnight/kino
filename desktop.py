@@ -295,25 +295,27 @@ def get_window_geometry():
 
 
 def configure_window_styles(w):
-    if not IS_WIN or not user32:
+    if not IS_WIN:
         return
     for _ in range(40):
-        time.sleep(0.1)
+        time.sleep(0.05)
         try:
             form = w.gui.BrowserView.instances.get(w.uid)
             if form and form.Handle:
                 hwnd = form.Handle.ToInt64()
-                GWL_STYLE = -16
-                WS_THICKFRAME = 0x00040000
-                WS_MINIMIZEBOX = 0x00020000
-                WS_MAXIMIZEBOX = 0x00010000
-                style = user32.GetWindowLongW(hwnd, GWL_STYLE)
-                user32.SetWindowLongW(hwnd, GWL_STYLE, style | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)
-                SWP_FRAMECHANGED = 0x0020
-                SWP_NOMOVE = 0x0002
-                SWP_NOSIZE = 0x0001
-                SWP_NOZORDER = 0x0004
-                user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER)
+                try:
+                    import ctypes
+                    dwmapi = ctypes.windll.dwmapi
+                    c_int = ctypes.c_int
+                    byref = ctypes.byref
+                    # DWMWA_BORDER_COLOR = 34 (0xFFFFFFFE = DWMWA_COLOR_NONE, retire la bordure grise)
+                    dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(0xFFFFFFFE)), 4)
+                    # DWMWA_WINDOW_CORNER_PREFERENCE = 33 (2 = DWMWCP_ROUND, coins arrondis macos)
+                    dwmapi.DwmSetWindowAttribute(hwnd, 33, byref(c_int(2)), 4)
+                    # DWMWA_CAPTION_COLOR = 35 (0x000B0909 = #09090b)
+                    dwmapi.DwmSetWindowAttribute(hwnd, 35, byref(c_int(0x000B0909)), 4)
+                except Exception:
+                    pass
                 break
         except Exception:
             pass
