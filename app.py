@@ -29,6 +29,7 @@ import addon_manager
 import anime_engine
 import community_lists
 import intro_engine
+import discord_rpc
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -58,6 +59,12 @@ GET_WINDOW_GEOMETRY = None
 
 # Migration automatique douce de l'ancien fichier JSON vers SQLite au démarrage
 kino_db.migrate_from_json(CONFIG_FILE)
+
+# Démarrage de l'agent Discord Rich Presence
+try:
+    discord_rpc.discord_rpc.start()
+except Exception:
+    pass
 
 
 def cached_get(key, ttl_sec, fetch_fn):
@@ -143,6 +150,7 @@ def load_config():
         "hdr_mode": "sdr_pref",
         "audio_mode": "voice_boost",
         "rd_retention_days": 0,
+        "discord_rpc": True,
     }
     # Support ancien fichier de config si existant
     legacy = Path.home() / ".rd_cli_config.json"
@@ -195,6 +203,11 @@ def save_config(new_data):
             for entry in hist:
                 if isinstance(entry, dict):
                     kino_db.db_record_history(entry)
+
+    if "discord_rpc" in new_data:
+        discord_rpc.discord_rpc.enabled = bool(new_data["discord_rpc"])
+        if not discord_rpc.discord_rpc.enabled:
+            discord_rpc.discord_rpc.clear()
 
     cfg.update(new_data)
     cfg["debrid_provider"] = target_prov
@@ -3160,17 +3173,70 @@ def monitor_ipc_playback(proc, media_ctx):
                 record_history(entry)
             except Exception:
                 pass
+            try:
+                is_pause = bool(query_mpv_ipc(IPC_SOCK_PATH, "pause"))
+                discord_rpc.discord_rpc.set_activity(
+                    title=media_ctx.get("name", "KINO"),
+                    media_type=media_ctx.get("type", "movie"),
+                    season=season,
+                    episode=cur_ep,
+                    current_time=float(pos),
+                    duration=float(dur),
+                    poster_url=media_ctx.get("poster"),
+                    is_paused=is_pause,
+                )
+            except Exception:
+                pass
         time.sleep(3.0)
 
 
-def monitor_mpv_lifecycle(pid):
+def monitor_mpv_lifecycle(pid, media_ctx=None):
     if sys.platform == "win32":
         import ctypes
         SYNCHRONIZE = 0x00100000
         h_proc = ctypes.windll.kernel32.OpenProcess(SYNCHRONIZE, False, pid)
         if h_proc:
-            ctypes.windll.kernel32.WaitForSingleObject(h_proc, 0xFFFFFFFF)
+            base_ep = int((media_ctx or {}).get("episode") or 1)
+            season = int((media_ctx or {}).get("season") or 1) if (media_ctx and media_ctx.get("type") == "series") else None
+            # Polling régulier de l'IPC mpv sous Windows
+            while ctypes.windll.kernel32.WaitForSingleObject(h_proc, 2500) == 258:
+                if media_ctx:
+                    try:
+                        pos = query_mpv_ipc(IPC_SOCK_PATH, "time-pos")
+                        dur = query_mpv_ipc(IPC_SOCK_PATH, "duration")
+                        pl_pos = query_mpv_ipc(IPC_SOCK_PATH, "playlist-pos")
+                        is_paused = bool(query_mpv_ipc(IPC_SOCK_PATH, "pause"))
+                        if isinstance(pos, (int, float)) and isinstance(dur, (int, float)) and dur > 30 and pos > 3:
+                            cur_ep = base_ep + int(pl_pos) if (season and isinstance(pl_pos, int) and pl_pos >= 0) else (base_ep if season else None)
+                            record_history({
+                                "id": media_ctx["id"],
+                                "name": media_ctx.get("name", "KINO"),
+                                "type": media_ctx.get("type", "movie"),
+                                "year": media_ctx.get("year", ""),
+                                "poster": media_ctx.get("poster", ""),
+                                "season": season,
+                                "episode": cur_ep,
+                                "filename": media_ctx.get("filename", ""),
+                                "position": int(pos),
+                                "duration": int(dur),
+                            })
+                            discord_rpc.discord_rpc.set_activity(
+                                title=media_ctx.get("name", "KINO"),
+                                media_type=media_ctx.get("type", "movie"),
+                                season=season,
+                                episode=cur_ep,
+                                current_time=float(pos),
+                                duration=float(dur),
+                                poster_url=media_ctx.get("poster"),
+                                is_paused=is_paused,
+                            )
+                    except Exception:
+                        pass
             ctypes.windll.kernel32.CloseHandle(h_proc)
+    try:
+        discord_rpc.discord_rpc.clear()
+    except Exception:
+        pass
     if WINDOW_ACTION_CALLBACK:
         try:
             WINDOW_ACTION_CALLBACK("show")
@@ -3356,6 +3422,19 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
         except Exception:
             pass
 
+    if media_ctx:
+        try:
+            discord_rpc.discord_rpc.set_activity(
+                title=media_ctx.get("name", safe_title),
+                media_type=media_ctx.get("type", "movie"),
+                season=media_ctx.get("season"),
+                episode=media_ctx.get("episode"),
+                current_time=float(start_sec),
+                poster_url=media_ctx.get("poster"),
+            )
+        except Exception:
+            pass
+
     if sys.platform == "win32":
         subprocess.run(
             ["taskkill", "/F", "/IM", "mpv.exe"],
@@ -3363,7 +3442,7 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
             stderr=subprocess.DEVNULL,
         )
         pid = spawn_on_user_desktop(args)
-        threading.Thread(target=monitor_mpv_lifecycle, args=(pid,), daemon=True).start()
+        threading.Thread(target=monitor_mpv_lifecycle, args=(pid, media_ctx), daemon=True).start()
         return {"mpv": mpv_bin, "pid": pid, "playlist_count": len(playlist_items) if playlist_items else 1}
     else:
         proc = subprocess.Popen(
@@ -3378,6 +3457,10 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
         def _wait():
             try:
                 proc.wait()
+            except Exception:
+                pass
+            try:
+                discord_rpc.discord_rpc.clear()
             except Exception:
                 pass
             if WINDOW_ACTION_CALLBACK:
@@ -5168,6 +5251,163 @@ HTML_PAGE = r"""<!DOCTYPE html>
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+  /* ==========================================
+     PLANNING SIMULCAST ANIME (HAYASE STYLE)
+     ========================================== */
+  .schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-top: 10px;
+  }
+  .schedule-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    cursor: pointer;
+    position: relative;
+  }
+  .schedule-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(229, 9, 20, 0.45);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  }
+  .schedule-card-header {
+    position: relative;
+    width: 100%;
+    height: 155px;
+    background: #111;
+    overflow: hidden;
+  }
+  .schedule-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+  }
+  .schedule-card:hover .schedule-card-img {
+    transform: scale(1.04);
+  }
+  .schedule-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(14,14,14,0.95) 0%, rgba(14,14,14,0.3) 50%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+  }
+  .schedule-card-ep-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+  }
+  .schedule-card-status-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .badge-status-available {
+    background: rgba(46, 213, 115, 0.2);
+    color: #2ed573;
+    border: 1px solid rgba(46, 213, 115, 0.4);
+  }
+  .badge-status-countdown {
+    background: rgba(255, 171, 0, 0.18);
+    color: #ffbe3b;
+    border: 1px solid rgba(255, 171, 0, 0.35);
+  }
+  .schedule-card-time {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #eee;
+    background: rgba(0, 0, 0, 0.65);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .schedule-card-body {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .schedule-card-title {
+    font-size: 0.94rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .schedule-card-romaji {
+    font-size: 0.74rem;
+    color: var(--muted);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .schedule-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+    margin-top: 6px;
+  }
+  .schedule-tag {
+    font-size: 0.68rem;
+    color: var(--dim);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .schedule-score {
+    font-size: 0.72rem;
+    color: #ffbe3b;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .schedule-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .schedule-card-actions button {
+    flex: 1;
+    font-size: 0.76rem;
+    padding: 7px 10px;
+    border-radius: 6px;
+  }
 </style>
 </head>
 <body>
@@ -5426,6 +5666,11 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <span id="catalogTitle" class="section-title">Films populaires du moment</span>
         <span id="listStatsBadge" style="display:none; font-size:0.73rem; font-weight:500; color:var(--muted); background:var(--surface); border:1px solid var(--border); padding:3px 9px; border-radius:5px;"></span>
+        <!-- Sélecteur Sous-Vue Anime (Catalogue vs Planning Simulcast) -->
+        <div id="animeSubNav" style="display:none; gap:6px; align-items:center; margin-left:6px;">
+          <button id="animeSubTabCatalog" class="chip active" onclick="switchAnimeSubTab('catalog')">🔥 Catalogue</button>
+          <button id="animeSubTabSchedule" class="chip" onclick="switchAnimeSubTab('schedule')">📅 Planning Simulcast</button>
+        </div>
       </div>
       <div id="catalogSortWrap" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <button class="btn-surprise" onclick="surpriseMeMedia(activeTab === 'classics' ? 'classics' : 'catalog')" title="Lancer la roulette KINO et tirer un titre non encore vu">
@@ -5540,8 +5785,31 @@ HTML_PAGE = r"""<!DOCTYPE html>
         </div>
         <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" onclick="closeCommunityActiveList()">← Fermer la sélection</button>
       </div>
-      <div id="communityActiveListGrid" class="posters-grid"></div>
     </div>
+  </div>
+
+  <!-- Panneau Planning Simulcast Anime -->
+  <div id="animeSchedulePanel" class="panel" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <div>
+        <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:8px;">
+          <span>📅 Planning des Sorties Simulcast</span>
+          <span style="font-size:0.7rem; font-weight:600; padding:2px 8px; border-radius:12px; background:rgba(229,9,20,0.15); color:var(--red); border:1px solid rgba(229,9,20,0.3);">Japon ⇄ Heure Locale</span>
+        </h3>
+        <p style="color:var(--dim); font-size:0.8rem; margin-top:3px;">
+          Épisodes diffusés cette semaine au Japon. Cliquez sur un épisode pour lancer la recherche immédiate en VOSTFR / MULTI.
+        </p>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn btn-secondary" style="padding:5px 12px; font-size:0.78rem;" onclick="loadAnimeSchedule(true)">🔄 Actualiser</button>
+      </div>
+    </div>
+
+    <!-- Sélecteur de jour (Chips) -->
+    <div id="animeScheduleDays" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:16px; scrollbar-width:thin;"></div>
+
+    <!-- Grille des animes du jour sélectionné -->
+    <div id="animeScheduleGrid" class="schedule-grid"></div>
   </div>
 </div>
 
@@ -5924,6 +6192,20 @@ HTML_PAGE = r"""<!DOCTYPE html>
           <p id="traktAuthCountdown" style="margin:4px 0 0; color:var(--muted); font-size:0.7rem;">En attente de validation sur votre compte Trakt...</p>
         </div>
       </div>
+      <!-- Section Discord Rich Presence -->
+      <div style="margin-top:8px; padding:10px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <span style="font-size:0.82rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:6px;">
+              <span style="color:#5865F2; font-weight:800;">Discord</span> Rich Presence
+            </span>
+            <p id="discordRpcStatus" style="font-size:0.74rem; color:var(--dim); margin:2px 0 0;">Afficher le film/série en cours et le temps restant sur votre profil Discord</p>
+          </div>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.8rem; user-select:none;">
+            <input type="checkbox" id="cfgDiscordRpc" checked style="cursor:pointer; accent-color:#5865F2; width:16px; height:16px;"> Actif
+          </label>
+        </div>
+      </div>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
         <button class="btn btn-secondary" onclick="closeConfig()">Annuler</button>
         <button class="btn" onclick="saveConfig()">Enregistrer</button>
@@ -6169,6 +6451,9 @@ async function checkConfig() {
     }
     if (document.getElementById('rdCloudRetentionSelect')) {
       document.getElementById('rdCloudRetentionSelect').value = retVal;
+    }
+    if (document.getElementById('cfgDiscordRpc')) {
+      document.getElementById('cfgDiscordRpc').checked = cfg.discord_rpc !== false;
     }
     window.kinoPlayerMode = cfg.player_mode || 'kino';
     const badge = document.getElementById('userBadge');
@@ -7764,6 +8049,260 @@ function surpriseMeFromCustomList(listId) {
   surpriseMeMedia({ items: pool, title: l.title });
 }
 
+// ==========================================
+// PLANNING SIMULCAST ANIME & DISCORD RPC
+// ==========================================
+
+let currentAnimeSubTab = 'catalog';
+let animeScheduleData = null;
+let activeScheduleDay = "Aujourd'hui";
+let scheduleCountdownTimer = null;
+
+async function switchAnimeSubTab(subTab, doFetch = true) {
+  currentAnimeSubTab = subTab;
+  const btnCatalog = document.getElementById('animeSubTabCatalog');
+  const btnSchedule = document.getElementById('animeSubTabSchedule');
+  const catSortWrap = document.getElementById('catalogSortWrap');
+  const genreFilters = document.getElementById('genreFilters');
+  const postersGrid = document.getElementById('postersGrid');
+  const loadMoreWrap = document.getElementById('loadMoreWrap');
+  const schedulePanel = document.getElementById('animeSchedulePanel');
+  const catTitle = document.getElementById('catalogTitle');
+
+  if (subTab === 'catalog') {
+    if (btnCatalog) btnCatalog.classList.add('active');
+    if (btnSchedule) btnSchedule.classList.remove('active');
+    if (catSortWrap) catSortWrap.style.display = 'flex';
+    if (genreFilters) genreFilters.style.display = 'flex';
+    if (postersGrid) postersGrid.style.display = 'grid';
+    if (loadMoreWrap) loadMoreWrap.style.display = 'block';
+    if (schedulePanel) schedulePanel.style.display = 'none';
+    if (catTitle) catTitle.textContent = 'Animation Japonaise & Pépites';
+  } else {
+    if (btnCatalog) btnCatalog.classList.remove('active');
+    if (btnSchedule) btnSchedule.classList.add('active');
+    if (catSortWrap) catSortWrap.style.display = 'none';
+    if (genreFilters) genreFilters.style.display = 'none';
+    if (postersGrid) postersGrid.style.display = 'none';
+    if (loadMoreWrap) loadMoreWrap.style.display = 'none';
+    if (schedulePanel) schedulePanel.style.display = 'block';
+    if (catTitle) catTitle.textContent = 'Planning Simulcast';
+
+    if (doFetch || !animeScheduleData) {
+      await loadAnimeSchedule();
+    } else {
+      renderAnimeScheduleDays();
+      renderAnimeScheduleGrid();
+    }
+  }
+}
+
+async function loadAnimeSchedule(force = false) {
+  const grid = document.getElementById('animeScheduleGrid');
+  if (grid) {
+    grid.innerHTML = '<div style="grid-column: 1/-1; padding: 40px 20px; text-align: center; color: var(--dim);"><span class="spinner" style="display:inline-block; margin-bottom:10px;"></span><p>Chargement des diffusions japonaises de la semaine...</p></div>';
+  }
+  try {
+    const res = await api(`/api/anime/schedule${force ? '?force=1' : ''}`);
+    if (res && res.ok && res.days) {
+      animeScheduleData = res.days;
+      const dayKeys = Object.keys(animeScheduleData);
+      if (dayKeys.includes("Aujourd'hui") && animeScheduleData["Aujourd'hui"].length > 0) {
+        activeScheduleDay = "Aujourd'hui";
+      } else if (dayKeys.length > 0) {
+        activeScheduleDay = dayKeys[0];
+      }
+      renderAnimeScheduleDays();
+      renderAnimeScheduleGrid();
+
+      if (!scheduleCountdownTimer) {
+        scheduleCountdownTimer = setInterval(updateScheduleCountdowns, 30000);
+      }
+    } else {
+      if (grid) grid.innerHTML = '<div style="grid-column: 1/-1; padding: 30px; text-align: center; color: var(--muted);"><p>Impossible de charger le planning simulcast. Réessayez dans quelques instants.</p></div>';
+    }
+  } catch (e) {
+    if (grid) grid.innerHTML = `<div style="grid-column: 1/-1; padding: 30px; text-align: center; color: var(--muted);"><p>Erreur: ${e.message}</p></div>`;
+  }
+}
+
+function renderAnimeScheduleDays() {
+  const daysBar = document.getElementById('animeScheduleDays');
+  if (!daysBar || !animeScheduleData) return;
+
+  const dayKeys = Object.keys(animeScheduleData);
+  if (dayKeys.length === 0) {
+    daysBar.innerHTML = '';
+    return;
+  }
+
+  daysBar.innerHTML = dayKeys.map(day => {
+    const items = animeScheduleData[day] || [];
+    const isActive = day === activeScheduleDay;
+    const isToday = day === "Aujourd'hui";
+    const safeDay = day.replace(/'/g, "\\'");
+    return `
+      <button class="chip ${isActive ? 'active' : ''}" onclick="selectScheduleDay('${safeDay}')" style="white-space:nowrap; padding: 6px 14px; font-weight:${isToday ? '700' : '500'};">
+        ${isToday ? '🔥 ' : ''}${day} <span style="opacity:0.75; font-size:0.72rem; margin-left:4px;">(${items.length})</span>
+      </button>
+    `;
+  }).join('');
+}
+
+function selectScheduleDay(day) {
+  activeScheduleDay = day;
+  renderAnimeScheduleDays();
+  renderAnimeScheduleGrid();
+}
+
+function formatCountdown(targetSeconds) {
+  const now = Math.floor(Date.now() / 1000);
+  const diff = targetSeconds - now;
+  if (diff <= 0) return { text: "⚡ Disponible", isAvailable: true };
+  const hours = Math.floor(diff / 3600);
+  const minutes = Math.floor((diff % 3600) / 60);
+  if (hours > 24) {
+    const days = Math.floor(hours / 24);
+    const remH = hours % 24;
+    return { text: `Dans ${days}j ${remH}h`, isAvailable: false };
+  }
+  if (hours > 0) {
+    return { text: `Dans ${hours}h ${minutes}m`, isAvailable: false };
+  }
+  return { text: `Dans ${minutes}m`, isAvailable: false };
+}
+
+function updateScheduleCountdowns() {
+  const badges = document.querySelectorAll('[data-schedule-airing]');
+  badges.forEach(el => {
+    const airTs = parseInt(el.getAttribute('data-schedule-airing'), 10);
+    if (!isNaN(airTs)) {
+      const cd = formatCountdown(airTs);
+      if (cd.isAvailable) {
+        el.className = 'schedule-card-status-badge badge-status-available';
+        el.innerHTML = '⚡ DISPONIBLE';
+      } else {
+        el.className = 'schedule-card-status-badge badge-status-countdown';
+        el.innerHTML = `⏳ ${cd.text}`;
+      }
+    }
+  });
+}
+
+function renderAnimeScheduleGrid() {
+  const grid = document.getElementById('animeScheduleGrid');
+  if (!grid || !animeScheduleData) return;
+
+  const items = animeScheduleData[activeScheduleDay] || [];
+  if (items.length === 0) {
+    grid.innerHTML = '<div style="grid-column: 1/-1; padding: 40px 20px; text-align: center; color: var(--muted);"><p>Aucune diffusion répertoriée pour ce jour.</p></div>';
+    return;
+  }
+
+  grid.innerHTML = items.map(item => {
+    const cd = formatCountdown(item.airing_at);
+    const safeTitle = (item.title || 'Anime').replace(/"/g, '&quot;');
+    const safeTitleJs = JSON.stringify(item.title || '');
+    const safeRomaji = (item.title_romaji || '').replace(/"/g, '&quot;');
+    const posterUrl = item.poster || item.banner || '';
+    const epNum = item.episode || 1;
+    const scoreBadge = item.score ? `<span class="schedule-score">★ ${item.score}</span>` : '';
+    const genresHtml = (item.genres || []).map(g => `<span class="schedule-tag">${g}</span>`).join('');
+    const timeDisplay = item.time_str ? `🕒 ${item.time_str}` : '';
+
+    return `
+      <div class="schedule-card" onclick='openAnimeFromSchedule(${safeTitleJs}, ${epNum})'>
+        <div class="schedule-card-header">
+          <img class="schedule-card-img" src="${posterUrl}" alt="${safeTitle}" loading="lazy" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'300\\' height=\\'160\\' fill=\\'%23222\\'><rect width=\\'100%\\' height=\\'100%\\'/></svg>'">
+          <div class="schedule-card-overlay"></div>
+          <span class="schedule-card-ep-badge">EP ${epNum < 10 ? '0' + epNum : epNum}</span>
+          <span class="schedule-card-status-badge ${cd.isAvailable ? 'badge-status-available' : 'badge-status-countdown'}" data-schedule-airing="${item.airing_at}">
+            ${cd.isAvailable ? '⚡ DISPONIBLE' : '⏳ ' + cd.text}
+          </span>
+          ${timeDisplay ? `<span class="schedule-card-time">${timeDisplay}</span>` : ''}
+        </div>
+        <div class="schedule-card-body">
+          <div>
+            <div class="schedule-card-title" title="${safeTitle}">${safeTitle}</div>
+            ${safeRomaji && safeRomaji !== item.title ? `<div class="schedule-card-romaji" title="${safeRomaji}">${safeRomaji}</div>` : ''}
+            <div class="schedule-card-tags">
+              ${scoreBadge}
+              ${genresHtml}
+            </div>
+          </div>
+          <div class="schedule-card-actions" onclick="event.stopPropagation()">
+            <button class="btn" style="padding:7px 10px; font-size:0.76rem; display:inline-flex; align-items:center; justify-content:center; gap:5px;" onclick='openAnimeFromSchedule(${safeTitleJs}, ${epNum})'>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <span>Épisode ${epNum}</span>
+            </button>
+            <button class="btn btn-secondary" style="padding:7px 10px; font-size:0.76rem;" onclick='searchScheduleAnimeDetail(${safeTitleJs})'>
+              Fiche
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function openAnimeFromSchedule(title, epNum) {
+  const searchInput = document.getElementById('searchInput');
+  const searchType = document.getElementById('searchType');
+  if (searchInput && searchType) {
+    searchInput.value = title;
+    searchType.value = 'anime';
+    await switchAnimeSubTab('catalog', false);
+    await runSearch();
+    const resultsPanel = document.getElementById('postersGrid');
+    if (resultsPanel) resultsPanel.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+async function searchScheduleAnimeDetail(title) {
+  const searchInput = document.getElementById('searchInput');
+  const searchType = document.getElementById('searchType');
+  if (searchInput && searchType) {
+    searchInput.value = title;
+    searchType.value = 'anime';
+    await switchAnimeSubTab('catalog', false);
+    await runSearch();
+  }
+}
+
+// --- Discord Rich Presence (RPC) ---
+let lastDiscordRpcSync = 0;
+function updateDiscordRpc(isPaused = false) {
+  const video = document.getElementById('inAppVideo');
+  if (!video || !inAppCurrentMedia) return;
+  const now = Date.now();
+  if (!isPaused && now - lastDiscordRpcSync < 4000) return;
+  lastDiscordRpcSync = now;
+
+  const curT = video.currentTime || 0;
+  const durT = video.duration || 0;
+  const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : null);
+  const e = inAppCurrentMedia.episode || (document.getElementById('episodeSelect') ? parseInt(document.getElementById('episodeSelect').value) : null);
+
+  api('/api/discord-rpc/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: inAppCurrentMedia.name || inAppCurrentTitle || 'KINO',
+      media_type: inAppCurrentMedia.type || 'movie',
+      season: s,
+      episode: e,
+      current_time: curT,
+      duration: durT,
+      poster: inAppCurrentMedia.poster || '',
+      is_paused: isPaused
+    })
+  }).catch(() => {});
+}
+
+function clearDiscordRpc() {
+  api('/api/discord-rpc/clear', { method: 'POST' }).catch(() => {});
+}
+
 let lastActiveLibraryTab = 'watchlist';
 
 async function switchTab(tab) {
@@ -7809,6 +8348,10 @@ async function switchTab(tab) {
   if (comP) comP.style.display = 'none';
   const aniP = document.getElementById('animePanel');
   if (aniP) aniP.style.display = 'none';
+  const asPanel = document.getElementById('animeSchedulePanel');
+  if (asPanel) asPanel.style.display = 'none';
+  const asNav = document.getElementById('animeSubNav');
+  if (asNav) asNav.style.display = (tab === 'anime') ? 'flex' : 'none';
   document.getElementById('postersGrid').style.display = 'grid';
   document.getElementById('catalogHeader').style.display = 'flex';
   const gf = document.getElementById('genreFilters');
@@ -7846,15 +8389,19 @@ async function switchTab(tab) {
     renderGenreChipsForTab('classics');
     selectGenre(activeGenre, document.querySelector(`#genreFilters .chip[data-genre="${activeGenre}"]`) || document.querySelector('#genreFilters .chip'));
   } else if (tab === 'anime') {
-    if (gf) gf.style.display = 'flex';
-    if (sw) sw.style.display = 'flex';
-    if (wlw) wlw.style.display = 'none';
     if (statsEl) statsEl.style.display = 'none';
     document.getElementById('homeResumeSection').style.display = 'none';
     document.getElementById('searchType').value = 'anime';
-    renderGenreChipsForTab('anime');
-    activeGenre = '';
-    selectGenre('', document.querySelector('#genreFilters .chip'));
+    if (currentAnimeSubTab === 'schedule') {
+      await switchAnimeSubTab('schedule');
+    } else {
+      await switchAnimeSubTab('catalog', false);
+      if (gf) gf.style.display = 'flex';
+      if (sw) sw.style.display = 'flex';
+      renderGenreChipsForTab('anime');
+      activeGenre = '';
+      selectGenre('', document.querySelector('#genreFilters .chip'));
+    }
   } else if (tab === 'watchlist') {
     if (gf) gf.style.display = 'none';
     if (sw) sw.style.display = 'none';
@@ -8272,10 +8819,11 @@ async function saveConfig() {
   const hdr_mode = document.getElementById('cfgHdrMode') ? document.getElementById('cfgHdrMode').value : 'sdr_pref';
   const audio_mode = document.getElementById('cfgAudioMode') ? document.getElementById('cfgAudioMode').value : 'voice_boost';
   const rd_retention_days = document.getElementById('cfgRdRetention') ? parseInt(document.getElementById('cfgRdRetention').value || '0', 10) : 0;
+  const discord_rpc = document.getElementById('cfgDiscordRpc') ? document.getElementById('cfgDiscordRpc').checked : true;
   await api('/api/config', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({debrid_provider, rd_token: token, download_dir: dir, player_mode, pref_lang, pref_quality, hdr_mode, audio_mode, rd_retention_days})
+    body: JSON.stringify({debrid_provider, rd_token: token, download_dir: dir, player_mode, pref_lang, pref_quality, hdr_mode, audio_mode, rd_retention_days, discord_rpc})
   });
   window.kinoPlayerMode = player_mode;
   window.kinoHdrMode = hdr_mode;
@@ -11001,6 +11549,7 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
   startRemotePolling();
   dismissUndoSkip();
   loadInAppIntroData(streamUrl, inAppCurrentMedia);
+  updateDiscordRpc(false);
   const skipCard = document.getElementById('inAppSkipIntroCard');
   if (skipCard) skipCard.style.display = 'none';
   const nextCard = document.getElementById('inAppNextEpCard');
@@ -11158,6 +11707,7 @@ function closeInAppPlayer() {
   if (nextCard) nextCard.style.display = 'none';
   dismissUndoSkip();
   inAppIntroData = null;
+  clearDiscordRpc();
   if (video) {
     if (inAppCurrentMedia) {
       const pct = (video.duration > 0) ? Math.round((video.currentTime / video.duration) * 100) : 0;
@@ -11323,6 +11873,7 @@ let inAppLastSaveTime = 0;
 if (inAppVideoEl) {
   inAppVideoEl.addEventListener('play', () => {
     updatePlayPauseBtn(true);
+    updateDiscordRpc(false);
     if (!traktScrobbledStarted && inAppCurrentMedia) {
       traktScrobbledStarted = true;
       const pct = (inAppVideoEl.duration > 0) ? Math.round((inAppVideoEl.currentTime / inAppVideoEl.duration) * 100) : 0;
@@ -11332,6 +11883,7 @@ if (inAppVideoEl) {
   });
   inAppVideoEl.addEventListener('pause', () => {
     updatePlayPauseBtn(false);
+    updateDiscordRpc(true);
     if (inAppOverlayEl) inAppOverlayEl.classList.remove('idle');
     if (inAppCurrentMedia) {
       const pct = (inAppVideoEl.duration > 0) ? Math.round((inAppVideoEl.currentTime / inAppVideoEl.duration) * 100) : 0;
@@ -11341,8 +11893,10 @@ if (inAppVideoEl) {
   });
   inAppVideoEl.addEventListener('seeked', () => {
     broadcastWpEvent('seek', inAppVideoEl.currentTime);
+    updateDiscordRpc(inAppVideoEl.paused);
   });
   inAppVideoEl.addEventListener('timeupdate', () => {
+    updateDiscordRpc(inAppVideoEl.paused);
     if (inAppActiveCues.length > 0) {
       updateInAppSubtitleOverlay(inAppVideoEl.currentTime);
     }
@@ -11810,6 +12364,20 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"status": "ok", "checked": True, **res, "filler": res})
                 return
 
+            if parsed.path == "/api/anime/schedule":
+                force = params.get("force") == "1"
+                sched = anime_engine.get_airing_schedule(force_refresh=force)
+                self.send_json(sched)
+                return
+
+            if parsed.path == "/api/discord-rpc/status":
+                self.send_json({
+                    "status": "ok",
+                    "connected": getattr(discord_rpc.discord_rpc, "_connected", False),
+                    "enabled": discord_rpc.discord_rpc.enabled,
+                })
+                return
+
             if parsed.path == "/api/community/curated":
                 curated = community_lists.get_curated_lists()
                 self.send_json({"status": "ok", "lists": curated, "collections": curated})
@@ -11940,6 +12508,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "hdr_mode": cfg.get("hdr_mode", "sdr_pref"),
                     "audio_mode": cfg.get("audio_mode", "voice_boost"),
                     "rd_retention_days": ret_days,
+                    "discord_rpc": cfg.get("discord_rpc", True),
                 })
                 return
 
@@ -12191,7 +12760,38 @@ class RequestHandler(BaseHTTPRequestHandler):
                     updates["audio_mode"] = body["audio_mode"].strip()
                 if "rd_retention_days" in body and body["rd_retention_days"] is not None:
                     updates["rd_retention_days"] = int(body["rd_retention_days"])
+                if "discord_rpc" in body:
+                    updates["discord_rpc"] = bool(body["discord_rpc"])
                 save_config(updates)
+                self.send_json({"ok": True})
+                return
+
+            if parsed.path == "/api/discord-rpc/update":
+                t = body.get("title", "")
+                mtype = body.get("media_type", "movie")
+                season = body.get("season")
+                episode = body.get("episode")
+                ep_title = body.get("ep_title")
+                cur_t = float(body.get("current_time", 0))
+                dur_t = float(body.get("duration", 0))
+                poster = body.get("poster")
+                is_p = bool(body.get("is_paused", False))
+                discord_rpc.discord_rpc.set_activity(
+                    title=t,
+                    media_type=mtype,
+                    season=season,
+                    episode=episode,
+                    ep_title=ep_title,
+                    current_time=cur_t,
+                    duration=dur_t,
+                    poster_url=poster,
+                    is_paused=is_p,
+                )
+                self.send_json({"ok": True})
+                return
+
+            if parsed.path == "/api/discord-rpc/clear":
+                discord_rpc.discord_rpc.clear()
                 self.send_json({"ok": True})
                 return
 

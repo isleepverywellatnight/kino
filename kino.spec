@@ -22,6 +22,7 @@ hiddenimports = [
     'anime_engine',
     'community_lists',
     'intro_engine',
+    'discord_rpc',
     'app',
     'sqlite3',
     'clr',

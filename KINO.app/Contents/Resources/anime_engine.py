@@ -9,12 +9,20 @@ Espace spécialisé pour l'animation japonaise :
 - Zéro clé API requise (100% public et gratuit)
 """
 
+import datetime
 import json
 import logging
 import re
+import time
 import urllib.parse
 import urllib.request
 from typing import Dict, Any, List, Optional
+
+try:
+    from kino_db import db_cache_get, db_cache_set
+except ImportError:
+    def db_cache_get(k): return None
+    def db_cache_set(k, v, ttl_sec=1800): pass
 
 logger = logging.getLogger("kino.anime")
 
@@ -348,4 +356,128 @@ def search_anime(query: str, limit: int = 20) -> List[Dict[str, Any]]:
         matched = [a for a in FALLBACK_ANIMES if q_lower in a["title"].lower() or q_lower in a.get("title_romaji", "").lower()]
         return matched if matched else []
     return res
+
+
+def get_airing_schedule() -> Dict[str, Any]:
+    """
+    Récupère le calendrier de diffusion Simulcast de la semaine via AniList GraphQL.
+    Organise les épisodes par jour (Aujourd'hui, Demain, etc.) avec compte à rebours.
+    """
+    cache_key = "anime_simulcast_schedule_v2"
+    cached = db_cache_get(cache_key)
+    if cached:
+        return cached
+
+    now = int(time.time())
+    start_time = now - 86400  # Les dernières 24h
+    end_time = now + 86400 * 6  # Les 6 prochains jours
+
+    query = """
+    query ($start: Int, $end: Int) {
+      Page(page: 1, perPage: 50) {
+        airingSchedules(airingAt_greater: $start, airingAt_lesser: $end, sort: TIME) {
+          id
+          airingAt
+          episode
+          timeUntilAiring
+          media {
+            id
+            idMal
+            title {
+              romaji
+              english
+              native
+            }
+            coverImage {
+              medium
+              large
+            }
+            bannerImage
+            format
+            genres
+            averageScore
+          }
+        }
+      }
+    }
+    """
+
+    req = urllib.request.Request(
+        "https://graphql.anilist.co",
+        data=json.dumps({"query": query, "variables": {"start": start_time, "end": end_time}}).encode("utf-8"),
+        headers={"Content-Type": "application/json", "User-Agent": "KINO-Desktop/2.0"},
+    )
+
+    days_map: Dict[str, List[Dict[str, Any]]] = {}
+    day_names_fr = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+
+    try:
+        with urllib.request.urlopen(req, timeout=5.5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            schedules = data.get("data", {}).get("Page", {}).get("airingSchedules", [])
+
+            now_dt = datetime.datetime.now()
+            today_date = now_dt.date()
+
+            for item in schedules:
+                media = item.get("media") or {}
+                fmt = media.get("format")
+                if fmt not in ("TV", "ONA", "TV_SHORT"):
+                    continue
+
+                titles = media.get("title") or {}
+                canonical = titles.get("english") or titles.get("romaji") or titles.get("native") or "Anime"
+                airing_at = item.get("airingAt", 0)
+                time_until = item.get("timeUntilAiring", 0)
+
+                dt = datetime.datetime.fromtimestamp(airing_at)
+                item_date = dt.date()
+
+                delta_days = (item_date - today_date).days
+                if delta_days == 0:
+                    day_label = "Aujourd'hui"
+                elif delta_days == 1:
+                    day_label = "Demain"
+                elif 0 < delta_days < 7:
+                    day_label = day_names_fr[dt.weekday()]
+                elif delta_days < 0:
+                    day_label = "Hier"
+                else:
+                    day_label = day_names_fr[dt.weekday()]
+
+                cover = (media.get("coverImage") or {}).get("large") or (media.get("coverImage") or {}).get("medium") or ""
+                score = media.get("averageScore")
+                score_str = f"{float(score)/10:.1f}" if score else ""
+
+                entry = {
+                    "id": media.get("id"),
+                    "id_mal": media.get("idMal"),
+                    "title": canonical,
+                    "title_romaji": titles.get("romaji", ""),
+                    "title_native": titles.get("native", ""),
+                    "episode": item.get("episode", 1),
+                    "airing_at": airing_at,
+                    "time_until": time_until,
+                    "is_available": time_until <= 0,
+                    "poster": cover,
+                    "banner": media.get("bannerImage") or "",
+                    "genres": (media.get("genres") or [])[:3],
+                    "score": score_str,
+                    "time_str": dt.strftime("%H:%M"),
+                }
+
+                if day_label not in days_map:
+                    days_map[day_label] = []
+                days_map[day_label].append(entry)
+
+            result = {
+                "ok": True,
+                "days": days_map,
+                "updated_at": now,
+            }
+            db_cache_set(cache_key, result, ttl_sec=1800)
+            return result
+    except Exception as e:
+        logger.error(f"Erreur AniList AiringSchedule: {e}")
+        return {"ok": False, "days": {}, "error": str(e)}
 
