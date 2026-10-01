@@ -20,7 +20,12 @@ if IS_WIN:
     from ctypes import wintypes
     user32 = ctypes.windll.user32
     WM_NCLBUTTONDOWN = 0x00A1
-    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = "--hide-scrollbars"
+    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
+        "--hide-scrollbars "
+        "--autoplay-policy=no-user-gesture-required "
+        "--enable-features=PlatformAudioDecoder,MediaFoundationClearPlay,MediaFoundationAudioDecoder "
+        "--disable-features=AudioServiceSandbox"
+    )
 else:
     user32 = None
     WM_NCLBUTTONDOWN = None
@@ -260,9 +265,12 @@ class WindowApi:
                 frame = w.native.frame()
                 screen = AppKit.NSScreen.mainScreen().frame()
                 top_left_y = int(screen.size.height - (frame.origin.y + frame.size.height))
-                is_zoomed = bool(w.native.isZoomed()) if hasattr(w.native, "isZoomed") else bool(getattr(w, "maximized", False))
+                is_fs = bool(getattr(w, "fullscreen", False))
+                if hasattr(w.native, "styleMask"):
+                    is_fs = is_fs or bool(w.native.styleMask() & (1 << 14))
                 return {
                     "maximized": is_zoomed,
+                    "fullscreen": is_fs,
                     "width": int(frame.size.width),
                     "height": int(frame.size.height),
                     "x": int(frame.origin.x),
@@ -271,6 +279,7 @@ class WindowApi:
                 }
             return {
                 "maximized": bool(getattr(w, "maximized", False)),
+                "fullscreen": bool(getattr(w, "fullscreen", False)),
                 "width": int(w.width),
                 "height": int(w.height),
                 "x": int(w.x),

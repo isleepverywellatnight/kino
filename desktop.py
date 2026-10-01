@@ -265,9 +265,12 @@ class WindowApi:
                 frame = w.native.frame()
                 screen = AppKit.NSScreen.mainScreen().frame()
                 top_left_y = int(screen.size.height - (frame.origin.y + frame.size.height))
-                is_zoomed = bool(w.native.isZoomed()) if hasattr(w.native, "isZoomed") else bool(getattr(w, "maximized", False))
+                is_fs = bool(getattr(w, "fullscreen", False))
+                if hasattr(w.native, "styleMask"):
+                    is_fs = is_fs or bool(w.native.styleMask() & (1 << 14))
                 return {
                     "maximized": is_zoomed,
+                    "fullscreen": is_fs,
                     "width": int(frame.size.width),
                     "height": int(frame.size.height),
                     "x": int(frame.origin.x),
@@ -276,6 +279,7 @@ class WindowApi:
                 }
             return {
                 "maximized": bool(getattr(w, "maximized", False)),
+                "fullscreen": bool(getattr(w, "fullscreen", False)),
                 "width": int(w.width),
                 "height": int(w.height),
                 "x": int(w.x),

@@ -5698,7 +5698,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><rect x="12" y="9" width="8" height="6" rx="1" fill="currentColor"/>
           </svg>
         </button>
-        <button class="inapp-btn inapp-btn-icon" onclick="toggleInAppFullscreen()" title="Plein écran (F)">
+        <button class="inapp-btn inapp-btn-icon" id="inAppFsBtn" onclick="toggleInAppFullscreen()" title="Plein écran (F)">
           <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
           </svg>
@@ -10251,6 +10251,11 @@ async function windowAction(action) {
         setTimeout(syncWindowState, 80);
         return;
       }
+      if (action === 'fullscreen' && window.pywebview.api.toggle_fullscreen) {
+        window.pywebview.api.toggle_fullscreen();
+        setTimeout(syncWindowState, 80);
+        return;
+      }
       if (action === 'close' && window.pywebview.api.close) {
         window.pywebview.api.close();
         return;
@@ -10343,20 +10348,60 @@ function initResizeHandles() {
   });
 }
 
+function updateInAppFsBtnUI() {
+  const fsBtn = document.getElementById('inAppFsBtn');
+  if (!fsBtn) return;
+  const isFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  if (isFs) {
+    fsBtn.title = "Quitter le plein écran (F ou Échap)";
+    fsBtn.innerHTML = `
+      <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+      </svg>
+    `;
+  } else {
+    fsBtn.title = "Plein écran (F)";
+    fsBtn.innerHTML = `
+      <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+      </svg>
+    `;
+  }
+}
+
 async function syncWindowState() {
   try {
+    let isFs = false;
     if (window.pywebview && window.pywebview.api && window.pywebview.api.get_state) {
       const state = await window.pywebview.api.get_state();
-      if (state && state.maximized) {
-        document.body.classList.add('is-maximized');
-      } else {
-        document.body.classList.remove('is-maximized');
+      if (state) {
+        if (state.maximized) {
+          document.body.classList.add('is-maximized');
+        } else {
+          document.body.classList.remove('is-maximized');
+        }
+        if (state.fullscreen) {
+          isFs = true;
+          document.body.classList.add('is-fullscreen');
+        } else {
+          document.body.classList.remove('is-fullscreen');
+        }
       }
     }
+    const isHtmlFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    if (isHtmlFs) {
+      isFs = true;
+      document.body.classList.add('is-fullscreen');
+    } else if (!window.pywebview) {
+      document.body.classList.remove('is-fullscreen');
+    }
+    updateInAppFsBtnUI();
   } catch (e) {}
 }
 
 window.addEventListener('resize', syncWindowState);
+document.addEventListener('fullscreenchange', syncWindowState);
+document.addEventListener('webkitfullscreenchange', syncWindowState);
 setInterval(syncWindowState, 1500);
 
 const SVG_ICONS = {
@@ -11181,26 +11226,58 @@ function inAppNextTrack() {
   }
 }
 
-function toggleInAppFullscreen() {
-  if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_fullscreen && /Mac/i.test(navigator.platform || navigator.userAgent)) {
-    window.pywebview.api.toggle_fullscreen();
-    return;
+async function toggleInAppFullscreen() {
+  resetInAppIdleTimer();
+
+  // 1. Application de bureau pywebview native (Windows & macOS)
+  if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.toggle_fullscreen === 'function') {
+    try {
+      window.pywebview.api.toggle_fullscreen();
+      setTimeout(syncWindowState, 80);
+      return;
+    } catch (e) {
+      console.debug('pywebview toggle_fullscreen fallback:', e);
+    }
   }
+
+  // 2. Appel backend au contrôleur de fenêtre KINO
+  try {
+    const res = await api('/api/window/action', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'fullscreen'})
+    });
+    if (res && res.ok) {
+      setTimeout(syncWindowState, 80);
+      return;
+    }
+  } catch (e) {}
+
+  // 3. Fallback Web Standard (HTML5 Fullscreen API pour navigateur normal)
+  const docEl = document.documentElement;
   const overlay = document.getElementById('inAppPlayerOverlay');
-  if (!overlay) return;
-  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-  if (!fsEl) {
-    if (overlay.requestFullscreen) {
-      overlay.requestFullscreen().catch(() => {});
-    } else if (overlay.webkitRequestFullscreen) {
-      overlay.webkitRequestFullscreen();
+  const target = overlay || docEl;
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+
+  try {
+    if (!fsEl) {
+      if (target.requestFullscreen) {
+        await target.requestFullscreen();
+      } else if (target.webkitRequestFullscreen) {
+        target.webkitRequestFullscreen();
+      } else if (docEl.requestFullscreen) {
+        await docEl.requestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
     }
-  } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen().catch(() => {});
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    }
+    setTimeout(syncWindowState, 60);
+  } catch (err) {
+    console.debug('HTML5 fullscreen error:', err);
   }
 }
 
@@ -11383,6 +11460,11 @@ if (inAppVideoEl) {
     }
     toggleInAppPlay();
   });
+  inAppVideoEl.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleInAppFullscreen();
+  });
 }
 
 if (inAppOverlayEl) {
@@ -11513,8 +11595,8 @@ window.addEventListener('keydown', (e) => {
       toggleShortcutsModal();
       return;
     }
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+    if (document.fullscreenElement || document.body.classList.contains('is-fullscreen')) {
+      toggleInAppFullscreen();
     } else {
       closeInAppPlayer();
     }
