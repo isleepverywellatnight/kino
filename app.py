@@ -2120,7 +2120,7 @@ def is_plausible_torrent_size(t, media_type="movie", runtime_minutes=None):
     return torrent_engine.is_plausible_torrent_size(t, media_type=media_type, runtime_minutes=runtime_minutes)
 
 
-def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=None, provider=None, runtime_minutes=None, sort_by="score", query_title=""):
+def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=None, provider=None, runtime_minutes=None, sort_by="score", query_title="", release_year=""):
     prov, token = _get_provider_and_token(rd_token, provider)
     prov_meta = DEBRID_PROVIDERS.get(prov, DEBRID_PROVIDERS["realdebrid"])
     tio_key = prov_meta.get("torrentio_key", "")
@@ -2130,18 +2130,25 @@ def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=
     pref_quality = cfg.get("pref_quality", "4k")
     hdr_mode = cfg.get("hdr_mode", "sdr_pref")
 
-    if runtime_minutes is None and imdb_id and media_type == "movie":
+    clean_q = query_title.strip() if query_title else ""
+    clean_yr = str(release_year).strip() if release_year else ""
+
+    if imdb_id and (not clean_q or not clean_yr or runtime_minutes is None):
         try:
-            m_info = get_media_meta(imdb_id, "movie")
-            rt_str = str((m_info or {}).get("runtime") or "")
-            m_rt = re.search(r"(\d+)", rt_str)
-            if m_rt:
-                runtime_minutes = int(m_rt.group(1))
+            m_info = get_media_meta(imdb_id, media_type if media_type in ("movie", "series", "anime") else "movie")
+            if not clean_q:
+                clean_q = (m_info or {}).get("name", "").strip()
+            if not clean_yr:
+                clean_yr = str((m_info or {}).get("year") or (m_info or {}).get("releaseInfo") or "").strip()
+            if runtime_minutes is None and media_type == "movie":
+                rt_str = str((m_info or {}).get("runtime") or "")
+                m_rt = re.search(r"(\d+)", rt_str)
+                if m_rt:
+                    runtime_minutes = int(m_rt.group(1))
         except Exception:
             pass
 
-    clean_q = query_title.strip() if query_title else ""
-    cache_key = f"multi_engine:{prov}:{media_type}:{imdb_id}:{season}:{episode}:{bool(token)}:{sort_by}:{clean_q}"
+    cache_key = f"multi_engine_v4:{prov}:{media_type}:{imdb_id}:{season}:{episode}:{bool(token)}:{sort_by}:{clean_q}:{clean_yr}"
 
     def _fetch():
         return torrent_engine.search_multi_torrents(
@@ -2160,6 +2167,7 @@ def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=
             http_json_fn=http_json,
             search_apibay_fn=search_apibay,
             query_title=clean_q,
+            release_year=clean_yr,
         )
 
     res = list(cached_get(cache_key, 180, _fetch) or [])
@@ -3003,7 +3011,7 @@ def resolve_auto_stream_episode(params):
                 })
             return cached["download"]
 
-    torrents = search_torrentio(imdb_id, "series", s, ep, rd_token=token, query_title=name) if imdb_id else []
+    torrents = search_torrentio(imdb_id, "series", s, ep, rd_token=token, query_title=name, release_year=year) if imdb_id else []
     if not torrents:
         raise RuntimeError(f"Aucun flux trouvé pour {name} S{s:02d}E{ep:02d}.")
 
@@ -9828,6 +9836,12 @@ async function loadTorrents(params, scroll = true) {
   if (!params.runtime && currentMedia && currentMedia.runtime) {
     params.runtime = currentMedia.runtime;
   }
+  if (!params.year && currentMedia && (currentMedia.year || currentMedia.releaseInfo)) {
+    params.year = currentMedia.year || currentMedia.releaseInfo;
+  }
+  if (!params.q && currentMedia && currentMedia.name) {
+    params.q = currentMedia.name;
+  }
 
   const qs = new URLSearchParams(params).toString();
   try {
@@ -11830,6 +11844,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 season = params.get("season", 1)
                 episode = params.get("episode", 1)
                 q = params.get("q") or params.get("title", "")
+                release_year = params.get("year", "")
                 runtime = params.get("runtime", "")
                 sort_by = params.get("sort_by", "score")
 
@@ -11843,7 +11858,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 clean_q = q.split(" — ")[0].strip() if " — " in q else q.strip()
                 if imdb_id:
                     try:
-                        torrents.extend(search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, sort_by=sort_by, query_title=clean_q))
+                        torrents.extend(search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, sort_by=sort_by, query_title=clean_q, release_year=release_year))
                     except Exception:
                         pass
                 if not torrents and (q or clean_q):
@@ -12094,7 +12109,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                         pass
 
                 is_series = mtype in ("series", "anime", "tv")
-                torrents = search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, query_title=series_name) if imdb_id else []
+                release_yr = body.get("year", "")
+                torrents = search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, query_title=series_name, release_year=release_yr) if imdb_id else []
                 if not torrents and (title or series_name):
                     torrents = search_apibay(series_name or title)
                 torrents = [t for t in torrents if is_plausible_torrent_size(t, media_type=mtype, runtime_minutes=runtime_min)]

@@ -268,13 +268,96 @@ def is_plausible_torrent_size(item: dict, media_type: str = "movie", runtime_min
     return True
 
 
-def score_torrent(item: dict, pref_lang: str = "vf", pref_quality: str = "4k", hdr_mode: str = "sdr_pref") -> int:
+def clean_title_for_comparison(s: str) -> str:
+    """Nettoie le titre d'une release ou d'une œuvre pour une comparaison rigoureuse."""
+    if not s:
+        return ""
+    # Retirer les tags d'équipes au début : [SubsPlease], [Erai-raws], (AnimeKayo), etc.
+    s = re.sub(r'^\s*\[[^\]]+\]\s*', '', s)
+    s = re.sub(r'^\s*\([^\)]+\)\s*', '', s)
+    # Remplacer points et underscores par des espaces
+    s = re.sub(r'[\._]', ' ', s)
+    # Retirer les années isolées entre parenthèses ou crochets : (2004), [2004]
+    s = re.sub(r'[\(\[\{]\s*(?:19\d\d|20\d\d)\s*[\)\]\}]', ' ', s)
+    # Tronquer à partir du marqueur de saison/épisode/année : S01E02, S1E2, - 02, 2004, etc.
+    s = re.sub(
+        r'\s+(?:s\d{1,2}\s*e\d{1,3}|s\d{1,2}|e\d{1,3}|\d{1,2}x\d{1,2}|-\s*s\d{1,2}|-\s*\d{1,4}|\b(?:19\d\d|20\d\d)\b).*$',
+        '',
+        s,
+        flags=re.IGNORECASE
+    )
+    s = re.sub(r'^[\s\-_:]+|[\s\-_:]+$', '', s)
+    return re.sub(r'\s+', ' ', s).strip().lower()
+
+
+def extract_release_years(text: str) -> list:
+    """Extrait toutes les années de production valides (1920-2035) présentes dans une chaîne."""
+    return [int(y) for y in re.findall(r'\b(19[2-9]\d|20[0-3]\d)\b', text or '')]
+
+
+def is_valid_release_for_show(release_title: str, target_title: str, release_year: str = None) -> bool:
+    """Vérifie si le titre de la release correspond bien à l'œuvre ciblée et élimine les faux positifs."""
+    if not target_title or not target_title.strip():
+        return True
+
+    t_clean = clean_title_for_comparison(target_title)
+    r_clean = clean_title_for_comparison(release_title)
+
+    if not r_clean:
+        return False
+
+    candidates = [t_clean]
+    if ":" in target_title:
+        candidates.extend([clean_title_for_comparison(p) for p in target_title.split(":")])
+    if " - " in target_title:
+        candidates.extend([clean_title_for_comparison(p) for p in target_title.split(" - ")])
+    candidates = [c for c in candidates if len(c) >= 2]
+
+    matched = False
+    for cand in candidates:
+        if r_clean == cand:
+            matched = True
+            break
+        norm_c = re.sub(r'[^a-z0-9]', '', cand)
+        norm_r = re.sub(r'[^a-z0-9]', '', r_clean)
+        if norm_c and norm_c == norm_r:
+            matched = True
+            break
+
+    if not matched:
+        return False
+
+    # Validation stricte de l'année si renseignée (ex: Monster 2004 vs Monster 2026/Ed Gein)
+    if release_year:
+        try:
+            t_yr = int(str(release_year)[:4])
+            r_years = extract_release_years(release_title)
+            for ry in r_years:
+                if abs(ry - t_yr) > 1:
+                    return False
+        except Exception:
+            pass
+
+    return True
+
+
+def score_torrent(
+    item: dict,
+    pref_lang: str = "vf",
+    pref_quality: str = "4k",
+    hdr_mode: str = "sdr_pref",
+    media_type: str = "movie",
+    runtime_minutes: float = None,
+    target_year: str = "",
+) -> int:
     """
     Calcule un score de pertinence cinéphile pour classer les flux du meilleur au moins bon :
     - Bonus massif pour le débridage instantané (en cache Real-Debrid/AllDebrid/TorBox).
     - Alignement parfait avec les préférences de langue (VFF > MULTI > VFQ > VOSTFR).
     - Alignement avec la qualité demandée (REMUX > BluRay > WEB-DL).
     - Respect des préférences d'écran (SDR pour écrans classiques, HDR/DV pour écrans compatibles).
+    - Vérification rigoureuse de la taille selon le type (film vs épisode de série).
+    - Bonus pour l'année exacte de production et élimination des homonymes d'autres années.
     """
     details = item.get("parsed_details") or parse_release_details(item.get("title") or "", item.get("meta") or "")
     score = 0
@@ -380,8 +463,8 @@ def score_torrent(item: dict, pref_lang: str = "vf", pref_quality: str = "4k", h
     seeders = int(item.get("seeders") or 0)
     score += min(seeders * 2, 80)
 
-    # 7. Pénalité d'élimination pour les fakes
-    if not is_plausible_torrent_size(item):
+    # 7. Pénalité d'élimination pour les fakes et tailles invalides
+    if not is_plausible_torrent_size(item, media_type=media_type, runtime_minutes=runtime_minutes):
         score -= 10000
 
     title_up = (item.get("title") or "").upper()
@@ -411,6 +494,18 @@ def score_torrent(item: dict, pref_lang: str = "vf", pref_quality: str = "4k", h
         score += 260
         if "nyaa" in (item.get("source") or "").lower() or "nyaasi" in raw_title_lower:
             score += 80
+
+    # 10. Correspondance d'année de production (Évite de classer un remake ou un docu homonyme)
+    if target_year:
+        try:
+            t_yr = int(str(target_year)[:4])
+            r_years = extract_release_years(item.get("title") or "")
+            if t_yr in r_years:
+                score += 500  # Bonus massif : année de production certifiée dans le titre
+            elif r_years and any(abs(ry - t_yr) > 1 for ry in r_years):
+                score -= 10000  # Année nettement divergente (ex: 2026 vs 2004) -> faux positif
+        except Exception:
+            pass
 
     return score
 
@@ -520,6 +615,7 @@ def search_multi_torrents(
     http_json_fn=None,
     search_apibay_fn=None,
     query_title: str = "",
+    release_year: str = "",
 ) -> list:
     """
     Exécute une recherche parallèle agressive sur de multiples indexeurs (Torrentio Main, Torrentio FR,
@@ -669,15 +765,29 @@ def search_multi_torrents(
             seen_hashes[ih] = item
             merged.append(item)
 
-    # Filtrage strict des faux torrents et des CAMs
-    valid_items = [
-        t for t in merged if is_plausible_torrent_size(t, media_type=media_type, runtime_minutes=runtime_minutes)
-    ]
+    # Filtrage strict des faux torrents, CAMs et des séries sans rapport avec l'œuvre ciblée
+    filtered_items = []
+    for t in merged:
+        if not is_plausible_torrent_size(t, media_type=media_type, runtime_minutes=runtime_minutes):
+            continue
+        rtitle = t.get("title") or ""
+        if query_title and not is_valid_release_for_show(rtitle, query_title, release_year=release_year):
+            continue
+        filtered_items.append(t)
+
+    # Filet de sécurité : si le filtrage par titre a été trop strict, préserver les torrents plausibles
+    if not filtered_items and merged:
+        filtered_items = [
+            t for t in merged if is_plausible_torrent_size(t, media_type=media_type, runtime_minutes=runtime_minutes)
+        ]
+
+    valid_items = filtered_items
 
     # Attribution du score à chaque item
     for t in valid_items:
         t["score"] = score_torrent(
-            t, pref_lang=pref_lang, pref_quality=pref_quality, hdr_mode=hdr_mode
+            t, pref_lang=pref_lang, pref_quality=pref_quality, hdr_mode=hdr_mode,
+            media_type=media_type, runtime_minutes=runtime_minutes, target_year=release_year
         )
 
     # Tri selon le critère choisi
