@@ -28,6 +28,7 @@ import trakt_engine
 import addon_manager
 import anime_engine
 import community_lists
+import intro_engine
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -5576,10 +5577,14 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <video id="inAppVideo" playsinline></video>
   <div id="inAppSubOverlay" style="position:absolute; left:50%; bottom:86px; transform:translateX(-50%); z-index:12; max-width:82%; text-align:center; pointer-events:none; font-size:1.32rem; font-weight:600; color:#fafafa; text-shadow:0 2px 6px rgba(0,0,0,0.95), 0 0 12px rgba(0,0,0,0.85); background:rgba(9,9,11,0.68); padding:5px 14px; border-radius:6px; display:none; line-height:1.38;"></div>
   <div id="inAppStatusToast" class="inapp-toast"></div>
-  <!-- Bouton Skip Intro (+85s) -->
+  <!-- Bouton Skip Intro Intelligent -->
   <div id="inAppSkipIntroCard" class="inapp-floating-card">
-    <button class="btn" style="padding:7px 14px; font-size:0.82rem;" onclick="skipInAppIntro()">⏭ Passer l'intro (+85s)</button>
+    <button class="btn" id="inAppSkipIntroBtn" style="padding:7px 14px; font-size:0.82rem;" onclick="skipInAppIntro()">⏭ Passer l'intro</button>
     <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="dismissSkipIntro()" title="Masquer">✕</button>
+  </div>
+  <!-- Bouton Annuler le saut (Undo) -->
+  <div id="inAppUndoSkipCard" class="inapp-floating-card" style="display:none; bottom:86px; border-color:rgba(124,58,237,0.5); background:rgba(18,18,24,0.92);">
+    <button class="btn btn-secondary" id="inAppUndoSkipBtn" style="padding:6px 12px; font-size:0.80rem; border-color:rgba(124,58,237,0.7); color:#ddd6fe;" onclick="undoInAppSkip()">↩ Revenir en arrière</button>
   </div>
   <!-- Carte Prochain épisode dans 10s -->
   <div id="inAppNextEpCard" class="inapp-floating-card">
@@ -10370,6 +10375,9 @@ let inAppCurrentTitle = '';
 let inAppIdleTimeout = null;
 let inAppFallbackTimer = null;
 let inAppIsDraggingVol = false;
+let inAppIntroData = null;
+let inAppUndoTimer = null;
+let inAppUndoTargetSec = 0;
 
 function formatTime(sec) {
   if (!sec || isNaN(sec) || sec < 0) return '00:00';
@@ -10802,13 +10810,93 @@ async function captureInAppScreenshot() {
   }
 }
 
+async function loadInAppIntroData(streamUrl, media) {
+  inAppIntroData = null;
+  dismissUndoSkip();
+  if (!media) return;
+  const isSeriesOrAnime = Boolean((media.type === 'series' || media.type === 'anime') || (inAppPlaylist && inAppPlaylist.length > 1));
+  if (!isSeriesOrAnime) return;
+
+  const s = media.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : 1);
+  const e = media.episode || (document.getElementById('episodeSelect') ? parseInt(document.getElementById('episodeSelect').value) : 1);
+  const title = media.name || media.title || inAppCurrentTitle || '';
+  const mtype = media.type || 'series';
+  const imdbId = media.id || '';
+
+  try {
+    const params = new URLSearchParams({
+      title: title,
+      type: mtype,
+      season: s || 1,
+      episode: e || 1,
+      url: streamUrl || '',
+      imdb_id: imdbId || ''
+    });
+    const res = await api(`/api/intro-times?${params.toString()}`);
+    if (res) {
+      inAppIntroData = res;
+    }
+  } catch (err) {
+    console.debug('[KINO] Intro data non dispo:', err);
+  }
+}
+
+function showUndoSkip(origSec) {
+  clearTimeout(inAppUndoTimer);
+  inAppUndoTargetSec = Math.max(0, origSec);
+  const undoCard = document.getElementById('inAppUndoSkipCard');
+  const undoBtn = document.getElementById('inAppUndoSkipBtn');
+  if (undoCard) {
+    if (undoBtn) undoBtn.textContent = `↩ Revenir à ${formatTime(origSec)}`;
+    undoCard.style.display = 'flex';
+  }
+  inAppUndoTimer = setTimeout(() => {
+    dismissUndoSkip();
+  }, 7000);
+}
+
+function dismissUndoSkip() {
+  clearTimeout(inAppUndoTimer);
+  const undoCard = document.getElementById('inAppUndoSkipCard');
+  if (undoCard) undoCard.style.display = 'none';
+}
+
+function undoInAppSkip() {
+  dismissUndoSkip();
+  const video = document.getElementById('inAppVideo');
+  if (video && inAppUndoTargetSec >= 0) {
+    video.currentTime = inAppUndoTargetSec;
+    showInAppToast(`<strong>↩ Retour à ${formatTime(inAppUndoTargetSec)}</strong>`, 1400);
+  }
+}
+
 function skipInAppIntro() {
   resetInAppIdleTimer();
   inAppSkipIntroDismissed = true;
   const card = document.getElementById('inAppSkipIntroCard');
   if (card) card.style.display = 'none';
-  inAppSeekRel(85);
-  showInAppToast(`<strong>Intro passée (+85s)</strong>`, 1400);
+
+  const video = document.getElementById('inAppVideo');
+  if (!video) return;
+
+  const curT = video.currentTime || 0;
+  showUndoSkip(curT);
+
+  if (inAppIntroData && inAppIntroData.op && curT < inAppIntroData.op.end) {
+    const targetT = inAppIntroData.op.end + 0.5;
+    video.currentTime = targetT;
+    const prov = inAppIntroData.provider ? `<br><span style="font-size:0.75rem; color:var(--muted);">${inAppIntroData.provider}</span>` : '';
+    showInAppToast(`<strong>⏭ Intro passée (→ ${formatTime(inAppIntroData.op.end)})</strong>${prov}`, 2000);
+  } else if (inAppIntroData && inAppIntroData.recap && curT < inAppIntroData.recap.end) {
+    const targetT = inAppIntroData.recap.end + 0.5;
+    video.currentTime = targetT;
+    showInAppToast(`<strong>⏭ Récap passé (→ ${formatTime(inAppIntroData.recap.end)})</strong>`, 1800);
+  } else {
+    const isAnime = Boolean(inAppCurrentMedia && inAppCurrentMedia.type === 'anime');
+    const skipAmount = (inAppIntroData && inAppIntroData.default_skip) ? inAppIntroData.default_skip : (isAnime ? 90 : 60);
+    inAppSeekRel(skipAmount);
+    showInAppToast(`<strong>⏭ Intro passée (+${skipAmount}s)</strong>`, 1600);
+  }
 }
 
 function dismissSkipIntro() {
@@ -10866,6 +10954,8 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
   traktScrobbledStarted = false;
   traktScrobbledStop = false;
   startRemotePolling();
+  dismissUndoSkip();
+  loadInAppIntroData(streamUrl, inAppCurrentMedia);
   const skipCard = document.getElementById('inAppSkipIntroCard');
   if (skipCard) skipCard.style.display = 'none';
   const nextCard = document.getElementById('inAppNextEpCard');
@@ -11021,6 +11111,8 @@ function closeInAppPlayer() {
   if (skipCard) skipCard.style.display = 'none';
   const nextCard = document.getElementById('inAppNextEpCard');
   if (nextCard) nextCard.style.display = 'none';
+  dismissUndoSkip();
+  inAppIntroData = null;
   if (video) {
     if (inAppCurrentMedia) {
       const pct = (video.duration > 0) ? Math.round((video.currentTime / video.duration) * 100) : 0;
@@ -11191,23 +11283,54 @@ if (inAppVideoEl) {
         showInAppToast('✓ Scrobblé sur Trakt.tv (80%)', 2200);
       }
 
-      // Bouton Skip Intro (+85s) pour les séries entre 15s et 150s
-      const isSeriesNow = Boolean((inAppCurrentMedia && inAppCurrentMedia.type === 'series') || inAppPlaylist.length > 1);
+      // Bouton Skip Intro Intelligent & Adaptatif
+      const isSeriesNow = Boolean((inAppCurrentMedia && (inAppCurrentMedia.type === 'series' || inAppCurrentMedia.type === 'anime')) || inAppPlaylist.length > 1);
       const skipCard = document.getElementById('inAppSkipIntroCard');
+      const skipBtn = document.getElementById('inAppSkipIntroBtn');
       if (skipCard) {
-        if (isSeriesNow && !inAppSkipIntroDismissed && curT >= 15 && curT <= 150 && durT > 600) {
-          skipCard.style.display = 'flex';
+        if (isSeriesNow && !inAppSkipIntroDismissed && durT > 180) {
+          let shouldShow = false;
+          let btnText = "⏭ Passer l'intro";
+
+          if (inAppIntroData && inAppIntroData.op) {
+            const op = inAppIntroData.op;
+            if (curT >= Math.max(0, op.start - 2) && curT < op.end) {
+              shouldShow = true;
+              btnText = `⏭ Passer l'intro (→ ${formatTime(op.end)})`;
+            }
+          } else if (inAppIntroData && inAppIntroData.recap && curT >= Math.max(0, inAppIntroData.recap.start - 2) && curT < inAppIntroData.recap.end) {
+            shouldShow = true;
+            btnText = `⏭ Passer le récap (→ ${formatTime(inAppIntroData.recap.end)})`;
+          } else {
+            // Heuristique : entre 10s et 160s
+            if (curT >= 10 && curT <= 160) {
+              shouldShow = true;
+              const isAnime = Boolean(inAppCurrentMedia && inAppCurrentMedia.type === 'anime');
+              const skipSec = (inAppIntroData && inAppIntroData.default_skip) ? inAppIntroData.default_skip : (isAnime ? 90 : 60);
+              btnText = `⏭ Passer l'intro (+${skipSec}s)`;
+            }
+          }
+
+          if (shouldShow) {
+            if (skipBtn) skipBtn.innerHTML = btnText;
+            skipCard.style.display = 'flex';
+          } else {
+            skipCard.style.display = 'none';
+          }
         } else {
           skipCard.style.display = 'none';
         }
       }
 
-      // Carte Prochain épisode dans les 22 dernières secondes
+      // Carte Prochain épisode (fin de vidéo ou début de l'Ending détecté)
       const nextCard = document.getElementById('inAppNextEpCard');
       const hasNextTrack = inAppPlaylist.length > 1 && inAppPlaylistIndex < inAppPlaylist.length - 1;
       if (nextCard) {
         const remSec = durT - curT;
-        if (hasNextTrack && !inAppNextEpCancelled && durT > 300 && remSec > 0.5 && remSec <= 22) {
+        const isNearEnd = (hasNextTrack && !inAppNextEpCancelled && durT > 200 && remSec > 0.5 && remSec <= 22);
+        const isEndingIntro = (hasNextTrack && !inAppNextEpCancelled && inAppIntroData && inAppIntroData.ed && curT >= inAppIntroData.ed.start && curT <= inAppIntroData.ed.end + 2);
+
+        if (isNearEnd || isEndingIntro) {
           nextCard.style.display = 'flex';
           const nextItem = inAppPlaylist[inAppPlaylistIndex + 1];
           const nextTitleEl = document.getElementById('inAppNextEpTitle');
@@ -11736,6 +11859,37 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "audio_mode": cfg.get("audio_mode", "voice_boost"),
                     "rd_retention_days": ret_days,
                 })
+                return
+
+            if parsed.path == "/api/intro-times":
+                title = params.get("title", "").strip()
+                mtype = params.get("type", "series").strip()
+                try:
+                    season = int(params.get("season", 1) or 1)
+                except (ValueError, TypeError):
+                    season = 1
+                try:
+                    episode = int(params.get("episode", 1) or 1)
+                except (ValueError, TypeError):
+                    episode = 1
+                stream_url = params.get("url", "").strip() or None
+                imdb_id = params.get("imdb_id", "").strip()
+
+                if not title and imdb_id:
+                    try:
+                        meta = get_media_meta(imdb_id)
+                        title = meta.get("title", "")
+                    except Exception:
+                        pass
+
+                intro_data = intro_engine.get_intro_timestamps(
+                    title=title,
+                    media_type=mtype,
+                    season=season,
+                    episode=episode,
+                    stream_url=stream_url
+                )
+                self.send_json(intro_data)
                 return
 
             if parsed.path == "/api/subtitles":

@@ -21,6 +21,7 @@ hiddenimports = [
     'addon_manager',
     'anime_engine',
     'community_lists',
+    'intro_engine',
     'app',
     'sqlite3',
     'clr',
