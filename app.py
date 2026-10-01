@@ -466,23 +466,66 @@ def get_classics_catalog(genre="", sort="top"):
 
 
 CINEMETA_FALLBACK_ANIMES = [
-    {"id": "tt2560140", "type": "series", "name": "Attack on Titan", "year": "2013", "releaseInfo": "2013-2023", "imdbRating": "9.1", "poster": "https://images.metahub.space/poster/medium/tt2560140/img", "genres": ["Animation", "Action", "Adventure"], "description": "Dans un monde où les humains vivent enfermés dans des cités entourées de gigantesques remparts pour se protéger de créatures colossales nommées Titans, le jeune Eren Jaeger jure d'éradiquer ces prédateurs."},
-    {"id": "tt12343534", "type": "series", "name": "Jujutsu Kaisen", "year": "2020", "releaseInfo": "2020-", "imdbRating": "8.5", "poster": "https://images.metahub.space/poster/medium/tt12343534/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Yuji Itadori, lycéen aux aptitudes physiques exceptionnelles, avale une relique maudite de rang S pour sauver ses amis et se retrouve possédé par Ryomen Sukuna, le Roi des Fléaux."},
-    {"id": "tt9335498", "type": "series", "name": "Demon Slayer: Kimetsu no Yaiba", "year": "2019", "releaseInfo": "2019-", "imdbRating": "8.6", "poster": "https://images.metahub.space/poster/medium/tt9335498/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Après le massacre de sa famille par un démon et la transformation de sa jeune sœur Nezuko, Tanjiro Kamado devient pourfendeur de démons pour la délivrer de cette malédiction."},
-    {"id": "tt0388629", "type": "series", "name": "One Piece", "year": "1999", "releaseInfo": "1999-", "imdbRating": "9.0", "poster": "https://images.metahub.space/poster/medium/tt0388629/img", "genres": ["Animation", "Action", "Adventure"], "description": "Monkey D. Luffy prend la mer à la recherche du trésor légendaire, le One Piece, avec l'ambition suprême de devenir le Roi des Pirates."},
-    {"id": "tt22248374", "type": "series", "name": "Frieren: Beyond Journey's End", "year": "2023", "releaseInfo": "2023-", "imdbRating": "8.9", "poster": "https://images.metahub.space/poster/medium/tt22248374/img", "genres": ["Animation", "Adventure", "Drama"], "description": "Après la défaite du Roi Démon par le groupe de héros, l'elfe magicienne Frieren entame un nouveau voyage pour comprendre la valeur éphémère du temps et des liens humains."},
-    {"id": "tt21209876", "type": "series", "name": "Solo Leveling", "year": "2024", "releaseInfo": "2024-", "imdbRating": "8.3", "poster": "https://images.metahub.space/poster/medium/tt21209876/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Sung Jinwoo, le chasseur le plus faible du monde, reçoit la capacité unique d'évoluer sans limite via une interface de jeu invisible."},
-    {"id": "tt0877057", "type": "series", "name": "Death Note", "year": "2006", "releaseInfo": "2006-2007", "imdbRating": "8.9", "poster": "https://images.metahub.space/poster/medium/tt0877057/img", "genres": ["Animation", "Crime", "Drama"], "description": "Light Yagami, brillant lycéen, trouve un carnet surnaturel permettant de tuer quiconque dont on connaît le nom et le visage."},
-    {"id": "tt1370601", "type": "series", "name": "Fullmetal Alchemist: Brotherhood", "year": "2009", "releaseInfo": "2009-2010", "imdbRating": "9.1", "poster": "https://images.metahub.space/poster/medium/tt1370601/img", "genres": ["Animation", "Action", "Adventure"], "description": "Edward et Alphonse Elric parcourent le monde à la recherche de la Pierre Philosophale pour restaurer leurs corps perdus."},
-    {"id": "tt2098220", "type": "series", "name": "Hunter x Hunter", "year": "2011", "releaseInfo": "2011-2014", "imdbRating": "9.0", "poster": "https://images.metahub.space/poster/medium/tt2098220/img", "genres": ["Animation", "Action", "Adventure"], "description": "Gon Freecss décide de passer le redoutable examen de Hunter dans l'espoir de retrouver son père Ging, l'un des Hunters les plus mystérieux au monde."},
-    {"id": "tt13616990", "type": "series", "name": "Chainsaw Man", "year": "2022", "releaseInfo": "2022-", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt13616990/img", "genres": ["Animation", "Action", "Horror"], "description": "Denji, jeune homme criblé de dettes vivant avec son démon-tronçonneuse Pochita, fusionne avec ce dernier pour devenir Chainsaw Man."},
-    {"id": "tt0434665", "type": "series", "name": "Bleach", "year": "2004", "releaseInfo": "2004-2012", "imdbRating": "8.2", "poster": "https://images.metahub.space/poster/medium/tt0434665/img", "genres": ["Animation", "Action", "Adventure"], "description": "Ichigo Kurosaki, adolescent capable de voir les esprits, devient Shinigami pour défendre les humains contre les monstres Hollows."},
-    {"id": "tt0409591", "type": "series", "name": "Naruto", "year": "2002", "releaseInfo": "2002-2007", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt0409591/img", "genres": ["Animation", "Action", "Adventure"], "description": "Naruto Uzumaki, jeune ninja orphelin porteur du Démon-Renard à neuf queues, rêve de devenir Hokage pour être enfin reconnu par tous."},
-    {"id": "tt0988824", "type": "series", "name": "Naruto: Shippuden", "year": "2007", "releaseInfo": "2007-2017", "imdbRating": "8.7", "poster": "https://images.metahub.space/poster/medium/tt0988824/img", "genres": ["Animation", "Action", "Adventure"], "description": "Deux ans et demi après son départ, Naruto revient à Konoha plus fort que jamais face à la menace grandissante de l'Akatsuki."},
-    {"id": "tt0245429", "type": "movie", "name": "Le Voyage de Chihiro", "year": "2001", "releaseInfo": "2001", "imdbRating": "8.6", "poster": "https://images.metahub.space/poster/medium/tt0245429/img", "genres": ["Animation", "Adventure", "Family"], "description": "Chihiro, une fillette de dix ans, s'aventure dans un parc à thème abandonné qui s'avère être un monde enchanté peuplé d'esprits."},
-    {"id": "tt5311514", "type": "movie", "name": "Your Name.", "year": "2016", "releaseInfo": "2016", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt5311514/img", "genres": ["Animation", "Drama", "Fantasy"], "description": "Mitsuha, lycéenne dans un village rural, et Taki, lycéen à Tokyo, découvrent qu'ils échangent mystérieusement de corps pendant leur sommeil."},
-    {"id": "tt0119698", "type": "movie", "name": "Princesse Mononoké", "year": "1997", "releaseInfo": "1997", "imdbRating": "8.3", "poster": "https://images.metahub.space/poster/medium/tt0119698/img", "genres": ["Animation", "Action", "Adventure"], "description": "Frappé d'une malédiction, le jeune guerrier Ashitaka quitte son village et se retrouve pris dans une guerre sanglante entre les dieux de la forêt et les humains."}
+    {"id": "tt2560140", "type": "series", "name": "Attack on Titan", "year": "2013", "releaseInfo": "2013-2023", "imdbRating": "9.1", "poster": "https://images.metahub.space/poster/medium/tt2560140/img", "background": "https://images.metahub.space/background/medium/tt2560140/img", "genres": ["Animation", "Action", "Adventure"], "description": "Dans un monde où les humains vivent enfermés dans des cités entourées de gigantesques remparts pour se protéger de créatures colossales nommées Titans, le jeune Eren Jaeger jure d'éradiquer ces prédateurs."},
+    {"id": "tt12343534", "type": "series", "name": "Jujutsu Kaisen", "year": "2020", "releaseInfo": "2020-", "imdbRating": "8.5", "poster": "https://images.metahub.space/poster/medium/tt12343534/img", "background": "https://images.metahub.space/background/medium/tt12343534/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Yuji Itadori, lycéen aux aptitudes physiques exceptionnelles, avale une relique maudite de rang S pour sauver ses amis et se retrouve possédé par Ryomen Sukuna, le Roi des Fléaux."},
+    {"id": "tt9335498", "type": "series", "name": "Demon Slayer: Kimetsu no Yaiba", "year": "2019", "releaseInfo": "2019-", "imdbRating": "8.6", "poster": "https://images.metahub.space/poster/medium/tt9335498/img", "background": "https://images.metahub.space/background/medium/tt9335498/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Après le massacre de sa famille par un démon et la transformation de sa jeune sœur Nezuko, Tanjiro Kamado devient pourfendeur de démons pour la délivrer de cette malédiction."},
+    {"id": "tt0388629", "type": "series", "name": "One Piece", "year": "1999", "releaseInfo": "1999-", "imdbRating": "9.0", "poster": "https://images.metahub.space/poster/medium/tt0388629/img", "background": "https://images.metahub.space/background/medium/tt0388629/img", "genres": ["Animation", "Action", "Adventure"], "description": "Monkey D. Luffy prend la mer à la recherche du trésor légendaire, le One Piece, avec l'ambition suprême de devenir le Roi des Pirates."},
+    {"id": "tt22248376", "type": "series", "name": "Frieren: Beyond Journey's End", "year": "2023", "releaseInfo": "2023-", "imdbRating": "8.9", "poster": "https://images.metahub.space/poster/medium/tt22248376/img", "background": "https://images.metahub.space/background/medium/tt22248376/img", "genres": ["Animation", "Adventure", "Drama"], "description": "Après la défaite du Roi Démon par le groupe de héros, l'elfe magicienne Frieren entame un nouveau voyage pour comprendre la valeur éphémère du temps et des liens humains."},
+    {"id": "tt21209876", "type": "series", "name": "Solo Leveling", "year": "2024", "releaseInfo": "2024-", "imdbRating": "8.3", "poster": "https://images.metahub.space/poster/medium/tt21209876/img", "background": "https://images.metahub.space/background/medium/tt21209876/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Sung Jinwoo, le chasseur le plus faible du monde, reçoit la capacité unique d'évoluer sans limite via une interface de jeu invisible."},
+    {"id": "tt0877057", "type": "series", "name": "Death Note", "year": "2006", "releaseInfo": "2006-2007", "imdbRating": "8.9", "poster": "https://images.metahub.space/poster/medium/tt0877057/img", "background": "https://images.metahub.space/background/medium/tt0877057/img", "genres": ["Animation", "Crime", "Drama"], "description": "Light Yagami, brillant lycéen, trouve un carnet surnaturel permettant de tuer quiconque dont on connaît le nom et le visage."},
+    {"id": "tt1355642", "type": "series", "name": "Fullmetal Alchemist: Brotherhood", "year": "2009", "releaseInfo": "2009-2010", "imdbRating": "9.1", "poster": "https://images.metahub.space/poster/medium/tt1355642/img", "background": "https://images.metahub.space/background/medium/tt1355642/img", "genres": ["Animation", "Action", "Adventure"], "description": "Edward et Alphonse Elric parcourent le monde à la recherche de la Pierre Philosophale pour restaurer leurs corps perdus."},
+    {"id": "tt2098220", "type": "series", "name": "Hunter x Hunter", "year": "2011", "releaseInfo": "2011-2014", "imdbRating": "9.0", "poster": "https://images.metahub.space/poster/medium/tt2098220/img", "background": "https://images.metahub.space/background/medium/tt2098220/img", "genres": ["Animation", "Action", "Adventure"], "description": "Gon Freecss décide de passer le redoutable examen de Hunter dans l'espoir de retrouver son père Ging, l'un des Hunters les plus mystérieux au monde."},
+    {"id": "tt13616990", "type": "series", "name": "Chainsaw Man", "year": "2022", "releaseInfo": "2022-", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt13616990/img", "background": "https://images.metahub.space/background/medium/tt13616990/img", "genres": ["Animation", "Action", "Horror"], "description": "Denji, jeune homme criblé de dettes vivant avec son démon-tronçonneuse Pochita, fusionne avec ce dernier pour devenir Chainsaw Man."},
+    {"id": "tt0434665", "type": "series", "name": "Bleach", "year": "2004", "releaseInfo": "2004-2012", "imdbRating": "8.2", "poster": "https://images.metahub.space/poster/medium/tt0434665/img", "background": "https://images.metahub.space/background/medium/tt0434665/img", "genres": ["Animation", "Action", "Adventure"], "description": "Ichigo Kurosaki, adolescent capable de voir les esprits, devient Shinigami pour défendre les humains contre les monstres Hollows."},
+    {"id": "tt0409591", "type": "series", "name": "Naruto", "year": "2002", "releaseInfo": "2002-2007", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt0409591/img", "background": "https://images.metahub.space/background/medium/tt0409591/img", "genres": ["Animation", "Action", "Adventure"], "description": "Naruto Uzumaki, jeune ninja orphelin porteur du Démon-Renard à neuf queues, rêve de devenir Hokage pour être enfin reconnu par tous."},
+    {"id": "tt0988824", "type": "series", "name": "Naruto: Shippuden", "year": "2007", "releaseInfo": "2007-2017", "imdbRating": "8.7", "poster": "https://images.metahub.space/poster/medium/tt0988824/img", "background": "https://images.metahub.space/background/medium/tt0988824/img", "genres": ["Animation", "Action", "Adventure"], "description": "Deux ans et demi après son départ, Naruto revient à Konoha plus fort que jamais face à la menace grandissante de l'Akatsuki."},
+    {"id": "tt0245429", "type": "movie", "name": "Le Voyage de Chihiro", "year": "2001", "releaseInfo": "2001", "imdbRating": "8.6", "poster": "https://images.metahub.space/poster/medium/tt0245429/img", "background": "https://images.metahub.space/background/medium/tt0245429/img", "genres": ["Animation", "Adventure", "Family"], "description": "Chihiro, une fillette de dix ans, s'aventure dans un parc à thème abandonné qui s'avère être un monde enchanté peuplé d'esprits."},
+    {"id": "tt5311514", "type": "movie", "name": "Your Name.", "year": "2016", "releaseInfo": "2016", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt5311514/img", "background": "https://images.metahub.space/background/medium/tt5311514/img", "genres": ["Animation", "Drama", "Fantasy"], "description": "Mitsuha, lycéenne dans un village rural, et Taki, lycéen à Tokyo, découvrent qu'ils échangent mystérieusement de corps pendant leur sommeil."},
+    {"id": "tt0119698", "type": "movie", "name": "Princesse Mononoké", "year": "1997", "releaseInfo": "1997", "imdbRating": "8.3", "poster": "https://images.metahub.space/poster/medium/tt0119698/img", "background": "https://images.metahub.space/background/medium/tt0119698/img", "genres": ["Animation", "Action", "Adventure"], "description": "Frappé d'une malédiction, le jeune guerrier Ashitaka quitte son village et se retrouve pris dans une guerre sanglante entre les dieux de la forêt et les humains."}
 ]
+
+# Base de référence des IDs IMDb d'animés pour exclure l'animation japonaise du catalogue général Séries
+KNOWN_ANIME_IDS = {
+    # Core top anime series & films
+    "tt2560140", "tt12343534", "tt9335498", "tt0388629", "tt22248376",
+    "tt21209876", "tt0877057", "tt1355642", "tt2098220", "tt13616990",
+    "tt0434665", "tt0409591", "tt0988824", "tt0245429", "tt5311514", "tt0119698",
+    # Additional top anime from Cinemeta genre=Anime catalog
+    "tt13293588", "tt5607616", "tt5626028", "tt10233448", "tt9054364",
+    "tt0434706", "tt12590266", "tt2359704", "tt7441658", "tt0318871",
+    "tt0994314", "tt37532356", "tt37614297", "tt4508902", "tt0112159",
+    "tt26743760", "tt1910272", "tt0988818", "tt5897304", "tt30217403",
+    "tt39551330", "tt37532893", "tt36517689", "tt0168366", "tt32550889",
+    "tt3741634", "tt28618556", "tt3398540", "tt13911284", "tt21975436",
+    "tt13718450", "tt9679542", "tt4644488", "tt3895150", "tt13706018",
+    "tt15222080", "tt7263328", "tt7078180", "tt33334216", "tt5249462",
+    "tt32612521", "tt15765670", "tt3358020", "tt0948103", "tt38939446",
+    "tt7222086", "tt36988358", "tt9522300", "tt36592690", "tt13196080",
+    "tt2230051", "tt14976292", "tt14115938", "tt2250192", "tt36034547",
+    "tt9307686", "tt0421357", "tt32869308", "tt9458304", "tt26737616",
+    "tt0423731", "tt0481256", "tt17069148", "tt0500092", "tt3909224",
+    "tt21621494", "tt28919914", "tt41293157", "tt2379308", "tt13103134",
+    "tt33044444", "tt0096633", "tt32991344", "tt21030032", "tt33028568",
+    "tt39304754", "tt2404499", "tt0131179", "tt8086718", "tt32536168",
+    "tt0810705", "tt11147852", "tt8788458", "tt40548519", "tt1118804",
+    "tt39123061", "tt0088509", "tt0092455", "tt0099685", "tt0078638",
+    "tt0094583", "tt0103442", "tt0112108", "tt0202206"
+}
+
+
+def is_anime_item(m):
+    """Détermine avec certitude si un média est un animé japonais."""
+    if not m or not isinstance(m, dict):
+        return False
+    if m.get("is_anime"):
+        return True
+    mid = m.get("id")
+    if mid and mid in KNOWN_ANIME_IDS:
+        return True
+    genres = [str(g).lower() for g in (m.get("genres") or [])]
+    if "anime" in genres:
+        return True
+    return False
 
 
 def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
@@ -493,7 +536,7 @@ def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
         all_classics = get_classics_catalog(genre=genre, sort=sort)
         return all_classics[skip:] if skip > 0 else all_classics
     if media_type == "anime":
-        cache_key = f"catalog:anime_v2:{sort}:{genre or 'all'}:{skip}"
+        cache_key = f"catalog:anime_v3:{sort}:{genre or 'all'}:{skip}"
 
         def _fetch_anime():
             is_movie = genre in ("Films", "Films d'Animation", "movie", "Film")
@@ -509,10 +552,17 @@ def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
                 if not m.get("type"):
                     m["type"] = c_type
                 m["is_anime"] = True
+                mid = m.get("id")
+                if mid:
+                    KNOWN_ANIME_IDS.add(mid)
+                if not m.get("background") and mid:
+                    m["background"] = f"https://images.metahub.space/background/medium/{mid}/img"
 
             if skip == 0 and not is_movie and (not genre or genre in ("Tous", "Tendances", "Populaires")):
                 existing_ids = {m.get("id") for m in metas if m.get("id")}
                 staples = [dict(a) for a in CINEMETA_FALLBACK_ANIMES if a.get("type") == "series" and a.get("id") not in existing_ids]
+                for s in staples:
+                    s["is_anime"] = True
                 metas = staples[:6] + metas
 
             if not is_movie and genre and genre not in ("Tous", "Tendances", "Populaires"):
@@ -524,17 +574,20 @@ def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
                     iid = item.get("id")
                     if iid and iid not in seen_f:
                         seen_f.add(iid)
+                        item["is_anime"] = True
                         combined.append(item)
                 if combined:
                     metas = combined
 
             if not metas and skip == 0:
                 if is_movie:
-                    metas = [m for m in CINEMETA_FALLBACK_ANIMES if m.get("type") == "movie"]
+                    metas = [dict(m) for m in CINEMETA_FALLBACK_ANIMES if m.get("type") == "movie"]
                 elif genre and genre not in ("Tous", "Tendances", "Populaires"):
-                    metas = [m for m in CINEMETA_FALLBACK_ANIMES if genre.lower() in [g.lower() for g in (m.get("genres") or [])]]
+                    metas = [dict(m) for m in CINEMETA_FALLBACK_ANIMES if genre.lower() in [g.lower() for g in (m.get("genres") or [])]]
                 else:
-                    metas = list(CINEMETA_FALLBACK_ANIMES)
+                    metas = [dict(m) for m in CINEMETA_FALLBACK_ANIMES]
+                for m in metas:
+                    m["is_anime"] = True
 
             if metas:
                 try:
@@ -579,6 +632,23 @@ def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
         url = f"https://v3-cinemeta.strem.io/catalog/{media_type}/{catalog_id}{extra}.json"
         data = http_json(url)
         metas = data.get("metas", [])
+
+        # SÉPARATION STRICTE : Si l'utilisateur consulte la catégorie Séries (hors genre Anime),
+        # exclure les animés japonais qui disposent de leur propre onglet dédié
+        if media_type == "series" and genre.lower() not in ("anime", "animation"):
+            metas = [m for m in metas if not is_anime_item(m)]
+            # Compléter la grille si des animés ont été filtrés
+            if len(metas) < 35:
+                try:
+                    extra_next = f"/{catalog_id}/skip={skip + 50}.json"
+                    url_next = f"https://v3-cinemeta.strem.io/catalog/{media_type}{extra_next}"
+                    data_next = http_json(url_next)
+                    for nm in data_next.get("metas", []):
+                        if not is_anime_item(nm) and nm.get("id") not in {x.get("id") for x in metas}:
+                            metas.append(nm)
+                except Exception:
+                    pass
+
         if metas:
             try:
                 threading.Thread(target=kino_db.db_index_media, args=(metas,), daemon=True).start()
@@ -6360,6 +6430,23 @@ function renderGenreChipsForTab(tab) {
       <span class="chip" data-genre="Drama" onclick="selectGenre('Drama', this)">Drame</span>
       <span class="chip" data-genre="Films d'Animation" onclick="selectGenre('Films d\\'Animation', this)">Films d'Animation</span>
     `;
+  } else if (tab === 'series') {
+    gf.innerHTML = `
+      <span class="chip active" data-genre="" onclick="selectGenre('', this)">Toutes</span>
+      <span class="chip" data-genre="Drama" onclick="selectGenre('Drama', this)">Drame</span>
+      <span class="chip" data-genre="Crime" onclick="selectGenre('Crime', this)">Policier</span>
+      <span class="chip" data-genre="Thriller" onclick="selectGenre('Thriller', this)">Thriller</span>
+      <span class="chip" data-genre="Action" onclick="selectGenre('Action', this)">Action</span>
+      <span class="chip" data-genre="Sci-Fi" onclick="selectGenre('Sci-Fi', this)">Sci-Fi</span>
+      <span class="chip" data-genre="Comedy" onclick="selectGenre('Comedy', this)">Comédie</span>
+      <span class="chip" data-genre="Adventure" onclick="selectGenre('Adventure', this)">Aventure</span>
+      <span class="chip" data-genre="Fantasy" onclick="selectGenre('Fantasy', this)">Fantastique</span>
+      <span class="chip" data-genre="Horror" onclick="selectGenre('Horror', this)">Horreur</span>
+      <span class="chip" data-genre="Mystery" onclick="selectGenre('Mystery', this)">Mystère</span>
+      <span class="chip" data-genre="War" onclick="selectGenre('War', this)">Guerre</span>
+      <span class="chip" data-genre="Western" onclick="selectGenre('Western', this)">Western</span>
+      <span class="chip" data-genre="Documentary" onclick="selectGenre('Documentary', this)">Documentaire</span>
+    `;
   } else {
     gf.innerHTML = `
       <span class="chip active" data-genre="" onclick="selectGenre('', this)">Tous</span>
@@ -6491,7 +6578,18 @@ function drawHeroSpotlightSlide() {
         ? `★ ANIMATION JAPONAISE · POPULAIRE #${heroSpotlightIdx + 1}`
         : `★ À LA UNE · ${mtype === 'series' ? 'SÉRIE' : 'FILM'} #${heroSpotlightIdx + 1}`);
 
-  box.style.backgroundImage = `url('${bgUrl}')`;
+  const posterUrl = item.poster || (item.id ? `https://images.metahub.space/poster/medium/${item.id}/img` : '');
+  const bgCandidate = bgUrl || posterUrl;
+  if (bgCandidate) {
+    box.style.backgroundImage = `url('${bgCandidate}')`;
+    const heroBgImg = new Image();
+    heroBgImg.onerror = function() {
+      if (posterUrl && posterUrl !== bgCandidate) {
+        box.style.backgroundImage = `url('${posterUrl}')`;
+      }
+    };
+    heroBgImg.src = bgCandidate;
+  }
   box.innerHTML = `
     <div class="hero-content">
       <div class="hero-kicker">${kickerTxt}</div>
@@ -7864,6 +7962,21 @@ async function loadMoreCatalog() {
   }
 }
 
+function handlePosterCardError(img, id) {
+  if (!img) return;
+  if (!img.dataset.tried) {
+    img.dataset.tried = '1';
+    if (img.src && img.src.includes('/poster/medium/')) {
+      img.src = img.src.replace('/poster/medium/', '/poster/small/');
+      return;
+    }
+  }
+  img.style.display = 'none';
+  if (img.parentElement) {
+    img.parentElement.style.background = 'linear-gradient(145deg, #18181b, #09090b)';
+  }
+}
+
 function renderPosterCards(metas, fallbackType) {
   const grid = document.getElementById('postersGrid');
   let displayList = metas || [];
@@ -7918,7 +8031,7 @@ function renderPosterCards(metas, fallbackType) {
       <div class="poster-card" onclick='selectMedia(${payload})'>
         ${watchedPill}
         <button class="wl-btn ${inList ? 'in-list' : ''}" data-wl-id="${m.id}" title="${inList ? 'Retirer de Ma Liste' : 'Ajouter à Ma Liste'}" onclick='toggleWatchlist(event, ${payload})'>${inList ? '✓' : '+'}</button>
-        <img src="${m.poster || ''}" alt="${m.name}" loading="lazy" onerror="this.style.opacity=0.08">
+        <img src="${m.poster || ''}" alt="${m.name}" loading="lazy" onerror="handlePosterCardError(this, '${m.id}')">
         ${cardProg}
         <div class="poster-info">
           <div class="poster-title">${m.name}</div>

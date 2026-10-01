@@ -466,23 +466,66 @@ def get_classics_catalog(genre="", sort="top"):
 
 
 CINEMETA_FALLBACK_ANIMES = [
-    {"id": "tt2560140", "type": "series", "name": "Attack on Titan", "year": "2013", "releaseInfo": "2013-2023", "imdbRating": "9.1", "poster": "https://images.metahub.space/poster/medium/tt2560140/img", "genres": ["Animation", "Action", "Adventure"], "description": "Dans un monde où les humains vivent enfermés dans des cités entourées de gigantesques remparts pour se protéger de créatures colossales nommées Titans, le jeune Eren Jaeger jure d'éradiquer ces prédateurs."},
-    {"id": "tt12343534", "type": "series", "name": "Jujutsu Kaisen", "year": "2020", "releaseInfo": "2020-", "imdbRating": "8.5", "poster": "https://images.metahub.space/poster/medium/tt12343534/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Yuji Itadori, lycéen aux aptitudes physiques exceptionnelles, avale une relique maudite de rang S pour sauver ses amis et se retrouve possédé par Ryomen Sukuna, le Roi des Fléaux."},
-    {"id": "tt9335498", "type": "series", "name": "Demon Slayer: Kimetsu no Yaiba", "year": "2019", "releaseInfo": "2019-", "imdbRating": "8.6", "poster": "https://images.metahub.space/poster/medium/tt9335498/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Après le massacre de sa famille par un démon et la transformation de sa jeune sœur Nezuko, Tanjiro Kamado devient pourfendeur de démons pour la délivrer de cette malédiction."},
-    {"id": "tt0388629", "type": "series", "name": "One Piece", "year": "1999", "releaseInfo": "1999-", "imdbRating": "9.0", "poster": "https://images.metahub.space/poster/medium/tt0388629/img", "genres": ["Animation", "Action", "Adventure"], "description": "Monkey D. Luffy prend la mer à la recherche du trésor légendaire, le One Piece, avec l'ambition suprême de devenir le Roi des Pirates."},
-    {"id": "tt22248374", "type": "series", "name": "Frieren: Beyond Journey's End", "year": "2023", "releaseInfo": "2023-", "imdbRating": "8.9", "poster": "https://images.metahub.space/poster/medium/tt22248374/img", "genres": ["Animation", "Adventure", "Drama"], "description": "Après la défaite du Roi Démon par le groupe de héros, l'elfe magicienne Frieren entame un nouveau voyage pour comprendre la valeur éphémère du temps et des liens humains."},
-    {"id": "tt21209876", "type": "series", "name": "Solo Leveling", "year": "2024", "releaseInfo": "2024-", "imdbRating": "8.3", "poster": "https://images.metahub.space/poster/medium/tt21209876/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Sung Jinwoo, le chasseur le plus faible du monde, reçoit la capacité unique d'évoluer sans limite via une interface de jeu invisible."},
-    {"id": "tt0877057", "type": "series", "name": "Death Note", "year": "2006", "releaseInfo": "2006-2007", "imdbRating": "8.9", "poster": "https://images.metahub.space/poster/medium/tt0877057/img", "genres": ["Animation", "Crime", "Drama"], "description": "Light Yagami, brillant lycéen, trouve un carnet surnaturel permettant de tuer quiconque dont on connaît le nom et le visage."},
-    {"id": "tt1370601", "type": "series", "name": "Fullmetal Alchemist: Brotherhood", "year": "2009", "releaseInfo": "2009-2010", "imdbRating": "9.1", "poster": "https://images.metahub.space/poster/medium/tt1370601/img", "genres": ["Animation", "Action", "Adventure"], "description": "Edward et Alphonse Elric parcourent le monde à la recherche de la Pierre Philosophale pour restaurer leurs corps perdus."},
-    {"id": "tt2098220", "type": "series", "name": "Hunter x Hunter", "year": "2011", "releaseInfo": "2011-2014", "imdbRating": "9.0", "poster": "https://images.metahub.space/poster/medium/tt2098220/img", "genres": ["Animation", "Action", "Adventure"], "description": "Gon Freecss décide de passer le redoutable examen de Hunter dans l'espoir de retrouver son père Ging, l'un des Hunters les plus mystérieux au monde."},
-    {"id": "tt13616990", "type": "series", "name": "Chainsaw Man", "year": "2022", "releaseInfo": "2022-", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt13616990/img", "genres": ["Animation", "Action", "Horror"], "description": "Denji, jeune homme criblé de dettes vivant avec son démon-tronçonneuse Pochita, fusionne avec ce dernier pour devenir Chainsaw Man."},
-    {"id": "tt0434665", "type": "series", "name": "Bleach", "year": "2004", "releaseInfo": "2004-2012", "imdbRating": "8.2", "poster": "https://images.metahub.space/poster/medium/tt0434665/img", "genres": ["Animation", "Action", "Adventure"], "description": "Ichigo Kurosaki, adolescent capable de voir les esprits, devient Shinigami pour défendre les humains contre les monstres Hollows."},
-    {"id": "tt0409591", "type": "series", "name": "Naruto", "year": "2002", "releaseInfo": "2002-2007", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt0409591/img", "genres": ["Animation", "Action", "Adventure"], "description": "Naruto Uzumaki, jeune ninja orphelin porteur du Démon-Renard à neuf queues, rêve de devenir Hokage pour être enfin reconnu par tous."},
-    {"id": "tt0988824", "type": "series", "name": "Naruto: Shippuden", "year": "2007", "releaseInfo": "2007-2017", "imdbRating": "8.7", "poster": "https://images.metahub.space/poster/medium/tt0988824/img", "genres": ["Animation", "Action", "Adventure"], "description": "Deux ans et demi après son départ, Naruto revient à Konoha plus fort que jamais face à la menace grandissante de l'Akatsuki."},
-    {"id": "tt0245429", "type": "movie", "name": "Le Voyage de Chihiro", "year": "2001", "releaseInfo": "2001", "imdbRating": "8.6", "poster": "https://images.metahub.space/poster/medium/tt0245429/img", "genres": ["Animation", "Adventure", "Family"], "description": "Chihiro, une fillette de dix ans, s'aventure dans un parc à thème abandonné qui s'avère être un monde enchanté peuplé d'esprits."},
-    {"id": "tt5311514", "type": "movie", "name": "Your Name.", "year": "2016", "releaseInfo": "2016", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt5311514/img", "genres": ["Animation", "Drama", "Fantasy"], "description": "Mitsuha, lycéenne dans un village rural, et Taki, lycéen à Tokyo, découvrent qu'ils échangent mystérieusement de corps pendant leur sommeil."},
-    {"id": "tt0119698", "type": "movie", "name": "Princesse Mononoké", "year": "1997", "releaseInfo": "1997", "imdbRating": "8.3", "poster": "https://images.metahub.space/poster/medium/tt0119698/img", "genres": ["Animation", "Action", "Adventure"], "description": "Frappé d'une malédiction, le jeune guerrier Ashitaka quitte son village et se retrouve pris dans une guerre sanglante entre les dieux de la forêt et les humains."}
+    {"id": "tt2560140", "type": "series", "name": "Attack on Titan", "year": "2013", "releaseInfo": "2013-2023", "imdbRating": "9.1", "poster": "https://images.metahub.space/poster/medium/tt2560140/img", "background": "https://images.metahub.space/background/medium/tt2560140/img", "genres": ["Animation", "Action", "Adventure"], "description": "Dans un monde où les humains vivent enfermés dans des cités entourées de gigantesques remparts pour se protéger de créatures colossales nommées Titans, le jeune Eren Jaeger jure d'éradiquer ces prédateurs."},
+    {"id": "tt12343534", "type": "series", "name": "Jujutsu Kaisen", "year": "2020", "releaseInfo": "2020-", "imdbRating": "8.5", "poster": "https://images.metahub.space/poster/medium/tt12343534/img", "background": "https://images.metahub.space/background/medium/tt12343534/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Yuji Itadori, lycéen aux aptitudes physiques exceptionnelles, avale une relique maudite de rang S pour sauver ses amis et se retrouve possédé par Ryomen Sukuna, le Roi des Fléaux."},
+    {"id": "tt9335498", "type": "series", "name": "Demon Slayer: Kimetsu no Yaiba", "year": "2019", "releaseInfo": "2019-", "imdbRating": "8.6", "poster": "https://images.metahub.space/poster/medium/tt9335498/img", "background": "https://images.metahub.space/background/medium/tt9335498/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Après le massacre de sa famille par un démon et la transformation de sa jeune sœur Nezuko, Tanjiro Kamado devient pourfendeur de démons pour la délivrer de cette malédiction."},
+    {"id": "tt0388629", "type": "series", "name": "One Piece", "year": "1999", "releaseInfo": "1999-", "imdbRating": "9.0", "poster": "https://images.metahub.space/poster/medium/tt0388629/img", "background": "https://images.metahub.space/background/medium/tt0388629/img", "genres": ["Animation", "Action", "Adventure"], "description": "Monkey D. Luffy prend la mer à la recherche du trésor légendaire, le One Piece, avec l'ambition suprême de devenir le Roi des Pirates."},
+    {"id": "tt22248376", "type": "series", "name": "Frieren: Beyond Journey's End", "year": "2023", "releaseInfo": "2023-", "imdbRating": "8.9", "poster": "https://images.metahub.space/poster/medium/tt22248376/img", "background": "https://images.metahub.space/background/medium/tt22248376/img", "genres": ["Animation", "Adventure", "Drama"], "description": "Après la défaite du Roi Démon par le groupe de héros, l'elfe magicienne Frieren entame un nouveau voyage pour comprendre la valeur éphémère du temps et des liens humains."},
+    {"id": "tt21209876", "type": "series", "name": "Solo Leveling", "year": "2024", "releaseInfo": "2024-", "imdbRating": "8.3", "poster": "https://images.metahub.space/poster/medium/tt21209876/img", "background": "https://images.metahub.space/background/medium/tt21209876/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Sung Jinwoo, le chasseur le plus faible du monde, reçoit la capacité unique d'évoluer sans limite via une interface de jeu invisible."},
+    {"id": "tt0877057", "type": "series", "name": "Death Note", "year": "2006", "releaseInfo": "2006-2007", "imdbRating": "8.9", "poster": "https://images.metahub.space/poster/medium/tt0877057/img", "background": "https://images.metahub.space/background/medium/tt0877057/img", "genres": ["Animation", "Crime", "Drama"], "description": "Light Yagami, brillant lycéen, trouve un carnet surnaturel permettant de tuer quiconque dont on connaît le nom et le visage."},
+    {"id": "tt1355642", "type": "series", "name": "Fullmetal Alchemist: Brotherhood", "year": "2009", "releaseInfo": "2009-2010", "imdbRating": "9.1", "poster": "https://images.metahub.space/poster/medium/tt1355642/img", "background": "https://images.metahub.space/background/medium/tt1355642/img", "genres": ["Animation", "Action", "Adventure"], "description": "Edward et Alphonse Elric parcourent le monde à la recherche de la Pierre Philosophale pour restaurer leurs corps perdus."},
+    {"id": "tt2098220", "type": "series", "name": "Hunter x Hunter", "year": "2011", "releaseInfo": "2011-2014", "imdbRating": "9.0", "poster": "https://images.metahub.space/poster/medium/tt2098220/img", "background": "https://images.metahub.space/background/medium/tt2098220/img", "genres": ["Animation", "Action", "Adventure"], "description": "Gon Freecss décide de passer le redoutable examen de Hunter dans l'espoir de retrouver son père Ging, l'un des Hunters les plus mystérieux au monde."},
+    {"id": "tt13616990", "type": "series", "name": "Chainsaw Man", "year": "2022", "releaseInfo": "2022-", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt13616990/img", "background": "https://images.metahub.space/background/medium/tt13616990/img", "genres": ["Animation", "Action", "Horror"], "description": "Denji, jeune homme criblé de dettes vivant avec son démon-tronçonneuse Pochita, fusionne avec ce dernier pour devenir Chainsaw Man."},
+    {"id": "tt0434665", "type": "series", "name": "Bleach", "year": "2004", "releaseInfo": "2004-2012", "imdbRating": "8.2", "poster": "https://images.metahub.space/poster/medium/tt0434665/img", "background": "https://images.metahub.space/background/medium/tt0434665/img", "genres": ["Animation", "Action", "Adventure"], "description": "Ichigo Kurosaki, adolescent capable de voir les esprits, devient Shinigami pour défendre les humains contre les monstres Hollows."},
+    {"id": "tt0409591", "type": "series", "name": "Naruto", "year": "2002", "releaseInfo": "2002-2007", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt0409591/img", "background": "https://images.metahub.space/background/medium/tt0409591/img", "genres": ["Animation", "Action", "Adventure"], "description": "Naruto Uzumaki, jeune ninja orphelin porteur du Démon-Renard à neuf queues, rêve de devenir Hokage pour être enfin reconnu par tous."},
+    {"id": "tt0988824", "type": "series", "name": "Naruto: Shippuden", "year": "2007", "releaseInfo": "2007-2017", "imdbRating": "8.7", "poster": "https://images.metahub.space/poster/medium/tt0988824/img", "background": "https://images.metahub.space/background/medium/tt0988824/img", "genres": ["Animation", "Action", "Adventure"], "description": "Deux ans et demi après son départ, Naruto revient à Konoha plus fort que jamais face à la menace grandissante de l'Akatsuki."},
+    {"id": "tt0245429", "type": "movie", "name": "Le Voyage de Chihiro", "year": "2001", "releaseInfo": "2001", "imdbRating": "8.6", "poster": "https://images.metahub.space/poster/medium/tt0245429/img", "background": "https://images.metahub.space/background/medium/tt0245429/img", "genres": ["Animation", "Adventure", "Family"], "description": "Chihiro, une fillette de dix ans, s'aventure dans un parc à thème abandonné qui s'avère être un monde enchanté peuplé d'esprits."},
+    {"id": "tt5311514", "type": "movie", "name": "Your Name.", "year": "2016", "releaseInfo": "2016", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt5311514/img", "background": "https://images.metahub.space/background/medium/tt5311514/img", "genres": ["Animation", "Drama", "Fantasy"], "description": "Mitsuha, lycéenne dans un village rural, et Taki, lycéen à Tokyo, découvrent qu'ils échangent mystérieusement de corps pendant leur sommeil."},
+    {"id": "tt0119698", "type": "movie", "name": "Princesse Mononoké", "year": "1997", "releaseInfo": "1997", "imdbRating": "8.3", "poster": "https://images.metahub.space/poster/medium/tt0119698/img", "background": "https://images.metahub.space/background/medium/tt0119698/img", "genres": ["Animation", "Action", "Adventure"], "description": "Frappé d'une malédiction, le jeune guerrier Ashitaka quitte son village et se retrouve pris dans une guerre sanglante entre les dieux de la forêt et les humains."}
 ]
+
+# Base de référence des IDs IMDb d'animés pour exclure l'animation japonaise du catalogue général Séries
+KNOWN_ANIME_IDS = {
+    # Core top anime series & films
+    "tt2560140", "tt12343534", "tt9335498", "tt0388629", "tt22248376",
+    "tt21209876", "tt0877057", "tt1355642", "tt2098220", "tt13616990",
+    "tt0434665", "tt0409591", "tt0988824", "tt0245429", "tt5311514", "tt0119698",
+    # Additional top anime from Cinemeta genre=Anime catalog
+    "tt13293588", "tt5607616", "tt5626028", "tt10233448", "tt9054364",
+    "tt0434706", "tt12590266", "tt2359704", "tt7441658", "tt0318871",
+    "tt0994314", "tt37532356", "tt37614297", "tt4508902", "tt0112159",
+    "tt26743760", "tt1910272", "tt0988818", "tt5897304", "tt30217403",
+    "tt39551330", "tt37532893", "tt36517689", "tt0168366", "tt32550889",
+    "tt3741634", "tt28618556", "tt3398540", "tt13911284", "tt21975436",
+    "tt13718450", "tt9679542", "tt4644488", "tt3895150", "tt13706018",
+    "tt15222080", "tt7263328", "tt7078180", "tt33334216", "tt5249462",
+    "tt32612521", "tt15765670", "tt3358020", "tt0948103", "tt38939446",
+    "tt7222086", "tt36988358", "tt9522300", "tt36592690", "tt13196080",
+    "tt2230051", "tt14976292", "tt14115938", "tt2250192", "tt36034547",
+    "tt9307686", "tt0421357", "tt32869308", "tt9458304", "tt26737616",
+    "tt0423731", "tt0481256", "tt17069148", "tt0500092", "tt3909224",
+    "tt21621494", "tt28919914", "tt41293157", "tt2379308", "tt13103134",
+    "tt33044444", "tt0096633", "tt32991344", "tt21030032", "tt33028568",
+    "tt39304754", "tt2404499", "tt0131179", "tt8086718", "tt32536168",
+    "tt0810705", "tt11147852", "tt8788458", "tt40548519", "tt1118804",
+    "tt39123061", "tt0088509", "tt0092455", "tt0099685", "tt0078638",
+    "tt0094583", "tt0103442", "tt0112108", "tt0202206"
+}
+
+
+def is_anime_item(m):
+    """Détermine avec certitude si un média est un animé japonais."""
+    if not m or not isinstance(m, dict):
+        return False
+    if m.get("is_anime"):
+        return True
+    mid = m.get("id")
+    if mid and mid in KNOWN_ANIME_IDS:
+        return True
+    genres = [str(g).lower() for g in (m.get("genres") or [])]
+    if "anime" in genres:
+        return True
+    return False
 
 
 def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
@@ -493,7 +536,7 @@ def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
         all_classics = get_classics_catalog(genre=genre, sort=sort)
         return all_classics[skip:] if skip > 0 else all_classics
     if media_type == "anime":
-        cache_key = f"catalog:anime_v2:{sort}:{genre or 'all'}:{skip}"
+        cache_key = f"catalog:anime_v3:{sort}:{genre or 'all'}:{skip}"
 
         def _fetch_anime():
             is_movie = genre in ("Films", "Films d'Animation", "movie", "Film")
@@ -509,10 +552,17 @@ def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
                 if not m.get("type"):
                     m["type"] = c_type
                 m["is_anime"] = True
+                mid = m.get("id")
+                if mid:
+                    KNOWN_ANIME_IDS.add(mid)
+                if not m.get("background") and mid:
+                    m["background"] = f"https://images.metahub.space/background/medium/{mid}/img"
 
             if skip == 0 and not is_movie and (not genre or genre in ("Tous", "Tendances", "Populaires")):
                 existing_ids = {m.get("id") for m in metas if m.get("id")}
                 staples = [dict(a) for a in CINEMETA_FALLBACK_ANIMES if a.get("type") == "series" and a.get("id") not in existing_ids]
+                for s in staples:
+                    s["is_anime"] = True
                 metas = staples[:6] + metas
 
             if not is_movie and genre and genre not in ("Tous", "Tendances", "Populaires"):
@@ -524,17 +574,20 @@ def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
                     iid = item.get("id")
                     if iid and iid not in seen_f:
                         seen_f.add(iid)
+                        item["is_anime"] = True
                         combined.append(item)
                 if combined:
                     metas = combined
 
             if not metas and skip == 0:
                 if is_movie:
-                    metas = [m for m in CINEMETA_FALLBACK_ANIMES if m.get("type") == "movie"]
+                    metas = [dict(m) for m in CINEMETA_FALLBACK_ANIMES if m.get("type") == "movie"]
                 elif genre and genre not in ("Tous", "Tendances", "Populaires"):
-                    metas = [m for m in CINEMETA_FALLBACK_ANIMES if genre.lower() in [g.lower() for g in (m.get("genres") or [])]]
+                    metas = [dict(m) for m in CINEMETA_FALLBACK_ANIMES if genre.lower() in [g.lower() for g in (m.get("genres") or [])]]
                 else:
-                    metas = list(CINEMETA_FALLBACK_ANIMES)
+                    metas = [dict(m) for m in CINEMETA_FALLBACK_ANIMES]
+                for m in metas:
+                    m["is_anime"] = True
 
             if metas:
                 try:
@@ -579,6 +632,23 @@ def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
         url = f"https://v3-cinemeta.strem.io/catalog/{media_type}/{catalog_id}{extra}.json"
         data = http_json(url)
         metas = data.get("metas", [])
+
+        # SÉPARATION STRICTE : Si l'utilisateur consulte la catégorie Séries (hors genre Anime),
+        # exclure les animés japonais qui disposent de leur propre onglet dédié
+        if media_type == "series" and genre.lower() not in ("anime", "animation"):
+            metas = [m for m in metas if not is_anime_item(m)]
+            # Compléter la grille si des animés ont été filtrés
+            if len(metas) < 35:
+                try:
+                    extra_next = f"/{catalog_id}/skip={skip + 50}.json"
+                    url_next = f"https://v3-cinemeta.strem.io/catalog/{media_type}{extra_next}"
+                    data_next = http_json(url_next)
+                    for nm in data_next.get("metas", []):
+                        if not is_anime_item(nm) and nm.get("id") not in {x.get("id") for x in metas}:
+                            metas.append(nm)
+                except Exception:
+                    pass
+
         if metas:
             try:
                 threading.Thread(target=kino_db.db_index_media, args=(metas,), daemon=True).start()
@@ -2050,7 +2120,7 @@ def is_plausible_torrent_size(t, media_type="movie", runtime_minutes=None):
     return torrent_engine.is_plausible_torrent_size(t, media_type=media_type, runtime_minutes=runtime_minutes)
 
 
-def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=None, provider=None, runtime_minutes=None, sort_by="score"):
+def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=None, provider=None, runtime_minutes=None, sort_by="score", query_title=""):
     prov, token = _get_provider_and_token(rd_token, provider)
     prov_meta = DEBRID_PROVIDERS.get(prov, DEBRID_PROVIDERS["realdebrid"])
     tio_key = prov_meta.get("torrentio_key", "")
@@ -2070,7 +2140,8 @@ def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=
         except Exception:
             pass
 
-    cache_key = f"multi_engine:{prov}:{media_type}:{imdb_id}:{season}:{episode}:{bool(token)}:{sort_by}"
+    clean_q = query_title.strip() if query_title else ""
+    cache_key = f"multi_engine:{prov}:{media_type}:{imdb_id}:{season}:{episode}:{bool(token)}:{sort_by}:{clean_q}"
 
     def _fetch():
         return torrent_engine.search_multi_torrents(
@@ -2088,6 +2159,7 @@ def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=
             hdr_mode=hdr_mode,
             http_json_fn=http_json,
             search_apibay_fn=search_apibay,
+            query_title=clean_q,
         )
 
     res = list(cached_get(cache_key, 180, _fetch) or [])
@@ -2259,11 +2331,91 @@ def resolve_torrentio_rd_url(resolve_url):
     }
 
 
-def _build_ep_pattern(season, episode):
-    if season and episode:
-        s_num = int(season)
-        e_num = int(episode)
-        return re.compile(rf"(s0?{s_num}[\.\-_ ]?e0?{e_num}\b|\b{s_num}x0?{e_num}\b)", re.IGNORECASE)
+def is_target_episode_file(filename: str, season: int = None, episode: int = None, absolute_ep: int = None) -> bool:
+    """
+    Détecte avec une haute précision si un nom de fichier correspond exactement à l'épisode recherché.
+    Gère les conventions occidentales et les conventions Anime japonaises :
+    - S01E05, 1x05, S1E5, S01 - E05
+    - Formats animés saisonniers : S2 - 05, Season 2 - 05, 2nd Season - 05, Part 2 - 05
+    - Formats animés absolus : ' - 05 ', '[05]', '(05)', 'Ep 05', 'Episode 5', '#05'
+    - Numérotation absolue multi-saisons (ex: JJK 47, Bleach 366, One Piece 1089)
+    - Rejet strict des fakes, résolutions (1080p), bonus (OP, ED, PV, Sample).
+    """
+    if not filename or (season is None and episode is None and absolute_ep is None):
+        return True
+
+    fname = filename.strip()
+    s_num = int(season) if season else 1
+    e_num = int(episode) if episode else 1
+    abs_num = int(absolute_ep) if absolute_ep else None
+
+    # 1. Exclusion immédiate des fichiers annexes non-épisodes (OP, ED, PV, Sample, NCED, NCOP, Menu)
+    if re.search(r"[\s\-_\[(](?:NC)?(?:OP|ED|PV|TRAILER|SAMPLE|PREVIEW|MENU)\b(?:\d+)?", fname, re.IGNORECASE):
+        if not re.search(r"\bOne\s+Piece\b", fname, re.IGNORECASE) or re.search(r"[\s\-_\[(](?:NCOP|NCED|PV|SAMPLE)\b", fname, re.IGNORECASE):
+            return False
+
+    # 2. Règle absolue Standard TV : S01E05 ou 1x05
+    std_pattern = rf"(?:s0?{s_num}[\.\-_ ]?e0?{e_num}\b|\b{s_num}x0?{e_num}\b)"
+    if re.search(std_pattern, fname, re.IGNORECASE):
+        return True
+
+    # 3. Règle Saisonnière Anime explicite :
+    # "S02 - 05", "Season 2 - 05", "2nd Season - 05", "S2 05", "Part 2 - 05"
+    s_marker = rf"(?:s0?{s_num}|season\s*0?{s_num}|{s_num}(?:nd|rd|th|st)\s*season|part\s*0?{s_num})\b"
+    if re.search(s_marker, fname, re.IGNORECASE):
+        ep_after_s = re.search(s_marker + r"[\s\-_:]*(?:ep(?:isode)?\.?\s*|e)?0*" + str(e_num) + r"(?:v\d+)?(?:[\s\-_\]\).]|$)", fname, re.IGNORECASE)
+        if ep_after_s:
+            return True
+
+    # 4. Règle Anime Numérotation Absolue ou Épisode Direct :
+    cleaned = fname
+    # Supprimer les hashes hexadécimaux [ABCDEF01]
+    cleaned = re.sub(r"\[[0-9a-fA-F]{6,8}\]", "", cleaned)
+    # Supprimer résolutions et specs
+    cleaned = re.sub(r"\b(?:2160p|1080p|720p|480p|4k|uhd|fhd|hd)\b", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(?:x264|x265|h264|h265|hevc|av1|10bit|8bit)\b", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(?:5\.1|7\.1|2\.0)\b", "", cleaned)
+    cleaned = re.sub(r"\b(?:19|20)\d{2}\b", "", cleaned)
+    cleaned = re.sub(r"\b(?:aac|flac|ac3|eac3|dts|mp3)\b", "", cleaned, flags=re.IGNORECASE)
+
+    # Si le fichier mentionne explicitement une AUTRE saison (ex: S02 alors qu'on cherche S01), rejeter
+    other_season = re.search(r"\b(?:s|season|part)\s*0?(\d+)\b", cleaned, re.IGNORECASE)
+    if other_season:
+        detected_s = int(other_season.group(1))
+        if detected_s != s_num:
+            return False
+
+    target_numbers = [e_num]
+    if abs_num and abs_num != e_num:
+        target_numbers.append(abs_num)
+
+    for target_n in target_numbers:
+        pats = [
+            rf"[\s\-_]0*{target_n}(?:v\d+)?[\s\-_\.\]\)]",
+            rf"\[0*{target_n}(?:v\d+)?\]",
+            rf"\(0*{target_n}(?:v\d+)?\)",
+            rf"\b(?:ep(?:isode)?\.?|e|#)\s*0*{target_n}(?:v\d+)?\b",
+        ]
+        for p in pats:
+            if re.search(p, cleaned, re.IGNORECASE):
+                return True
+
+    return False
+
+
+class EpisodeMatcher:
+    def __init__(self, season=None, episode=None, absolute_ep=None):
+        self.season = int(season) if season is not None else None
+        self.episode = int(episode) if episode is not None else None
+        self.absolute_ep = int(absolute_ep) if absolute_ep is not None else None
+
+    def search(self, filename: str) -> bool:
+        return is_target_episode_file(filename, self.season, self.episode, self.absolute_ep)
+
+
+def _build_ep_pattern(season, episode, absolute_ep=None):
+    if season is not None or episode is not None or absolute_ep is not None:
+        return EpisodeMatcher(season, episode, absolute_ep)
     return None
 
 
@@ -2637,6 +2789,31 @@ def find_mpv():
     return None
 
 
+def find_ffmpeg():
+    """Détecte l'exécutable FFmpeg sur la machine (WinGet, PATH standard, macOS Homebrew, Linux)."""
+    path = shutil.which("ffmpeg")
+    if path and os.path.exists(path):
+        return path
+    candidates = [
+        str(Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Links" / "ffmpeg.exe"),
+        r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
+        r"C:\ffmpeg\bin\ffmpeg.exe",
+        "/opt/homebrew/bin/ffmpeg",
+        "/usr/local/bin/ffmpeg",
+        "/usr/bin/ffmpeg",
+    ]
+    # Recherche dynamique dans WinGet Packages
+    wg_dir = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Packages"
+    if wg_dir.exists():
+        for p in wg_dir.glob("**/ffmpeg.exe"):
+            if p.is_file():
+                candidates.append(str(p))
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return c
+    return None
+
+
 def spawn_on_user_desktop(args):
     """Lance un processus détaché (cross-platform : Windows via WinSta0\\Default, macOS/Linux via start_new_session)."""
     if sys.platform != "win32":
@@ -2826,7 +3003,7 @@ def resolve_auto_stream_episode(params):
                 })
             return cached["download"]
 
-    torrents = search_torrentio(imdb_id, "series", s, ep, rd_token=token) if imdb_id else []
+    torrents = search_torrentio(imdb_id, "series", s, ep, rd_token=token, query_title=name) if imdb_id else []
     if not torrents:
         raise RuntimeError(f"Aucun flux trouvé pour {name} S{s:02d}E{ep:02d}.")
 
@@ -2849,7 +3026,10 @@ def resolve_auto_stream_episode(params):
                 resolve_url=cand.get("resolve_url", ""),
             )
             if res.get("ready") and res.get("files"):
-                target_file = res["files"][0]
+                target_files = [f for f in res["files"] if f.get("is_target_ep")]
+                if len(res["files"]) > 1 and not target_files:
+                    continue
+                target_file = target_files[0] if target_files else res["files"][0]
                 dl_url = target_file["download"]
                 fname = target_file.get("filename", f"{name} S{s:02d}E{ep:02d}")
                 with AUTO_STREAM_LOCK:
@@ -5427,6 +5607,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <div id="inAppTitle" style="font-weight:600; font-size:0.95rem; color:#fafafa; text-align:center; flex:1; margin:0 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
     <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;" class="no-drag">
       <button class="inapp-btn" id="inAppMpvSuggestBtn" onclick="switchToExternalPlayer()" style="display:none; border-color:rgba(124,58,237,0.8); background:rgba(124,58,237,0.18);" title="Optimisé pour 4K HDR & DTS sans saccades"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Basculer MPV</button>
+      <button class="inapp-btn" id="inAppAudioFixBtn" onclick="fixInAppAudio()" style="display:none; border-color:rgba(234,179,8,0.75); color:#facc15; background:rgba(234,179,8,0.14);" title="Convertir l'audio multi-canal (DTS/TrueHD/E-AC3) en flux stéréo AAC compatible avec le navigateur"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Son AAC</button>
       <button class="inapp-btn" id="inAppSubsBtn" onclick="cycleInAppSubtitles()" title="Sous-titres OpenSubtitles FR / EN (Touche C)">CC : Off</button>
       <button class="inapp-btn" id="inAppSubSizeBtn" onclick="cycleInAppSubSize()" title="Taille des sous-titres (S / M / L / XL)">A±</button>
       <button class="inapp-btn" id="inAppAudioBtn" onclick="cycleInAppAudioBoost()" title="Boost des dialogues / Mode Audio Nuit (Touche V)">Voix : Normal</button>
@@ -6249,6 +6430,23 @@ function renderGenreChipsForTab(tab) {
       <span class="chip" data-genre="Drama" onclick="selectGenre('Drama', this)">Drame</span>
       <span class="chip" data-genre="Films d'Animation" onclick="selectGenre('Films d\\'Animation', this)">Films d'Animation</span>
     `;
+  } else if (tab === 'series') {
+    gf.innerHTML = `
+      <span class="chip active" data-genre="" onclick="selectGenre('', this)">Toutes</span>
+      <span class="chip" data-genre="Drama" onclick="selectGenre('Drama', this)">Drame</span>
+      <span class="chip" data-genre="Crime" onclick="selectGenre('Crime', this)">Policier</span>
+      <span class="chip" data-genre="Thriller" onclick="selectGenre('Thriller', this)">Thriller</span>
+      <span class="chip" data-genre="Action" onclick="selectGenre('Action', this)">Action</span>
+      <span class="chip" data-genre="Sci-Fi" onclick="selectGenre('Sci-Fi', this)">Sci-Fi</span>
+      <span class="chip" data-genre="Comedy" onclick="selectGenre('Comedy', this)">Comédie</span>
+      <span class="chip" data-genre="Adventure" onclick="selectGenre('Adventure', this)">Aventure</span>
+      <span class="chip" data-genre="Fantasy" onclick="selectGenre('Fantasy', this)">Fantastique</span>
+      <span class="chip" data-genre="Horror" onclick="selectGenre('Horror', this)">Horreur</span>
+      <span class="chip" data-genre="Mystery" onclick="selectGenre('Mystery', this)">Mystère</span>
+      <span class="chip" data-genre="War" onclick="selectGenre('War', this)">Guerre</span>
+      <span class="chip" data-genre="Western" onclick="selectGenre('Western', this)">Western</span>
+      <span class="chip" data-genre="Documentary" onclick="selectGenre('Documentary', this)">Documentaire</span>
+    `;
   } else {
     gf.innerHTML = `
       <span class="chip active" data-genre="" onclick="selectGenre('', this)">Tous</span>
@@ -6380,7 +6578,18 @@ function drawHeroSpotlightSlide() {
         ? `★ ANIMATION JAPONAISE · POPULAIRE #${heroSpotlightIdx + 1}`
         : `★ À LA UNE · ${mtype === 'series' ? 'SÉRIE' : 'FILM'} #${heroSpotlightIdx + 1}`);
 
-  box.style.backgroundImage = `url('${bgUrl}')`;
+  const posterUrl = item.poster || (item.id ? `https://images.metahub.space/poster/medium/${item.id}/img` : '');
+  const bgCandidate = bgUrl || posterUrl;
+  if (bgCandidate) {
+    box.style.backgroundImage = `url('${bgCandidate}')`;
+    const heroBgImg = new Image();
+    heroBgImg.onerror = function() {
+      if (posterUrl && posterUrl !== bgCandidate) {
+        box.style.backgroundImage = `url('${posterUrl}')`;
+      }
+    };
+    heroBgImg.src = bgCandidate;
+  }
   box.innerHTML = `
     <div class="hero-content">
       <div class="hero-kicker">${kickerTxt}</div>
@@ -7753,6 +7962,21 @@ async function loadMoreCatalog() {
   }
 }
 
+function handlePosterCardError(img, id) {
+  if (!img) return;
+  if (!img.dataset.tried) {
+    img.dataset.tried = '1';
+    if (img.src && img.src.includes('/poster/medium/')) {
+      img.src = img.src.replace('/poster/medium/', '/poster/small/');
+      return;
+    }
+  }
+  img.style.display = 'none';
+  if (img.parentElement) {
+    img.parentElement.style.background = 'linear-gradient(145deg, #18181b, #09090b)';
+  }
+}
+
 function renderPosterCards(metas, fallbackType) {
   const grid = document.getElementById('postersGrid');
   let displayList = metas || [];
@@ -7807,7 +8031,7 @@ function renderPosterCards(metas, fallbackType) {
       <div class="poster-card" onclick='selectMedia(${payload})'>
         ${watchedPill}
         <button class="wl-btn ${inList ? 'in-list' : ''}" data-wl-id="${m.id}" title="${inList ? 'Retirer de Ma Liste' : 'Ajouter à Ma Liste'}" onclick='toggleWatchlist(event, ${payload})'>${inList ? '✓' : '+'}</button>
-        <img src="${m.poster || ''}" alt="${m.name}" loading="lazy" onerror="this.style.opacity=0.08">
+        <img src="${m.poster || ''}" alt="${m.name}" loading="lazy" onerror="handlePosterCardError(this, '${m.id}')">
         ${cardProg}
         <div class="poster-info">
           <div class="poster-title">${m.name}</div>
@@ -10190,7 +10414,12 @@ function setInAppVolume(vol, unmute = true) {
   video.volume = clamped;
   if (unmute && video.muted && clamped > 0) {
     video.muted = false;
+    video._userMuted = false;
   }
+  try {
+    localStorage.setItem('kino_inapp_volume', String(clamped));
+    localStorage.setItem('kino_inapp_muted', String(video.muted));
+  } catch (e) {}
   updateInAppVolUI();
 }
 
@@ -10222,11 +10451,34 @@ function toggleInAppMute() {
   if (!video) return;
   if (video.muted) {
     video.muted = false;
+    video._userMuted = false;
     if (video.volume === 0) video.volume = 0.5;
   } else {
     video.muted = true;
+    video._userMuted = true;
   }
+  try {
+    localStorage.setItem('kino_inapp_volume', String(video.volume));
+    localStorage.setItem('kino_inapp_muted', String(video.muted));
+  } catch (e) {}
   updateInAppVolUI();
+}
+
+function fixInAppAudio() {
+  const video = document.getElementById('inAppVideo');
+  if (!video || !inAppCurrentUrl) return;
+  const curSec = Math.floor(video.currentTime || 0);
+  const remuxUrl = `/api/remux?url=${encodeURIComponent(inAppCurrentUrl)}&ss=${curSec}`;
+  showInAppToast('<strong>🔊 Conversion Audio AAC compatible en cours...</strong><br><span style="font-size:0.78rem; color:var(--muted);">Remuxing audio instantané stéréo sans perte vidéo</span>', 2800);
+  video.src = remuxUrl;
+  video.load();
+  video.muted = false;
+  video._userMuted = false;
+  if (!video.volume || video.volume < 0.1) video.volume = 1.0;
+  video.play().catch(() => {});
+  updateInAppVolUI();
+  const btn = document.getElementById('inAppAudioFixBtn');
+  if (btn) btn.innerHTML = '✓ Son AAC Actif';
 }
 
 function handleVolScrub(e) {
@@ -10628,17 +10880,40 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
     applyInAppClarity(inAppClarityIdx, false);
   }
 
-  // Détection des formats exigeants (HEVC / 10-bit / DTS) et proposition MPV
+  // Détection des formats exigeants (HEVC / 10-bit / DTS) et proposition MPV / Audio AAC
   const isHeavyCodec = /\b(hevc|h\.?265|10bit|hdr|dv|dovi|dts|truehd|remux)\b/i.test(`${title || ''} ${streamUrl || ''}`);
+  const hasTrickyAudio = /\b(dts|dts-hd|truehd|atmos|eac3|ac3|ddp|dd\+|flac|5\.1|7\.1)\b/i.test(`${title || ''} ${streamUrl || ''}`);
   const mpvBtn = document.getElementById('inAppMpvSuggestBtn');
   if (mpvBtn) {
     mpvBtn.style.display = isHeavyCodec ? 'inline-flex' : 'none';
   }
-  if (isHeavyCodec) {
+  const audioFixBtn = document.getElementById('inAppAudioFixBtn');
+  if (audioFixBtn) {
+    audioFixBtn.style.display = hasTrickyAudio ? 'inline-flex' : 'none';
+    audioFixBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Son AAC';
+  }
+  if (hasTrickyAudio) {
+    setTimeout(() => {
+      showInAppToast(`<strong>Piste audio multi-canal / cinéma détectée</strong><br><span style="font-size:0.78rem; color:var(--muted);">Pas de son ? Cliquez sur <strong>Son AAC</strong> en haut ou <strong>Basculer MPV</strong></span>`, 3200);
+    }, 1400);
+  } else if (isHeavyCodec) {
     setTimeout(() => {
       showInAppToast(`<strong>Format 4K HDR / DTS détecté</strong><br><span style="font-size:0.78rem; color:var(--muted);">Touche E ou bouton dédié pour basculer sur MPV sans perte</span>`, 2800);
     }, 1200);
   }
+
+  // Déverrouillage forcé du son & restauration du volume sauvegardé
+  video.muted = false;
+  video._userMuted = false;
+  let savedVol = null;
+  try {
+    savedVol = localStorage.getItem('kino_inapp_volume');
+    if (localStorage.getItem('kino_inapp_muted') === 'true') {
+      video.muted = true;
+      video._userMuted = true;
+    }
+  } catch(e) {}
+  video.volume = (savedVol !== null && !isNaN(savedVol) && parseFloat(savedVol) > 0) ? Math.max(0.05, parseFloat(savedVol)) : 1.0;
 
   applyInAppAudioUI(window.kinoAudioMode || 'voice_boost', false);
   applyInAppSpeed(1, false);
@@ -10682,7 +10957,13 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
   const playPromise = video.play();
   if (playPromise !== undefined) {
     playPromise.catch(e => {
-      if (video.error || video.readyState === 0) {
+      if (e && e.name === 'NotAllowedError') {
+        video.muted = true;
+        updateInAppVolUI();
+        video.play().then(() => {
+          showInAppToast(`<strong>🔊 Cliquez sur l'écran ou appuyez sur M pour activer le son</strong>`, 3500);
+        }).catch(() => {});
+      } else if (video.error || video.readyState === 0) {
         onFallbackRequired('play_reject');
       }
     });
@@ -10958,7 +11239,13 @@ if (inAppVideoEl) {
       inAppNextTrack();
     }
   });
-  inAppVideoEl.addEventListener('click', toggleInAppPlay);
+  inAppVideoEl.addEventListener('click', () => {
+    if (inAppVideoEl.muted && !inAppVideoEl._userMuted) {
+      inAppVideoEl.muted = false;
+      updateInAppVolUI();
+    }
+    toggleInAppPlay();
+  });
 }
 
 if (inAppOverlayEl) {
@@ -11316,6 +11603,65 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"status": "ok", "authenticated": connected, "connected": connected, "username": uname, "user": user_info})
                 return
 
+            if parsed.path == "/api/remux":
+                raw_url = params.get("url", "")
+                ss = params.get("ss", "0")
+                if not raw_url:
+                    self.send_json({"error": "Paramètre url manquant"}, status=400)
+                    return
+                ffmpeg = find_ffmpeg()
+                if not ffmpeg:
+                    self.send_json({"error": "FFmpeg introuvable sur le système"}, status=500)
+                    return
+                try:
+                    start_sec = max(0.0, float(ss))
+                except (ValueError, TypeError):
+                    start_sec = 0.0
+
+                cmd = [
+                    ffmpeg,
+                    "-hide_banner",
+                    "-loglevel", "error",
+                ]
+                if start_sec > 0:
+                    cmd.extend(["-ss", f"{start_sec:.2f}"])
+                cmd.extend([
+                    "-i", raw_url,
+                    "-c:v", "copy",
+                    "-c:a", "aac",
+                    "-b:a", "192k",
+                    "-ac", "2",
+                    "-movflags", "frag_keyframe+empty_moov+default_base_moof",
+                    "-f", "mp4",
+                    "pipe:1"
+                ])
+
+                self.send_response(200)
+                self.send_header("Content-Type", "video/mp4")
+                self.send_header("Accept-Ranges", "none")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.end_headers()
+
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                try:
+                    while True:
+                        chunk = proc.stdout.read(65536)
+                        if not chunk:
+                            break
+                        self.wfile.write(chunk)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                finally:
+                    try:
+                        proc.terminate()
+                        proc.wait(timeout=0.8)
+                    except Exception:
+                        try:
+                            proc.kill()
+                        except Exception:
+                            pass
+                return
+
             if parsed.path == "/api/auto-stream":
                 self.handle_auto_stream(params)
                 return
@@ -11494,13 +11840,14 @@ class RequestHandler(BaseHTTPRequestHandler):
                         runtime_min = int(m_rt.group(1))
 
                 torrents = []
+                clean_q = q.split(" — ")[0].strip() if " — " in q else q.strip()
                 if imdb_id:
                     try:
-                        torrents.extend(search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, sort_by=sort_by))
+                        torrents.extend(search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, sort_by=sort_by, query_title=clean_q))
                     except Exception:
                         pass
-                if not torrents and q:
-                    torrents.extend(search_apibay(q))
+                if not torrents and (q or clean_q):
+                    torrents.extend(search_apibay(clean_q or q))
 
                 torrents = [t for t in torrents if is_plausible_torrent_size(t, media_type=mtype, runtime_minutes=runtime_min)]
                 self.send_json({"torrents": torrents})
@@ -11746,9 +12093,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                     except Exception:
                         pass
 
-                torrents = search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min) if imdb_id else []
-                if not torrents and title:
-                    torrents = search_apibay(title)
+                is_series = mtype in ("series", "anime", "tv")
+                torrents = search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, query_title=series_name) if imdb_id else []
+                if not torrents and (title or series_name):
+                    torrents = search_apibay(series_name or title)
                 torrents = [t for t in torrents if is_plausible_torrent_size(t, media_type=mtype, runtime_minutes=runtime_min)]
                 if not torrents:
                     raise RuntimeError("Aucun flux valide trouvé pour ce titre.")
@@ -11761,14 +12109,18 @@ class RequestHandler(BaseHTTPRequestHandler):
                         res = rd_debrid_magnet(
                             token,
                             cand.get("magnet", ""),
-                            season=season if mtype == "series" else None,
-                            episode=episode if mtype == "series" else None,
+                            season=season if is_series else None,
+                            episode=episode if is_series else None,
                             resolve_url=cand.get("resolve_url", ""),
                         )
                         if res.get("ready") and res.get("files"):
-                            target_file = res["files"][0]
+                            target_files = [f for f in res["files"] if f.get("is_target_ep")]
+                            if is_series and len(res["files"]) > 1 and not target_files:
+                                # Aucun fichier ne correspond à l'épisode recherché dans ce pack -> essayer candidat suivant !
+                                continue
+                            target_file = target_files[0] if target_files else res["files"][0]
                             playlist_items = None
-                            if mtype == "series" and imdb_id:
+                            if is_series and imdb_id:
                                 playlist_items = build_series_playlist_items(
                                     imdb_id=imdb_id,
                                     season=season,
@@ -11788,8 +12140,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                                 )
                             resume_sec = get_resume_position(
                                 imdb_id,
-                                season if mtype == "series" else None,
-                                episode if mtype == "series" else None,
+                                season if is_series else None,
+                                episode if is_series else None,
                             ) if imdb_id else 0
                             media_ctx = {
                                 "id": imdb_id,
@@ -11797,8 +12149,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                                 "type": mtype,
                                 "year": body.get("year", ""),
                                 "poster": body.get("poster", ""),
-                                "season": int(season) if mtype == "series" else None,
-                                "episode": int(episode) if mtype == "series" else None,
+                                "season": int(season) if is_series else None,
+                                "episode": int(episode) if is_series else None,
                                 "filename": target_file["filename"],
                             } if imdb_id else None
                             mpv_info = None
