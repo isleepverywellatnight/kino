@@ -20,7 +20,12 @@ if IS_WIN:
     from ctypes import wintypes
     user32 = ctypes.windll.user32
     WM_NCLBUTTONDOWN = 0x00A1
-    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = "--hide-scrollbars"
+    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
+        "--hide-scrollbars "
+        "--autoplay-policy=no-user-gesture-required "
+        "--enable-features=PlatformAudioDecoder,MediaFoundationClearPlay,MediaFoundationAudioDecoder "
+        "--disable-features=AudioServiceSandbox"
+    )
 else:
     user32 = None
     WM_NCLBUTTONDOWN = None

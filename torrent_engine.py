@@ -401,6 +401,17 @@ def score_torrent(item: dict, pref_lang: str = "vf", pref_quality: str = "4k", h
         elif 35.0 < size_gb <= 65.0:
             score += 30  # Bon pour un REMUX 4K
 
+    # 9. Reconnaissance des Releases Spécialisées Anime & Équipes de Fansub Fiables
+    raw_title_lower = (item.get("title") or "").lower()
+    anime_release_groups = (
+        "subsplease", "erai-raws", "asw", "judas", "ember", "vostfree",
+        "tsundere", "yameii", "anime rg", "kametsu", "dragsterps", "kayo", "chibiki"
+    )
+    if any(grp in raw_title_lower for grp in anime_release_groups):
+        score += 260
+        if "nyaa" in (item.get("source") or "").lower() or "nyaasi" in raw_title_lower:
+            score += 80
+
     return score
 
 
@@ -508,12 +519,13 @@ def search_multi_torrents(
     hdr_mode: str = "sdr_pref",
     http_json_fn=None,
     search_apibay_fn=None,
+    query_title: str = "",
 ) -> list:
     """
     Exécute une recherche parallèle agressive sur de multiples indexeurs (Torrentio Main, Torrentio FR,
-    TPB+, Peerflix, APIBay), déduplique intelligemment et applique les filtres anti-fake.
+    Torrentio Anime, TPB+, Peerflix, APIBay), déduplique intelligemment et applique les filtres anti-fake.
     """
-    if media_type == "series":
+    if media_type in ("series", "anime", "tv"):
         target = f"series/{imdb_id}:{int(season)}:{int(episode)}"
     else:
         target = f"movie/{imdb_id}"
@@ -521,9 +533,11 @@ def search_multi_torrents(
     if token and tio_key:
         tio_main_url = f"https://torrentio.strem.fun/{tio_key}={token}/stream/{target}.json"
         tio_fr_url = f"https://torrentio.strem.fun/providers=torrent9,c411,nyaasi|language=french|{tio_key}={token}/stream/{target}.json"
+        tio_anime_url = f"https://torrentio.strem.fun/providers=nyaasi,tokyotosho,anidex,torrent9|language=japanese,french|{tio_key}={token}/stream/{target}.json"
     else:
         tio_main_url = f"https://torrentio.strem.fun/stream/{target}.json"
         tio_fr_url = f"https://torrentio.strem.fun/providers=torrent9,c411,nyaasi|language=french/stream/{target}.json"
+        tio_anime_url = f"https://torrentio.strem.fun/providers=nyaasi,tokyotosho,anidex,torrent9|language=japanese,french/stream/{target}.json"
 
     tpb_url = f"https://thepiratebay-plus.strem.fun/stream/{target}.json"
     peerflix_url = f"https://peerflix.mov/stream/{target}.json"
@@ -557,6 +571,7 @@ def search_multi_torrents(
     buckets = {
         "main": [],
         "fr": [],
+        "anime": [],
         "comet": [],
         "knightcrawler": [],
         "tpb": [],
@@ -586,7 +601,7 @@ def search_multi_torrents(
     def _fetch_apibay():
         try:
             if search_apibay_fn:
-                raw_items = search_apibay_fn(imdb_id)
+                raw_items = search_apibay_fn(query_title or imdb_id)
                 buckets["apibay"] = raw_items[:25]
         except Exception:
             pass
@@ -594,7 +609,7 @@ def search_multi_torrents(
     def _fetch_addons():
         try:
             import addon_manager
-            q = target.split(":")[0] if ":" in target else target
+            q = query_title.strip() if query_title else (target.split(":")[0] if ":" in target else target)
             raw_addons = addon_manager.run_addons_search(
                 query=q, media_type=media_type, season=season, episode=episode
             )
@@ -611,6 +626,7 @@ def search_multi_torrents(
     threads = [
         threading.Thread(target=_fetch_stremio, args=("main", tio_main_url, "Torrentio", 20), daemon=True),
         threading.Thread(target=_fetch_stremio, args=("fr", tio_fr_url, "Torrentio FR", 10), daemon=True),
+        threading.Thread(target=_fetch_stremio, args=("anime", tio_anime_url, "Torrentio Anime (Nyaa)", 10), daemon=True),
         threading.Thread(target=_fetch_stremio, args=("comet", comet_url, "Comet", 10), daemon=True),
         threading.Thread(target=_fetch_stremio, args=("knightcrawler", kc_url, "KnightCrawler", 4), daemon=True),
         threading.Thread(target=_fetch_stremio, args=("tpb", tpb_url, "TPB+", 6), daemon=True),
@@ -623,13 +639,14 @@ def search_multi_torrents(
         th.start()
     threads[0].join(timeout=20)
     threads[1].join(timeout=8)
-    for th in threads[2:]:
+    threads[2].join(timeout=8)
+    for th in threads[3:]:
         th.join(timeout=4)
 
     # Fusion et déduplication par info_hash
     merged = []
     seen_hashes = {}
-    for key in ("fr", "main", "addons", "comet", "knightcrawler", "tpb", "peerflix", "apibay"):
+    for key in ("fr", "anime", "main", "addons", "comet", "knightcrawler", "tpb", "peerflix", "apibay"):
         for item in buckets[key]:
             ih = (item.get("info_hash") or "").lower()
             if not ih:

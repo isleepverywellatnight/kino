@@ -33,3 +33,14 @@ dist/
 *.db
 *.db-wal
 *.db-shm
+
+# Fichiers sensibles et configurations utilisateur
+kino_sync.json
+*.json.bak
+config.json
+.env
+.env.*
+*.token
+*.key
+*.pem
+test_anime_match.py

@@ -2050,7 +2050,7 @@ def is_plausible_torrent_size(t, media_type="movie", runtime_minutes=None):
     return torrent_engine.is_plausible_torrent_size(t, media_type=media_type, runtime_minutes=runtime_minutes)
 
 
-def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=None, provider=None, runtime_minutes=None, sort_by="score"):
+def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=None, provider=None, runtime_minutes=None, sort_by="score", query_title=""):
     prov, token = _get_provider_and_token(rd_token, provider)
     prov_meta = DEBRID_PROVIDERS.get(prov, DEBRID_PROVIDERS["realdebrid"])
     tio_key = prov_meta.get("torrentio_key", "")
@@ -2070,7 +2070,8 @@ def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=
         except Exception:
             pass
 
-    cache_key = f"multi_engine:{prov}:{media_type}:{imdb_id}:{season}:{episode}:{bool(token)}:{sort_by}"
+    clean_q = query_title.strip() if query_title else ""
+    cache_key = f"multi_engine:{prov}:{media_type}:{imdb_id}:{season}:{episode}:{bool(token)}:{sort_by}:{clean_q}"
 
     def _fetch():
         return torrent_engine.search_multi_torrents(
@@ -2088,6 +2089,7 @@ def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=
             hdr_mode=hdr_mode,
             http_json_fn=http_json,
             search_apibay_fn=search_apibay,
+            query_title=clean_q,
         )
 
     res = list(cached_get(cache_key, 180, _fetch) or [])
@@ -2259,11 +2261,91 @@ def resolve_torrentio_rd_url(resolve_url):
     }
 
 
-def _build_ep_pattern(season, episode):
-    if season and episode:
-        s_num = int(season)
-        e_num = int(episode)
-        return re.compile(rf"(s0?{s_num}[\.\-_ ]?e0?{e_num}\b|\b{s_num}x0?{e_num}\b)", re.IGNORECASE)
+def is_target_episode_file(filename: str, season: int = None, episode: int = None, absolute_ep: int = None) -> bool:
+    """
+    Détecte avec une haute précision si un nom de fichier correspond exactement à l'épisode recherché.
+    Gère les conventions occidentales et les conventions Anime japonaises :
+    - S01E05, 1x05, S1E5, S01 - E05
+    - Formats animés saisonniers : S2 - 05, Season 2 - 05, 2nd Season - 05, Part 2 - 05
+    - Formats animés absolus : ' - 05 ', '[05]', '(05)', 'Ep 05', 'Episode 5', '#05'
+    - Numérotation absolue multi-saisons (ex: JJK 47, Bleach 366, One Piece 1089)
+    - Rejet strict des fakes, résolutions (1080p), bonus (OP, ED, PV, Sample).
+    """
+    if not filename or (season is None and episode is None and absolute_ep is None):
+        return True
+
+    fname = filename.strip()
+    s_num = int(season) if season else 1
+    e_num = int(episode) if episode else 1
+    abs_num = int(absolute_ep) if absolute_ep else None
+
+    # 1. Exclusion immédiate des fichiers annexes non-épisodes (OP, ED, PV, Sample, NCED, NCOP, Menu)
+    if re.search(r"[\s\-_\[(](?:NC)?(?:OP|ED|PV|TRAILER|SAMPLE|PREVIEW|MENU)\b(?:\d+)?", fname, re.IGNORECASE):
+        if not re.search(r"\bOne\s+Piece\b", fname, re.IGNORECASE) or re.search(r"[\s\-_\[(](?:NCOP|NCED|PV|SAMPLE)\b", fname, re.IGNORECASE):
+            return False
+
+    # 2. Règle absolue Standard TV : S01E05 ou 1x05
+    std_pattern = rf"(?:s0?{s_num}[\.\-_ ]?e0?{e_num}\b|\b{s_num}x0?{e_num}\b)"
+    if re.search(std_pattern, fname, re.IGNORECASE):
+        return True
+
+    # 3. Règle Saisonnière Anime explicite :
+    # "S02 - 05", "Season 2 - 05", "2nd Season - 05", "S2 05", "Part 2 - 05"
+    s_marker = rf"(?:s0?{s_num}|season\s*0?{s_num}|{s_num}(?:nd|rd|th|st)\s*season|part\s*0?{s_num})\b"
+    if re.search(s_marker, fname, re.IGNORECASE):
+        ep_after_s = re.search(s_marker + r"[\s\-_:]*(?:ep(?:isode)?\.?\s*|e)?0*" + str(e_num) + r"(?:v\d+)?(?:[\s\-_\]\).]|$)", fname, re.IGNORECASE)
+        if ep_after_s:
+            return True
+
+    # 4. Règle Anime Numérotation Absolue ou Épisode Direct :
+    cleaned = fname
+    # Supprimer les hashes hexadécimaux [ABCDEF01]
+    cleaned = re.sub(r"\[[0-9a-fA-F]{6,8}\]", "", cleaned)
+    # Supprimer résolutions et specs
+    cleaned = re.sub(r"\b(?:2160p|1080p|720p|480p|4k|uhd|fhd|hd)\b", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(?:x264|x265|h264|h265|hevc|av1|10bit|8bit)\b", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(?:5\.1|7\.1|2\.0)\b", "", cleaned)
+    cleaned = re.sub(r"\b(?:19|20)\d{2}\b", "", cleaned)
+    cleaned = re.sub(r"\b(?:aac|flac|ac3|eac3|dts|mp3)\b", "", cleaned, flags=re.IGNORECASE)
+
+    # Si le fichier mentionne explicitement une AUTRE saison (ex: S02 alors qu'on cherche S01), rejeter
+    other_season = re.search(r"\b(?:s|season|part)\s*0?(\d+)\b", cleaned, re.IGNORECASE)
+    if other_season:
+        detected_s = int(other_season.group(1))
+        if detected_s != s_num:
+            return False
+
+    target_numbers = [e_num]
+    if abs_num and abs_num != e_num:
+        target_numbers.append(abs_num)
+
+    for target_n in target_numbers:
+        pats = [
+            rf"[\s\-_]0*{target_n}(?:v\d+)?[\s\-_\.\]\)]",
+            rf"\[0*{target_n}(?:v\d+)?\]",
+            rf"\(0*{target_n}(?:v\d+)?\)",
+            rf"\b(?:ep(?:isode)?\.?|e|#)\s*0*{target_n}(?:v\d+)?\b",
+        ]
+        for p in pats:
+            if re.search(p, cleaned, re.IGNORECASE):
+                return True
+
+    return False
+
+
+class EpisodeMatcher:
+    def __init__(self, season=None, episode=None, absolute_ep=None):
+        self.season = int(season) if season is not None else None
+        self.episode = int(episode) if episode is not None else None
+        self.absolute_ep = int(absolute_ep) if absolute_ep is not None else None
+
+    def search(self, filename: str) -> bool:
+        return is_target_episode_file(filename, self.season, self.episode, self.absolute_ep)
+
+
+def _build_ep_pattern(season, episode, absolute_ep=None):
+    if season is not None or episode is not None or absolute_ep is not None:
+        return EpisodeMatcher(season, episode, absolute_ep)
     return None
 
 
@@ -2637,6 +2719,31 @@ def find_mpv():
     return None
 
 
+def find_ffmpeg():
+    """Détecte l'exécutable FFmpeg sur la machine (WinGet, PATH standard, macOS Homebrew, Linux)."""
+    path = shutil.which("ffmpeg")
+    if path and os.path.exists(path):
+        return path
+    candidates = [
+        str(Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Links" / "ffmpeg.exe"),
+        r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
+        r"C:\ffmpeg\bin\ffmpeg.exe",
+        "/opt/homebrew/bin/ffmpeg",
+        "/usr/local/bin/ffmpeg",
+        "/usr/bin/ffmpeg",
+    ]
+    # Recherche dynamique dans WinGet Packages
+    wg_dir = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Packages"
+    if wg_dir.exists():
+        for p in wg_dir.glob("**/ffmpeg.exe"):
+            if p.is_file():
+                candidates.append(str(p))
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return c
+    return None
+
+
 def spawn_on_user_desktop(args):
     """Lance un processus détaché (cross-platform : Windows via WinSta0\\Default, macOS/Linux via start_new_session)."""
     if sys.platform != "win32":
@@ -2826,7 +2933,7 @@ def resolve_auto_stream_episode(params):
                 })
             return cached["download"]
 
-    torrents = search_torrentio(imdb_id, "series", s, ep, rd_token=token) if imdb_id else []
+    torrents = search_torrentio(imdb_id, "series", s, ep, rd_token=token, query_title=name) if imdb_id else []
     if not torrents:
         raise RuntimeError(f"Aucun flux trouvé pour {name} S{s:02d}E{ep:02d}.")
 
@@ -2849,7 +2956,10 @@ def resolve_auto_stream_episode(params):
                 resolve_url=cand.get("resolve_url", ""),
             )
             if res.get("ready") and res.get("files"):
-                target_file = res["files"][0]
+                target_files = [f for f in res["files"] if f.get("is_target_ep")]
+                if len(res["files"]) > 1 and not target_files:
+                    continue
+                target_file = target_files[0] if target_files else res["files"][0]
                 dl_url = target_file["download"]
                 fname = target_file.get("filename", f"{name} S{s:02d}E{ep:02d}")
                 with AUTO_STREAM_LOCK:
@@ -5427,6 +5537,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <div id="inAppTitle" style="font-weight:600; font-size:0.95rem; color:#fafafa; text-align:center; flex:1; margin:0 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
     <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;" class="no-drag">
       <button class="inapp-btn" id="inAppMpvSuggestBtn" onclick="switchToExternalPlayer()" style="display:none; border-color:rgba(124,58,237,0.8); background:rgba(124,58,237,0.18);" title="Optimisé pour 4K HDR & DTS sans saccades"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Basculer MPV</button>
+      <button class="inapp-btn" id="inAppAudioFixBtn" onclick="fixInAppAudio()" style="display:none; border-color:rgba(234,179,8,0.75); color:#facc15; background:rgba(234,179,8,0.14);" title="Convertir l'audio multi-canal (DTS/TrueHD/E-AC3) en flux stéréo AAC compatible avec le navigateur"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Son AAC</button>
       <button class="inapp-btn" id="inAppSubsBtn" onclick="cycleInAppSubtitles()" title="Sous-titres OpenSubtitles FR / EN (Touche C)">CC : Off</button>
       <button class="inapp-btn" id="inAppSubSizeBtn" onclick="cycleInAppSubSize()" title="Taille des sous-titres (S / M / L / XL)">A±</button>
       <button class="inapp-btn" id="inAppAudioBtn" onclick="cycleInAppAudioBoost()" title="Boost des dialogues / Mode Audio Nuit (Touche V)">Voix : Normal</button>
@@ -10190,7 +10301,12 @@ function setInAppVolume(vol, unmute = true) {
   video.volume = clamped;
   if (unmute && video.muted && clamped > 0) {
     video.muted = false;
+    video._userMuted = false;
   }
+  try {
+    localStorage.setItem('kino_inapp_volume', String(clamped));
+    localStorage.setItem('kino_inapp_muted', String(video.muted));
+  } catch (e) {}
   updateInAppVolUI();
 }
 
@@ -10222,11 +10338,34 @@ function toggleInAppMute() {
   if (!video) return;
   if (video.muted) {
     video.muted = false;
+    video._userMuted = false;
     if (video.volume === 0) video.volume = 0.5;
   } else {
     video.muted = true;
+    video._userMuted = true;
   }
+  try {
+    localStorage.setItem('kino_inapp_volume', String(video.volume));
+    localStorage.setItem('kino_inapp_muted', String(video.muted));
+  } catch (e) {}
   updateInAppVolUI();
+}
+
+function fixInAppAudio() {
+  const video = document.getElementById('inAppVideo');
+  if (!video || !inAppCurrentUrl) return;
+  const curSec = Math.floor(video.currentTime || 0);
+  const remuxUrl = `/api/remux?url=${encodeURIComponent(inAppCurrentUrl)}&ss=${curSec}`;
+  showInAppToast('<strong>🔊 Conversion Audio AAC compatible en cours...</strong><br><span style="font-size:0.78rem; color:var(--muted);">Remuxing audio instantané stéréo sans perte vidéo</span>', 2800);
+  video.src = remuxUrl;
+  video.load();
+  video.muted = false;
+  video._userMuted = false;
+  if (!video.volume || video.volume < 0.1) video.volume = 1.0;
+  video.play().catch(() => {});
+  updateInAppVolUI();
+  const btn = document.getElementById('inAppAudioFixBtn');
+  if (btn) btn.innerHTML = '✓ Son AAC Actif';
 }
 
 function handleVolScrub(e) {
@@ -10628,17 +10767,40 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
     applyInAppClarity(inAppClarityIdx, false);
   }
 
-  // Détection des formats exigeants (HEVC / 10-bit / DTS) et proposition MPV
+  // Détection des formats exigeants (HEVC / 10-bit / DTS) et proposition MPV / Audio AAC
   const isHeavyCodec = /\b(hevc|h\.?265|10bit|hdr|dv|dovi|dts|truehd|remux)\b/i.test(`${title || ''} ${streamUrl || ''}`);
+  const hasTrickyAudio = /\b(dts|dts-hd|truehd|atmos|eac3|ac3|ddp|dd\+|flac|5\.1|7\.1)\b/i.test(`${title || ''} ${streamUrl || ''}`);
   const mpvBtn = document.getElementById('inAppMpvSuggestBtn');
   if (mpvBtn) {
     mpvBtn.style.display = isHeavyCodec ? 'inline-flex' : 'none';
   }
-  if (isHeavyCodec) {
+  const audioFixBtn = document.getElementById('inAppAudioFixBtn');
+  if (audioFixBtn) {
+    audioFixBtn.style.display = hasTrickyAudio ? 'inline-flex' : 'none';
+    audioFixBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Son AAC';
+  }
+  if (hasTrickyAudio) {
+    setTimeout(() => {
+      showInAppToast(`<strong>Piste audio multi-canal / cinéma détectée</strong><br><span style="font-size:0.78rem; color:var(--muted);">Pas de son ? Cliquez sur <strong>Son AAC</strong> en haut ou <strong>Basculer MPV</strong></span>`, 3200);
+    }, 1400);
+  } else if (isHeavyCodec) {
     setTimeout(() => {
       showInAppToast(`<strong>Format 4K HDR / DTS détecté</strong><br><span style="font-size:0.78rem; color:var(--muted);">Touche E ou bouton dédié pour basculer sur MPV sans perte</span>`, 2800);
     }, 1200);
   }
+
+  // Déverrouillage forcé du son & restauration du volume sauvegardé
+  video.muted = false;
+  video._userMuted = false;
+  let savedVol = null;
+  try {
+    savedVol = localStorage.getItem('kino_inapp_volume');
+    if (localStorage.getItem('kino_inapp_muted') === 'true') {
+      video.muted = true;
+      video._userMuted = true;
+    }
+  } catch(e) {}
+  video.volume = (savedVol !== null && !isNaN(savedVol) && parseFloat(savedVol) > 0) ? Math.max(0.05, parseFloat(savedVol)) : 1.0;
 
   applyInAppAudioUI(window.kinoAudioMode || 'voice_boost', false);
   applyInAppSpeed(1, false);
@@ -10682,7 +10844,13 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
   const playPromise = video.play();
   if (playPromise !== undefined) {
     playPromise.catch(e => {
-      if (video.error || video.readyState === 0) {
+      if (e && e.name === 'NotAllowedError') {
+        video.muted = true;
+        updateInAppVolUI();
+        video.play().then(() => {
+          showInAppToast(`<strong>🔊 Cliquez sur l'écran ou appuyez sur M pour activer le son</strong>`, 3500);
+        }).catch(() => {});
+      } else if (video.error || video.readyState === 0) {
         onFallbackRequired('play_reject');
       }
     });
@@ -10958,7 +11126,13 @@ if (inAppVideoEl) {
       inAppNextTrack();
     }
   });
-  inAppVideoEl.addEventListener('click', toggleInAppPlay);
+  inAppVideoEl.addEventListener('click', () => {
+    if (inAppVideoEl.muted && !inAppVideoEl._userMuted) {
+      inAppVideoEl.muted = false;
+      updateInAppVolUI();
+    }
+    toggleInAppPlay();
+  });
 }
 
 if (inAppOverlayEl) {
@@ -11316,6 +11490,65 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"status": "ok", "authenticated": connected, "connected": connected, "username": uname, "user": user_info})
                 return
 
+            if parsed.path == "/api/remux":
+                raw_url = params.get("url", "")
+                ss = params.get("ss", "0")
+                if not raw_url:
+                    self.send_json({"error": "Paramètre url manquant"}, status=400)
+                    return
+                ffmpeg = find_ffmpeg()
+                if not ffmpeg:
+                    self.send_json({"error": "FFmpeg introuvable sur le système"}, status=500)
+                    return
+                try:
+                    start_sec = max(0.0, float(ss))
+                except (ValueError, TypeError):
+                    start_sec = 0.0
+
+                cmd = [
+                    ffmpeg,
+                    "-hide_banner",
+                    "-loglevel", "error",
+                ]
+                if start_sec > 0:
+                    cmd.extend(["-ss", f"{start_sec:.2f}"])
+                cmd.extend([
+                    "-i", raw_url,
+                    "-c:v", "copy",
+                    "-c:a", "aac",
+                    "-b:a", "192k",
+                    "-ac", "2",
+                    "-movflags", "frag_keyframe+empty_moov+default_base_moof",
+                    "-f", "mp4",
+                    "pipe:1"
+                ])
+
+                self.send_response(200)
+                self.send_header("Content-Type", "video/mp4")
+                self.send_header("Accept-Ranges", "none")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.end_headers()
+
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                try:
+                    while True:
+                        chunk = proc.stdout.read(65536)
+                        if not chunk:
+                            break
+                        self.wfile.write(chunk)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                finally:
+                    try:
+                        proc.terminate()
+                        proc.wait(timeout=0.8)
+                    except Exception:
+                        try:
+                            proc.kill()
+                        except Exception:
+                            pass
+                return
+
             if parsed.path == "/api/auto-stream":
                 self.handle_auto_stream(params)
                 return
@@ -11494,13 +11727,14 @@ class RequestHandler(BaseHTTPRequestHandler):
                         runtime_min = int(m_rt.group(1))
 
                 torrents = []
+                clean_q = q.split(" — ")[0].strip() if " — " in q else q.strip()
                 if imdb_id:
                     try:
-                        torrents.extend(search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, sort_by=sort_by))
+                        torrents.extend(search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, sort_by=sort_by, query_title=clean_q))
                     except Exception:
                         pass
-                if not torrents and q:
-                    torrents.extend(search_apibay(q))
+                if not torrents and (q or clean_q):
+                    torrents.extend(search_apibay(clean_q or q))
 
                 torrents = [t for t in torrents if is_plausible_torrent_size(t, media_type=mtype, runtime_minutes=runtime_min)]
                 self.send_json({"torrents": torrents})
@@ -11746,9 +11980,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                     except Exception:
                         pass
 
-                torrents = search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min) if imdb_id else []
-                if not torrents and title:
-                    torrents = search_apibay(title)
+                is_series = mtype in ("series", "anime", "tv")
+                torrents = search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, query_title=series_name) if imdb_id else []
+                if not torrents and (title or series_name):
+                    torrents = search_apibay(series_name or title)
                 torrents = [t for t in torrents if is_plausible_torrent_size(t, media_type=mtype, runtime_minutes=runtime_min)]
                 if not torrents:
                     raise RuntimeError("Aucun flux valide trouvé pour ce titre.")
@@ -11761,14 +11996,18 @@ class RequestHandler(BaseHTTPRequestHandler):
                         res = rd_debrid_magnet(
                             token,
                             cand.get("magnet", ""),
-                            season=season if mtype == "series" else None,
-                            episode=episode if mtype == "series" else None,
+                            season=season if is_series else None,
+                            episode=episode if is_series else None,
                             resolve_url=cand.get("resolve_url", ""),
                         )
                         if res.get("ready") and res.get("files"):
-                            target_file = res["files"][0]
+                            target_files = [f for f in res["files"] if f.get("is_target_ep")]
+                            if is_series and len(res["files"]) > 1 and not target_files:
+                                # Aucun fichier ne correspond à l'épisode recherché dans ce pack -> essayer candidat suivant !
+                                continue
+                            target_file = target_files[0] if target_files else res["files"][0]
                             playlist_items = None
-                            if mtype == "series" and imdb_id:
+                            if is_series and imdb_id:
                                 playlist_items = build_series_playlist_items(
                                     imdb_id=imdb_id,
                                     season=season,
@@ -11788,8 +12027,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                                 )
                             resume_sec = get_resume_position(
                                 imdb_id,
-                                season if mtype == "series" else None,
-                                episode if mtype == "series" else None,
+                                season if is_series else None,
+                                episode if is_series else None,
                             ) if imdb_id else 0
                             media_ctx = {
                                 "id": imdb_id,
@@ -11797,8 +12036,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                                 "type": mtype,
                                 "year": body.get("year", ""),
                                 "poster": body.get("poster", ""),
-                                "season": int(season) if mtype == "series" else None,
-                                "episode": int(episode) if mtype == "series" else None,
+                                "season": int(season) if is_series else None,
+                                "episode": int(episode) if is_series else None,
                                 "filename": target_file["filename"],
                             } if imdb_id else None
                             mpv_info = None
