@@ -62,6 +62,10 @@ kino_db.migrate_from_json(CONFIG_FILE)
 
 # Démarrage de l'agent Discord Rich Presence
 try:
+    _startup_cfg = load_config()
+    if _startup_cfg.get("discord_client_id"):
+        discord_rpc.discord_rpc.set_client_id(str(_startup_cfg["discord_client_id"]).strip())
+    discord_rpc.discord_rpc.enabled = bool(_startup_cfg.get("discord_rpc", True))
     discord_rpc.discord_rpc.start()
 except Exception:
     pass
@@ -151,6 +155,7 @@ def load_config():
         "audio_mode": "voice_boost",
         "rd_retention_days": 0,
         "discord_rpc": True,
+        "discord_client_id": "631379801826918400",
     }
     # Support ancien fichier de config si existant
     legacy = Path.home() / ".rd_cli_config.json"
@@ -208,6 +213,11 @@ def save_config(new_data):
         discord_rpc.discord_rpc.enabled = bool(new_data["discord_rpc"])
         if not discord_rpc.discord_rpc.enabled:
             discord_rpc.discord_rpc.clear()
+
+    if "discord_client_id" in new_data:
+        cid = str(new_data["discord_client_id"]).strip()
+        if cid:
+            discord_rpc.discord_rpc.set_client_id(cid)
 
     cfg.update(new_data)
     cfg["debrid_provider"] = target_prov
@@ -6161,11 +6171,31 @@ HTML_PAGE = r"""<!DOCTYPE html>
             <span style="font-size:0.82rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:6px;">
               <span style="color:#5865F2; font-weight:800;">Discord</span> Rich Presence
             </span>
-            <p id="discordRpcStatus" style="font-size:0.74rem; color:var(--dim); margin:2px 0 0;">Afficher le film/série en cours et le temps restant sur votre profil Discord</p>
+            <p id="discordRpcStatus" style="font-size:0.74rem; color:var(--dim); margin:2px 0 0;">Statut en direct sur votre profil Discord (titre, saison, progression)</p>
           </div>
           <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.8rem; user-select:none;">
-            <input type="checkbox" id="cfgDiscordRpc" checked style="cursor:pointer; accent-color:#5865F2; width:16px; height:16px;"> Actif
+            <input type="checkbox" id="cfgDiscordRpc" checked onchange="toggleDiscordRpcFields()" style="cursor:pointer; accent-color:#5865F2; width:16px; height:16px;"> Actif
           </label>
+        </div>
+        <div id="discordRpcOptions" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <span style="font-size:0.75rem; color:var(--muted);">Profil affiché :</span>
+            <select id="cfgDiscordPreset" onchange="onDiscordPresetChange()" style="background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:5px; font-size:0.75rem;">
+              <option value="631379801826918400">IMDb (Cinéma &amp; Séries)</option>
+              <option value="645028677033132033">Plex</option>
+              <option value="968880591003082783">trakt.tv</option>
+              <option value="938732156346314795">Letterboxd</option>
+              <option value="608065709741965327">Crunchyroll (Animés)</option>
+              <option value="926541425682829352">Netflix</option>
+              <option value="custom">KINO (Application personnalisée)</option>
+            </select>
+          </div>
+          <div id="cfgDiscordCustomBox" style="display:none; flex-direction:column; gap:4px; margin-top:2px;">
+            <input type="text" id="cfgDiscordClientId" placeholder="ID Client Discord (ex: 123456789012345678)" style="background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:5px 8px; border-radius:5px; font-size:0.75rem;">
+            <p style="margin:2px 0 0; font-size:0.7rem; color:var(--dim); line-height:1.3;">
+              Pour afficher <strong>Joue à KINO</strong>, créez une application nommée KINO sur le <a href="https://discord.com/developers/applications" target="_blank" style="color:#5865F2; text-decoration:underline;">Discord Developer Portal</a> et collez son Application ID.
+            </p>
+          </div>
         </div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
@@ -6417,6 +6447,22 @@ async function checkConfig() {
     if (document.getElementById('cfgDiscordRpc')) {
       document.getElementById('cfgDiscordRpc').checked = cfg.discord_rpc !== false;
     }
+    const currentCid = String(cfg.discord_client_id || '631379801826918400').trim();
+    const presetEl = document.getElementById('cfgDiscordPreset');
+    const customInp = document.getElementById('cfgDiscordClientId');
+    const customBox = document.getElementById('cfgDiscordCustomBox');
+    if (presetEl) {
+      const known = ['631379801826918400', '645028677033132033', '968880591003082783', '938732156346314795', '608065709741965327', '926541425682829352'];
+      if (known.includes(currentCid)) {
+        presetEl.value = currentCid;
+        if (customBox) customBox.style.display = 'none';
+      } else {
+        presetEl.value = 'custom';
+        if (customInp) customInp.value = currentCid;
+        if (customBox) customBox.style.display = 'flex';
+      }
+    }
+    toggleDiscordRpcFields();
     window.kinoPlayerMode = cfg.player_mode || 'kino';
     const badge = document.getElementById('userBadge');
     if (badge) {
@@ -8773,6 +8819,20 @@ async function triggerGdriveSync(btn) {
   }
 }
 
+function toggleDiscordRpcFields() {
+  const chk = document.getElementById('cfgDiscordRpc');
+  const opt = document.getElementById('discordRpcOptions');
+  if (opt) opt.style.display = (chk && chk.checked) ? 'flex' : 'none';
+}
+
+function onDiscordPresetChange() {
+  const p = document.getElementById('cfgDiscordPreset');
+  const box = document.getElementById('cfgDiscordCustomBox');
+  if (box && p) {
+    box.style.display = (p.value === 'custom') ? 'flex' : 'none';
+  }
+}
+
 async function saveConfig() {
   const debrid_provider = document.getElementById('cfgProvider') ? document.getElementById('cfgProvider').value : 'realdebrid';
   const token = document.getElementById('cfgToken').value.trim();
@@ -8784,10 +8844,20 @@ async function saveConfig() {
   const audio_mode = document.getElementById('cfgAudioMode') ? document.getElementById('cfgAudioMode').value : 'voice_boost';
   const rd_retention_days = document.getElementById('cfgRdRetention') ? parseInt(document.getElementById('cfgRdRetention').value || '0', 10) : 0;
   const discord_rpc = document.getElementById('cfgDiscordRpc') ? document.getElementById('cfgDiscordRpc').checked : true;
+  let discord_client_id = '631379801826918400';
+  const presetEl = document.getElementById('cfgDiscordPreset');
+  if (presetEl) {
+    if (presetEl.value === 'custom') {
+      const customVal = (document.getElementById('cfgDiscordClientId') ? document.getElementById('cfgDiscordClientId').value : '').trim();
+      discord_client_id = customVal || '631379801826918400';
+    } else {
+      discord_client_id = presetEl.value;
+    }
+  }
   await api('/api/config', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({debrid_provider, rd_token: token, download_dir: dir, player_mode, pref_lang, pref_quality, hdr_mode, audio_mode, rd_retention_days, discord_rpc})
+    body: JSON.stringify({debrid_provider, rd_token: token, download_dir: dir, player_mode, pref_lang, pref_quality, hdr_mode, audio_mode, rd_retention_days, discord_rpc, discord_client_id})
   });
   window.kinoPlayerMode = player_mode;
   window.kinoHdrMode = hdr_mode;
@@ -12501,6 +12571,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "audio_mode": cfg.get("audio_mode", "voice_boost"),
                     "rd_retention_days": ret_days,
                     "discord_rpc": cfg.get("discord_rpc", True),
+                    "discord_client_id": cfg.get("discord_client_id", "631379801826918400"),
                 })
                 return
 
@@ -12754,6 +12825,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                     updates["rd_retention_days"] = int(body["rd_retention_days"])
                 if "discord_rpc" in body:
                     updates["discord_rpc"] = bool(body["discord_rpc"])
+                if "discord_client_id" in body and body["discord_client_id"] is not None:
+                    updates["discord_client_id"] = str(body["discord_client_id"]).strip()
                 save_config(updates)
                 self.send_json({"ok": True})
                 return

@@ -21,8 +21,8 @@ from typing import Optional, Dict, Any
 
 logger = logging.getLogger("kino.discord")
 
-# Identifiant client Discord par défaut pour les centres multimédias
-DEFAULT_CLIENT_ID = "463151177836658699"
+# Identifiant client Discord par défaut pour les centres multimédias (IMDb / Cinéma)
+DEFAULT_CLIENT_ID = "631379801826918400"
 
 OP_HANDSHAKE = 0
 OP_FRAME = 1
@@ -44,6 +44,29 @@ class DiscordRPCClient:
         self._lock = threading.Lock()
         self._running = False
         self._queue: Optional[asyncio.Queue] = None
+
+    def set_client_id(self, client_id: str):
+        """Met à jour le Client ID Discord et réinitialise la connexion si nécessaire."""
+        clean_id = str(client_id or "").strip()
+        if not clean_id:
+            clean_id = DEFAULT_CLIENT_ID
+        if clean_id == self.client_id:
+            return
+        with self._lock:
+            self.client_id = clean_id
+            self._connected = False
+            if self._writer:
+                try:
+                    self._writer.close()
+                except Exception:
+                    pass
+                self._writer = None
+            self._reader = None
+            if self._last_activity and self._loop and self._queue:
+                self._loop.call_soon_threadsafe(
+                    self._queue.put_nowait,
+                    {"action": "update", "activity": self._last_activity}
+                )
 
     def start(self):
         """Démarre la boucle asynchrone Discord RPC dans un thread d'arrière-plan."""
@@ -217,15 +240,27 @@ class DiscordRPCClient:
             else:
                 timestamps = {"start": now}
 
+        assets = {
+            "large_image": poster_url if (poster_url and poster_url.startswith("http")) else "large_img",
+            "large_text": title[:128],
+        }
+        if self.client_id == "631379801826918400":
+            # Preset IMDb
+            assets["small_image"] = "paused" if is_paused else "playing"
+            assets["small_text"] = "En pause" if is_paused else "Lecture en cours"
+        elif self.client_id == "645028677033132033":
+            # Preset Plex
+            assets["small_image"] = "pause" if is_paused else "play"
+            assets["small_text"] = "Plex Media"
+        elif poster_url:
+            # Client ID personnalisé KINO
+            assets["small_image"] = "kino_logo"
+            assets["small_text"] = "KINO Media Center"
+
         activity = {
             "details": details[:128],
             "state": state[:128],
-            "assets": {
-                "large_image": poster_url if (poster_url and poster_url.startswith("http")) else "kino_logo",
-                "large_text": title[:128],
-                "small_image": "kino_logo",
-                "small_text": "KINO 4K Media Center",
-            },
+            "assets": assets,
         }
         if timestamps:
             activity["timestamps"] = timestamps
