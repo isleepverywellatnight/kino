@@ -114,7 +114,7 @@ def on_closed():
     if sys.platform == "win32":
         try:
             import subprocess
-            subprocess.run(["taskkill", "/F", "/IM", "mpv.exe"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["taskkill", "/F", "/IM", "mpv.exe"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=0x08000000)
         except Exception:
             pass
     if server_instance:
@@ -353,47 +353,109 @@ def get_window_geometry():
     return None
 
 
-EMBEDDED_PLAYER_PANEL = None
-EMBEDDED_PLAYER_HWND = None
+CURRENT_DOCKED_MPV_HWND = None
 
 
-def get_embedded_hwnd():
-    global EMBEDDED_PLAYER_HWND
-    return EMBEDDED_PLAYER_HWND
+def get_form_hwnd():
+    global desktop_window
+    if not desktop_window or not IS_WIN:
+        return None
+    try:
+        form = desktop_window.gui.BrowserView.instances.get(desktop_window.uid)
+        if form and form.Handle:
+            return form.Handle.ToInt64()
+    except Exception:
+        pass
+    return None
 
 
-def show_or_hide_embedded_player(show: bool):
-    global desktop_window, EMBEDDED_PLAYER_PANEL
-    if not desktop_window:
-        return
-    if IS_WIN:
+def get_hwnd_for_pid(target_pid: int):
+    hwnds = []
+    def enum_cb(h, _):
+        pid = ctypes.c_ulong()
+        user32.GetWindowThreadProcessId(h, ctypes.byref(pid))
+        if pid.value == target_pid and user32.IsWindowVisible(h):
+            hwnds.append(h)
+        return True
+    CMPFUNC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_ulong, ctypes.c_ulong)
+    user32.EnumWindows(CMPFUNC(enum_cb), 0)
+    return hwnds[0] if hwnds else None
+
+
+def dock_mpv_window(identifier):
+    """Accroche immediatement la fenetre native MPV comme sous-fenetre integree (child) de KINO."""
+    global desktop_window, CURRENT_DOCKED_MPV_HWND
+    if not desktop_window or not IS_WIN:
+        return None
+    try:
+        form = desktop_window.gui.BrowserView.instances.get(desktop_window.uid)
+        if not form or not form.Handle:
+            return None
+        form_hwnd = form.Handle.ToInt64()
+
+        # Recherche dynamique de la fenetre MPV par PID ou par son titre
+        mpv_hwnd = None
+        for _ in range(60):
+            time.sleep(0.03)
+            if isinstance(identifier, int):
+                mpv_hwnd = get_hwnd_for_pid(identifier)
+            else:
+                mpv_hwnd = user32.FindWindowW(None, str(identifier))
+            if mpv_hwnd:
+                break
+        if not mpv_hwnd:
+            return None
+
+        CURRENT_DOCKED_MPV_HWND = mpv_hwnd
+
+        # Empêche le parent WinForms de repeindre par-dessus la fenêtre MPV
+        GWL_STYLE = -16
+        WS_CLIPCHILDREN = 0x02000000
+        parent_style = user32.GetWindowLongW(form_hwnd, GWL_STYLE)
+        user32.SetWindowLongW(form_hwnd, GWL_STYLE, parent_style | WS_CLIPCHILDREN)
+
+        # Transforme le style de la fenetre MPV en WS_CHILD clipsiblings
+        WS_CHILD = 0x40000000
+        WS_CLIPSIBLINGS = 0x04000000
+        WS_VISIBLE = 0x10000000
+        WS_POPUP = 0x80000000
+        style = user32.GetWindowLongW(mpv_hwnd, GWL_STYLE)
+        style = (style & ~WS_POPUP) | WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE
+        user32.SetWindowLongW(mpv_hwnd, GWL_STYLE, style)
+
+        # Reparente directement MPV dans la fenetre KINO
+        user32.SetParent(mpv_hwnd, form_hwnd)
+
+        # Positionne MPV pour recouvrir precisement la zone cliente
+        import ctypes.wintypes as wintypes
+        rect = wintypes.RECT()
+        user32.GetClientRect(form_hwnd, ctypes.byref(rect))
+        SWP_SHOWWINDOW = 0x0040
+        SWP_FRAMECHANGED = 0x0020
+        user32.SetWindowPos(mpv_hwnd, 0, 0, 0, rect.right, rect.bottom, SWP_SHOWWINDOW | SWP_FRAMECHANGED)
+        user32.BringWindowToTop(mpv_hwnd)
+        user32.SetFocus(mpv_hwnd)
+        return mpv_hwnd
+    except Exception:
+        return None
+
+
+def undock_mpv_window():
+    global CURRENT_DOCKED_MPV_HWND, desktop_window
+    CURRENT_DOCKED_MPV_HWND = None
+    if desktop_window and IS_WIN:
         try:
             form = desktop_window.gui.BrowserView.instances.get(desktop_window.uid)
-            if not form:
-                return
-            from webview.platforms.winforms import WinForms
-            def _toggle():
-                if show:
-                    if hasattr(form, "browser") and hasattr(form.browser, "webview"):
-                        form.browser.webview.Visible = False
-                    if EMBEDDED_PLAYER_PANEL:
-                        EMBEDDED_PLAYER_PANEL.Visible = True
-                        EMBEDDED_PLAYER_PANEL.BringToFront()
-                        EMBEDDED_PLAYER_PANEL.Focus()
-                else:
-                    if EMBEDDED_PLAYER_PANEL:
-                        EMBEDDED_PLAYER_PANEL.Visible = False
-                    if hasattr(form, "browser") and hasattr(form.browser, "webview"):
-                        form.browser.webview.Visible = True
-                        form.browser.webview.BringToFront()
-                        form.browser.webview.Focus()
-            form.Invoke(WinForms.MethodInvoker(_toggle))
+            if form and form.Handle:
+                form_hwnd = form.Handle.ToInt64()
+                user32.InvalidateRect(form_hwnd, None, True)
+                user32.UpdateWindow(form_hwnd)
+                user32.SetFocus(form_hwnd)
         except Exception:
             pass
 
 
 def configure_window_styles(w):
-    global EMBEDDED_PLAYER_PANEL, EMBEDDED_PLAYER_HWND
     if not IS_WIN:
         return
     for _ in range(40):
@@ -416,19 +478,20 @@ def configure_window_styles(w):
                 except Exception:
                     pass
 
-                # Creation du panel de lecture video integre MPV
+                # Auto-redimensionnement du lecteur MPV intégré lors du redimensionnement de KINO
                 try:
-                    from webview.platforms.winforms import WinForms, ColorTranslator
-                    def _init_panel():
-                        global EMBEDDED_PLAYER_PANEL, EMBEDDED_PLAYER_HWND
-                        panel = WinForms.Panel()
-                        panel.Dock = WinForms.DockStyle.Fill
-                        panel.BackColor = ColorTranslator.FromHtml("#09090b")
-                        panel.Visible = False
-                        form.Controls.Add(panel)
-                        EMBEDDED_PLAYER_PANEL = panel
-                        EMBEDDED_PLAYER_HWND = panel.Handle.ToInt64()
-                    form.Invoke(WinForms.MethodInvoker(_init_panel))
+                    import ctypes.wintypes as wintypes
+                    def on_form_resize(sender, e):
+                        global CURRENT_DOCKED_MPV_HWND
+                        if CURRENT_DOCKED_MPV_HWND and user32.IsWindow(CURRENT_DOCKED_MPV_HWND):
+                            rect = wintypes.RECT()
+                            user32.GetClientRect(hwnd, ctypes.byref(rect))
+                            user32.SetWindowPos(
+                                CURRENT_DOCKED_MPV_HWND, 0, 0, 0,
+                                rect.right, rect.bottom,
+                                0x0014 # SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE
+                            )
+                    form.Resize += on_form_resize
                 except Exception:
                     pass
                 break
@@ -603,8 +666,9 @@ def main():
     check_single_instance()
     app.WINDOW_ACTION_CALLBACK = handle_backend_window_action
     app.GET_WINDOW_GEOMETRY = get_window_geometry
-    app.GET_EMBEDDED_HWND = get_embedded_hwnd
-    app.SHOW_EMBEDDED_PLAYER = show_or_hide_embedded_player
+    app.GET_FORM_HWND = get_form_hwnd
+    app.DOCK_MPV_WINDOW = dock_mpv_window
+    app.UNDOCK_MPV_WINDOW = undock_mpv_window
 
     if IS_MAC:
         install_macos_hooks()

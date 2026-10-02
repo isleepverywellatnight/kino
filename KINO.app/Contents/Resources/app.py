@@ -56,8 +56,9 @@ MEM_CACHE_LOCK = threading.Lock()
 IPC_SOCK_PATH = r"\\.\pipe\kino_mpv" if sys.platform == "win32" else "/tmp/kino_mpv.sock"
 WINDOW_ACTION_CALLBACK = None
 GET_WINDOW_GEOMETRY = None
-GET_EMBEDDED_HWND = None
-SHOW_EMBEDDED_PLAYER = None
+GET_FORM_HWND = None
+DOCK_MPV_WINDOW = None
+UNDOCK_MPV_WINDOW = None
 _CURRENT_MPV_PROC_PID = None
 
 # Migration automatique douce de l'ancien fichier JSON vers SQLite au démarrage
@@ -2835,7 +2836,7 @@ def spawn_on_user_desktop(args):
 
     cmd_line = subprocess.list2cmdline(args)
     cmd_buf = ctypes.create_unicode_buffer(cmd_line)
-    CREATE_NEW_CONSOLE = 0x00000010
+    CREATE_NO_WINDOW = 0x08000000
     CREATE_BREAKAWAY_FROM_JOB = 0x01000000
 
     ok = ctypes.windll.kernel32.CreateProcessW(
@@ -2844,7 +2845,7 @@ def spawn_on_user_desktop(args):
         None,
         None,
         False,
-        CREATE_NEW_CONSOLE | CREATE_BREAKAWAY_FROM_JOB,
+        CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB,
         None,
         None,
         ctypes.byref(si),
@@ -2857,7 +2858,7 @@ def spawn_on_user_desktop(args):
             None,
             None,
             False,
-            CREATE_NEW_CONSOLE,
+            CREATE_NO_WINDOW,
             None,
             None,
             ctypes.byref(si),
@@ -3097,6 +3098,50 @@ def query_mpv_ipc(sock_path, prop_name):
     return None
 
 
+def send_mpv_ipc(sock_path, cmd_args):
+    if not sock_path or not cmd_args:
+        return False
+    payload = json.dumps({"command": cmd_args}) + "\n"
+    if sys.platform == "win32":
+        try:
+            with open(sock_path, "r+b", buffering=0) as f:
+                f.write(payload.encode("utf-8"))
+                return True
+        except Exception:
+            return False
+    import socket
+    if not hasattr(socket, "AF_UNIX") or not os.path.exists(sock_path):
+        return False
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.settimeout(0.4)
+            s.connect(sock_path)
+            s.sendall(payload.encode("utf-8"))
+            return True
+    except Exception:
+        return False
+    return False
+
+
+def background_inject_subtitles(media_ctx):
+    if not isinstance(media_ctx, dict) or not media_ctx.get("id"):
+        return
+    def _worker():
+        try:
+            time.sleep(1.2)
+            ext_subs = download_top_subtitles_for_mpv(
+                media_ctx["id"],
+                media_ctx.get("type", "movie"),
+                media_ctx.get("season", 1),
+                media_ctx.get("episode", 1),
+            )
+            for sub_path in ext_subs:
+                send_mpv_ipc(IPC_SOCK_PATH, ["sub-add", sub_path, "auto"])
+        except Exception:
+            pass
+    threading.Thread(target=_worker, daemon=True).start()
+
+
 def monitor_ipc_playback(proc, media_ctx):
     if not media_ctx or not media_ctx.get("id"):
         return
@@ -3191,12 +3236,12 @@ def monitor_mpv_lifecycle(pid, media_ctx=None, is_embedded=False):
     except Exception:
         pass
     if _CURRENT_MPV_PROC_PID == pid:
-        if is_embedded and SHOW_EMBEDDED_PLAYER:
+        if is_embedded and UNDOCK_MPV_WINDOW:
             try:
-                SHOW_EMBEDDED_PLAYER(False)
+                UNDOCK_MPV_WINDOW()
             except Exception:
                 pass
-        elif WINDOW_ACTION_CALLBACK:
+        elif not is_embedded and WINDOW_ACTION_CALLBACK:
             try:
                 WINDOW_ACTION_CALLBACK("show")
             except Exception:
@@ -3261,16 +3306,6 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
     is_hdr_media = bool(re.search(r"\b(hdr|hdr10|hdr10\+|dv|dovi|dolby[\s\.\-]*vision|hlg)\b", check_hdr_str, re.IGNORECASE))
 
     ext_sub_files = []
-    if isinstance(media_ctx, dict) and media_ctx.get("id"):
-        try:
-            ext_sub_files = download_top_subtitles_for_mpv(
-                media_ctx["id"],
-                media_ctx.get("type", "movie"),
-                media_ctx.get("season", 1),
-                media_ctx.get("episode", 1),
-            )
-        except Exception:
-            ext_sub_files = []
     sub_sep = ";" if sys.platform == "win32" else ":"
 
     mpv_input_conf = None
@@ -3285,6 +3320,7 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
         except Exception:
             mpv_input_conf = None
 
+    is_docked = False
     if is_iina:
         # Utiliser iina-cli si le chemin pointe vers le binaire IINA brut
         if mpv_bin.endswith("/IINA"):
@@ -3380,15 +3416,19 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
         if start_sec and int(start_sec) > 5:
             args.append(f"--start={int(start_sec)}")
 
-        embedded_hwnd = None
-        if not (is_iina or is_vlc) and GET_EMBEDDED_HWND:
+        is_docked = False
+        dock_title = None
+        if not (is_iina or is_vlc) and sys.platform == "win32" and GET_FORM_HWND and DOCK_MPV_WINDOW:
             try:
-                embedded_hwnd = GET_EMBEDDED_HWND()
+                form_hwnd = GET_FORM_HWND()
+                if form_hwnd:
+                    is_docked = True
+                    dock_title = f"KINO_PLAYER_{int(time.time() * 1000)}"
             except Exception:
-                embedded_hwnd = None
+                is_docked = False
 
-        if embedded_hwnd:
-            args.append(f"--wid={embedded_hwnd}")
+        if is_docked:
+            args.append(f"--title={dock_title}")
         elif GET_WINDOW_GEOMETRY:
             try:
                 geo = GET_WINDOW_GEOMETRY()
@@ -3401,12 +3441,7 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
             args.append(f"--force-media-title={safe_title}")
         args.append(target_media)
 
-    if embedded_hwnd and SHOW_EMBEDDED_PLAYER:
-        try:
-            SHOW_EMBEDDED_PLAYER(True)
-        except Exception:
-            pass
-    elif WINDOW_ACTION_CALLBACK:
+    if not is_docked and WINDOW_ACTION_CALLBACK:
         try:
             WINDOW_ACTION_CALLBACK("hide")
         except Exception:
@@ -3427,13 +3462,18 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
 
     global _CURRENT_MPV_PROC_PID
     if sys.platform == "win32":
-        subprocess.run(
-            ["taskkill", "/F", "/IM", "mpv.exe"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        if embedded_hwnd:
-            CREATE_NO_WINDOW = 0x08000000
+        CREATE_NO_WINDOW = 0x08000000
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/IM", "mpv.exe"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=CREATE_NO_WINDOW,
+            )
+        except Exception:
+            pass
+
+        if is_docked:
             proc = subprocess.Popen(
                 args,
                 stdin=subprocess.DEVNULL,
@@ -3442,10 +3482,14 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
                 creationflags=CREATE_NO_WINDOW,
             )
             pid = proc.pid
+            threading.Thread(target=DOCK_MPV_WINDOW, args=(pid,), daemon=True).start()
         else:
             pid = spawn_on_user_desktop(args)
+
         _CURRENT_MPV_PROC_PID = pid
-        threading.Thread(target=monitor_mpv_lifecycle, args=(pid, media_ctx, bool(embedded_hwnd)), daemon=True).start()
+        threading.Thread(target=monitor_mpv_lifecycle, args=(pid, media_ctx, is_docked), daemon=True).start()
+        if media_ctx:
+            background_inject_subtitles(media_ctx)
         res = {"mpv": mpv_bin, "pid": pid, "playlist_count": len(playlist_items) if playlist_items else 1}
         _LAST_MPV_LAUNCH_TIME = time.time()
         _LAST_MPV_LAUNCH_URL = url
@@ -3462,6 +3506,7 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
         _CURRENT_MPV_PROC_PID = proc.pid
         if media_ctx:
             threading.Thread(target=monitor_ipc_playback, args=(proc, media_ctx), daemon=True).start()
+            background_inject_subtitles(media_ctx)
         def _wait():
             try:
                 proc.wait()
@@ -3472,12 +3517,7 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
             except Exception:
                 pass
             if _CURRENT_MPV_PROC_PID == proc.pid:
-                if embedded_hwnd and SHOW_EMBEDDED_PLAYER:
-                    try:
-                        SHOW_EMBEDDED_PLAYER(False)
-                    except Exception:
-                        pass
-                elif WINDOW_ACTION_CALLBACK:
+                if WINDOW_ACTION_CALLBACK:
                     try:
                         WINDOW_ACTION_CALLBACK("show")
                     except Exception:
