@@ -56,6 +56,9 @@ MEM_CACHE_LOCK = threading.Lock()
 IPC_SOCK_PATH = r"\\.\pipe\kino_mpv" if sys.platform == "win32" else "/tmp/kino_mpv.sock"
 WINDOW_ACTION_CALLBACK = None
 GET_WINDOW_GEOMETRY = None
+GET_EMBEDDED_HWND = None
+SHOW_EMBEDDED_PLAYER = None
+_CURRENT_MPV_PROC_PID = None
 
 # Migration automatique douce de l'ancien fichier JSON vers SQLite au démarrage
 kino_db.migrate_from_json(CONFIG_FILE)
@@ -3139,7 +3142,8 @@ def monitor_ipc_playback(proc, media_ctx):
         time.sleep(3.0)
 
 
-def monitor_mpv_lifecycle(pid, media_ctx=None):
+def monitor_mpv_lifecycle(pid, media_ctx=None, is_embedded=False):
+    global _CURRENT_MPV_PROC_PID
     if sys.platform == "win32":
         import ctypes
         SYNCHRONIZE = 0x00100000
@@ -3186,11 +3190,17 @@ def monitor_mpv_lifecycle(pid, media_ctx=None):
         discord_rpc.discord_rpc.clear()
     except Exception:
         pass
-    if WINDOW_ACTION_CALLBACK:
-        try:
-            WINDOW_ACTION_CALLBACK("show")
-        except Exception:
-            pass
+    if _CURRENT_MPV_PROC_PID == pid:
+        if is_embedded and SHOW_EMBEDDED_PLAYER:
+            try:
+                SHOW_EMBEDDED_PLAYER(False)
+            except Exception:
+                pass
+        elif WINDOW_ACTION_CALLBACK:
+            try:
+                WINDOW_ACTION_CALLBACK("show")
+            except Exception:
+                pass
 
 
 _MPV_LAUNCH_LOCK = threading.Lock()
@@ -3370,7 +3380,16 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
         if start_sec and int(start_sec) > 5:
             args.append(f"--start={int(start_sec)}")
 
-        if GET_WINDOW_GEOMETRY:
+        embedded_hwnd = None
+        if not (is_iina or is_vlc) and GET_EMBEDDED_HWND:
+            try:
+                embedded_hwnd = GET_EMBEDDED_HWND()
+            except Exception:
+                embedded_hwnd = None
+
+        if embedded_hwnd:
+            args.append(f"--wid={embedded_hwnd}")
+        elif GET_WINDOW_GEOMETRY:
             try:
                 geo = GET_WINDOW_GEOMETRY()
                 if geo:
@@ -3382,7 +3401,12 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
             args.append(f"--force-media-title={safe_title}")
         args.append(target_media)
 
-    if WINDOW_ACTION_CALLBACK:
+    if embedded_hwnd and SHOW_EMBEDDED_PLAYER:
+        try:
+            SHOW_EMBEDDED_PLAYER(True)
+        except Exception:
+            pass
+    elif WINDOW_ACTION_CALLBACK:
         try:
             WINDOW_ACTION_CALLBACK("hide")
         except Exception:
@@ -3401,14 +3425,27 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
         except Exception:
             pass
 
+    global _CURRENT_MPV_PROC_PID
     if sys.platform == "win32":
         subprocess.run(
             ["taskkill", "/F", "/IM", "mpv.exe"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        pid = spawn_on_user_desktop(args)
-        threading.Thread(target=monitor_mpv_lifecycle, args=(pid, media_ctx), daemon=True).start()
+        if embedded_hwnd:
+            CREATE_NO_WINDOW = 0x08000000
+            proc = subprocess.Popen(
+                args,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=CREATE_NO_WINDOW,
+            )
+            pid = proc.pid
+        else:
+            pid = spawn_on_user_desktop(args)
+        _CURRENT_MPV_PROC_PID = pid
+        threading.Thread(target=monitor_mpv_lifecycle, args=(pid, media_ctx, bool(embedded_hwnd)), daemon=True).start()
         res = {"mpv": mpv_bin, "pid": pid, "playlist_count": len(playlist_items) if playlist_items else 1}
         _LAST_MPV_LAUNCH_TIME = time.time()
         _LAST_MPV_LAUNCH_URL = url
@@ -3422,6 +3459,7 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
             stderr=subprocess.DEVNULL,
             start_new_session=True,
         )
+        _CURRENT_MPV_PROC_PID = proc.pid
         if media_ctx:
             threading.Thread(target=monitor_ipc_playback, args=(proc, media_ctx), daemon=True).start()
         def _wait():
@@ -3433,11 +3471,17 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
                 discord_rpc.discord_rpc.clear()
             except Exception:
                 pass
-            if WINDOW_ACTION_CALLBACK:
-                try:
-                    WINDOW_ACTION_CALLBACK("show")
-                except Exception:
-                    pass
+            if _CURRENT_MPV_PROC_PID == proc.pid:
+                if embedded_hwnd and SHOW_EMBEDDED_PLAYER:
+                    try:
+                        SHOW_EMBEDDED_PLAYER(False)
+                    except Exception:
+                        pass
+                elif WINDOW_ACTION_CALLBACK:
+                    try:
+                        WINDOW_ACTION_CALLBACK("show")
+                    except Exception:
+                        pass
         threading.Thread(target=_wait, daemon=True).start()
         res = {"mpv": mpv_bin, "pid": proc.pid, "playlist_count": len(playlist_items) if playlist_items else 1}
         _LAST_MPV_LAUNCH_TIME = time.time()

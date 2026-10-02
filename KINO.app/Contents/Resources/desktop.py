@@ -111,6 +111,12 @@ def run_server():
 
 def on_closed():
     global server_instance
+    if sys.platform == "win32":
+        try:
+            import subprocess
+            subprocess.run(["taskkill", "/F", "/IM", "mpv.exe"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
     if server_instance:
         try:
             server_instance.shutdown()
@@ -347,7 +353,47 @@ def get_window_geometry():
     return None
 
 
+EMBEDDED_PLAYER_PANEL = None
+EMBEDDED_PLAYER_HWND = None
+
+
+def get_embedded_hwnd():
+    global EMBEDDED_PLAYER_HWND
+    return EMBEDDED_PLAYER_HWND
+
+
+def show_or_hide_embedded_player(show: bool):
+    global desktop_window, EMBEDDED_PLAYER_PANEL
+    if not desktop_window:
+        return
+    if IS_WIN:
+        try:
+            form = desktop_window.gui.BrowserView.instances.get(desktop_window.uid)
+            if not form:
+                return
+            from webview.platforms.winforms import WinForms
+            def _toggle():
+                if show:
+                    if hasattr(form, "browser") and hasattr(form.browser, "webview"):
+                        form.browser.webview.Visible = False
+                    if EMBEDDED_PLAYER_PANEL:
+                        EMBEDDED_PLAYER_PANEL.Visible = True
+                        EMBEDDED_PLAYER_PANEL.BringToFront()
+                        EMBEDDED_PLAYER_PANEL.Focus()
+                else:
+                    if EMBEDDED_PLAYER_PANEL:
+                        EMBEDDED_PLAYER_PANEL.Visible = False
+                    if hasattr(form, "browser") and hasattr(form.browser, "webview"):
+                        form.browser.webview.Visible = True
+                        form.browser.webview.BringToFront()
+                        form.browser.webview.Focus()
+            form.Invoke(WinForms.MethodInvoker(_toggle))
+        except Exception:
+            pass
+
+
 def configure_window_styles(w):
+    global EMBEDDED_PLAYER_PANEL, EMBEDDED_PLAYER_HWND
     if not IS_WIN:
         return
     for _ in range(40):
@@ -367,6 +413,22 @@ def configure_window_styles(w):
                     dwmapi.DwmSetWindowAttribute(hwnd, 33, byref(c_int(2)), 4)
                     # DWMWA_CAPTION_COLOR = 35 (0x000B0909 = #09090b)
                     dwmapi.DwmSetWindowAttribute(hwnd, 35, byref(c_int(0x000B0909)), 4)
+                except Exception:
+                    pass
+
+                # Creation du panel de lecture video integre MPV
+                try:
+                    from webview.platforms.winforms import WinForms, ColorTranslator
+                    def _init_panel():
+                        global EMBEDDED_PLAYER_PANEL, EMBEDDED_PLAYER_HWND
+                        panel = WinForms.Panel()
+                        panel.Dock = WinForms.DockStyle.Fill
+                        panel.BackColor = ColorTranslator.FromHtml("#09090b")
+                        panel.Visible = False
+                        form.Controls.Add(panel)
+                        EMBEDDED_PLAYER_PANEL = panel
+                        EMBEDDED_PLAYER_HWND = panel.Handle.ToInt64()
+                    form.Invoke(WinForms.MethodInvoker(_init_panel))
                 except Exception:
                     pass
                 break
@@ -541,6 +603,8 @@ def main():
     check_single_instance()
     app.WINDOW_ACTION_CALLBACK = handle_backend_window_action
     app.GET_WINDOW_GEOMETRY = get_window_geometry
+    app.GET_EMBEDDED_HWND = get_embedded_hwnd
+    app.SHOW_EMBEDDED_PLAYER = show_or_hide_embedded_player
 
     if IS_MAC:
         install_macos_hooks()
