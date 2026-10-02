@@ -9,6 +9,7 @@ Espace spécialisé pour l'animation japonaise :
 - Zéro clé API requise (100% public et gratuit)
 """
 
+import concurrent.futures
 import datetime
 import json
 import logging
@@ -481,4 +482,233 @@ def get_airing_schedule(force_refresh: bool = False) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Erreur AniList AiringSchedule: {e}")
         return {"ok": False, "days": {}, "error": str(e)}
+
+
+# =========================================================================
+# CATALOGUE COMPLET & CLASSIFICATION INTELLIGENTE DES ANIMES
+# =========================================================================
+
+CURATED_ANIME_GENRES: Dict[str, List[str]] = {
+    # Sci-Fi / Cyberpunk / Mecha / Time Travel
+    "tt1910272": ["Sci-Fi", "Thriller", "Drama"],        # Steins;Gate
+    "tt12590266": ["Sci-Fi", "Action"],                 # Cyberpunk: Edgerunners
+    "tt0112159": ["Sci-Fi", "Mecha", "Drama"],          # Neon Genesis Evangelion
+    "tt0213338": ["Sci-Fi", "Action", "Adventure"],     # Cowboy Bebop
+    "tt9679542": ["Sci-Fi", "Adventure", "Comedy"],     # Dr. Stone
+    "tt13718450": ["Sci-Fi", "Drama", "Action"],        # 86 - Eighty Six
+    "tt26737616": ["Sci-Fi", "Mystery", "Drama"],       # Pluto
+    "tt0096633": ["Sci-Fi", "Drama", "Action"],         # Legend of the Galactic Heroes
+    "tt0816398": ["Sci-Fi", "Drama", "Romance"],        # Planetes
+    "tt21975436": ["Sci-Fi", "Action", "Adventure"],    # Kaiju No. 8
+    "tt4508902": ["Action", "Comedy", "Sci-Fi"],        # One Punch Man
+    "tt5249462": ["Sci-Fi", "Mystery", "Drama"],        # Erased (Voyage dans le temps)
+    "tt2379308": ["Sci-Fi", "Crime", "Action"],         # Psycho-Pass
+    "tt11126994": ["Action", "Sci-Fi", "Fantasy"],      # Arcane
+
+    # Fantasy / Fantastique / Surnaturel
+    "tt2560140": ["Fantasy", "Action", "Drama"],        # Attack on Titan
+    "tt12343534": ["Fantasy", "Action"],                # Jujutsu Kaisen
+    "tt9335498": ["Fantasy", "Action"],                 # Demon Slayer
+    "tt21209876": ["Fantasy", "Action"],                # Solo Leveling
+    "tt22248376": ["Fantasy", "Adventure", "Drama"],     # Frieren: Beyond Journey's End
+    "tt1355642": ["Fantasy", "Adventure", "Action"],     # Fullmetal Alchemist: Brotherhood
+    "tt2098220": ["Fantasy", "Adventure", "Action"],     # Hunter x Hunter
+    "tt0434665": ["Fantasy", "Action", "Adventure"],     # Bleach
+    "tt13293588": ["Fantasy", "Adventure", "Drama"],     # Mushoku Tensei
+    "tt5607616": ["Fantasy", "Drama", "Thriller"],      # Re:Zero
+    "tt9054364": ["Fantasy", "Comedy", "Adventure"],     # Slime Tensei
+    "tt7441658": ["Fantasy", "Action", "Adventure"],     # Black Clover
+    "tt13616990": ["Fantasy", "Action", "Horror"],       # Chainsaw Man
+    "tt0877057": ["Fantasy", "Crime", "Drama"],         # Death Note
+    "tt21621494": ["Fantasy", "Comedy", "Adventure"],   # Delicious in Dungeon
+    "tt3909224": ["Fantasy", "Action", "Adventure"],    # The Seven Deadly Sins
+    "tt0318871": ["Fantasy", "Action", "Adventure"],    # Berserk
+    "tt5897304": ["Comedy", "Action", "Fantasy"],       # Mob Psycho 100
+    "tt2359704": ["Action", "Adventure", "Fantasy"],    # JoJo's Bizarre Adventure
+    "tt14976292": ["Fantasy", "Mystery", "Drama"],      # Link Click
+    "tt14115938": ["Fantasy", "Comedy", "Action"],      # The Eminence in Shadow
+    "tt8788458": ["Fantasy", "Mystery", "Thriller"],    # The Promised Neverland
+    "tt11147852": ["Fantasy", "Action", "Comedy"],      # Dorohedoro
+
+    # Drame / Romance / Tranche de vie
+    "tt0810705": ["Drama", "Romance", "Music"],         # Nana
+    "tt3895150": ["Drama", "Romance", "Music"],         # Your Lie in April
+    "tt7078180": ["Drama", "Fantasy", "Romance"],       # Violet Evergarden
+    "tt7263328": ["Drama", "Mystery"],                  # Classroom of the Elite
+
+    # Mystere / Thriller / Policier
+    "tt0434706": ["Mystery", "Drama", "Crime"],         # Monster
+    "tt26743760": ["Drama", "Mystery", "History"],      # The Apothecary Diaries
+    "tt0131179": ["Mystery", "Crime", "Comedy"],        # Detective Conan
+
+    # Comedie
+    "tt13706018": ["Comedy", "Action"],                 # Spy x Family
+    "tt0988818": ["Comedy", "Action", "Sci-Fi"],        # Gintama
+    "tt8086718": ["Comedy", "Adventure"],               # Grand Blue Dreaming
+    "tt28919914": ["Comedy", "Romance"],                # 100 Girlfriends
+    "tt0423731": ["Action", "Adventure", "Comedy"],     # Samurai Champloo
+}
+
+_ANIME_POOL_CACHE: Dict[str, Any] = {
+    "series": [],
+    "movie": [],
+    "last_fetched": 0,
+}
+
+
+def _fetch_cinemeta_anime_page(c_type: str, skip: int) -> List[Dict[str, Any]]:
+    parts = ["genre=Anime"]
+    if skip > 0:
+        parts.append(f"skip={skip}")
+    extra = ("/" + "&".join(parts)) if parts else ""
+    url = f"https://v3-cinemeta.strem.io/catalog/{c_type}/top{extra}.json"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+    try:
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            metas = data.get("metas", [])
+            for m in metas:
+                if not m.get("type"):
+                    m["type"] = c_type
+                m["is_anime"] = True
+                mid = m.get("id")
+                if not m.get("background") and mid:
+                    m["background"] = f"https://images.metahub.space/background/medium/{mid}/img"
+                if not m.get("poster") and mid:
+                    m["poster"] = f"https://images.metahub.space/poster/medium/{mid}/img"
+            return metas
+    except Exception as e:
+        logger.debug(f"Erreur fetch cinemeta {url}: {e}")
+        return []
+
+
+def get_anime_pool(media_type: str = "series") -> List[Dict[str, Any]]:
+    """Recupere et met en cache un grand vivier d'animes (400+ series, 200+ films)."""
+    now = time.time()
+    c_type = "movie" if media_type in ("movie", "Films", "Films d'Animation") else "series"
+    cache_key = f"anime_engine:pool:{c_type}:v3"
+
+    if _ANIME_POOL_CACHE.get(c_type) and (now - _ANIME_POOL_CACHE["last_fetched"] < 300):
+        return _ANIME_POOL_CACHE[c_type]
+
+    cached = db_cache_get(cache_key)
+    if cached and isinstance(cached, list) and len(cached) > 20:
+        _ANIME_POOL_CACHE[c_type] = cached
+        _ANIME_POOL_CACHE["last_fetched"] = now
+        return cached
+
+    skip_pages = [0, 50, 100, 150, 200, 250, 300, 350, 400] if c_type == "series" else [0, 50, 100, 150]
+    all_metas = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+        futures = [ex.submit(_fetch_cinemeta_anime_page, c_type, s) for s in skip_pages]
+        for f in futures:
+            try:
+                res = f.result()
+                if res:
+                    all_metas.extend(res)
+            except Exception:
+                pass
+
+    seen = set()
+    deduped = []
+    for m in all_metas:
+        mid = m.get("id")
+        if mid and mid not in seen:
+            seen.add(mid)
+            deduped.append(m)
+
+    if not deduped and c_type == "series":
+        deduped = [dict(m) for m in FALLBACK_ANIMES]
+
+    if deduped:
+        db_cache_set(cache_key, deduped, ttl_sec=3600)
+        _ANIME_POOL_CACHE[c_type] = deduped
+        _ANIME_POOL_CACHE["last_fetched"] = now
+
+    return deduped
+
+
+def get_anime_catalog(genre: str = "", skip: int = 0, sort: str = "top") -> List[Dict[str, Any]]:
+    """Retourne le catalogue anime filtre par genre avec pagination et tri."""
+    genre_raw = (genre or "").strip()
+    norm = genre_raw.lower()
+    is_movie = norm in ("films", "films d'animation", "movie", "film")
+    target_pool = get_anime_pool("movie" if is_movie else "series")
+
+    if is_movie or not norm or norm in ("tous", "tendances", "populaires", "all"):
+        items = list(target_pool)
+    else:
+        matched = []
+        for m in target_pool:
+            g_set = set(g.lower() for g in (m.get("genres") or []))
+            mid = m.get("id", "")
+            if mid in CURATED_ANIME_GENRES:
+                for cg in CURATED_ANIME_GENRES[mid]:
+                    g_set.add(cg.lower())
+
+            if "sci-fi & fantasy" in g_set:
+                g_set.add("sci-fi")
+                g_set.add("fantasy")
+            if "action & adventure" in g_set:
+                g_set.add("action")
+                g_set.add("adventure")
+
+            text = f"{m.get('name', '')} {m.get('description', '')}".lower()
+
+            def _has_kw(kw: str) -> bool:
+                if len(kw) <= 4:
+                    return bool(re.search(r'\b' + re.escape(kw) + r'\b', text, re.IGNORECASE))
+                return kw.lower() in text
+
+            matches = False
+            if norm in ("action",):
+                matches = "action" in g_set or any(_has_kw(k) for k in ["combat", "bataille", "arts martiaux", "guerre", "fight", "samourai", "ninja"])
+            elif norm in ("adventure", "aventure"):
+                matches = "adventure" in g_set or any(_has_kw(k) for k in ["aventure", "voyage", "quete", "exploration", "peril", "journey"])
+            elif norm in ("fantasy", "fantastique"):
+                matches = "fantasy" in g_set or any(_has_kw(k) for k in [
+                    "demon", "demons", "magic", "magie", "curse", "malediction", "fleau",
+                    "sorcier", "witch", "dragon", "titan", "spirit", "esprit", "monster",
+                    "monstre", "isekai", "shinigami", "supernatural", "surnaturel", "alchimie", "vampire", "elfe", "elf"
+                ])
+            elif norm in ("sci-fi", "scifi", "science-fiction"):
+                matches = "sci-fi" in g_set or any(_has_kw(k) for k in [
+                    "sci-fi", "scifi", "science-fiction", "cyberpunk", "mecha", "cyborg",
+                    "extraterrestre", "alien", "aliens", "time travel", "voyage dans le temps",
+                    "post-apocalyptic", "post-apocalyptique", "dystopie", "dystopian", "spaceship", "vaisseau spatial",
+                    "galaxy", "galaxie", "android"
+                ])
+            elif norm in ("comedy", "comedie"):
+                matches = "comedy" in g_set or any(_has_kw(k) for k in ["humour", "parodie", "gag", "tranche de vie", "slice of life", "comique"])
+            elif norm in ("drama", "drame"):
+                matches = "drama" in g_set or any(_has_kw(k) for k in ["drame", "tragedie", "emotion", "deuil", "maladie"])
+            elif norm in ("romance",):
+                matches = "romance" in g_set or any(_has_kw(k) for k in ["romance", "amour", "love", "sentiment", "lycee", "amoureux"])
+            elif norm in ("mystery", "mystere", "thriller"):
+                matches = any(k in g_set for k in ["mystery", "thriller", "crime"]) or any(_has_kw(k) for k in ["mystere", "enquete", "meurtre", "psychologique"])
+            else:
+                matches = norm in g_set
+
+            if matches:
+                matched.append(m)
+        items = matched
+
+    if sort == "imdbRating":
+        items.sort(
+            key=lambda m: float(m.get("imdbRating") or 0) if str(m.get("imdbRating") or "").replace(".", "", 1).isdigit() else 0.0,
+            reverse=True,
+        )
+    elif sort == "recent":
+        items.sort(
+            key=lambda m: str(m.get("releaseInfo") or m.get("year") or "0")[:4],
+            reverse=True,
+        )
+    elif sort == "oldest":
+        items.sort(
+            key=lambda m: int(str(m.get("releaseInfo") or m.get("year") or "9999")[:4]) if str(m.get("releaseInfo") or m.get("year") or "")[:4].isdigit() else 9999,
+        )
+
+    skip = max(0, int(skip or 0))
+    return items[skip:skip+50]
+
 

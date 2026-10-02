@@ -550,85 +550,22 @@ def get_catalog_top(media_type="movie", genre="", skip=0, sort="top"):
         all_classics = get_classics_catalog(genre=genre, sort=sort)
         return all_classics[skip:] if skip > 0 else all_classics
     if media_type == "anime":
-        cache_key = f"catalog:anime_v3:{sort}:{genre or 'all'}:{skip}"
+        cache_key = f"catalog:anime_v4:{sort}:{genre or 'all'}:{skip}"
 
         def _fetch_anime():
-            is_movie = genre in ("Films", "Films d'Animation", "movie", "Film")
-            c_type = "movie" if is_movie else "series"
-            parts = ["genre=Anime"]
-            if skip > 0:
-                parts.append(f"skip={skip}")
-            extra = ("/" + "&".join(parts)) if parts else ""
-            url = f"https://v3-cinemeta.strem.io/catalog/{c_type}/top{extra}.json"
-            data = http_json(url)
-            metas = data.get("metas", [])
+            metas = anime_engine.get_anime_catalog(genre=genre, skip=skip, sort=sort)
             for m in metas:
-                if not m.get("type"):
-                    m["type"] = c_type
-                m["is_anime"] = True
                 mid = m.get("id")
                 if mid:
                     KNOWN_ANIME_IDS.add(mid)
-                if not m.get("background") and mid:
-                    m["background"] = f"https://images.metahub.space/background/medium/{mid}/img"
-
-            if skip == 0 and not is_movie and (not genre or genre in ("Tous", "Tendances", "Populaires")):
-                existing_ids = {m.get("id") for m in metas if m.get("id")}
-                staples = [dict(a) for a in CINEMETA_FALLBACK_ANIMES if a.get("type") == "series" and a.get("id") not in existing_ids]
-                for s in staples:
-                    s["is_anime"] = True
-                metas = staples[:6] + metas
-
-            if not is_movie and genre and genre not in ("Tous", "Tendances", "Populaires"):
-                filtered = [m for m in metas if genre.lower() in [g.lower() for g in (m.get("genres") or [])]]
-                fallback_matches = [m for m in CINEMETA_FALLBACK_ANIMES if genre.lower() in [g.lower() for g in (m.get("genres") or [])]]
-                combined = []
-                seen_f = set()
-                for item in filtered + fallback_matches:
-                    iid = item.get("id")
-                    if iid and iid not in seen_f:
-                        seen_f.add(iid)
-                        item["is_anime"] = True
-                        combined.append(item)
-                if combined:
-                    metas = combined
-
-            if not metas and skip == 0:
-                if is_movie:
-                    metas = [dict(m) for m in CINEMETA_FALLBACK_ANIMES if m.get("type") == "movie"]
-                elif genre and genre not in ("Tous", "Tendances", "Populaires"):
-                    metas = [dict(m) for m in CINEMETA_FALLBACK_ANIMES if genre.lower() in [g.lower() for g in (m.get("genres") or [])]]
-                else:
-                    metas = [dict(m) for m in CINEMETA_FALLBACK_ANIMES]
-                for m in metas:
-                    m["is_anime"] = True
-
             if metas:
                 try:
                     threading.Thread(target=kino_db.db_index_media, args=(metas,), daemon=True).start()
                 except Exception:
                     pass
-
-            if sort == "imdbRating":
-                metas = sorted(
-                    metas,
-                    key=lambda m: float(m.get("imdbRating") or 0) if str(m.get("imdbRating") or "").replace(".", "", 1).isdigit() else 0.0,
-                    reverse=True,
-                )
-            elif sort == "recent":
-                metas = sorted(
-                    metas,
-                    key=lambda m: str(m.get("releaseInfo") or m.get("year") or "0")[:4],
-                    reverse=True,
-                )
-            elif sort == "oldest":
-                metas = sorted(
-                    metas,
-                    key=lambda m: int(str(m.get("releaseInfo") or m.get("year") or "9999")[:4]) if str(m.get("releaseInfo") or m.get("year") or "")[:4].isdigit() else 9999,
-                )
             return metas
 
-        return cached_get(cache_key, 900, _fetch_anime)
+        return cached_get(cache_key, 600, _fetch_anime)
 
     if genre == "imdbRating":
         sort = "imdbRating"
@@ -6726,6 +6663,8 @@ function renderGenreChipsForTab(tab) {
       <span class="chip" data-genre="Sci-Fi" onclick="selectGenre('Sci-Fi', this)">Sci-Fi</span>
       <span class="chip" data-genre="Comedy" onclick="selectGenre('Comedy', this)">Comédie</span>
       <span class="chip" data-genre="Drama" onclick="selectGenre('Drama', this)">Drame</span>
+      <span class="chip" data-genre="Romance" onclick="selectGenre('Romance', this)">Romance</span>
+      <span class="chip" data-genre="Mystery" onclick="selectGenre('Mystery', this)">Mystère</span>
       <span class="chip" data-genre="Films d'Animation" onclick="selectGenre('Films d\\'Animation', this)">Films d'Animation</span>
     `;
   } else if (tab === 'series') {
