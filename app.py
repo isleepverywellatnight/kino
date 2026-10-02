@@ -176,6 +176,7 @@ def load_config():
 
     active_prov = cfg["debrid_provider"]
     cfg["rd_token"] = cfg["provider_tokens"].get(active_prov, "")
+    cfg["player_mode"] = "kino"
 
     # Listes persistantes gérées par SQLite haute performance
     cfg["watchlist"] = kino_db.db_get_watchlist()
@@ -220,6 +221,7 @@ def save_config(new_data):
             discord_rpc.discord_rpc.set_client_id(cid)
 
     cfg.update(new_data)
+    cfg["player_mode"] = "kino"
     cfg["debrid_provider"] = target_prov
     cfg["provider_tokens"] = prov_tokens
     cfg["rd_token"] = prov_tokens.get(target_prov, "")
@@ -6129,11 +6131,14 @@ HTML_PAGE = r"""<!DOCTYPE html>
         <option value="14">Supprimer après 14 jours</option>
         <option value="30">Supprimer après 30 jours</option>
       </select>
-      <label style="font-size:0.8rem; color:var(--muted);">Lecteur par défaut</label>
-      <select id="cfgPlayerMode">
-        <option value="kino">Lecteur KINO / IINA</option>
-        <option value="integrated">Lecteur intégré</option>
-      </select>
+      <label style="font-size:0.8rem; color:var(--muted);">Lecteur multimédia</label>
+      <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-size:0.78rem;">
+        <div style="font-weight:600; color:#fafafa;">Moteur KINO Natif (MPV Ultra HD)</div>
+        <p style="margin:3px 0 0; color:var(--dim); font-size:0.72rem; line-height:1.4;">
+          Lecteur intégré optimisé : accélération matérielle, Tone-Mapping HDR / Dolby Vision, décodage sans perte (DTS-HD, TrueHD, Atmos) et sous-titres animés ASS.
+        </p>
+        <input type="hidden" id="cfgPlayerMode" value="kino">
+      </div>
       <!-- Section Synchronisation Google Drive -->
       <div style="margin-top:6px; padding:10px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -10062,18 +10067,6 @@ async function oneClickPlay(params, btn) {
     renderDebridState(res.debrid, params.season, params.episode, res.chosen_torrent, plCount);
     refreshUserLists();
 
-    if ((window.kinoPlayerMode || 'kino') === 'integrated' && res.stream_url) {
-      const mediaInfo = currentMedia || {
-        id: params.imdb_id,
-        name: params.name || params.title,
-        type: params.type || 'movie',
-        season: params.season,
-        episode: params.episode,
-        poster: params.poster,
-        year: params.year
-      };
-      openInAppPlayer(res.stream_url, params.title || (res.file && res.file.filename) || 'KINO', res.playlist, mediaInfo, res.resume_sec || 0);
-    }
   } catch (e) {
     box.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${e.message}</p>`;
   } finally {
@@ -10751,20 +10744,6 @@ async function openMpv(btn, url, filename) {
     if (idx >= 0) packFiles = sorted.slice(idx);
   }
 
-  if ((window.kinoPlayerMode || 'kino') === 'integrated') {
-    const playlist = packFiles && packFiles.length > 1
-      ? packFiles.map(f => ({ title: f.filename, url: f.download }))
-      : [{ title: filename, url }];
-    openInAppPlayer(url, filename, playlist, currentMedia);
-    if (btn) {
-      btn.innerHTML = 'Lancé';
-      setTimeout(() => {
-        btn.disabled = false;
-        btn.innerHTML = origText;
-      }, 2500);
-    }
-    return;
-  }
 
   try {
     await api('/api/mpv', {
