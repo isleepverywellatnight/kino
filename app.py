@@ -3181,10 +3181,27 @@ def monitor_mpv_lifecycle(pid, media_ctx=None):
             pass
 
 
+_MPV_LAUNCH_LOCK = threading.Lock()
+_LAST_MPV_LAUNCH_TIME = 0.0
+_LAST_MPV_LAUNCH_URL = ""
+_LAST_MPV_LAUNCH_RES = None
+
+
 def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, start_sec: int = 0):
-    mpv_bin = find_mpv()
-    if not mpv_bin:
-        raise RuntimeError("Aucun lecteur externe compatible (mpv, IINA ou VLC) n'a été trouvé.")
+    global _LAST_MPV_LAUNCH_TIME, _LAST_MPV_LAUNCH_URL, _LAST_MPV_LAUNCH_RES
+    now = time.time()
+    with _MPV_LAUNCH_LOCK:
+        if ((now - _LAST_MPV_LAUNCH_TIME < 3.5 and _LAST_MPV_LAUNCH_URL == url) or (now - _LAST_MPV_LAUNCH_TIME < 1.2)) and _LAST_MPV_LAUNCH_RES:
+            return dict(_LAST_MPV_LAUNCH_RES)
+
+        _LAST_MPV_LAUNCH_TIME = now
+        _LAST_MPV_LAUNCH_URL = url
+        if not _LAST_MPV_LAUNCH_RES:
+            _LAST_MPV_LAUNCH_RES = {"mpv": "mpv", "pid": 0, "playlist_count": len(playlist_items) if playlist_items else 1}
+
+        mpv_bin = find_mpv()
+        if not mpv_bin:
+            raise RuntimeError("Aucun lecteur externe compatible (mpv, IINA ou VLC) n'a été trouvé.")
 
     cfg = load_config()
     pref_lang = cfg.get("pref_lang", "vf")
@@ -3380,7 +3397,11 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
         )
         pid = spawn_on_user_desktop(args)
         threading.Thread(target=monitor_mpv_lifecycle, args=(pid, media_ctx), daemon=True).start()
-        return {"mpv": mpv_bin, "pid": pid, "playlist_count": len(playlist_items) if playlist_items else 1}
+        res = {"mpv": mpv_bin, "pid": pid, "playlist_count": len(playlist_items) if playlist_items else 1}
+        _LAST_MPV_LAUNCH_TIME = time.time()
+        _LAST_MPV_LAUNCH_URL = url
+        _LAST_MPV_LAUNCH_RES = res
+        return res
     else:
         proc = subprocess.Popen(
             args,
@@ -3406,7 +3427,11 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
                 except Exception:
                     pass
         threading.Thread(target=_wait, daemon=True).start()
-        return {"mpv": mpv_bin, "pid": proc.pid, "playlist_count": len(playlist_items) if playlist_items else 1}
+        res = {"mpv": mpv_bin, "pid": proc.pid, "playlist_count": len(playlist_items) if playlist_items else 1}
+        _LAST_MPV_LAUNCH_TIME = time.time()
+        _LAST_MPV_LAUNCH_URL = url
+        _LAST_MPV_LAUNCH_RES = res
+        return res
 
 
 # ==========================================
@@ -6592,7 +6617,7 @@ function renderHomeResume() {
 
     const buttonsHtml = (isSeries && isEpDone)
       ? `
-        <button class="btn" style="padding:5px 10px; font-size:0.75rem;" onclick='oneClickPlay(${nextPayload}, this)'>▶ Épisode suivant (${nextTag})</button>
+        <button class="btn" style="padding:5px 10px; font-size:0.75rem;" onclick='oneClickPlay(${nextPayload}, this)'>Épisode suivant (${nextTag})</button>
         <button class="btn btn-secondary" style="padding:5px 9px; font-size:0.75rem;" onclick='oneClickPlay(${resumePayload}, this)'>Revoir ${epTag}</button>
       `
       : `
@@ -8515,7 +8540,7 @@ function renderPosterCards(metas, fallbackType) {
     if (histItem && mtype === 'series' && histItem.season && histItem.episode) {
       const targetEp = getSeriesTargetEpisode(histItem);
       const code = `S${String(targetEp.season).padStart(2,'0')}E${String(targetEp.episode).padStart(2,'0')}`;
-      btnLabel = targetEp.isNext ? `▶ Suivant ${code}` : `Play ${code}`;
+      btnLabel = targetEp.isNext ? `Suivant ${code}` : `Play ${code}`;
     } else if (histItem && histItem.progress_pct > 1 && histItem.progress_pct < 85 && !isMovieWatched) {
       btnLabel = `Reprendre (${Math.round(histItem.progress_pct)}%)`;
     } else if (isMovieWatched) {
@@ -9579,7 +9604,7 @@ async function toggleWatchedSeriesEp(seasonNum, epNum) {
   if (mainPlayBtn && histItem) {
     const targetEp = getSeriesTargetEpisode(histItem);
     const epCode = `S${String(targetEp.season).padStart(2,'0')}E${String(targetEp.episode).padStart(2,'0')}`;
-    mainPlayBtn.textContent = targetEp.isNext ? `▶ Épisode suivant (${epCode})` : `▶ Lancer ${epCode}`;
+    mainPlayBtn.textContent = targetEp.isNext ? `Épisode suivant (${epCode})` : `Lancer ${epCode}`;
   }
 }
 
@@ -9610,7 +9635,7 @@ async function toggleWatchedWholeSeason(customSeason = null) {
   if (mainPlayBtn && histItem) {
     const targetEp = getSeriesTargetEpisode(histItem);
     const epCode = `S${String(targetEp.season).padStart(2,'0')}E${String(targetEp.episode).padStart(2,'0')}`;
-    mainPlayBtn.textContent = targetEp.isNext ? `▶ Épisode suivant (${epCode})` : `▶ Lancer ${epCode}`;
+    mainPlayBtn.textContent = targetEp.isNext ? `Épisode suivant (${epCode})` : `Lancer ${epCode}`;
   }
 }
 
@@ -9931,12 +9956,21 @@ async function oneClickSeriesEpisode(btn, customSeason = null, customEpisode = n
   }, btn);
 }
 
+let _isGlobalPlayLaunching = false;
 async function oneClickPlay(params, btn) {
+  if (_isGlobalPlayLaunching) return;
+  _isGlobalPlayLaunching = true;
+  setTimeout(() => { _isGlobalPlayLaunching = false; }, 3000);
+
   if (btn && btn.disabled) return;
   const origHtml = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = 'Play...';
+  }
+
+  if (!params.player_mode) {
+    params.player_mode = window.kinoPlayerMode || 'kino';
   }
 
   const box = document.getElementById('debridResultPanel');
@@ -10049,11 +10083,11 @@ async function selectMedia(media) {
     targetSeason = targetEp.season;
     targetEpisode = targetEp.episode;
     const epCode = `S${String(targetSeason).padStart(2,'0')}E${String(targetEpisode).padStart(2,'0')}`;
-    playBtnLabel = targetEp.isNext ? `▶ Épisode suivant (${epCode})` : `▶ Lancer ${epCode}`;
+    playBtnLabel = targetEp.isNext ? `Épisode suivant (${epCode})` : `Lancer ${epCode}`;
   } else if (histItem && histItem.progress_pct > 1 && histItem.progress_pct < 85) {
-    playBtnLabel = `▶ Reprendre (${Math.round(histItem.progress_pct)}%)`;
+    playBtnLabel = `Reprendre (${Math.round(histItem.progress_pct)}%)`;
   } else if (isMovieDone) {
-    playBtnLabel = '▶ Revoir le film';
+    playBtnLabel = 'Revoir le film';
   }
 
   let episodesHtml = '';
@@ -10101,7 +10135,7 @@ async function selectMedia(media) {
   const latestAiredBanner = (media.type === 'series' && latestAired) ? `
     <div style="display:inline-flex; align-items:center; gap:8px; background:var(--surface-2); border:1px solid ${latestAiredUnwatched ? '#fafafa' : 'var(--border)'}; padding:4px 10px; border-radius:5px; font-size:0.75rem; color:${latestAiredUnwatched ? '#fafafa' : 'var(--muted)'}; margin-top:2px; width:fit-content;">
       <span>${latestAiredUnwatched ? '● Dernier épisode diffusé (non vu) :' : '✓ Dernier épisode diffusé :'} <strong>${latestAired.code}</strong> — ${latestAired.title} (${latestAired.released})</span>
-      ${latestAiredUnwatched ? `<button class="btn" style="padding:2px 8px; font-size:0.7rem;" onclick="oneClickSeriesEpisode(this, ${latestAired.season}, ${latestAired.episode})">▶ Play</button>` : ''}
+      ${latestAiredUnwatched ? `<button class="btn" style="padding:2px 8px; font-size:0.7rem;" onclick="oneClickSeriesEpisode(this, ${latestAired.season}, ${latestAired.episode})">Play</button>` : ''}
     </div>
   ` : '';
 
@@ -10489,7 +10523,7 @@ function renderTorrents() {
         </div>
         <div style="display:flex; gap:6px; align-items:center;">
           ${t.magnet ? `<button class="btn btn-secondary" style="padding:6px 10px; font-size:0.75rem;" onclick="copyTorrentMagnet(event, this, ${idx})" title="Copier le lien Magnet">Magnet</button>` : ''}
-          <button class="btn ${isBest ? '' : 'btn-secondary'}" style="${isBest ? 'font-weight:600;' : ''}" onclick="debridFromIndex(${idx})">${isBest ? '▶ Lancer' : 'Sélectionner'}</button>
+          <button class="btn ${isBest ? '' : 'btn-secondary'}" style="${isBest ? 'font-weight:600;' : ''}" onclick="debridFromIndex(${idx})">${isBest ? 'Lancer' : 'Sélectionner'}</button>
         </div>
       </div>
     `;
@@ -10628,6 +10662,10 @@ async function cancelDownload(dl_id) {
 }
 
 async function openMpv(btn, url, filename) {
+  if (_isGlobalPlayLaunching) return;
+  _isGlobalPlayLaunching = true;
+  setTimeout(() => { _isGlobalPlayLaunching = false; }, 3000);
+
   if (btn && btn.disabled) return;
   const origText = btn ? btn.innerHTML : '';
   if (btn) {
@@ -11560,6 +11598,7 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
   updatePlayPauseBtn(false);
 
   let playbackStarted = false;
+  let fallbackTriggered = false;
 
   const onPlaying = () => {
     playbackStarted = true;
@@ -11571,12 +11610,13 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
   };
 
   const onFallbackRequired = (reason) => {
-    if (playbackStarted) return;
+    if (playbackStarted || fallbackTriggered) return;
+    fallbackTriggered = true;
     clearTimeout(inAppFallbackTimer);
     showInAppToast(`Flux 4K/MKV non décodable dans le navigateur.<br><strong>Lancement instantané du moteur KINO...</strong>`, 2600);
     setTimeout(() => {
       switchToExternalPlayer();
-    }, 900);
+    }, 600);
   };
 
   video.removeEventListener('playing', video._onPlayingHandler || (() => {}));
@@ -11648,6 +11688,14 @@ function closeInAppPlayer() {
   inAppIntroData = null;
   clearDiscordRpc();
   if (video) {
+    if (video._onPlayingHandler) {
+      video.removeEventListener('playing', video._onPlayingHandler);
+      video._onPlayingHandler = null;
+    }
+    if (video._onErrorHandler) {
+      video.removeEventListener('error', video._onErrorHandler);
+      video._onErrorHandler = null;
+    }
     if (inAppCurrentMedia) {
       const pct = (video.duration > 0) ? Math.round((video.currentTime / video.duration) * 100) : 0;
       scrobbleTrakt('pause', inAppCurrentMedia, pct);
@@ -11770,7 +11818,12 @@ async function toggleInAppFullscreen() {
   }
 }
 
+let _isSwitchingToExternal = false;
 async function switchToExternalPlayer() {
+  if (_isSwitchingToExternal) return;
+  _isSwitchingToExternal = true;
+  setTimeout(() => { _isSwitchingToExternal = false; }, 3500);
+
   const url = inAppCurrentUrl;
   const title = inAppCurrentTitle;
   const media = inAppCurrentMedia;
