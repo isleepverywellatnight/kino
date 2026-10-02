@@ -207,7 +207,7 @@ class DiscordRPCClient:
             state = "Film • KINO"
 
         if is_paused:
-            state = f"⏸ {state} (En pause)"
+            state = f"{state} (En pause)"
             timestamps = None
         else:
             if duration and duration > current_time > 0:

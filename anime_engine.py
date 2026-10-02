@@ -358,15 +358,16 @@ def search_anime(query: str, limit: int = 20) -> List[Dict[str, Any]]:
     return res
 
 
-def get_airing_schedule() -> Dict[str, Any]:
+def get_airing_schedule(force_refresh: bool = False) -> Dict[str, Any]:
     """
     Récupère le calendrier de diffusion Simulcast de la semaine via AniList GraphQL.
     Organise les épisodes par jour (Aujourd'hui, Demain, etc.) avec compte à rebours.
     """
     cache_key = "anime_simulcast_schedule_v2"
-    cached = db_cache_get(cache_key)
-    if cached:
-        return cached
+    if not force_refresh:
+        cached = db_cache_get(cache_key)
+        if cached:
+            return cached
 
     now = int(time.time())
     start_time = now - 86400  # Les dernières 24h

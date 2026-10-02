@@ -470,7 +470,7 @@ def configure_macos_window(w):
             ns_win.setTitlebarAppearsTransparent_(True)
             ns_win.setTitleVisibility_(1)  # NSWindowTitleHidden
 
-            # Toolbar unifiée invisible pour centrer verticalement les boutons (🔴 🟡 🟢) dans le header KINO
+            # Toolbar unifiée invisible pour centrer verticalement les boutons macOS dans le header KINO
             if ns_win.toolbar() is None:
                 tb = AppKit.NSToolbar.alloc().initWithIdentifier_("kino.toolbar")
                 tb.setShowsBaselineSeparator_(False)

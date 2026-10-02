@@ -3302,8 +3302,8 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
         try:
             mpv_input_conf = "/tmp/kino_mpv_input.conf"
             Path(mpv_input_conf).write_text(
-                's seek 85 exact ; show-text "⏭ Intro passée (+85s)"\n'
-                'S seek 85 exact ; show-text "⏭ Intro passée (+85s)"\n',
+                's seek 85 exact ; show-text "Intro passée (+85s)"\n'
+                'S seek 85 exact ; show-text "Intro passée (+85s)"\n',
                 encoding="utf-8",
             )
         except Exception:
@@ -5566,7 +5566,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <option value="magnet">Magnet</option>
     </select>
     <div style="flex:1; position:relative; display:flex;">
-      <input type="text" id="searchInput" placeholder="Rechercher un film, une série ou un anime... (⌘K)" oninput="onSearchInput()" onkeydown="onSearchKeyDown(event)" autocomplete="off" style="width:100%;">
+      <input type="text" id="searchInput" placeholder="Rechercher un film, une série ou un anime... (Ctrl+K / Cmd+K)" oninput="onSearchInput()" onkeydown="onSearchKeyDown(event)" autocomplete="off" style="width:100%;">
       <div id="searchDropdown" class="search-dropdown" style="display:none;"></div>
     </div>
     <button class="btn" onclick="runSearch()">Rechercher</button>
@@ -5668,8 +5668,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
         <span id="listStatsBadge" style="display:none; font-size:0.73rem; font-weight:500; color:var(--muted); background:var(--surface); border:1px solid var(--border); padding:3px 9px; border-radius:5px;"></span>
         <!-- Sélecteur Sous-Vue Anime (Catalogue vs Planning Simulcast) -->
         <div id="animeSubNav" style="display:none; gap:6px; align-items:center; margin-left:6px;">
-          <button id="animeSubTabCatalog" class="chip active" onclick="switchAnimeSubTab('catalog')">🔥 Catalogue</button>
-          <button id="animeSubTabSchedule" class="chip" onclick="switchAnimeSubTab('schedule')">📅 Planning Simulcast</button>
+          <button id="animeSubTabCatalog" class="chip active" onclick="switchAnimeSubTab('catalog')">Catalogue</button>
+          <button id="animeSubTabSchedule" class="chip" onclick="switchAnimeSubTab('schedule')">Planning Simulcast</button>
         </div>
       </div>
       <div id="catalogSortWrap" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -5793,15 +5793,15 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:12px;">
       <div>
         <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:8px;">
-          <span>📅 Planning des Sorties Simulcast</span>
-          <span style="font-size:0.7rem; font-weight:600; padding:2px 8px; border-radius:12px; background:rgba(229,9,20,0.15); color:var(--red); border:1px solid rgba(229,9,20,0.3);">Japon ⇄ Heure Locale</span>
+          <span>Planning des Sorties Simulcast</span>
+          <span style="font-size:0.7rem; font-weight:600; padding:2px 8px; border-radius:12px; background:rgba(229,9,20,0.15); color:var(--red); border:1px solid rgba(229,9,20,0.3);">Japon - Heure Locale</span>
         </h3>
         <p style="color:var(--dim); font-size:0.8rem; margin-top:3px;">
           Épisodes diffusés cette semaine au Japon. Cliquez sur un épisode pour lancer la recherche immédiate en VOSTFR / MULTI.
         </p>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
-        <button class="btn btn-secondary" style="padding:5px 12px; font-size:0.78rem;" onclick="loadAnimeSchedule(true)">🔄 Actualiser</button>
+        <button class="btn btn-secondary" style="padding:5px 12px; font-size:0.78rem;" onclick="loadAnimeSchedule(true)">Actualiser</button>
       </div>
     </div>
 
@@ -5847,12 +5847,12 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <div id="inAppStatusToast" class="inapp-toast"></div>
   <!-- Bouton Skip Intro Intelligent -->
   <div id="inAppSkipIntroCard" class="inapp-floating-card">
-    <button class="btn" id="inAppSkipIntroBtn" style="padding:7px 14px; font-size:0.82rem;" onclick="skipInAppIntro()">⏭ Passer l'intro</button>
+    <button class="btn" id="inAppSkipIntroBtn" style="padding:7px 14px; font-size:0.82rem;" onclick="skipInAppIntro()">Passer l'intro</button>
     <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="dismissSkipIntro()" title="Masquer">✕</button>
   </div>
   <!-- Bouton Annuler le saut (Undo) -->
   <div id="inAppUndoSkipCard" class="inapp-floating-card" style="display:none; bottom:86px; border-color:rgba(124,58,237,0.5); background:rgba(18,18,24,0.92);">
-    <button class="btn btn-secondary" id="inAppUndoSkipBtn" style="padding:6px 12px; font-size:0.80rem; border-color:rgba(124,58,237,0.7); color:#ddd6fe;" onclick="undoInAppSkip()">↩ Revenir en arrière</button>
+    <button class="btn btn-secondary" id="inAppUndoSkipBtn" style="padding:6px 12px; font-size:0.80rem; border-color:rgba(124,58,237,0.7); color:#ddd6fe;" onclick="undoInAppSkip()">Annuler le saut</button>
   </div>
   <!-- Carte Prochain épisode dans 10s -->
   <div id="inAppNextEpCard" class="inapp-floating-card">
@@ -5860,7 +5860,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <div style="font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">À suivre dans <span id="inAppNextEpCountdown">10</span>s</div>
       <div id="inAppNextEpTitle" style="font-size:0.86rem; font-weight:600; margin-top:2px; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Épisode suivant</div>
     </div>
-    <button class="btn" style="padding:6px 12px; font-size:0.78rem;" onclick="inAppNextTrack()">▶ Lancer</button>
+    <button class="btn" style="padding:6px 12px; font-size:0.78rem;" onclick="inAppNextTrack()">Lancer</button>
     <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="cancelNextEpAuto()">Annuler</button>
   </div>
   <div class="inapp-hud-top pywebview-drag-region" ondblclick="windowAction('maximize')">
@@ -6218,7 +6218,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <div id="shortcutsModal" class="shortcuts-modal" onclick="if(event.target===this) toggleShortcutsModal()">
   <div class="shortcuts-content">
     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
-      <h3 style="font-size:1rem; font-weight:600;">⌨ Raccourcis Clavier KINO</h3>
+      <h3 style="font-size:1rem; font-weight:600;">Raccourcis Clavier KINO</h3>
       <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="toggleShortcutsModal()">Fermer (Échap)</button>
     </div>
     <div class="shortcuts-grid">
@@ -6234,7 +6234,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <div class="shortcut-row"><span>Épisode suivant</span><kbd>N</kbd></div>
       <div class="shortcut-row"><span>Passer l'intro (+85s)</span><kbd>S</kbd></div>
       <div class="shortcut-row"><span>Picture-in-Picture</span><kbd>I</kbd></div>
-      <div class="shortcut-row"><span>Focus recherche</span><div><kbd>⌘K</kbd> / <kbd>/</kbd></div></div>
+      <div class="shortcut-row"><span>Focus recherche</span><div><kbd>Ctrl+K</kbd> / <kbd>Cmd+K</kbd> / <kbd>/</kbd></div></div>
     </div>
   </div>
 </div>
@@ -8143,7 +8143,7 @@ function renderAnimeScheduleDays() {
     const safeDay = day.replace(/'/g, "\\'");
     return `
       <button class="chip ${isActive ? 'active' : ''}" onclick="selectScheduleDay('${safeDay}')" style="white-space:nowrap; padding: 6px 14px; font-weight:${isToday ? '700' : '500'};">
-        ${isToday ? '🔥 ' : ''}${day} <span style="opacity:0.75; font-size:0.72rem; margin-left:4px;">(${items.length})</span>
+        ${day} <span style="opacity:0.75; font-size:0.72rem; margin-left:4px;">(${items.length})</span>
       </button>
     `;
   }).join('');
@@ -8158,7 +8158,7 @@ function selectScheduleDay(day) {
 function formatCountdown(targetSeconds) {
   const now = Math.floor(Date.now() / 1000);
   const diff = targetSeconds - now;
-  if (diff <= 0) return { text: "⚡ Disponible", isAvailable: true };
+  if (diff <= 0) return { text: "DISPONIBLE", isAvailable: true };
   const hours = Math.floor(diff / 3600);
   const minutes = Math.floor((diff % 3600) / 60);
   if (hours > 24) {
@@ -8180,10 +8180,10 @@ function updateScheduleCountdowns() {
       const cd = formatCountdown(airTs);
       if (cd.isAvailable) {
         el.className = 'schedule-card-status-badge badge-status-available';
-        el.innerHTML = '⚡ DISPONIBLE';
+        el.innerHTML = 'DISPONIBLE';
       } else {
         el.className = 'schedule-card-status-badge badge-status-countdown';
-        el.innerHTML = `⏳ ${cd.text}`;
+        el.innerHTML = cd.text;
       }
     }
   });
@@ -8206,9 +8206,9 @@ function renderAnimeScheduleGrid() {
     const safeRomaji = (item.title_romaji || '').replace(/"/g, '&quot;');
     const posterUrl = item.poster || item.banner || '';
     const epNum = item.episode || 1;
-    const scoreBadge = item.score ? `<span class="schedule-score">★ ${item.score}</span>` : '';
+    const scoreBadge = item.score ? `<span class="schedule-score">${item.score}</span>` : '';
     const genresHtml = (item.genres || []).map(g => `<span class="schedule-tag">${g}</span>`).join('');
-    const timeDisplay = item.time_str ? `🕒 ${item.time_str}` : '';
+    const timeDisplay = item.time_str ? item.time_str : '';
 
     return `
       <div class="schedule-card" onclick='openAnimeFromSchedule(${safeTitleJs}, ${epNum})'>
@@ -8217,7 +8217,7 @@ function renderAnimeScheduleGrid() {
           <div class="schedule-card-overlay"></div>
           <span class="schedule-card-ep-badge">EP ${epNum < 10 ? '0' + epNum : epNum}</span>
           <span class="schedule-card-status-badge ${cd.isAvailable ? 'badge-status-available' : 'badge-status-countdown'}" data-schedule-airing="${item.airing_at}">
-            ${cd.isAvailable ? '⚡ DISPONIBLE' : '⏳ ' + cd.text}
+            ${cd.isAvailable ? 'DISPONIBLE' : cd.text}
           </span>
           ${timeDisplay ? `<span class="schedule-card-time">${timeDisplay}</span>` : ''}
         </div>
@@ -9313,10 +9313,10 @@ function handleWpIncomingData(data, fromConn) {
     }
     if (data.event === 'play' || (data.type === 'sync' && data.paused === false)) {
       v.play().catch(() => {});
-      showInAppToast('▶ Reprise synchronisée');
+      showInAppToast('Reprise synchronisée');
     } else if (data.event === 'pause' || (data.type === 'sync' && data.paused === true)) {
       v.pause();
-      showInAppToast('⏸ Pause synchronisée');
+      showInAppToast('Pause synchronisée');
     }
     setTimeout(() => { wpIsSyncing = false; }, 300);
   } else if (data.type === 'chat') {
@@ -9759,7 +9759,7 @@ function toggleSearchMode() {
   hideSearchDropdown();
   if (mode === 'magnet') inp.placeholder = 'Coller un lien magnet:?xt=urn:btih:...';
   else if (mode === 'raw') inp.placeholder = 'Recherche par mots-clés...';
-  else inp.placeholder = 'Rechercher un film ou une série... (⌘K)';
+  else inp.placeholder = 'Rechercher un film ou une série... (Ctrl+K / Cmd+K)';
 }
 
 function onSearchInput() {
@@ -11084,7 +11084,7 @@ function fixInAppAudio() {
   if (!video || !inAppCurrentUrl) return;
   const curSec = Math.floor(video.currentTime || 0);
   const remuxUrl = `/api/remux?url=${encodeURIComponent(inAppCurrentUrl)}&ss=${curSec}`;
-  showInAppToast('<strong>🔊 Conversion Audio AAC compatible en cours...</strong><br><span style="font-size:0.78rem; color:var(--muted);">Remuxing audio instantané stéréo sans perte vidéo</span>', 2800);
+  showInAppToast('<strong>Conversion Audio AAC compatible en cours...</strong><br><span style="font-size:0.78rem; color:var(--muted);">Remuxing audio instantané stéréo sans perte vidéo</span>', 2800);
   video.src = remuxUrl;
   video.load();
   video.muted = false;
@@ -11399,7 +11399,7 @@ async function captureInAppScreenshot() {
       showInAppToast(`<strong>Capture enregistrée</strong><br><span style="font-size:0.78rem; color:var(--muted);">${res.filename}</span>`, 2200);
     }
   } catch (e) {
-    showInAppToast(`<strong>Capture protégée (CORS)</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez ⇧⌘4 ou le Moteur KINO (touche S dans IINA)</span>`, 2200);
+    showInAppToast(`<strong>Capture protégée (CORS)</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez Shift+Cmd+4 / Win+Shift+S ou le Moteur KINO</span>`, 2200);
   }
 }
 
@@ -11479,16 +11479,16 @@ function skipInAppIntro() {
     const targetT = inAppIntroData.op.end + 0.5;
     video.currentTime = targetT;
     const prov = inAppIntroData.provider ? `<br><span style="font-size:0.75rem; color:var(--muted);">${inAppIntroData.provider}</span>` : '';
-    showInAppToast(`<strong>⏭ Intro passée (→ ${formatTime(inAppIntroData.op.end)})</strong>${prov}`, 2000);
+    showInAppToast(`<strong>Intro passée (→ ${formatTime(inAppIntroData.op.end)})</strong>${prov}`, 2000);
   } else if (inAppIntroData && inAppIntroData.recap && curT < inAppIntroData.recap.end) {
     const targetT = inAppIntroData.recap.end + 0.5;
     video.currentTime = targetT;
-    showInAppToast(`<strong>⏭ Récap passé (→ ${formatTime(inAppIntroData.recap.end)})</strong>`, 1800);
+    showInAppToast(`<strong>Récap passé (→ ${formatTime(inAppIntroData.recap.end)})</strong>`, 1800);
   } else {
     const isAnime = Boolean(inAppCurrentMedia && inAppCurrentMedia.type === 'anime');
     const skipAmount = (inAppIntroData && inAppIntroData.default_skip) ? inAppIntroData.default_skip : (isAnime ? 90 : 60);
     inAppSeekRel(skipAmount);
-    showInAppToast(`<strong>⏭ Intro passée (+${skipAmount}s)</strong>`, 1600);
+    showInAppToast(`<strong>Intro passée (+${skipAmount}s)</strong>`, 1600);
   }
 }
 
@@ -11659,7 +11659,7 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
         video.muted = true;
         updateInAppVolUI();
         video.play().then(() => {
-          showInAppToast(`<strong>🔊 Cliquez sur l'écran ou appuyez sur M pour activer le son</strong>`, 3500);
+          showInAppToast(`<strong>Cliquez sur l'écran ou appuyez sur M pour activer le son</strong>`, 3500);
         }).catch(() => {});
       } else if (video.error || video.readyState === 0) {
         onFallbackRequired('play_reject');
@@ -11921,24 +11921,24 @@ if (inAppVideoEl) {
       if (skipCard) {
         if (isSeriesNow && !inAppSkipIntroDismissed && durT > 180) {
           let shouldShow = false;
-          let btnText = "⏭ Passer l'intro";
+          let btnText = "Passer l'intro";
 
           if (inAppIntroData && inAppIntroData.op) {
             const op = inAppIntroData.op;
             if (curT >= Math.max(0, op.start - 2) && curT < op.end) {
               shouldShow = true;
-              btnText = `⏭ Passer l'intro (→ ${formatTime(op.end)})`;
+              btnText = `Passer l'intro (→ ${formatTime(op.end)})`;
             }
           } else if (inAppIntroData && inAppIntroData.recap && curT >= Math.max(0, inAppIntroData.recap.start - 2) && curT < inAppIntroData.recap.end) {
             shouldShow = true;
-            btnText = `⏭ Passer le récap (→ ${formatTime(inAppIntroData.recap.end)})`;
+            btnText = `Passer le récap (→ ${formatTime(inAppIntroData.recap.end)})`;
           } else {
             // Heuristique : entre 10s et 160s
             if (curT >= 10 && curT <= 160) {
               shouldShow = true;
               const isAnime = Boolean(inAppCurrentMedia && inAppCurrentMedia.type === 'anime');
               const skipSec = (inAppIntroData && inAppIntroData.default_skip) ? inAppIntroData.default_skip : (isAnime ? 90 : 60);
-              btnText = `⏭ Passer l'intro (+${skipSec}s)`;
+              btnText = `Passer l'intro (+${skipSec}s)`;
             }
           }
 
