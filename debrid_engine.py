@@ -29,7 +29,7 @@ from config import (
     http_json,
     load_config,
 )
-from meta_engine import get_media_meta
+from meta_engine import get_media_meta, IMDB_ID_ALIASES
 
 
 def _bdecode_slice(data: bytes, idx: int = 0):
@@ -472,6 +472,7 @@ def is_plausible_torrent_size(t, media_type="movie", runtime_minutes=None):
 
 
 def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=None, provider=None, runtime_minutes=None, sort_by="score", query_title="", release_year=""):
+    imdb_id = IMDB_ID_ALIASES.get(imdb_id, imdb_id)
     prov, token = _get_provider_and_token(rd_token, provider)
     prov_meta = DEBRID_PROVIDERS.get(prov, DEBRID_PROVIDERS["realdebrid"])
     tio_key = prov_meta.get("torrentio_key", "")
@@ -499,7 +500,7 @@ def search_torrentio(imdb_id, media_type="movie", season=1, episode=1, rd_token=
         except Exception:
             pass
 
-    cache_key = f"multi_engine_v4:{prov}:{media_type}:{imdb_id}:{season}:{episode}:{bool(token)}:{sort_by}:{clean_q}:{clean_yr}"
+    cache_key = f"multi_engine_v5:{prov}:{media_type}:{imdb_id}:{season}:{episode}:{bool(token)}:{sort_by}:{clean_q}:{clean_yr}"
 
     def _fetch():
         return torrent_engine.search_multi_torrents(

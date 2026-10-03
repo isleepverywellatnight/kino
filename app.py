@@ -37,6 +37,8 @@ import player_engine
 from player_engine import *
 
 import torrent_engine
+import stream_engine
+from stream_engine import StreamQuery, get_available_streams, resolve_playable_stream, DebridResolutionError
 import remote_controller
 import trakt_engine
 import addon_manager
@@ -500,32 +502,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return
 
             if parsed.path == "/api/torrents":
-                imdb_id = params.get("imdb_id")
-                mtype = params.get("type", "movie")
-                season = params.get("season", 1)
-                episode = params.get("episode", 1)
-                q = params.get("q") or params.get("title", "")
-                release_year = params.get("year", "")
-                runtime = params.get("runtime", "")
-                sort_by = params.get("sort_by", "score")
-
-                runtime_min = 0
-                if runtime:
-                    m_rt = re.search(r"(\d+)", str(runtime))
-                    if m_rt:
-                        runtime_min = int(m_rt.group(1))
-
-                torrents = []
-                clean_q = q.split(" — ")[0].strip() if " — " in q else q.strip()
-                if imdb_id:
-                    try:
-                        torrents.extend(search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, sort_by=sort_by, query_title=clean_q, release_year=release_year))
-                    except Exception:
-                        pass
-                if not torrents and (q or clean_q):
-                    torrents.extend(search_apibay(clean_q or q))
-
-                torrents = [t for t in torrents if is_plausible_torrent_size(t, media_type=mtype, runtime_minutes=runtime_min)]
+                force = params.get("force") == "1"
+                query = StreamQuery.from_params(params)
+                torrents = get_available_streams(query, force_refresh=force)
                 self.send_json({"torrents": torrents})
                 return
 
@@ -803,11 +782,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                         pass
 
                 is_series = mtype in ("series", "anime", "tv")
-                release_yr = body.get("year", "")
-                torrents = search_torrentio(imdb_id, mtype, season, episode, runtime_minutes=runtime_min, query_title=series_name, release_year=release_yr) if imdb_id else []
-                if not torrents and (title or series_name):
-                    torrents = search_apibay(series_name or title)
-                torrents = [t for t in torrents if is_plausible_torrent_size(t, media_type=mtype, runtime_minutes=runtime_min)]
+                query = StreamQuery.from_params(body)
+                torrents = get_available_streams(query)
                 if not torrents:
                     raise RuntimeError("Aucun flux valide trouvé pour ce titre.")
 

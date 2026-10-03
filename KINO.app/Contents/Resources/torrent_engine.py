@@ -295,39 +295,117 @@ def extract_release_years(text: str) -> list:
     return [int(y) for y in re.findall(r'\b(19[2-9]\d|20[0-3]\d)\b', text or '')]
 
 
+IGNORE_RELEASE_WORDS = {
+    "naoki", "urasawa", "urasawas", "anime", "series", "complete", "batch", "dual", "audio",
+    "sub", "subs", "raw", "raws", "readnfo", "upscale", "original", "color", "uncut",
+    "remastered", "edition", "rip", "the", "a", "an", "s", "season", "ep", "episode",
+    "vol", "volume", "ova", "ona", "special", "specials", "movie", "film"
+}
+
+DIFF_SHOW_WORDS = {
+    "re", "monarch", "legacy", "ed", "gein", "dahmer", "jeffrey", "work", "works",
+    "high", "musume", "florence", "truck", "trucks", "hunter", "hunters", "university",
+    "inc", "strike", "rancher", "chronicles", "garage", "legend", "legends", "island",
+    "school", "academy", "quest", "wars", "war"
+}
+
+
+def is_release_relevant(
+    filename: str,
+    expected_title: str = "",
+    expected_year: str = None,
+    season: int = 1,
+    episode: int = 1,
+    media_type: str = "movie",
+) -> bool:
+    """
+    Vérifie avec rigueur si le nom de fichier d'une release torrent correspond réellement
+    au média demandé (évite la pollution par des séries homonymes ou des franchises dérivées).
+    """
+    if not expected_title or not filename:
+        return True
+
+    low_file = filename.lower()
+    cleaned = re.sub(r"\[.*?\]|\(.*?\)", " ", filename)
+
+    # Extraction du préfixe de titre avant saison/épisode/année/résolution/qualité
+    split_regex = (
+        r"\b(s\d{1,2}(?:e\d{1,2})?|season\s*\d+|ep\s*\d+|e\d{2}|"
+        r"(19\d\d|20\d\d)|2160p|1080p|720p|480p|bluray|web-dl|webrip|hdtv|dvdrip|remux)\b"
+    )
+    m = re.search(split_regex, cleaned, re.IGNORECASE)
+    title_part = cleaned[: m.start()] if m else cleaned
+
+    norm_title = re.sub(r"[\.\-_]", " ", title_part).strip().lower()
+
+    # Titre principal vs titre avec sous-titre (ex: 'Frieren: Beyond Journey\'s End' -> 'Frieren')
+    exp_primary = expected_title.split(":")[0].split(" - ")[0].strip().lower()
+    exp_full = expected_title.strip().lower()
+
+    norm_title_clean = re.sub(r"[^a-z0-9]", "", norm_title)
+    exp_primary_clean = re.sub(r"[^a-z0-9]", "", exp_primary)
+
+    # 1. Vérification du préfixe 'Re:' (ex: Re:Monster vs Monster, sauf si le titre demandé commence par Re)
+    if not exp_primary.startswith("re") and re.search(r"\bre[\:\s\.\-_]?" + re.escape(exp_primary) + r"\b", low_file):
+        return False
+
+    # 2. Vérification des mots distinctifs de séries différentes
+    words_title = set(re.findall(r"[a-z0-9]+", norm_title))
+    words_exp = set(re.findall(r"[a-z0-9]+", exp_primary)).union(set(re.findall(r"[a-z0-9]+", exp_full)))
+
+    extra_words = words_title - words_exp - IGNORE_RELEASE_WORDS
+    if extra_words.intersection(DIFF_SHOW_WORDS):
+        return False
+    if len(words_exp) == 1 and extra_words:
+        return False
+
+    # Pour les titres courts (1 ou 2 mots comme 'Monster' ou 'Dark'), filtrer les marqueurs de séries distinctes dans tout le nom
+    if len(words_exp) <= 2:
+        for d in DIFF_SHOW_WORDS:
+            if re.search(r"\b" + re.escape(d) + r"\b", low_file):
+                if (
+                    d in ("monarch", "gein", "dahmer", "florence")
+                    or f"{exp_primary} {d}" in low_file
+                    or f"{d} {exp_primary}" in low_file
+                    or f"{exp_primary}.{d}" in low_file
+                ):
+                    return False
+        # Vérification singulier vs pluriel pour les titres stricts d'un mot (ex: 'Monster' vs 'Monsters')
+        if exp_primary == "monster" and (norm_title_clean in ("monsters", "monsterland") or "monsters." in low_file or "monsters " in low_file or "monsterland" in low_file):
+            return False
+
+        # Rejeter les mots composés dérivés d'un titre strict (ex: 'monsterland', 'darkness')
+        if len(words_exp) == 1:
+            for w in words_title:
+                if w.startswith(exp_primary) and len(w) > len(exp_primary):
+                    return False
+
+    # 3. Vérification de l'année si elle apparaît explicitement dans le nom de la release
+    if expected_year:
+        try:
+            exp_y = int(str(expected_year)[:4])
+            years = extract_release_years(filename)
+            for y in years:
+                if y not in (1080, 2160, 720, 480, 576):
+                    # Si l'écart dépasse 2 ans, il s'agit d'une autre œuvre
+                    if abs(y - exp_y) > 2:
+                        return False
+        except Exception:
+            pass
+
+    return True
+
+
 def is_valid_release_for_show(release_title: str, target_title: str, release_year: str = None) -> bool:
     """Vérifie si le titre de la release correspond bien à l'œuvre ciblée et élimine les faux positifs."""
     if not target_title or not target_title.strip():
         return True
 
-    t_clean = clean_title_for_comparison(target_title)
-    r_clean = clean_title_for_comparison(release_title)
-
-    if not r_clean:
+    # 1. Test direct par pertinence sémantique & exclusion de franchises dérivées (Re:Monster, Dahmer, etc.)
+    if not is_release_relevant(release_title, expected_title=target_title, expected_year=release_year):
         return False
 
-    candidates = [t_clean]
-    if ":" in target_title:
-        candidates.extend([clean_title_for_comparison(p) for p in target_title.split(":")])
-    if " - " in target_title:
-        candidates.extend([clean_title_for_comparison(p) for p in target_title.split(" - ")])
-    candidates = [c for c in candidates if len(c) >= 2]
-
-    matched = False
-    for cand in candidates:
-        if r_clean == cand:
-            matched = True
-            break
-        norm_c = re.sub(r'[^a-z0-9]', '', cand)
-        norm_r = re.sub(r'[^a-z0-9]', '', r_clean)
-        if norm_c and norm_c == norm_r:
-            matched = True
-            break
-
-    if not matched:
-        return False
-
-    # Validation stricte de l'année si renseignée (ex: Monster 2004 vs Monster 2026/Ed Gein)
+    # 2. Validation stricte de l'année si renseignée (ex: Monster 2004 vs Monster 2026/Ed Gein)
     if release_year:
         try:
             t_yr = int(str(release_year)[:4])

@@ -558,7 +558,17 @@ function drawHeroSpotlightSlide() {
   const mtype = item.type || 'movie';
   const year = String(item.releaseInfo || item.year || '');
   const rating = item.imdbRating || '';
-  const bgUrl = item.background || `https://images.metahub.space/background/medium/${item.id}/img`;
+  let bgUrl = item.background;
+  if (item.id === 'tt22248376' && (!bgUrl || bgUrl.includes('metahub.space'))) {
+    bgUrl = 'https://media.kitsu.app/anime/46474/cover_image/large-167edf3e01fac59ce6aacfeb47df5634.jpeg';
+  } else if ((item.id === 'tt1355642' || item.id === 'tt1370601') && (!bgUrl || bgUrl.includes('metahub.space'))) {
+    bgUrl = 'https://media.kitsu.app/anime/cover_images/3936/large.jpg';
+  } else if (item.id === 'tt21209876' && (!bgUrl || bgUrl.includes('metahub.space'))) {
+    bgUrl = 'https://media.kitsu.app/anime/46231/cover_image/large-33273dc297cdc8b10cc1140de07d3dae.jpeg';
+  }
+  if (!bgUrl) {
+    bgUrl = `https://images.metahub.space/background/medium/${item.id}/img`;
+  }
   const genres = Array.isArray(item.genres) ? item.genres.slice(0, 3) : [];
   const desc = item.description || '';
   const mediaObj = {
@@ -578,13 +588,29 @@ function drawHeroSpotlightSlide() {
         ? `★ ANIMATION JAPONAISE · POPULAIRE #${heroSpotlightIdx + 1}`
         : `★ À LA UNE · ${mtype === 'series' ? 'SÉRIE' : 'FILM'} #${heroSpotlightIdx + 1}`);
 
-  const posterUrl = item.poster || (item.id ? `https://images.metahub.space/poster/medium/${item.id}/img` : '');
+  let posterUrl = item.poster;
+  if (item.id === 'tt22248376' && (!posterUrl || posterUrl.includes('metahub.space'))) {
+    posterUrl = 'https://media.kitsu.app/anime/46474/poster_image/large-ec9b98dd5fbf8f92532d1edb45f9e882.jpeg';
+  } else if ((item.id === 'tt1355642' || item.id === 'tt1370601') && (!posterUrl || posterUrl.includes('metahub.space'))) {
+    posterUrl = 'https://media.kitsu.app/anime/3936/poster_image/large-a94f61b0c0f8623b371cf78696ecdd44.jpeg';
+  } else if (item.id === 'tt21209876' && (!posterUrl || posterUrl.includes('metahub.space'))) {
+    posterUrl = 'https://media.kitsu.app/anime/46231/poster_image/large-22cba102be8d90ca0d6eec4d57cff5b6.jpeg';
+  } else if (!posterUrl) {
+    posterUrl = item.id ? `https://images.metahub.space/poster/medium/${item.id}/img` : '';
+  }
+
   const bgCandidate = bgUrl || posterUrl;
   if (bgCandidate) {
     box.style.backgroundImage = `url('${bgCandidate}')`;
     const heroBgImg = new Image();
     heroBgImg.onerror = function() {
-      if (posterUrl && posterUrl !== bgCandidate) {
+      if (item.id === 'tt22248376') {
+        box.style.backgroundImage = "url('https://media.kitsu.app/anime/46474/cover_image/large-167edf3e01fac59ce6aacfeb47df5634.jpeg')";
+      } else if (item.id === 'tt1355642' || item.id === 'tt1370601') {
+        box.style.backgroundImage = "url('https://media.kitsu.app/anime/cover_images/3936/large.jpg')";
+      } else if (item.id === 'tt21209876') {
+        box.style.backgroundImage = "url('https://media.kitsu.app/anime/46231/cover_image/large-33273dc297cdc8b10cc1140de07d3dae.jpeg')";
+      } else if (posterUrl && posterUrl !== bgCandidate) {
         box.style.backgroundImage = `url('${posterUrl}')`;
       }
     };

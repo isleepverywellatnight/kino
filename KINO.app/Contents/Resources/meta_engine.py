@@ -178,15 +178,38 @@ def get_classics_catalog(genre="", sort="top"):
     return items
 
 
+IMDB_ID_ALIASES = {
+    "tt22248374": "tt22248376",  # Frieren: Beyond Journey's End (Cinemeta / IMDb)
+    "tt1370601": "tt1355642",    # Fullmetal Alchemist: Brotherhood (Cinemeta / IMDb)
+}
+
+ANIME_IMAGE_FIXES = {
+    "tt22248376": {
+        "poster": "https://media.kitsu.app/anime/46474/poster_image/large-ec9b98dd5fbf8f92532d1edb45f9e882.jpeg",
+        "background": "https://media.kitsu.app/anime/46474/cover_image/large-167edf3e01fac59ce6aacfeb47df5634.jpeg",
+        "cover": "https://media.kitsu.app/anime/46474/cover_image/large-167edf3e01fac59ce6aacfeb47df5634.jpeg",
+    },
+    "tt1355642": {
+        "poster": "https://media.kitsu.app/anime/3936/poster_image/large-a94f61b0c0f8623b371cf78696ecdd44.jpeg",
+        "background": "https://media.kitsu.app/anime/cover_images/3936/large.jpg",
+        "cover": "https://media.kitsu.app/anime/cover_images/3936/large.jpg",
+    },
+    "tt21209876": {
+        "poster": "https://media.kitsu.app/anime/46231/poster_image/large-22cba102be8d90ca0d6eec4d57cff5b6.jpeg",
+        "background": "https://media.kitsu.app/anime/46231/cover_image/large-33273dc297cdc8b10cc1140de07d3dae.jpeg",
+        "cover": "https://media.kitsu.app/anime/46231/cover_image/large-33273dc297cdc8b10cc1140de07d3dae.jpeg",
+    },
+}
+
 CINEMETA_FALLBACK_ANIMES = [
     {"id": "tt2560140", "type": "series", "name": "Attack on Titan", "year": "2013", "releaseInfo": "2013-2023", "imdbRating": "9.1", "poster": "https://images.metahub.space/poster/medium/tt2560140/img", "background": "https://images.metahub.space/background/medium/tt2560140/img", "genres": ["Animation", "Action", "Adventure"], "description": "Dans un monde où les humains vivent enfermés dans des cités entourées de gigantesques remparts pour se protéger de créatures colossales nommées Titans, le jeune Eren Jaeger jure d'éradiquer ces prédateurs."},
     {"id": "tt12343534", "type": "series", "name": "Jujutsu Kaisen", "year": "2020", "releaseInfo": "2020-", "imdbRating": "8.5", "poster": "https://images.metahub.space/poster/medium/tt12343534/img", "background": "https://images.metahub.space/background/medium/tt12343534/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Yuji Itadori, lycéen aux aptitudes physiques exceptionnelles, avale une relique maudite de rang S pour sauver ses amis et se retrouve possédé par Ryomen Sukuna, le Roi des Fléaux."},
     {"id": "tt9335498", "type": "series", "name": "Demon Slayer: Kimetsu no Yaiba", "year": "2019", "releaseInfo": "2019-", "imdbRating": "8.6", "poster": "https://images.metahub.space/poster/medium/tt9335498/img", "background": "https://images.metahub.space/background/medium/tt9335498/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Après le massacre de sa famille par un démon et la transformation de sa jeune sœur Nezuko, Tanjiro Kamado devient pourfendeur de démons pour la délivrer de cette malédiction."},
     {"id": "tt0388629", "type": "series", "name": "One Piece", "year": "1999", "releaseInfo": "1999-", "imdbRating": "9.0", "poster": "https://images.metahub.space/poster/medium/tt0388629/img", "background": "https://images.metahub.space/background/medium/tt0388629/img", "genres": ["Animation", "Action", "Adventure"], "description": "Monkey D. Luffy prend la mer à la recherche du trésor légendaire, le One Piece, avec l'ambition suprême de devenir le Roi des Pirates."},
-    {"id": "tt22248376", "type": "series", "name": "Frieren: Beyond Journey's End", "year": "2023", "releaseInfo": "2023-", "imdbRating": "8.9", "poster": "https://images.metahub.space/poster/medium/tt22248376/img", "background": "https://images.metahub.space/background/medium/tt22248376/img", "genres": ["Animation", "Adventure", "Drama"], "description": "Après la défaite du Roi Démon par le groupe de héros, l'elfe magicienne Frieren entame un nouveau voyage pour comprendre la valeur éphémère du temps et des liens humains."},
-    {"id": "tt21209876", "type": "series", "name": "Solo Leveling", "year": "2024", "releaseInfo": "2024-", "imdbRating": "8.3", "poster": "https://images.metahub.space/poster/medium/tt21209876/img", "background": "https://images.metahub.space/background/medium/tt21209876/img", "genres": ["Animation", "Action", "Fantasy"], "description": "Sung Jinwoo, le chasseur le plus faible du monde, reçoit la capacité unique d'évoluer sans limite via une interface de jeu invisible."},
+    {"id": "tt22248376", "type": "series", "name": "Frieren: Beyond Journey's End", "year": "2023", "releaseInfo": "2023-", "imdbRating": "8.9", "poster": "https://media.kitsu.app/anime/46474/poster_image/large-ec9b98dd5fbf8f92532d1edb45f9e882.jpeg", "background": "https://media.kitsu.app/anime/46474/cover_image/large-167edf3e01fac59ce6aacfeb47df5634.jpeg", "cover": "https://media.kitsu.app/anime/46474/cover_image/large-167edf3e01fac59ce6aacfeb47df5634.jpeg", "genres": ["Animation", "Adventure", "Drama"], "description": "Après la défaite du Roi Démon par le groupe de héros, l'elfe magicienne Frieren entame un nouveau voyage pour comprendre la valeur éphémère du temps et des liens humains."},
+    {"id": "tt21209876", "type": "series", "name": "Solo Leveling", "year": "2024", "releaseInfo": "2024-", "imdbRating": "8.3", "poster": "https://media.kitsu.app/anime/46231/poster_image/large-22cba102be8d90ca0d6eec4d57cff5b6.jpeg", "background": "https://media.kitsu.app/anime/46231/cover_image/large-33273dc297cdc8b10cc1140de07d3dae.jpeg", "cover": "https://media.kitsu.app/anime/46231/cover_image/large-33273dc297cdc8b10cc1140de07d3dae.jpeg", "genres": ["Animation", "Action", "Fantasy"], "description": "Sung Jinwoo, le chasseur le plus faible du monde, reçoit la capacité unique d'évoluer sans limite via une interface de jeu invisible."},
     {"id": "tt0877057", "type": "series", "name": "Death Note", "year": "2006", "releaseInfo": "2006-2007", "imdbRating": "8.9", "poster": "https://images.metahub.space/poster/medium/tt0877057/img", "background": "https://images.metahub.space/background/medium/tt0877057/img", "genres": ["Animation", "Crime", "Drama"], "description": "Light Yagami, brillant lycéen, trouve un carnet surnaturel permettant de tuer quiconque dont on connaît le nom et le visage."},
-    {"id": "tt1355642", "type": "series", "name": "Fullmetal Alchemist: Brotherhood", "year": "2009", "releaseInfo": "2009-2010", "imdbRating": "9.1", "poster": "https://images.metahub.space/poster/medium/tt1355642/img", "background": "https://images.metahub.space/background/medium/tt1355642/img", "genres": ["Animation", "Action", "Adventure"], "description": "Edward et Alphonse Elric parcourent le monde à la recherche de la Pierre Philosophale pour restaurer leurs corps perdus."},
+    {"id": "tt1355642", "type": "series", "name": "Fullmetal Alchemist: Brotherhood", "year": "2009", "releaseInfo": "2009-2010", "imdbRating": "9.1", "poster": "https://media.kitsu.app/anime/3936/poster_image/large-a94f61b0c0f8623b371cf78696ecdd44.jpeg", "background": "https://media.kitsu.app/anime/cover_images/3936/large.jpg", "cover": "https://media.kitsu.app/anime/cover_images/3936/large.jpg", "genres": ["Animation", "Action", "Adventure"], "description": "Edward et Alphonse Elric parcourent le monde à la recherche de la Pierre Philosophale pour restaurer leurs corps perdus."},
     {"id": "tt2098220", "type": "series", "name": "Hunter x Hunter", "year": "2011", "releaseInfo": "2011-2014", "imdbRating": "9.0", "poster": "https://images.metahub.space/poster/medium/tt2098220/img", "background": "https://images.metahub.space/background/medium/tt2098220/img", "genres": ["Animation", "Action", "Adventure"], "description": "Gon Freecss décide de passer le redoutable examen de Hunter dans l'espoir de retrouver son père Ging, l'un des Hunters les plus mystérieux au monde."},
     {"id": "tt13616990", "type": "series", "name": "Chainsaw Man", "year": "2022", "releaseInfo": "2022-", "imdbRating": "8.4", "poster": "https://images.metahub.space/poster/medium/tt13616990/img", "background": "https://images.metahub.space/background/medium/tt13616990/img", "genres": ["Animation", "Action", "Horror"], "description": "Denji, jeune homme criblé de dettes vivant avec son démon-tronçonneuse Pochita, fusionne avec ce dernier pour devenir Chainsaw Man."},
     {"id": "tt0434665", "type": "series", "name": "Bleach", "year": "2004", "releaseInfo": "2004-2012", "imdbRating": "8.2", "poster": "https://images.metahub.space/poster/medium/tt0434665/img", "background": "https://images.metahub.space/background/medium/tt0434665/img", "genres": ["Animation", "Action", "Adventure"], "description": "Ichigo Kurosaki, adolescent capable de voir les esprits, devient Shinigami pour défendre les humains contre les monstres Hollows."},
@@ -354,6 +377,7 @@ def search_cinemeta(query, media_type="movie"):
 
 
 def get_media_meta(imdb_id, media_type="movie"):
+    imdb_id = IMDB_ID_ALIASES.get(imdb_id, imdb_id)
     if media_type == "anime":
         s_meta = get_media_meta(imdb_id, "series")
         if s_meta and s_meta.get("name") and s_meta.get("videos"):
@@ -373,6 +397,10 @@ def get_media_meta(imdb_id, media_type="movie"):
         url = f"https://v3-cinemeta.strem.io/meta/{media_type}/{imdb_id}.json"
         data = http_json(url)
         meta = dict(data.get("meta") or {})
+        if imdb_id in ANIME_IMAGE_FIXES:
+            for k, v in ANIME_IMAGE_FIXES[imdb_id].items():
+                if v and (not meta.get(k) or "metahub.space" in str(meta.get(k))):
+                    meta[k] = v
         if meta.get("description"):
             meta["description_fr"] = translate_text_fr(meta["description"])
         raw_genres = meta.get("genres") or meta.get("genre") or []

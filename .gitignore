@@ -28,6 +28,7 @@ desktop.ini
 build/
 dist/
 *.spec.bak
+KINO-Multiplateforme-Mac-Windows.zip
 
 # Base de données locale de test
 *.db

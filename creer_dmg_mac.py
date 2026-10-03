@@ -156,6 +156,7 @@ exec "$PYTHON_BIN" "$DIR/desktop.py"
         "meta_engine.py",
         "debrid_engine.py",
         "player_engine.py",
+        "stream_engine.py",
         "kino_db.py",
         "torrent_engine.py",
         "remote_controller.py",
@@ -170,6 +171,8 @@ exec "$PYTHON_BIN" "$DIR/desktop.py"
         "kino.png",
         "kino.ico",
         "Lancer_KINO.command",
+        "kino_sync.json",
+        "sync_drive.py",
     ]
     for fname in files_to_copy:
         src = BASE_DIR / fname
@@ -388,13 +391,13 @@ def generate_native_mac_builder():
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null 2>&1 && pwd )"
 cd "$DIR"
 
-echo "🍏 Création du DMG macOS compressé via hdiutil natif..."
+echo "[INFO] Creation du DMG macOS compresse via hdiutil natif..."
 
 OUTPUT_DMG="dist/KINO_Apple_Natif.dmg"
 SRC_FOLDER="dist/KINO.app"
 
 if [ ! -d "$SRC_FOLDER" ]; then
-    echo "❌ Le dossier $SRC_FOLDER n'existe pas. Exécutez d'abord creer_dmg_mac.py."
+    echo "[ERREUR] Le dossier $SRC_FOLDER n'existe pas. Executez d'abord creer_dmg_mac.py."
     exit 1
 fi
 
@@ -407,7 +410,7 @@ hdiutil create \\
     -format UDZO \\
     "$OUTPUT_DMG"
 
-echo "✅ DMG Apple natif créé avec succès dans : $OUTPUT_DMG"
+echo "[OK] DMG Apple natif cree avec succes dans : $OUTPUT_DMG"
 """
     script_path = DIST_DIR / "creer_dmg_natif_mac.sh"
     script_path.write_text(script_sh, encoding="utf-8")

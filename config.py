@@ -18,6 +18,19 @@ from pathlib import Path
 
 import discord_rpc
 import kino_db
+import ssl
+
+
+def get_ssl_context():
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        pass
+    try:
+        return ssl.create_default_context()
+    except Exception:
+        return ssl._create_unverified_context()
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -226,9 +239,18 @@ def http_json(url, method="GET", data=None, json_data=None, headers=None, timeou
 
     req = urllib.request.Request(url, data=encoded_data, headers=req_headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            body = resp.read().decode("utf-8", errors="replace")
-            return json.loads(body) if body.strip() else {}
+        ctx = get_ssl_context()
+        try:
+            with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+                body = resp.read().decode("utf-8", errors="replace")
+                return json.loads(body) if body.strip() else {}
+        except (urllib.error.URLError, ssl.SSLCertVerificationError, ssl.SSLError, Exception) as ssl_err:
+            if "CERTIFICATE_VERIFY_FAILED" in str(ssl_err) or "certificate verify failed" in str(ssl_err):
+                unver_ctx = ssl._create_unverified_context()
+                with urllib.request.urlopen(req, timeout=timeout, context=unver_ctx) as resp:
+                    body = resp.read().decode("utf-8", errors="replace")
+                    return json.loads(body) if body.strip() else {}
+            raise
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="ignore")
         try:

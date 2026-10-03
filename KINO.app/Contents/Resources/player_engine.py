@@ -31,6 +31,7 @@ from config import (
     record_history,
 )
 from debrid_engine import rd_debrid_magnet, score_torrent_for_one_click, search_torrentio
+import stream_engine
 from meta_engine import download_top_subtitles_for_mpv, get_series_meta
 
 DOWNLOADS = {}
@@ -303,7 +304,18 @@ def resolve_auto_stream_episode(params):
                 })
             return cached["download"]
 
-    torrents = search_torrentio(imdb_id, "series", s, ep, rd_token=token, query_title=name, release_year=year) if imdb_id else []
+    if imdb_id:
+        q_obj = stream_engine.StreamQuery(
+            imdb_id=imdb_id,
+            media_type="series",
+            season=s,
+            episode=ep,
+            title=name,
+            release_year=year,
+        )
+        torrents = stream_engine.get_available_streams(q_obj)
+    else:
+        torrents = []
     if not torrents:
         raise RuntimeError(f"Aucun flux trouvé pour {name} S{s:02d}E{ep:02d}.")
 
