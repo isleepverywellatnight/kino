@@ -6,6 +6,8 @@ traductions françaises automatiques, gestion des sous-titres OpenSubtitles,
 bandes-annonces YouTube, import Letterboxd et gestion de la Watchlist.
 """
 
+import concurrent.futures
+import hashlib
 import json
 import os
 import re
@@ -43,11 +45,25 @@ GENRE_FR_MAP = {
 }
 
 
+def is_already_french(text):
+    """Detecte rapidement si le texte est deja en francais pour eviter les requetes inutiles."""
+    if not text:
+        return True
+    sample = (" " + text.lower() + " ")[:350]
+    french_indicators = (
+        " le ", " la ", " les ", " des ", " un ", " une ", " dans ", " pour ",
+        " avec ", " et ", " qui ", " son ", " sa ", " ses ", " plus ", " mais ",
+        " sur ", " par ", " est ", " une "
+    )
+    return sum(1 for w in french_indicators if w in sample) >= 3
+
+
 def translate_text_fr(text):
     text = (text or "").strip()
-    if not text:
-        return ""
-    cache_key = f"tr_fr:{hash(text)}"
+    if not text or is_already_french(text):
+        return text
+    h = hashlib.md5(text.encode("utf-8", errors="replace")).hexdigest()[:16]
+    cache_key = f"tr_fr_v2:{h}"
 
     def _do():
         try:
@@ -56,7 +72,7 @@ def translate_text_fr(text):
                 + urllib.parse.quote(text)
             )
             req = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
                 res = json.loads(resp.read().decode("utf-8"))
                 out = "".join(seg[0] for seg in (res[0] or []) if seg and seg[0]).strip()
                 if out:
@@ -66,7 +82,7 @@ def translate_text_fr(text):
         try:
             u2 = "https://api.mymemory.translated.net/get?langpair=en|fr&q=" + urllib.parse.quote(text[:480])
             req2 = urllib.request.Request(u2, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req2, timeout=3) as resp2:
+            with urllib.request.urlopen(req2, timeout=1.5) as resp2:
                 d2 = json.loads(resp2.read().decode("utf-8"))
                 out2 = ((d2.get("responseData") or {}).get("translatedText") or "").strip()
                 if out2 and "MYMEMORY WARNING" not in out2.upper():
@@ -75,7 +91,7 @@ def translate_text_fr(text):
             pass
         return text
 
-    return cached_get(cache_key, 86400, _do)
+    return cached_get(cache_key, 604800, _do)
 
 
 # Panthéon des Classiques du Cinéma ("Les films à voir au moins une fois dans sa vie")
@@ -379,17 +395,27 @@ def search_cinemeta(query, media_type="movie"):
 def get_media_meta(imdb_id, media_type="movie"):
     imdb_id = IMDB_ID_ALIASES.get(imdb_id, imdb_id)
     if media_type == "anime":
-        s_meta = get_media_meta(imdb_id, "series")
-        if s_meta and s_meta.get("name") and s_meta.get("videos"):
-            s_meta["type"] = "series"
-            s_meta["is_anime"] = True
-            return s_meta
-        m_meta = get_media_meta(imdb_id, "movie")
-        if m_meta and m_meta.get("name"):
-            m_meta["type"] = "movie"
-            m_meta["is_anime"] = True
-            return m_meta
-        return s_meta or m_meta or {}
+        known_type = kino_db.db_get_media_type(imdb_id)
+        if known_type in ("movie", "series"):
+            res = get_media_meta(imdb_id, known_type)
+            if res and res.get("name"):
+                res["is_anime"] = True
+                return res
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            f_series = ex.submit(get_media_meta, imdb_id, "series")
+            f_movie = ex.submit(get_media_meta, imdb_id, "movie")
+            s_meta = f_series.result()
+            if s_meta and s_meta.get("name") and s_meta.get("videos"):
+                s_meta["type"] = "series"
+                s_meta["is_anime"] = True
+                return s_meta
+            m_meta = f_movie.result()
+            if m_meta and m_meta.get("name"):
+                m_meta["type"] = "movie"
+                m_meta["is_anime"] = True
+                return m_meta
+            return s_meta or m_meta or {}
 
     cache_key = f"meta_fr_v2:{media_type}:{imdb_id}"
 
@@ -397,24 +423,25 @@ def get_media_meta(imdb_id, media_type="movie"):
         url = f"https://v3-cinemeta.strem.io/meta/{media_type}/{imdb_id}.json"
         data = http_json(url)
         meta = dict(data.get("meta") or {})
+        if not meta:
+            return {}
+
         if imdb_id in ANIME_IMAGE_FIXES:
             for k, v in ANIME_IMAGE_FIXES[imdb_id].items():
                 if v and (not meta.get(k) or "metahub.space" in str(meta.get(k))):
                     meta[k] = v
-        if meta.get("description"):
-            meta["description_fr"] = translate_text_fr(meta["description"])
+
         raw_genres = meta.get("genres") or meta.get("genre") or []
         if isinstance(raw_genres, list):
             meta["genres_fr"] = [GENRE_FR_MAP.get(g, g) for g in raw_genres]
 
-        similar = []
-        seen_ids = {imdb_id}
-        try:
-            directors = meta.get("director") if isinstance(meta.get("director"), list) else ([meta["director"]] if meta.get("director") else [])
-            cast_list = meta.get("cast") if isinstance(meta.get("cast"), list) else []
-            seed_query = (directors[0] if directors else (cast_list[0] if cast_list else "")).strip()
-            if seed_query:
-                for cand in (search_cinemeta(seed_query, media_type) or [])[:6]:
+        # 1. Suggestions similaires instantanees depuis le catalogue local (< 5ms)
+        similar = kino_db.db_get_similar(imdb_id, media_type=media_type, genres=raw_genres, limit=8)
+        if len(similar) < 4 and raw_genres and isinstance(raw_genres, list):
+            try:
+                pool = get_catalog_top(media_type, genre=raw_genres[0], skip=0, sort="top") or []
+                seen_ids = {imdb_id}.union(s.get("id") for s in similar)
+                for cand in pool:
                     cid = cand.get("id")
                     if cid and cid not in seen_ids and cand.get("poster"):
                         seen_ids.add(cid)
@@ -426,39 +453,23 @@ def get_media_meta(imdb_id, media_type="movie"):
                             "poster": cand.get("poster", ""),
                             "imdbRating": str(cand.get("imdbRating") or ""),
                         })
-            if len(similar) < 6 and raw_genres and isinstance(raw_genres, list):
-                primary_genre = raw_genres[0]
-                genre_set = set(raw_genres)
-                pool = get_catalog_top(media_type, genre=primary_genre, skip=0, sort="top") or []
-                scored_pool = []
-                for cand in pool:
-                    cid = cand.get("id")
-                    if not cid or cid in seen_ids or not cand.get("poster"):
-                        continue
-                    c_genres = set(cand.get("genres") or cand.get("genre") or [])
-                    overlap = len(genre_set.intersection(c_genres))
-                    rating_f = 0.0
-                    try:
-                        rating_f = float(cand.get("imdbRating") or 0)
-                    except Exception:
-                        pass
-                    scored_pool.append(((overlap, rating_f), cand))
-                scored_pool.sort(key=lambda x: x[0], reverse=True)
-                for _, cand in scored_pool[: (8 - len(similar))]:
-                    cid = cand.get("id")
-                    seen_ids.add(cid)
-                    similar.append({
-                        "id": cid,
-                        "name": cand.get("name", ""),
-                        "type": cand.get("type") or media_type,
-                        "year": str(cand.get("releaseInfo") or cand.get("year") or ""),
-                        "poster": cand.get("poster", ""),
-                        "imdbRating": str(cand.get("imdbRating") or ""),
-                    })
-        except Exception:
-            pass
+                        if len(similar) >= 8:
+                            break
+            except Exception:
+                pass
         meta["similar"] = similar[:8]
 
+        # 2. Traduction optimisee du synopsis
+        if meta.get("description"):
+            meta["description_fr"] = translate_text_fr(meta["description"])
+
+        # 3. Indexation locale en arriere-plan pour accelerer les prochaines recherches
+        try:
+            threading.Thread(target=kino_db.db_index_media, args=([meta],), daemon=True).start()
+        except Exception:
+            pass
+
+        # 4. Traitement des series et dernier episode diffuse
         if media_type == "series" and isinstance(meta.get("videos"), list):
             try:
                 from datetime import datetime, timezone
@@ -469,7 +480,7 @@ def get_media_meta(imdb_id, media_type="movie"):
                     e_num = int(v.get("episode") or v.get("number") or 0)
                     rel = str(v.get("released") or "")[:10]
                     if s_num >= 1 and e_num >= 1 and len(rel) == 10 and rel <= today_iso:
-                        aired_eps.append((s_num, e_num, rel, v.get("name") or v.get("title") or f"Épisode {e_num}"))
+                        aired_eps.append((s_num, e_num, rel, v.get("name") or v.get("title") or f"Episode {e_num}"))
                 if aired_eps:
                     aired_eps.sort(key=lambda x: (x[0], x[1]))
                     ls, le, lrel, ltitle = aired_eps[-1]
@@ -485,7 +496,7 @@ def get_media_meta(imdb_id, media_type="movie"):
 
         return meta
 
-    return cached_get(cache_key, 1800, _fetch)
+    return cached_get(cache_key, 3600, _fetch)
 
 
 def fetch_opensubtitles(imdb_id, media_type="movie", season=1, episode=1):

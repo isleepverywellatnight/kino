@@ -8,6 +8,8 @@ let userWatchlist = [];
 let userHistory = [];
 let activeTab = 'movies';
 let configuredProviders = {};
+const META_CLIENT_CACHE = new Map();
+let currentSelectMediaId = null;
 
 const PROVIDER_META = {
   realdebrid: { name: 'Real-Debrid', short: 'RD', url: 'https://real-debrid.com/apitoken', label: 'real-debrid.com/apitoken', hint: 'Clé API Real-Debrid' },
@@ -3932,44 +3934,22 @@ async function oneClickPlay(params, btn) {
   }
 }
 
-async function selectMedia(media) {
-  currentMedia = media;
-  const setP = document.getElementById('settingsPanel');
-  if (setP) setP.style.display = 'none';
-  const setTab = document.getElementById('tab-settings');
-  if (setTab) setTab.classList.remove('active');
-  const detail = document.getElementById('detailPanel');
-  detail.style.display = 'block';
-  detail.innerHTML = '<p style="color:var(--dim); font-size:0.84rem;">Chargement de la fiche...</p>';
-  detail.scrollIntoView({behavior: 'smooth'});
-
-  const sc = document.getElementById('seriesControls');
-  let meta = {};
-  const queryType = (media.type === 'movie') ? 'movie' : (media.type === 'series' ? 'series' : (media.is_anime ? 'anime' : (media.type || 'movie')));
-  try {
-    const res = await api(`/api/meta?type=${encodeURIComponent(queryType)}&imdb_id=${encodeURIComponent(media.id)}`);
-    meta = res.meta || {};
-    if (meta.type && !media.type) media.type = meta.type;
-  } catch (e) {
-    console.warn(e);
-  }
-  const isSeries = Boolean(media.type === 'series' || meta.type === 'series' || (meta.videos && meta.videos.length > 0));
-  if (isSeries) {
-    media.type = 'series';
-    currentMedia.type = 'series';
-  } else if (meta.type === 'movie') {
-    media.type = 'movie';
-    currentMedia.type = 'movie';
-  }
-
+function buildDetailHtml(media, meta, isPreview) {
+  const isSeries = Boolean(media.type === 'series' || meta.type === 'series' || (meta.videos && meta.videos.length > 0) || (media.is_anime && media.type !== 'movie'));
   const poster = meta.poster || media.poster || '';
-  currentMedia.poster = poster;
   const year = meta.releaseInfo || meta.year || media.year || '';
   const rating = meta.imdbRating || media.imdbRating || '';
   const runtime = meta.runtime || '';
-  const rawGenres = (meta.genres || meta.genre || []).slice(0, 5);
+  const rawGenres = (meta.genres || meta.genre || media.genres || []).slice(0, 5);
   const genres = (meta.genres_fr || rawGenres).slice(0, 5);
-  const desc = meta.description_fr || meta.description || 'Aucun synopsis disponible.';
+
+  let desc = meta.description_fr || meta.description || media.overview || media.description || '';
+  if (!desc && isPreview) {
+    desc = '<div class="detail-skeleton-line" style="width:90%;"></div><div class="detail-skeleton-line" style="width:75%; margin-top:6px;"></div>';
+  } else if (!desc) {
+    desc = 'Aucun synopsis disponible.';
+  }
+
   const castArr = (meta.cast || []).slice(0, 7);
   const dirArr = Array.isArray(meta.director) ? meta.director : (meta.director ? [meta.director] : []);
   const mtypeSafe = JSON.stringify(media.type || 'movie').replace(/'/g, "&#39;");
@@ -3991,7 +3971,7 @@ async function selectMedia(media) {
 
   const histItem = userHistory.find(h => h.id === media.id);
   const userRating = (histItem && histItem.user_rating) || media.user_rating || '';
-  const isMovieDone = Boolean(histItem && media.type !== 'series' && (histItem.completed || Number(histItem.progress_pct || 0) >= 85));
+  const isMovieDone = Boolean(histItem && !isSeries && (histItem.completed || Number(histItem.progress_pct || 0) >= 85));
   const watchedEpsList = (histItem && Array.isArray(histItem.watched_episodes)) ? histItem.watched_episodes : [];
   const latestAired = meta.latest_aired || null;
   const latestAiredUnwatched = Boolean(latestAired && latestAired.code && !watchedEpsList.includes(latestAired.code));
@@ -3999,7 +3979,7 @@ async function selectMedia(media) {
   let targetSeason = 1;
   let targetEpisode = 1;
   let playBtnLabel = 'Play';
-  if (media.type === 'series') {
+  if (isSeries) {
     const targetEp = getSeriesTargetEpisode(histItem);
     targetSeason = targetEp.season;
     targetEpisode = targetEp.episode;
@@ -4014,23 +3994,37 @@ async function selectMedia(media) {
   const backdropUrl = meta.background || meta.backdrop || media.backdrop || media.background || (media.id && String(media.id).startsWith('tt') ? `https://images.metahub.space/background/medium/${media.id}/img` : (poster || ''));
 
   let episodesHtml = '';
-  if (media.type === 'series') {
-    seriesMetaVideos = (meta.videos || []).filter(v => v.season > 0);
-    const seasons = [...new Set(seriesMetaVideos.map(v => v.season))].sort((a,b) => a - b);
-    if (seasons.length) {
-      if (!seasons.includes(targetSeason)) targetSeason = seasons[0];
+  if (isSeries) {
+    if (isPreview) {
       episodesHtml = `
         <div class="detail-extra-section">
-          <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-              <span style="font-size:0.82rem; font-weight:600; color:var(--muted); margin-right:4px;">Saisons :</span>
-              ${seasons.map(s => `<button class="season-pill ${s===targetSeason?'active':''}" data-season-chip="${s}" onclick="selectDetailSeason(${s})">Saison ${s}</button>`).join('')}
-            </div>
-            <button class="btn btn-secondary" id="detailSeasonAllWatchedBtn" style="padding:6px 12px; font-size:0.75rem;" onclick="toggleWatchedWholeSeason()">✓ Marquer la saison comme vue</button>
+          <div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:8px;">Épisodes</div>
+          <div class="detail-skeleton-line" style="width:45%; margin-bottom:12px;"></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px;">
+            <div class="detail-skeleton-line" style="height:48px;"></div>
+            <div class="detail-skeleton-line" style="height:48px;"></div>
+            <div class="detail-skeleton-line" style="height:48px;"></div>
           </div>
-          <div id="detailEpisodesList" class="episodes-grid"></div>
         </div>
       `;
+    } else {
+      seriesMetaVideos = (meta.videos || []).filter(v => v.season > 0);
+      const seasons = [...new Set(seriesMetaVideos.map(v => v.season))].sort((a,b) => a - b);
+      if (seasons.length) {
+        if (!seasons.includes(targetSeason)) targetSeason = seasons[0];
+        episodesHtml = `
+          <div class="detail-extra-section">
+            <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <span style="font-size:0.82rem; font-weight:600; color:var(--muted); margin-right:4px;">Saisons :</span>
+                ${seasons.map(s => `<button class="season-pill ${s===targetSeason?'active':''}" data-season-chip="${s}" onclick="selectDetailSeason(${s})">Saison ${s}</button>`).join('')}
+              </div>
+              <button class="btn btn-secondary" id="detailSeasonAllWatchedBtn" style="padding:6px 12px; font-size:0.75rem;" onclick="toggleWatchedWholeSeason()">✓ Marquer la saison comme vue</button>
+            </div>
+            <div id="detailEpisodesList" class="episodes-grid"></div>
+          </div>
+        `;
+      }
     }
   }
 
@@ -4060,86 +4054,103 @@ async function selectMedia(media) {
     </div>
   ` : '';
 
-  const latestAiredBanner = (media.type === 'series' && latestAired) ? `
+  const latestAiredBanner = (isSeries && latestAired) ? `
     <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); border:1px solid ${latestAiredUnwatched ? 'rgba(255,255,255,0.4)' : 'var(--border)'}; padding:5px 12px; border-radius:6px; font-size:0.76rem; color:${latestAiredUnwatched ? '#fafafa' : 'var(--muted)'}; margin-top:2px; width:fit-content;">
       <span>${latestAiredUnwatched ? '● Dernier épisode diffusé (non vu) :' : '✓ Dernier épisode diffusé :'} <strong>${latestAired.code}</strong> — ${latestAired.title} (${latestAired.released})</span>
       ${latestAiredUnwatched ? `<button class="btn" style="padding:2px 8px; font-size:0.7rem;" onclick="oneClickSeriesEpisode(this, ${latestAired.season}, ${latestAired.episode})">Play</button>` : ''}
     </div>
   ` : '';
 
-  detail.innerHTML = `
-    <div class="detail-backdrop-wrap">
-      <img class="detail-backdrop-img" src="${backdropUrl}" alt="" onerror="this.style.opacity='0';">
-      <div class="detail-backdrop-gradient"></div>
-      <button class="detail-close-btn" onclick="closeDetailPanel()" title="Fermer la fiche">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-      <div class="detail-hero-content">
-        <img class="detail-poster-cinematic" src="${poster}" alt="${media.name}" onerror="this.style.opacity=0.08">
-        <div class="detail-info-block">
-          <div class="detail-title-cinematic">${meta.name || media.name}</div>
-          <div class="detail-meta-row">
-            ${userRating ? `<span class="badge" style="background:rgba(245,158,11,0.16); border:1px solid rgba(245,158,11,0.4); color:#fbbf24; font-weight:700;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fbbf24" style="vertical-align:-1px; margin-right:3px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${userRating}/5 (Ma note)</span>` : ''}
-            ${rating ? `<span class="badge-imdb-gold"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f5c518"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${rating} IMDb</span>` : ''}
-            ${year ? `<span class="badge" style="font-weight:600;">${year}</span>` : ''}
-            ${runtime ? `<span>• ${runtime}</span>` : ''}
-            ${country ? `<span>• ${country.split(',').slice(0,2).join(', ')}</span>` : ''}
-            ${genres.map((g, idx) => {
-              const rawG = rawGenres[idx] || g;
-              const rawGJs = JSON.stringify(rawG).replace(/'/g, "&#39;");
-              return `<span class="badge" style="cursor:pointer;" title="Filtrer par ${g}" onclick='selectGenre(${rawGJs}, document.querySelector("#genreFilters .chip[data-genre=\\"" + ${rawGJs} + "\\"]"))'>${g}</span>`;
-            }).join('')}
-          </div>
-          ${latestAiredBanner}
-          <div class="detail-desc">${desc}</div>
-          <div class="detail-credits">
-            ${dirLinks ? `<div><strong>Réalisation :</strong> ${dirLinks}</div>` : ''}
-            ${castLinks ? `<div><strong>Distribution :</strong> ${castLinks}</div>` : ''}
-            ${awards ? `<div style="color:var(--dim); margin-top:2px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H8v2h8v-2h-1c-.55 0-1-.45-1-1v-2.34c3.27-.47 5.73-3.23 6-6.66H4c.27 3.43 2.73 6.19 6 6.66z"/></svg>${awards}</div>` : ''}
-          </div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;">
-            <button class="btn btn-play-hero" id="detailMainPlayBtn" onclick='oneClickCard(event, this, ${mediaPayload})'>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="margin-right:2px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              ${playBtnLabel}
-            </button>
-            <button class="btn btn-secondary" onclick='openTrailerModal(${JSON.stringify(trailerId)}, ${safeNameJs}, ${safeYearJs}, "vf")'>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              Bande-annonce
-            </button>
-            <button class="btn btn-secondary" id="detailWlBtn" onclick='toggleWatchlist(event, ${mediaPayload})'>
-              ${inList ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Dans ma liste' : '+ Ma Liste'}
-            </button>
-            ${media.type !== 'series' ? `<button class="btn btn-secondary" style="${isMovieDone ? 'border-color:var(--text); color:var(--text);' : ''}" onclick='toggleWatchedItem(${mediaPayload})'>${isMovieDone ? '✓ Vu' : '✓ Marquer comme vu'}</button>` : ''}
-            ${media.id && String(media.id).startsWith('tt') ? `<a class="btn btn-secondary" href="https://www.imdb.com/title/${encodeURIComponent(media.id)}/" target="_blank" style="padding:7px 11px; font-size:0.76rem;" title="Voir la fiche sur IMDb">IMDb ↗</a>` : ''}
-            ${media.id && String(media.id).startsWith('tt') && media.type !== 'series' ? `<a class="btn btn-secondary" href="https://letterboxd.com/imdb/${encodeURIComponent(media.id)}/" target="_blank" style="padding:7px 11px; font-size:0.76rem; border-color:rgba(0,224,84,0.35);" title="Voir sur Letterboxd">Letterboxd ↗</a>` : ''}
+  return {
+    isSeries,
+    targetSeason,
+    targetEpisode,
+    html: `
+      <div class="detail-backdrop-wrap">
+        <img class="detail-backdrop-img" src="${backdropUrl}" alt="" onerror="this.style.opacity='0';">
+        <div class="detail-backdrop-gradient"></div>
+        <button class="detail-close-btn" onclick="closeDetailPanel()" title="Fermer la fiche">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div class="detail-hero-content">
+          <img class="detail-poster-cinematic" src="${poster}" alt="${media.name}" onerror="this.style.opacity=0.08">
+          <div class="detail-info-block">
+            <div class="detail-title-cinematic">${meta.name || media.name}</div>
+            <div class="detail-meta-row">
+              ${userRating ? `<span class="badge" style="background:rgba(245,158,11,0.16); border:1px solid rgba(245,158,11,0.4); color:#fbbf24; font-weight:700;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fbbf24" style="vertical-align:-1px; margin-right:3px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${userRating}/5 (Ma note)</span>` : ''}
+              ${rating ? `<span class="badge-imdb-gold"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f5c518"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${rating} IMDb</span>` : ''}
+              ${year ? `<span class="badge" style="font-weight:600;">${year}</span>` : ''}
+              ${runtime ? `<span>• ${runtime}</span>` : ''}
+              ${country ? `<span>• ${country.split(',').slice(0,2).join(', ')}</span>` : ''}
+              ${genres.map((g, idx) => {
+                const rawG = rawGenres[idx] || g;
+                const rawGJs = JSON.stringify(rawG).replace(/'/g, "&#39;");
+                return `<span class="badge" style="cursor:pointer;" title="Filtrer par ${g}" onclick='selectGenre(${rawGJs}, document.querySelector("#genreFilters .chip[data-genre=\\"" + ${rawGJs} + "\\"]"))'>${g}</span>`;
+              }).join('')}
+            </div>
+            ${latestAiredBanner}
+            <div class="detail-desc">${desc}</div>
+            <div class="detail-credits">
+              ${dirLinks ? `<div><strong>Réalisation :</strong> ${dirLinks}</div>` : ''}
+              ${castLinks ? `<div><strong>Distribution :</strong> ${castLinks}</div>` : ''}
+              ${awards ? `<div style="color:var(--dim); margin-top:2px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H8v2h8v-2h-1c-.55 0-1-.45-1-1v-2.34c3.27-.47 5.73-3.23 6-6.66H4c.27 3.43 2.73 6.19 6 6.66z"/></svg>${awards}</div>` : ''}
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;">
+              <button class="btn btn-play-hero" id="detailMainPlayBtn" onclick='oneClickCard(event, this, ${mediaPayload})'>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="margin-right:2px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                ${playBtnLabel}
+              </button>
+              <button class="btn btn-secondary" onclick='openTrailerModal(${JSON.stringify(trailerId)}, ${safeNameJs}, ${safeYearJs}, "vf")'>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Bande-annonce
+              </button>
+              <button class="btn btn-secondary" id="detailWlBtn" onclick='toggleWatchlist(event, ${mediaPayload})'>
+                ${inList ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Dans ma liste' : '+ Ma Liste'}
+              </button>
+              ${!isSeries ? `<button class="btn btn-secondary" style="${isMovieDone ? 'border-color:var(--text); color:var(--text);' : ''}" onclick='toggleWatchedItem(${mediaPayload})'>${isMovieDone ? '✓ Vu' : '✓ Marquer comme vu'}</button>` : ''}
+              ${media.id && String(media.id).startsWith('tt') ? `<a class="btn btn-secondary" href="https://www.imdb.com/title/${encodeURIComponent(media.id)}/" target="_blank" style="padding:7px 11px; font-size:0.76rem;" title="Voir la fiche sur IMDb">IMDb ↗</a>` : ''}
+              ${media.id && String(media.id).startsWith('tt') && !isSeries ? `<a class="btn btn-secondary" href="https://letterboxd.com/imdb/${encodeURIComponent(media.id)}/" target="_blank" style="padding:7px 11px; font-size:0.76rem; border-color:rgba(0,224,84,0.35);" title="Voir sur Letterboxd">Letterboxd ↗</a>` : ''}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    ${episodesHtml}
-    ${similarHtml}
-  `;
+      ${episodesHtml}
+      ${similarHtml}
+    `
+  };
+}
 
-  if (media.type === 'series') {
+function applyMediaDetails(media, meta) {
+  const detail = document.getElementById('detailPanel');
+  const sc = document.getElementById('seriesControls');
+  const rendered = buildDetailHtml(media, meta, false);
+  detail.innerHTML = rendered.html;
+
+  if (rendered.isSeries) {
+    media.type = 'series';
+    currentMedia.type = 'series';
     sc.style.display = 'flex';
     const sSel = document.getElementById('seasonSelect');
     const seasons = [...new Set(seriesMetaVideos.map(v => v.season))].sort((a,b) => a - b);
     if (seasons.length) {
       sSel.innerHTML = seasons.map(s => `<option value="${s}">Saison ${s}</option>`).join('');
-      sSel.value = String(targetSeason);
+      sSel.value = String(rendered.targetSeason);
       onSeasonChange(false);
       const eSel = document.getElementById('episodeSelect');
-      if (eSel && [...eSel.options].some(o => Number(o.value) === targetEpisode)) {
-        eSel.value = String(targetEpisode);
+      if (eSel && [...eSel.options].some(o => Number(o.value) === rendered.targetEpisode)) {
+        eSel.value = String(rendered.targetEpisode);
       }
-      renderDetailEpisodes(targetSeason);
+      renderDetailEpisodes(rendered.targetSeason);
     } else {
       sSel.innerHTML = '<option value="1">Saison 1</option>';
       onSeasonChange(false);
     }
     reloadSeriesEpisode(false);
   } else {
+    media.type = 'movie';
+    currentMedia.type = 'movie';
     sc.style.display = 'none';
+    const year = meta.releaseInfo || meta.year || media.year || '';
     loadTorrents({
       imdb_id: media.id,
       type: 'movie',
@@ -4147,6 +4158,50 @@ async function selectMedia(media) {
       runtime: media.runtime || (meta && meta.runtime) || ''
     }, false);
   }
+}
+
+async function selectMedia(media) {
+  currentMedia = media;
+  const reqId = media.id;
+  currentSelectMediaId = reqId;
+
+  const setP = document.getElementById('settingsPanel');
+  if (setP) setP.style.display = 'none';
+  const setTab = document.getElementById('tab-settings');
+  if (setTab) setTab.classList.remove('active');
+  const detail = document.getElementById('detailPanel');
+  detail.style.display = 'block';
+
+  // 1. Verifier si les metadonnees completes sont deja en cache memoire client (0ms)
+  const cachedMeta = META_CLIENT_CACHE.get(reqId);
+  if (cachedMeta) {
+    applyMediaDetails(media, cachedMeta);
+    detail.scrollIntoView({behavior: 'smooth'});
+    return;
+  }
+
+  // 2. Affichage instantane optimiste (0ms de latence percue)
+  const preview = buildDetailHtml(media, {}, true);
+  detail.innerHTML = preview.html;
+  detail.scrollIntoView({behavior: 'smooth'});
+
+  // 3. Requete asynchrone des metadonnees enrichies
+  let meta = {};
+  const queryType = (media.type === 'movie') ? 'movie' : (media.type === 'series' ? 'series' : (media.is_anime ? 'anime' : (media.type || 'movie')));
+  try {
+    const res = await api(`/api/meta?type=${encodeURIComponent(queryType)}&imdb_id=${encodeURIComponent(media.id)}`);
+    meta = res.meta || {};
+    if (meta.type && !media.type) media.type = meta.type;
+    META_CLIENT_CACHE.set(reqId, meta);
+  } catch (e) {
+    console.warn(e);
+  }
+
+  // Si l'utilisateur a clique sur un autre media entre-temps, ignorer le retour
+  if (currentSelectMediaId !== reqId) return;
+
+  // 4. Injection fluide des donnees completes (synopsis traduit, episodes, similaires)
+  applyMediaDetails(media, meta);
 }
 
 function closeDetailPanel() {

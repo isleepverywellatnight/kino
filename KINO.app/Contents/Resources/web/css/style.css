@@ -1220,6 +1220,18 @@
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  .detail-skeleton-line {
+    height: 14px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%);
+    background-size: 200% 100%;
+    animation: shimmerSkeleton 1.4s infinite ease-in-out;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  @keyframes shimmerSkeleton {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
   .detail-backdrop-wrap {
     position: relative;
     width: 100%;

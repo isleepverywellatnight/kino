@@ -518,6 +518,61 @@ def db_search_fast(query, media_type=None, limit=25):
             conn.close()
 
 
+def db_get_media_type(imdb_id):
+    """Retourne le type (movie ou series) d'un titre depuis le catalogue local."""
+    if not imdb_id:
+        return None
+    with _DB_LOCK:
+        conn = get_connection()
+        try:
+            row = conn.execute("SELECT media_type FROM media_catalog WHERE imdb_id = ? LIMIT 1", (imdb_id,)).fetchone()
+            if row and row["media_type"]:
+                return str(row["media_type"]).strip().lower()
+        except Exception:
+            pass
+        finally:
+            conn.close()
+    return None
+
+
+def db_get_similar(imdb_id, media_type="movie", genres=None, limit=8):
+    """Recherche des suggestions similaires ultra-rapides (< 5ms) depuis le catalogue local."""
+    if not imdb_id:
+        return []
+    target_type = "series" if media_type == "series" else "movie"
+    with _DB_LOCK:
+        conn = get_connection()
+        try:
+            where_clauses = ["imdb_id != ?", "length(poster) > 0", "length(rating) > 0"]
+            params = [imdb_id]
+            if target_type:
+                where_clauses.append("media_type = ?")
+                params.append(target_type)
+
+            if genres and isinstance(genres, list):
+                valid_g = [str(g).strip() for g in genres if g and len(str(g).strip()) >= 3]
+                if valid_g:
+                    g_conds = ["genres LIKE ?" for _ in valid_g[:3]]
+                    for gt in valid_g[:3]:
+                        params.append(f"%{gt}%")
+                    where_clauses.append(f"({' OR '.join(g_conds)})")
+
+            query_sql = f"""
+                SELECT imdb_id as id, title as name, media_type as type, year, poster, rating as imdbRating
+                FROM media_catalog
+                WHERE {' AND '.join(where_clauses)}
+                ORDER BY CAST(rating AS FLOAT) DESC
+                LIMIT ?;
+            """
+            params.append(limit)
+            rows = conn.execute(query_sql, params).fetchall()
+            return [dict(r) for r in rows]
+        except Exception:
+            return []
+        finally:
+            conn.close()
+
+
 def db_seed_classics(classics_list):
     """Initialise le catalogue FTS5 local avec le panthéon des classiques."""
     if not classics_list:
