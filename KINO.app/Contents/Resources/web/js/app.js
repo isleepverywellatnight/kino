@@ -877,8 +877,14 @@ function renderActiveListTab() {
   // Calcul des statistiques de la liste
   if (statsEl) {
     if (rawList.length > 0) {
+      const myRated = rawList.map(x => parseFloat(x.user_rating || '0')).filter(r => r > 0);
       const rated = rawList.map(x => parseFloat(x.imdbRating || '0')).filter(r => r > 0);
-      const avgTxt = rated.length ? ` • ★ ${(rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1)} moy.` : '';
+      let avgTxt = '';
+      if (myRated.length) {
+        avgTxt = ` • ★ ${(myRated.reduce((a, b) => a + b, 0) / myRated.length).toFixed(1)}/5 (ma note moy.)`;
+      } else if (rated.length) {
+        avgTxt = ` • ★ ${(rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1)} moy.`;
+      }
       if (activeTab === 'watchlist') {
         const unwatchedCount = rawList.filter(m => {
           const h = userHistory.find(x => x.id === m.id);
@@ -900,7 +906,14 @@ function renderActiveListTab() {
     return hay.includes(q);
   });
 
-  if (sortMode === 'rating') {
+  if (sortMode === 'user_rating_desc') {
+    filtered = [...filtered].sort((a, b) => {
+      const ra = parseFloat(a.user_rating || '0') || 0;
+      const rb = parseFloat(b.user_rating || '0') || 0;
+      if (rb !== ra) return rb - ra;
+      return (parseFloat(b.imdbRating || '0') || 0) - (parseFloat(a.imdbRating || '0') || 0);
+    });
+  } else if (sortMode === 'rating') {
     filtered = [...filtered].sort((a, b) => (parseFloat(b.imdbRating || '0') || 0) - (parseFloat(a.imdbRating || '0') || 0));
   } else if (sortMode === 'year_desc') {
     filtered = [...filtered].sort((a, b) => (parseInt(b.year || b.releaseInfo || '0', 10) || 0) - (parseInt(a.year || a.releaseInfo || '0', 10) || 0));
@@ -2286,6 +2299,7 @@ function renderPosterCards(metas, fallbackType) {
     const year = m.releaseInfo || m.year || '';
     const histItem = userHistory.find(h => h.id === m.id);
     const ratingVal = m.imdbRating || (histItem && histItem.imdbRating) || '';
+    const userRating = (histItem && histItem.user_rating) || m.user_rating || '';
     const mediaObj = {
       id: m.id,
       name: m.name,
@@ -2293,7 +2307,8 @@ function renderPosterCards(metas, fallbackType) {
       is_anime: isAnime,
       year: String(year),
       poster: m.poster || '',
-      imdbRating: String(ratingVal)
+      imdbRating: String(ratingVal),
+      user_rating: String(userRating || '')
     };
     const payload = JSON.stringify(mediaObj).replace(/'/g, "&#39;");
     const inList = isInWatchlist(m.id);
@@ -2317,6 +2332,14 @@ function renderPosterCards(metas, fallbackType) {
         <div style="height:100%; width:${Math.min(100, histItem.progress_pct)}%; background:var(--text);"></div>
       </div>
     ` : '';
+    const ratingBadges = [];
+    if (userRating) {
+      ratingBadges.push(`<span style="color:#fbbf24; font-weight:700;" title="Ma note Letterboxd">★ ${userRating}/5</span>`);
+    }
+    if (ratingVal) {
+      ratingBadges.push(`★ ${ratingVal}`);
+    }
+    const ratingLine = ratingBadges.length ? ' • ' + ratingBadges.join(' ') : '';
     return `
       <div class="poster-card" onclick='selectMedia(${payload})'>
         ${watchedPill}
@@ -2330,7 +2353,7 @@ function renderPosterCards(metas, fallbackType) {
         ${cardProg}
         <div class="poster-info">
           <div class="poster-title">${m.name}</div>
-          <div class="poster-year">${year}${ratingVal ? ' • ★ ' + ratingVal : ''}${(activeTab === 'anime' || m.is_anime) ? ' • <span style="color:#38bdf8; font-weight:600;">VOSTFR</span>' : ''}</div>
+          <div class="poster-year">${year}${ratingLine}${(activeTab === 'anime' || m.is_anime) ? ' • <span style="color:#38bdf8; font-weight:600;">VOSTFR</span>' : ''}</div>
           <button class="btn-oneclick" onclick='oneClickCard(event, this, ${payload})'>${btnLabel}</button>
         </div>
       </div>
@@ -3941,6 +3964,7 @@ async function selectMedia(media) {
   const safeYearJs = JSON.stringify(String(year)).replace(/'/g, "&#39;");
 
   const histItem = userHistory.find(h => h.id === media.id);
+  const userRating = (histItem && histItem.user_rating) || media.user_rating || '';
   const isMovieDone = Boolean(histItem && media.type !== 'series' && (histItem.completed || Number(histItem.progress_pct || 0) >= 85));
   const watchedEpsList = (histItem && Array.isArray(histItem.watched_episodes)) ? histItem.watched_episodes : [];
   const latestAired = meta.latest_aired || null;
@@ -4029,6 +4053,7 @@ async function selectMedia(media) {
         <div class="detail-info-block">
           <div class="detail-title-cinematic">${meta.name || media.name}</div>
           <div class="detail-meta-row">
+            ${userRating ? `<span class="badge" style="background:rgba(245,158,11,0.16); border:1px solid rgba(245,158,11,0.4); color:#fbbf24; font-weight:700;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fbbf24" style="vertical-align:-1px; margin-right:3px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${userRating}/5 (Ma note)</span>` : ''}
             ${rating ? `<span class="badge-imdb-gold"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f5c518"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${rating} IMDb</span>` : ''}
             ${year ? `<span class="badge" style="font-weight:600;">${year}</span>` : ''}
             ${runtime ? `<span>• ${runtime}</span>` : ''}

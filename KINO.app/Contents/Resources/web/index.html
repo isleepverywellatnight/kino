@@ -310,6 +310,7 @@
         <input type="text" id="listFilterInput" placeholder="Filtrer par titre ou année..." oninput="renderActiveListTab()" style="padding:5px 10px; font-size:0.76rem; width:190px;">
         <select id="listSortSelect" style="padding:4px 10px; font-size:0.76rem; width:auto;" onchange="renderActiveListTab()">
           <option value="added">Tri : Ajout récent</option>
+          <option value="user_rating_desc">Tri : ★ Ma note (5 à 1)</option>
           <option value="rating">Tri : ★ Note IMDb</option>
           <option value="year_desc">Tri : Plus récents</option>
           <option value="year_asc">Tri : Plus anciens</option>
@@ -982,22 +983,27 @@
     <!-- Section 1 : Profil & Watchlist -->
     <div id="lbxSectionProfile">
       <p style="color:var(--muted); font-size:0.78rem; line-height:1.45; margin:0 0 14px 0;">
-        Importe automatiquement votre <strong>Watchlist</strong> (dans <em>Ma Liste</em>) et vos <strong>Films visionnés</strong> (dans <em>Déjà vus</em>, exclus de la roulette).
+        Importe automatiquement votre <strong>Watchlist</strong>, vos <strong>Films visionnés</strong> et vos <strong>Notes personnelles</strong> (exports <em>ratings.csv</em>, <em>diary.csv</em> ou profil public).
       </p>
       <div style="display:flex; flex-direction:column; gap:11px;">
         <div>
           <label for="lbxUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;">Pseudo Letterboxd</label>
           <input type="text" id="lbxUrlInput" placeholder="Ex: passionia ou lien public" style="width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter') submitLetterboxdImport()">
         </div>
-        <div style="display:flex; align-items:center; justify-content:space-between; padding-top:2px; font-size:0.74rem;">
-          <input type="file" id="lbxCsvFileInput" accept=".csv,.txt" style="display:none;" onchange="handleLetterboxdCsvFile(this.files)">
-          <button type="button" onclick="document.getElementById('lbxCsvFileInput').click()" style="background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:0; font-size:0.74rem; display:inline-flex; align-items:center; gap:5px;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span>Importer un export .csv</span>
-          </button>
-          <div style="display:inline-flex; align-items:center; gap:4px; max-width:210px; overflow:hidden;">
-            <span id="lbxCsvFileName" style="font-size:0.74rem; color:#00e054; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"></span>
-            <button type="button" id="lbxCsvClearBtn" onclick="clearLetterboxdCsv(event)" style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:0.75rem;" title="Retirer">✕</button>
+        <div style="display:flex; flex-direction:column; gap:4px; padding-top:2px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.74rem;">
+            <input type="file" id="lbxCsvFileInput" accept=".csv,.txt" style="display:none;" onchange="handleLetterboxdCsvFile(this.files)">
+            <button type="button" onclick="document.getElementById('lbxCsvFileInput').click()" style="background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:0; font-size:0.74rem; display:inline-flex; align-items:center; gap:5px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span>Importer un export .csv (ratings.csv, diary.csv, etc.)</span>
+            </button>
+            <div style="display:inline-flex; align-items:center; gap:4px; max-width:210px; overflow:hidden;">
+              <span id="lbxCsvFileName" style="font-size:0.74rem; color:#00e054; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"></span>
+              <button type="button" id="lbxCsvClearBtn" onclick="clearLetterboxdCsv(event)" style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:0.75rem;" title="Retirer">✕</button>
+            </div>
+          </div>
+          <div style="font-size:0.69rem; color:var(--dim); line-height:1.3;">
+            Vos notes Letterboxd (ex: 4.5/5) s'affichent en badge doré sur les fiches et permettent le tri par note personnelle.
           </div>
         </div>
         <div id="lbxImportStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>

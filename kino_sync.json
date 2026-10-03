@@ -1,18 +1,14 @@
 {
   "version": 1,
-  "updated_at": 1790805160.762862,
-  "device": "Darwin",
-  "config": {},
+  "updated_at": 1791058329.2945595,
+  "device": "Windows",
+  "config": {
+    "addons_enabled": {
+      "ygg_torrent": true,
+      "sharewood": true
+    }
+  },
   "watchlist": [
-    {
-      "id": "tt0317248",
-      "name": "City of God",
-      "type": "movie",
-      "year": "2004",
-      "poster": "https://images.metahub.space/poster/small/tt0317248/img",
-      "imdbRating": "8.6",
-      "added_at": 1790794759.68015
-    },
     {
       "id": "tt4357198",
       "name": "How to Make a Killing",
@@ -20,7 +16,8 @@
       "year": "2026",
       "poster": "https://m.media-amazon.com/images/M/MV5BOTkwY2JjMWYtOGU4YS00ZTg0LWIzYzUtZDkxNDE5NWNkNWM1XkEyXkFqcGc@._V1_SX250.jpg",
       "imdbRating": "6.5",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0021749",
@@ -29,7 +26,8 @@
       "year": "1931",
       "poster": "https://m.media-amazon.com/images/M/MV5BM2U4NjgzODUtODkyOC00YTE2LTlhNTItYzFlYmM1NTEzZDA2XkEyXkFqcGc@._V1_SX250.jpg",
       "imdbRating": "8.5",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0099685",
@@ -38,7 +36,8 @@
       "year": "1990",
       "poster": "https://m.media-amazon.com/images/M/MV5BN2E5NzI2ZGMtY2VjNi00YTRjLWI1MDUtZGY5OWU1MWJjZjRjXkEyXkFqcGc@._V1_SX250.jpg",
       "imdbRating": "8.7",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0362227",
@@ -47,7 +46,8 @@
       "year": "2004",
       "poster": "https://m.media-amazon.com/images/M/MV5BMTM1MTIwNTMxOF5BMl5BanBnXkFtZTcwNjIxMjQyMw@@._V1_SX250.jpg",
       "imdbRating": "7.4",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0364569",
@@ -56,7 +56,8 @@
       "year": "2003",
       "poster": "https://m.media-amazon.com/images/M/MV5BMTAwNzNjYWItZmI0Ni00ZTcyLWIwNWMtZjlmNGMxZTEyYTJmXkEyXkFqcGc@._V1_SX250.jpg",
       "imdbRating": "8.3",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0107688",
@@ -65,7 +66,18 @@
       "year": "1993",
       "poster": "https://m.media-amazon.com/images/M/MV5BNmYxOTAzZWYtOGI3Yi00ODc3LTk5ZjYtZTY0MzVkZTg3YmRiXkEyXkFqcGc@._V1_SX250.jpg",
       "imdbRating": "7.9",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
+    },
+    {
+      "id": "tt0317248",
+      "name": "City of God",
+      "type": "movie",
+      "year": "2004",
+      "poster": "https://images.metahub.space/poster/small/tt0317248/img",
+      "imdbRating": "8.6",
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0054215",
@@ -74,7 +86,8 @@
       "year": "1960",
       "poster": "https://m.media-amazon.com/images/M/MV5BYjZhMzFiZjItODA3ZC00MmRhLWIzMGYtMmVjOWUwYTA3MTRjXkEyXkFqcGc@._V1_SX250.jpg",
       "imdbRating": "8.5",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0245429",
@@ -83,7 +96,8 @@
       "year": "2003",
       "poster": "https://images.metahub.space/poster/small/tt0245429/img",
       "imdbRating": "8.6",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0050083",
@@ -92,7 +106,8 @@
       "year": "1957",
       "poster": "https://m.media-amazon.com/images/M/MV5BYjE4NzdmOTYtYjc5Yi00YzBiLWEzNDEtNTgxZGQ2MWVkN2NiXkEyXkFqcGc@._V1_SX250.jpg",
       "imdbRating": "9.0",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0095327",
@@ -101,7 +116,8 @@
       "year": "1988",
       "poster": "https://m.media-amazon.com/images/M/MV5BNTY5MmE2OGMtN2IxNC00MDY4LTkwMGEtZDUzOTYyNWE0ZTNjXkEyXkFqcGc@._V1_SX250.jpg",
       "imdbRating": "8.5",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0078841",
@@ -110,7 +126,8 @@
       "year": "1979",
       "poster": "https://m.media-amazon.com/images/M/MV5BNzYxZjNhNmQtYzc5NS00Nzg1LWIwYzktZjgzNDIyN2JhZGM0XkEyXkFqcGc@._V1_SX250.jpg",
       "imdbRating": "7.9",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0253474",
@@ -119,7 +136,8 @@
       "year": "2003",
       "poster": "https://images.metahub.space/poster/small/tt0253474/img",
       "imdbRating": "8.5",
-      "added_at": 1790794759.68015
+      "user_rating": "",
+      "added_at": 1790786183.0339713
     },
     {
       "id": "tt0111161",
@@ -128,6 +146,7 @@
       "year": "1994",
       "poster": "https://images.metahub.space/poster/small/tt0111161/img",
       "imdbRating": "9.3",
+      "user_rating": "",
       "added_at": 1790794759.68015
     }
   ],

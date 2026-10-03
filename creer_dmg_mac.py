@@ -152,6 +152,10 @@ exec "$PYTHON_BIN" "$DIR/desktop.py"
     files_to_copy = [
         "app.py",
         "desktop.py",
+        "config.py",
+        "meta_engine.py",
+        "debrid_engine.py",
+        "player_engine.py",
         "kino_db.py",
         "torrent_engine.py",
         "remote_controller.py",
@@ -159,6 +163,9 @@ exec "$PYTHON_BIN" "$DIR/desktop.py"
         "addon_manager.py",
         "anime_engine.py",
         "community_lists.py",
+        "discord_rpc.py",
+        "intro_engine.py",
+        "kino_bridge.lua",
         "requirements.txt",
         "kino.png",
         "kino.ico",
@@ -168,6 +175,14 @@ exec "$PYTHON_BIN" "$DIR/desktop.py"
         src = BASE_DIR / fname
         if src.exists():
             shutil.copy2(src, resources / fname)
+
+    # Copie du dossier web (interface UI)
+    src_web = BASE_DIR / "web"
+    if src_web.exists():
+        dst_web = resources / "web"
+        if dst_web.exists():
+            shutil.rmtree(dst_web)
+        shutil.copytree(src_web, dst_web)
 
     # Copie du dossier addons
     src_addons = BASE_DIR / "addons"

@@ -65,10 +65,15 @@ def init_db():
                         year TEXT,
                         poster TEXT,
                         imdb_rating TEXT,
-                        added_at REAL
+                        added_at REAL,
+                        user_rating TEXT
                     );
                 """)
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_watchlist_added ON watchlist(added_at DESC);")
+                try:
+                    conn.execute("ALTER TABLE watchlist ADD COLUMN user_rating TEXT;")
+                except sqlite3.OperationalError:
+                    pass
 
                 # 4. Table d'historique de visionnage (Reprendre la lecture)
                 conn.execute("""
@@ -261,7 +266,7 @@ def db_get_watchlist():
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT id, name, type, year, poster, imdb_rating FROM watchlist ORDER BY added_at DESC LIMIT 500"
+                "SELECT id, name, type, year, poster, imdb_rating, user_rating FROM watchlist ORDER BY added_at DESC LIMIT 500"
             ).fetchall()
             return [
                 {
@@ -271,6 +276,7 @@ def db_get_watchlist():
                     "year": r["year"] or "",
                     "poster": r["poster"] or "",
                     "imdbRating": r["imdb_rating"] or "",
+                    "user_rating": (r["user_rating"] if "user_rating" in r.keys() else "") or "",
                 }
                 for r in rows
             ]
@@ -296,8 +302,8 @@ def db_toggle_watchlist(item):
                 else:
                     conn.execute(
                         """
-                        INSERT INTO watchlist (id, name, type, year, poster, imdb_rating, added_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO watchlist (id, name, type, year, poster, imdb_rating, added_at, user_rating)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             item_id,
@@ -307,6 +313,7 @@ def db_toggle_watchlist(item):
                             item.get("poster") or "",
                             str(item.get("imdbRating") or ""),
                             now,
+                            str(item.get("user_rating") or ""),
                         ),
                     )
         finally:
@@ -682,8 +689,8 @@ def db_sync_gdrive():
                             item_id = item.get("id")
                             if item_id:
                                 conn.execute("""
-                                    INSERT OR IGNORE INTO watchlist (id, name, type, year, poster, imdb_rating, added_at)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                    INSERT OR IGNORE INTO watchlist (id, name, type, year, poster, imdb_rating, added_at, user_rating)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                                 """, (
                                     item_id,
                                     item.get("name") or "",
@@ -691,7 +698,8 @@ def db_sync_gdrive():
                                     str(item.get("year") or ""),
                                     item.get("poster") or "",
                                     str(item.get("imdbRating") or ""),
-                                    float(item.get("added_at") or now)
+                                    float(item.get("added_at") or now),
+                                    str(item.get("user_rating") or "")
                                 ))
 
                     # B. Fusion Historique de lecture (garder le timestamp de visionnage le plus récent)
@@ -723,7 +731,7 @@ def db_sync_gdrive():
                     pass
 
             # 2. Exporter l'état consolidé vers Google Drive
-            rows_wl = conn.execute("SELECT id, name, type, year, poster, imdb_rating, added_at FROM watchlist").fetchall()
+            rows_wl = conn.execute("SELECT id, name, type, year, poster, imdb_rating, added_at, user_rating FROM watchlist").fetchall()
             wl_export = [
                 {
                     "id": r["id"],
@@ -732,6 +740,7 @@ def db_sync_gdrive():
                     "year": r["year"] or "",
                     "poster": r["poster"] or "",
                     "imdbRating": r["imdb_rating"] or "",
+                    "user_rating": (r["user_rating"] if "user_rating" in r.keys() else "") or "",
                     "added_at": r["added_at"],
                 }
                 for r in rows_wl

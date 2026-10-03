@@ -748,14 +748,50 @@ def fetch_letterboxd_entries_from_url(url_or_user, max_pages=5, target_section="
             break
 
         page_found = 0
-        for raw_item in re.findall(r'data-item-name="([^"]+)"', body):
-            title, year = _parse_title_year_str(raw_item)
+        containers = re.findall(r'<li[^>]*class="[^"]*poster-container[^"]*"[^>]*>(.*?)</li>', body, re.DOTALL)
+        for c in containers:
+            title = ""
+            year = ""
+            user_rating = ""
+            m_fn = re.search(r'data-film-name="([^"]+)"', c)
+            if m_fn:
+                title = html_unescape(m_fn.group(1).strip())
+                m_yr = re.search(r'data-film-release-year="(\d{4})"', c)
+                if m_yr:
+                    year = m_yr.group(1).strip()
+            if not title:
+                m_in = re.search(r'data-item-name="([^"]+)"', c)
+                if m_in:
+                    title, year = _parse_title_year_str(html_unescape(m_in.group(1).strip()))
             if title:
+                m_r = re.search(r'class="[^"]*rating\s+rated-(\d+)[^"]*"', c) or re.search(r'rated-(\d+)', c)
+                if m_r:
+                    try:
+                        val = int(m_r.group(1)) / 2.0
+                        user_rating = f"{val:.1f}".rstrip("0").rstrip(".")
+                    except Exception:
+                        pass
+                elif re.search(r'data-rating="([0-9.]+)"', c):
+                    try:
+                        val = float(re.search(r'data-rating="([0-9.]+)"', c).group(1))
+                        user_rating = f"{val:.1f}".rstrip("0").rstrip(".")
+                    except Exception:
+                        pass
                 key = f"{title.lower()}|{year}"
                 if key not in seen_keys:
                     seen_keys.add(key)
-                    entries.append({"title": title, "year": year})
+                    entries.append({"title": title, "year": year, "user_rating": user_rating})
                     page_found += 1
+
+        if page_found == 0:
+            for raw_item in re.findall(r'data-item-name="([^"]+)"', body):
+                title, year = _parse_title_year_str(raw_item)
+                if title:
+                    key = f"{title.lower()}|{year}"
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        entries.append({"title": title, "year": year, "user_rating": ""})
+                        page_found += 1
 
         if page_found == 0:
             for m in re.finditer(r'data-film-name="([^"]+)"[^>]*?(?:data-film-release-year="(\d{4})")?', body):
@@ -765,18 +801,26 @@ def fetch_letterboxd_entries_from_url(url_or_user, max_pages=5, target_section="
                     key = f"{title.lower()}|{year}"
                     if key not in seen_keys:
                         seen_keys.add(key)
-                        entries.append({"title": title, "year": year})
+                        entries.append({"title": title, "year": year, "user_rating": ""})
                         page_found += 1
 
         if page_found == 0 and "<letterboxd:filmTitle>" in body:
-            for m in re.finditer(r"<letterboxd:filmTitle>([^<]+)</letterboxd:filmTitle>\s*(?:<letterboxd:filmYear>(\d{4})</letterboxd:filmYear>)?", body):
+            for m in re.finditer(r"<letterboxd:filmTitle>([^<]+)</letterboxd:filmTitle>\s*(?:<letterboxd:filmYear>(\d{4})</letterboxd:filmYear>)?(?:\s*<letterboxd:memberRating>([0-9.]+)</letterboxd:memberRating>)?", body):
                 title = html_unescape(m.group(1).strip())
                 year = (m.group(2) or "").strip()
+                ur_raw = (m.group(3) or "").strip()
+                user_rating = ""
+                if ur_raw:
+                    try:
+                        val = float(ur_raw)
+                        user_rating = f"{val:.1f}".rstrip("0").rstrip(".")
+                    except Exception:
+                        pass
                 if title:
                     key = f"{title.lower()}|{year}"
                     if key not in seen_keys:
                         seen_keys.add(key)
-                        entries.append({"title": title, "year": year})
+                        entries.append({"title": title, "year": year, "user_rating": user_rating})
                         page_found += 1
 
         if page_found == 0 or f"/page/{page + 1}/" not in body:
@@ -786,7 +830,7 @@ def fetch_letterboxd_entries_from_url(url_or_user, max_pages=5, target_section="
 
 
 def parse_letterboxd_csv_or_text(csv_text):
-    """Extrait une liste de {'title', 'year', 'imdb_id'} depuis un fichier CSV Letterboxd / IMDb."""
+    """Extrait une liste de {'title', 'year', 'imdb_id', 'user_rating'} depuis un fichier CSV Letterboxd / IMDb."""
     import csv
     import io
     text = (csv_text or "").lstrip("\ufeff").strip()
@@ -794,7 +838,7 @@ def parse_letterboxd_csv_or_text(csv_text):
         return []
 
     entries = []
-    seen = set()
+    seen = {}
 
     reader = csv.reader(io.StringIO(text))
     rows = [r for r in reader if any(c.strip() for c in r)]
@@ -805,6 +849,7 @@ def parse_letterboxd_csv_or_text(csv_text):
     name_idx = next((i for i, h in enumerate(header) if h in ("name", "title", "film", "movie", "original title")), -1)
     year_idx = next((i for i, h in enumerate(header) if h in ("year", "release year", "année")), -1)
     imdb_idx = next((i for i, h in enumerate(header) if h in ("const", "imdb", "imdb_id", "tconst")), -1)
+    rating_idx = next((i for i, h in enumerate(header) if h in ("rating", "your rating", "user rating", "note", "user_rating", "my rating", "member rating")), -1)
 
     if name_idx != -1:
         for r in rows[1:]:
@@ -816,10 +861,25 @@ def parse_letterboxd_csv_or_text(csv_text):
             title, parsed_yr = _parse_title_year_str(raw_title)
             year = r[year_idx].strip() if (year_idx != -1 and year_idx < len(r)) else parsed_yr
             imdb_id = r[imdb_idx].strip() if (imdb_idx != -1 and imdb_idx < len(r)) else ""
+            user_rating = ""
+            if rating_idx != -1 and rating_idx < len(r):
+                raw_rating = r[rating_idx].strip()
+                if raw_rating:
+                    try:
+                        val = float(raw_rating.replace(",", "."))
+                        if val > 0:
+                            if val > 5.0:
+                                val = round(val / 2.0, 1)
+                            user_rating = f"{val:.1f}".rstrip("0").rstrip(".")
+                    except Exception:
+                        pass
             key = f"{imdb_id or title.lower()}|{year}"
             if key not in seen:
-                seen.add(key)
-                entries.append({"title": title, "year": year, "imdb_id": imdb_id})
+                entry = {"title": title, "year": year, "imdb_id": imdb_id, "user_rating": user_rating}
+                seen[key] = entry
+                entries.append(entry)
+            elif user_rating and not seen[key].get("user_rating"):
+                seen[key]["user_rating"] = user_rating
         return entries
 
     for r in rows:
@@ -830,8 +890,9 @@ def parse_letterboxd_csv_or_text(csv_text):
         if title:
             key = f"{title.lower()}|{year}"
             if key not in seen:
-                seen.add(key)
-                entries.append({"title": title, "year": year, "imdb_id": ""})
+                entry = {"title": title, "year": year, "imdb_id": "", "user_rating": ""}
+                seen[key] = entry
+                entries.append(entry)
     return entries
 
 
@@ -845,6 +906,7 @@ def _resolve_letterboxd_entries(raw_entries, max_items=150):
         title = (entry.get("title") or "").strip()
         target_yr = (entry.get("year") or "").strip()
         imdb_id = (entry.get("imdb_id") or "").strip()
+        user_rating = (entry.get("user_rating") or "").strip()
         if not title and not imdb_id:
             return None
         try:
@@ -900,6 +962,7 @@ def _resolve_letterboxd_entries(raw_entries, max_items=150):
                 "year": str(chosen.get("releaseInfo") or chosen.get("year") or target_yr)[:4],
                 "poster": chosen.get("poster") or f"https://images.metahub.space/poster/medium/{cid}/img",
                 "imdbRating": rating_str,
+                "user_rating": user_rating,
             }
         except Exception:
             return None
@@ -909,7 +972,7 @@ def _resolve_letterboxd_entries(raw_entries, max_items=150):
 
 
 def import_letterboxd_watchlist(payload):
-    """Importe une Watchlist et/ou les Films déjà vus depuis Letterboxd."""
+    """Importe une Watchlist et/ou les Films déjà vus depuis Letterboxd avec conservation des notes."""
     url_or_user = (payload.get("url_or_user") or "").strip()
     csv_text = (payload.get("csv_text") or "").strip()
     csv_filename = (payload.get("csv_filename") or "").lower()
@@ -963,8 +1026,11 @@ def import_letterboxd_watchlist(payload):
             existing_wl_map[iid] = item
             wl.insert(0, item)
             added_wl_count += 1
-        elif item.get("imdbRating") and not existing_wl_map[iid].get("imdbRating"):
-            existing_wl_map[iid]["imdbRating"] = item["imdbRating"]
+        else:
+            if item.get("imdbRating") and not existing_wl_map[iid].get("imdbRating"):
+                existing_wl_map[iid]["imdbRating"] = item["imdbRating"]
+            if item.get("user_rating") and not existing_wl_map[iid].get("user_rating"):
+                existing_wl_map[iid]["user_rating"] = item["user_rating"]
 
     existing_hist_map = {x.get("id"): x for x in hist if x.get("id")}
     added_watched_count = 0
@@ -972,27 +1038,32 @@ def import_letterboxd_watchlist(payload):
     for item in resolved_watched:
         iid = item["id"]
         prev = existing_hist_map.get(iid)
+        u_rating = item.get("user_rating") or ""
         if prev and (prev.get("completed") or float(prev.get("progress_pct") or 0) >= 85.0):
             if item.get("imdbRating") and not prev.get("imdbRating"):
                 prev["imdbRating"] = item.get("imdbRating", "")
+            if u_rating:
+                prev["user_rating"] = u_rating
             continue
         added_watched_count += 1
         hist = [x for x in hist if x.get("id") != iid]
-        hist.append({
+        new_entry = {
             "id": iid,
             "name": item.get("name", ""),
             "type": "movie",
             "year": item.get("year", ""),
             "poster": item.get("poster", ""),
             "imdbRating": item.get("imdbRating", ""),
+            "user_rating": u_rating,
             "position": 7200,
             "duration": 7200,
             "progress_pct": 100.0,
             "completed": True,
             "imported_watched": True,
             "updated_at": now_ts,
-        })
-        existing_hist_map[iid] = hist[-1]
+        }
+        hist.append(new_entry)
+        existing_hist_map[iid] = new_entry
 
     wl = wl[:500]
     hist = hist[:1000]
