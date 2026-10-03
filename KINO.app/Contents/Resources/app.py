@@ -3917,29 +3917,107 @@ HTML_PAGE = r"""<!DOCTYPE html>
     text-transform: uppercase;
     color: var(--dim);
   }
-  .container { max-width: 1200px; margin: 24px auto; padding: 0 20px; }
+  .container { max-width: 1200px; margin: 18px auto 28px auto; padding: 0 20px; }
   .search-box {
     display: flex;
     gap: 8px;
-    background: var(--surface);
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    flex-wrap: wrap;
+    background: rgba(20, 20, 26, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 5px 6px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
-  select, input, button {
-    font-family: inherit;
-    font-size: 0.86rem;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--bg);
+  .search-box:focus-within {
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .search-type-select {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text);
-    padding: 9px 12px;
+    padding: 7px 11px;
+    border-radius: 7px;
+    font-size: 0.81rem;
+    font-weight: 500;
+    cursor: pointer;
     outline: none;
-    transition: border-color 0.15s, background 0.15s;
+    transition: background 0.15s, border-color 0.15s;
   }
-  input:focus, select:focus { border-color: var(--text); }
-  .search-box input { flex: 1; min-width: 240px; }
+  .search-type-select:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+  .search-input-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .search-icon-svg {
+    position: absolute;
+    left: 11px;
+    color: var(--dim);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+  }
+  .search-box input#searchInput {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 8px 75px 8px 34px;
+    color: var(--text);
+    font-size: 0.87rem;
+    font-weight: 400;
+  }
+  .search-box input#searchInput::placeholder {
+    color: var(--dim);
+  }
+  .search-right-controls {
+    position: absolute;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .search-clear-btn {
+    background: none;
+    border: none;
+    color: var(--dim);
+    cursor: pointer;
+    padding: 3px 5px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+  }
+  .search-clear-btn:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .search-kbd-badge {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 0.68rem;
+    font-family: inherit;
+    color: var(--dim);
+    pointer-events: none;
+    user-select: none;
+  }
+  .btn-search-bar {
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 7px;
+  }
 
   .btn {
     cursor: pointer;
@@ -4224,33 +4302,164 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
   .resume-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 16px;
+    margin-top: 14px;
   }
   .resume-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
+    border-radius: 10px;
+    overflow: hidden;
     display: flex;
-    gap: 12px;
-    align-items: center;
-    transition: border-color 0.15s;
+    flex-direction: column;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.22s;
   }
-  .resume-card:hover { border-color: var(--border-hover); }
-  .resume-card img {
-    width: 52px;
-    height: 78px;
-    object-fit: cover;
-    border-radius: 4px;
+  .resume-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-hover);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+  }
+  .resume-thumb-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
     background: var(--surface-2);
-    flex-shrink: 0;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .resume-thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 25%;
+    transition: transform 0.3s ease;
+  }
+  .resume-card:hover .resume-thumb-img {
+    transform: scale(1.04);
+  }
+  .resume-thumb-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .resume-card:hover .resume-thumb-overlay {
+    opacity: 1;
+  }
+  .resume-play-bubble {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    transform: scale(0.9);
+    transition: transform 0.2s ease;
+  }
+  .resume-card:hover .resume-play-bubble {
+    transform: scale(1);
+  }
+  .resume-play-bubble svg {
+    width: 18px;
+    height: 18px;
+    fill: #000;
+    margin-left: 2px;
+  }
+  .resume-badge-tag {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(10, 10, 14, 0.82);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    z-index: 2;
+  }
+  .resume-dismiss-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--dim);
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: background 0.15s, color 0.15s;
+    z-index: 2;
+  }
+  .resume-dismiss-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+  .resume-progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    z-index: 2;
+  }
+  .resume-progress-fill {
+    height: 100%;
+    background: #ffffff;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+  }
+  .resume-card-body {
+    padding: 12px 14px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+  }
+  .resume-title {
+    font-weight: 600;
+    font-size: 0.88rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .resume-subinfo {
+    color: var(--dim);
+    font-size: 0.76rem;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .resume-actions-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   .posters-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
     margin-top: 14px;
   }
   .poster-card {
@@ -4259,12 +4468,17 @@ HTML_PAGE = r"""<!DOCTYPE html>
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
-    transition: border-color 0.15s;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.25s;
     display: flex;
     flex-direction: column;
     position: relative;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
   }
-  .poster-card:hover { border-color: var(--border-hover); }
+  .poster-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    border-color: var(--border-hover);
+    box-shadow: 0 14px 32px rgba(0,0,0,0.55);
+  }
   .poster-card img {
     width: 100%;
     aspect-ratio: 2/3;
@@ -4272,6 +4486,39 @@ HTML_PAGE = r"""<!DOCTYPE html>
     background: var(--surface-2);
     display: block;
     filter: saturate(0.92);
+    transition: filter 0.25s, transform 0.3s;
+  }
+  .poster-card:hover img {
+    filter: saturate(1.08);
+  }
+  .poster-card .poster-play-bubble {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(10, 10, 14, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .poster-card:hover .poster-play-bubble {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .poster-card .poster-play-bubble svg {
+    width: 18px;
+    height: 18px;
+    fill: #ffffff;
+    margin-left: 2px;
   }
   .wl-btn {
     position: absolute;
@@ -4559,46 +4806,174 @@ HTML_PAGE = r"""<!DOCTYPE html>
     letter-spacing: -0.01em;
   }
 
-  .detail-layout {
+  /* Fiche Detail Cinematique */
+  #detailPanel {
+    position: relative;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    margin-top: 20px;
+    animation: fadeInDetail 0.25s ease-out;
+  }
+  @keyframes fadeInDetail {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .detail-backdrop-wrap {
+    position: relative;
+    width: 100%;
+    min-height: 380px;
+    overflow: hidden;
+    background: #09090b;
     display: flex;
-    gap: 22px;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .detail-backdrop-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 25%;
+    opacity: 0.36;
+    filter: saturate(1.15) brightness(0.9);
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .detail-backdrop-gradient {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to top, var(--surface) 0%, rgba(12,12,15,0.85) 45%, rgba(12,12,15,0.3) 100%),
+      linear-gradient(to right, rgba(9,9,11,0.95) 0%, rgba(9,9,11,0.7) 48%, rgba(9,9,11,0.2) 100%);
+    pointer-events: none;
+  }
+  .detail-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  }
+  .detail-close-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.35);
+    transform: scale(1.05);
+  }
+  .detail-hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 30px 32px 24px 32px;
+    display: flex;
+    gap: 28px;
     align-items: flex-start;
     flex-wrap: wrap;
   }
-  .detail-poster {
-    width: 165px;
+  .detail-poster-cinematic {
+    width: 175px;
     aspect-ratio: 2/3;
     object-fit: cover;
-    border-radius: 6px;
-    border: 1px solid var(--border);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.6);
     background: var(--surface-2);
     flex-shrink: 0;
   }
-  .detail-body {
+  .detail-info-block {
     flex: 1;
-    min-width: 260px;
+    min-width: 280px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
   }
-  .detail-title {
-    font-size: 1.35rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+  .detail-title-cinematic {
+    font-size: 1.65rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+    color: #fff;
   }
-  .detail-sub {
-    color: var(--muted);
-    font-size: 0.82rem;
+  .detail-meta-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
     align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .badge-imdb-gold {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(245, 197, 24, 0.15);
+    color: #f5c518;
+    border: 1px solid rgba(245, 197, 24, 0.35);
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 0.78rem;
+  }
+  .btn-play-hero {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #ffffff !important;
+    font-size: 0.92rem !important;
+    font-weight: 600 !important;
+    padding: 9px 20px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.2);
+    transition: transform 0.15s, background 0.15s, box-shadow 0.15s !important;
+  }
+  .btn-play-hero:hover {
+    background: #f0f0f0 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.35);
+  }
+  .detail-extra-section {
+    padding: 22px 30px 28px 30px;
+    border-top: 1px solid var(--border);
+  }
+  .season-pill {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    transition: 0.15s;
+  }
+  .season-pill:hover {
+    border-color: var(--border-hover);
+    color: var(--text);
+  }
+  .season-pill.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+    font-weight: 600;
   }
   .detail-desc {
     color: #d4d4d8;
     font-size: 0.88rem;
     line-height: 1.55;
-    max-width: 780px;
+    max-width: 820px;
   }
   .detail-credits {
     color: var(--dim);
@@ -4609,31 +4984,63 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .episodes-grid {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
-    max-height: 420px;
+    gap: 10px;
+    margin-top: 14px;
+    max-height: 500px;
     overflow-y: auto;
-    padding-right: 4px;
+    padding-right: 6px;
   }
   .ep-card {
     display: flex;
-    gap: 14px;
+    gap: 16px;
     align-items: center;
-    padding: 10px 12px;
-    background: var(--bg);
+    padding: 10px 14px;
+    background: rgba(14, 14, 18, 0.65);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    transition: border-color 0.15s;
+    border-radius: 8px;
+    transition: border-color 0.15s, background 0.15s;
   }
-  .ep-card:hover, .ep-card.active { border-color: var(--border-hover); }
-  .ep-thumb {
-    width: 120px;
-    height: 68px;
-    object-fit: cover;
-    border-radius: 4px;
+  .ep-card:hover, .ep-card.active {
+    border-color: var(--border-hover);
+    background: rgba(24, 24, 30, 0.85);
+  }
+  .ep-thumb-wrap {
+    position: relative;
+    width: 140px;
+    aspect-ratio: 16/9;
+    border-radius: 6px;
+    overflow: hidden;
     background: var(--surface-2);
     flex-shrink: 0;
-    filter: saturate(0.9);
+  }
+  .ep-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(0.95);
+    transition: transform 0.25s ease;
+  }
+  .ep-card:hover .ep-thumb {
+    transform: scale(1.05);
+  }
+  .ep-thumb-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .ep-card:hover .ep-thumb-overlay {
+    opacity: 1;
+  }
+  .ep-thumb-overlay svg {
+    width: 22px;
+    height: 22px;
+    fill: #ffffff;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
   }
   .ep-info { flex: 1; min-width: 180px; }
   .ep-title { font-size: 0.86rem; font-weight: 500; color: var(--text); }
@@ -4672,31 +5079,44 @@ HTML_PAGE = r"""<!DOCTYPE html>
     border-color: var(--text);
     font-weight: 500;
   }
-  .torrent-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .torrent-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
   .torrent-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    padding: 11px 14px;
+    gap: 14px;
+    padding: 12px 16px;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 8px;
     flex-wrap: wrap;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
-  .torrent-item:hover { border-color: var(--border-hover); }
+  .torrent-item:hover {
+    border-color: var(--border-hover);
+    background: rgba(25, 25, 32, 0.6);
+  }
+  .torrent-item.is-recommended {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    position: relative;
+  }
   .torrent-title {
     font-weight: 500;
-    font-size: 0.85rem;
+    font-size: 0.86rem;
     word-break: break-word;
-    line-height: 1.4;
+    line-height: 1.45;
     color: var(--text);
   }
   .torrent-meta {
     color: var(--dim);
     font-size: 0.77rem;
-    margin-top: 4px;
+    margin-top: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
   }
   .badge {
     display: inline-block;
@@ -4715,6 +5135,63 @@ HTML_PAGE = r"""<!DOCTYPE html>
     color: var(--bg);
     border-color: var(--text);
     font-weight: 600;
+  }
+  .badge-recommended {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #ffffff;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.25);
+  }
+  .badge-cached {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    font-weight: 600;
+  }
+  .badge-res-4k {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #ffffff;
+    font-weight: 700;
+  }
+  .badge-res-1080p {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    font-weight: 600;
+  }
+  .badge-codec-dv {
+    background: rgba(168, 85, 247, 0.18);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.45);
+    font-weight: 600;
+  }
+  .badge-codec-hdr {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    font-weight: 600;
+  }
+  .badge-codec-remux {
+    background: rgba(226, 232, 240, 0.15);
+    color: #f1f5f9;
+    border: 1px solid rgba(226, 232, 240, 0.35);
+    font-weight: 600;
+  }
+  .badge-codec-audio {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    font-weight: 500;
+  }
+  .badge-lang-fr {
+    background: rgba(255, 255, 255, 0.9);
+    color: #09090b;
+    border: 1px solid #ffffff;
+    font-weight: 700;
   }
   .modal-bg {
     position: fixed; inset: 0;
@@ -5786,20 +6263,38 @@ HTML_PAGE = r"""<!DOCTYPE html>
 </header>
 
 <div class="container">
-  <!-- Barre de recherche -->
+  <!-- Barre de recherche moderne en verre -->
   <div class="search-box" style="position:relative;">
-    <select id="searchType" onchange="toggleSearchMode()">
-      <option value="movie">Film</option>
-      <option value="series">Série</option>
+    <select id="searchType" class="search-type-select" onchange="toggleSearchMode()">
+      <option value="movie">Films</option>
+      <option value="series">Séries</option>
       <option value="anime">Anime</option>
       <option value="raw">Mots-clés</option>
       <option value="magnet">Magnet</option>
     </select>
-    <div style="flex:1; position:relative; display:flex;">
-      <input type="text" id="searchInput" placeholder="Rechercher un film, une série ou un anime... (Ctrl+K / Cmd+K)" oninput="onSearchInput()" onkeydown="onSearchKeyDown(event)" autocomplete="off" style="width:100%;">
+    <div class="search-input-wrap">
+      <span class="search-icon-svg">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
+      <input type="text" id="searchInput" placeholder="Rechercher un film, une série ou un anime..." oninput="onSearchInput()" onkeydown="onSearchKeyDown(event)" autocomplete="off">
+      <div class="search-right-controls">
+        <button id="searchClearBtn" class="search-clear-btn" style="display:none;" onclick="clearSearchInput()" title="Effacer la recherche">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <kbd id="searchKbdBadge" class="search-kbd-badge">Ctrl+K</kbd>
+      </div>
       <div id="searchDropdown" class="search-dropdown" style="display:none;"></div>
     </div>
-    <button class="btn" onclick="runSearch()">Rechercher</button>
+    <button class="btn btn-search-bar" onclick="runSearch()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      Rechercher
+    </button>
   </div>
 
   <!-- Navigation principale épurée (5 onglets primaires sans encombrement) -->
@@ -7128,8 +7623,8 @@ function renderHomeResume() {
       : (isEpDone ? (isSeries ? `✓ ${epTag} terminé · Prêt : ${nextTag}` : '✓ Terminé') : '');
     const subInfo = [(!isEpDone ? epTag : '') || h.year || 'En cours', remTxt].filter(Boolean).join(' • ');
     const progBar = pct > 0 ? `
-      <div style="height:3px; background:var(--surface-2); border-radius:2px; overflow:hidden; margin-top:6px;">
-        <div style="height:100%; width:${Math.min(100, pct)}%; background:var(--text);"></div>
+      <div class="resume-progress-bar">
+        <div class="resume-progress-fill" style="width:${Math.min(100, pct)}%;"></div>
       </div>
     ` : '';
     const mediaPayload = JSON.stringify({id: h.id, name: h.name, type: h.type || 'movie', year: h.year || '', poster: h.poster || ''}).replace(/'/g, "&#39;");
@@ -7154,26 +7649,37 @@ function renderHomeResume() {
       year: h.year || ''
     }).replace(/'/g, "&#39;") : '';
 
+    const thumbUrl = h.backdrop || h.background || (h.id && String(h.id).startsWith('tt') ? `https://images.metahub.space/background/medium/${h.id}/img` : (h.poster || ''));
+    const primaryPlayPayload = (isSeries && isEpDone) ? nextPayload : resumePayload;
+
     const buttonsHtml = (isSeries && isEpDone)
       ? `
-        <button class="btn" style="padding:5px 10px; font-size:0.75rem;" onclick='oneClickPlay(${nextPayload}, this)'>Épisode suivant (${nextTag})</button>
-        <button class="btn btn-secondary" style="padding:5px 9px; font-size:0.75rem;" onclick='oneClickPlay(${resumePayload}, this)'>Revoir ${epTag}</button>
+        <button class="btn" style="padding:6px 12px; font-size:0.75rem;" onclick='oneClickPlay(${nextPayload}, this)'>Épisode suivant (${nextTag})</button>
+        <button class="btn btn-secondary" style="padding:6px 10px; font-size:0.75rem;" onclick='oneClickPlay(${resumePayload}, this)'>Revoir ${epTag}</button>
       `
       : `
-        <button class="btn" style="padding:5px 10px; font-size:0.75rem;" onclick='oneClickPlay(${resumePayload}, this)'>Reprendre ${epTag}</button>
-        ${isSeries ? `<button class="btn btn-secondary" style="padding:5px 9px; font-size:0.75rem;" onclick='oneClickPlay(${nextPayload}, this)'>Suivant (${nextTag})</button>` : ''}
+        <button class="btn" style="padding:6px 12px; font-size:0.75rem;" onclick='oneClickPlay(${resumePayload}, this)'>Reprendre ${epTag}</button>
+        ${isSeries ? `<button class="btn btn-secondary" style="padding:6px 10px; font-size:0.75rem;" onclick='oneClickPlay(${nextPayload}, this)'>Suivant (${nextTag})</button>` : ''}
       `;
 
     return `
       <div class="resume-card">
-        <img src="${h.poster || ''}" alt="" onerror="this.style.opacity=0.08" onclick='selectMedia(${mediaPayload})' style="cursor:pointer;">
-        <div style="flex:1; min-width:0;">
-          <div style="font-weight:500; font-size:0.86rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;" onclick='selectMedia(${mediaPayload})'>${h.name}</div>
-          <div style="color:var(--dim); font-size:0.75rem; margin-top:2px;">${subInfo}</div>
+        <div class="resume-thumb-wrap" onclick='oneClickPlay(${primaryPlayPayload}, this)' title="Reprendre la lecture">
+          <img class="resume-thumb-img" src="${thumbUrl}" alt="${h.name}" onerror="if(this.src !== '${h.poster || ''}' && '${h.poster || ''}') { this.src='${h.poster}'; } else { this.style.opacity=0.08; }">
+          <div class="resume-thumb-overlay">
+            <div class="resume-play-bubble">
+              <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+          </div>
+          ${epTag ? `<span class="resume-badge-tag">${epTag}</span>` : (h.type === 'movie' ? `<span class="resume-badge-tag">Film</span>` : '')}
+          <button class="resume-dismiss-btn" onclick='event.stopPropagation(); removeHistoryItem(${JSON.stringify(h.id)})' title="Retirer">×</button>
           ${progBar}
-          <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+        </div>
+        <div class="resume-card-body">
+          <div class="resume-title" onclick='selectMedia(${mediaPayload})' title="${h.name}">${h.name}</div>
+          <div class="resume-subinfo">${subInfo}</div>
+          <div class="resume-actions-row">
             ${buttonsHtml}
-            <button class="btn btn-secondary" style="padding:5px 8px; font-size:0.74rem;" onclick='removeHistoryItem(${JSON.stringify(h.id)})' title="Retirer">×</button>
           </div>
         </div>
       </div>
@@ -9122,7 +9628,12 @@ function renderPosterCards(metas, fallbackType) {
       <div class="poster-card" onclick='selectMedia(${payload})'>
         ${watchedPill}
         <button class="wl-btn ${inList ? 'in-list' : ''}" data-wl-id="${m.id}" title="${inList ? 'Retirer de Ma Liste' : 'Ajouter à Ma Liste'}" onclick='toggleWatchlist(event, ${payload})'>${inList ? '✓' : '+'}</button>
-        <img src="${m.poster || ''}" alt="${m.name}" loading="lazy" onerror="handlePosterCardError(this, '${m.id}')">
+        <div style="position:relative; width:100%; aspect-ratio:2/3; overflow:hidden;">
+          <img src="${m.poster || ''}" alt="${m.name}" loading="lazy" onerror="handlePosterCardError(this, '${m.id}')">
+          <div class="poster-play-bubble">
+            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+        </div>
         ${cardProg}
         <div class="poster-info">
           <div class="poster-title">${m.name}</div>
@@ -10353,17 +10864,52 @@ function toggleShortcutsModal() {
   m.style.display = isOpen ? 'none' : 'flex';
 }
 
+function initSearchPlatformShortcuts() {
+  const isMac = (navigator.platform && navigator.platform.toUpperCase().indexOf('MAC') >= 0) || (navigator.userAgent && navigator.userAgent.toUpperCase().indexOf('MAC') >= 0);
+  const kbd = document.getElementById('searchKbdBadge');
+  if (kbd) kbd.textContent = isMac ? '⌘K' : 'Ctrl+K';
+  const inp = document.getElementById('searchInput');
+  if (inp && !inp.value) {
+    inp.placeholder = `Rechercher un film, une série ou un anime... (${isMac ? '⌘K' : 'Ctrl+K'})`;
+  }
+}
+
+function updateSearchClearBtn() {
+  const inp = document.getElementById('searchInput');
+  const btn = document.getElementById('searchClearBtn');
+  if (btn && inp) {
+    btn.style.display = inp.value.trim().length > 0 ? 'flex' : 'none';
+  }
+}
+
+function clearSearchInput() {
+  const inp = document.getElementById('searchInput');
+  if (inp) {
+    inp.value = '';
+    inp.focus();
+  }
+  updateSearchClearBtn();
+  hideSearchDropdown();
+  if (activeTab === 'movies' || activeTab === 'series') {
+    switchTab(activeTab);
+  }
+}
+
 function toggleSearchMode() {
   const mode = document.getElementById('searchType').value;
   const inp = document.getElementById('searchInput');
   hideSearchDropdown();
+  const isMac = (navigator.platform && navigator.platform.toUpperCase().indexOf('MAC') >= 0) || (navigator.userAgent && navigator.userAgent.toUpperCase().indexOf('MAC') >= 0);
+  const kbdTxt = isMac ? '⌘K' : 'Ctrl+K';
   if (mode === 'magnet') inp.placeholder = 'Coller un lien magnet:?xt=urn:btih:...';
   else if (mode === 'raw') inp.placeholder = 'Recherche par mots-clés...';
-  else inp.placeholder = 'Rechercher un film ou une série... (Ctrl+K / Cmd+K)';
+  else inp.placeholder = `Rechercher un film, une série ou un anime... (${kbdTxt})`;
+  updateSearchClearBtn();
 }
 
 function onSearchInput() {
   clearTimeout(searchDebounceTimer);
+  updateSearchClearBtn();
   const mode = document.getElementById('searchType').value;
   const q = document.getElementById('searchInput').value.trim();
   if (mode === 'magnet' || mode === 'raw') {
@@ -10722,6 +11268,8 @@ async function selectMedia(media) {
     playBtnLabel = 'Revoir le film';
   }
 
+  const backdropUrl = meta.background || meta.backdrop || media.backdrop || media.background || (media.id && String(media.id).startsWith('tt') ? `https://images.metahub.space/background/medium/${media.id}/img` : (poster || ''));
+
   let episodesHtml = '';
   if (media.type === 'series') {
     seriesMetaVideos = (meta.videos || []).filter(v => v.season > 0);
@@ -10729,13 +11277,13 @@ async function selectMedia(media) {
     if (seasons.length) {
       if (!seasons.includes(targetSeason)) targetSeason = seasons[0];
       episodesHtml = `
-        <div style="margin-top:18px; border-top:1px solid var(--border); padding-top:14px;">
-          <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
-            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              <span style="font-size:0.8rem; color:var(--muted); margin-right:6px;">Saisons :</span>
-              ${seasons.map(s => `<button class="chip ${s===targetSeason?'active':''}" data-season-chip="${s}" onclick="selectDetailSeason(${s})">Saison ${s}</button>`).join('')}
+        <div class="detail-extra-section">
+          <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <span style="font-size:0.82rem; font-weight:600; color:var(--muted); margin-right:4px;">Saisons :</span>
+              ${seasons.map(s => `<button class="season-pill ${s===targetSeason?'active':''}" data-season-chip="${s}" onclick="selectDetailSeason(${s})">Saison ${s}</button>`).join('')}
             </div>
-            <button class="btn btn-secondary" id="detailSeasonAllWatchedBtn" style="padding:5px 11px; font-size:0.75rem;" onclick="toggleWatchedWholeSeason()">✓ Marquer la saison comme vue</button>
+            <button class="btn btn-secondary" id="detailSeasonAllWatchedBtn" style="padding:6px 12px; font-size:0.75rem;" onclick="toggleWatchedWholeSeason()">✓ Marquer la saison comme vue</button>
           </div>
           <div id="detailEpisodesList" class="episodes-grid"></div>
         </div>
@@ -10745,17 +11293,22 @@ async function selectMedia(media) {
 
   const similarList = Array.isArray(meta.similar) ? meta.similar : [];
   const similarHtml = similarList.length ? `
-    <div style="margin-top:18px; border-top:1px solid var(--border); padding-top:14px;">
-      <div style="font-size:0.78rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin-bottom:10px;">Vous aimerez aussi</div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(115px, 1fr)); gap:10px;">
+    <div class="detail-extra-section">
+      <div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:14px;">Vous aimerez aussi</div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:12px;">
         ${similarList.map(sm => {
           const smPayload = JSON.stringify(sm).replace(/'/g, "&#39;");
           return `
             <div class="poster-card" onclick='selectMedia(${smPayload})'>
-              <img src="${sm.poster || ''}" alt="${sm.name}" loading="lazy" onerror="this.style.opacity=0.08">
-              <div class="poster-info" style="padding:7px;">
-                <div class="poster-title" style="font-size:0.76rem;">${sm.name}</div>
-                <div class="poster-year" style="font-size:0.69rem;">${sm.year || ''}${sm.imdbRating ? ' • ★ ' + sm.imdbRating : ''}</div>
+              <div style="position:relative; width:100%; aspect-ratio:2/3; overflow:hidden;">
+                <img src="${sm.poster || ''}" alt="${sm.name}" loading="lazy" onerror="this.style.opacity=0.08">
+                <div class="poster-play-hint">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </div>
+              </div>
+              <div class="poster-info" style="padding:8px;">
+                <div class="poster-title" style="font-size:0.78rem;">${sm.name}</div>
+                <div class="poster-year" style="font-size:0.7rem; margin-top:2px;">${sm.year || ''}${sm.imdbRating ? ' • ★ ' + sm.imdbRating : ''}</div>
               </div>
             </div>
           `;
@@ -10765,42 +11318,57 @@ async function selectMedia(media) {
   ` : '';
 
   const latestAiredBanner = (media.type === 'series' && latestAired) ? `
-    <div style="display:inline-flex; align-items:center; gap:8px; background:var(--surface-2); border:1px solid ${latestAiredUnwatched ? '#fafafa' : 'var(--border)'}; padding:4px 10px; border-radius:5px; font-size:0.75rem; color:${latestAiredUnwatched ? '#fafafa' : 'var(--muted)'}; margin-top:2px; width:fit-content;">
+    <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); border:1px solid ${latestAiredUnwatched ? 'rgba(255,255,255,0.4)' : 'var(--border)'}; padding:5px 12px; border-radius:6px; font-size:0.76rem; color:${latestAiredUnwatched ? '#fafafa' : 'var(--muted)'}; margin-top:2px; width:fit-content;">
       <span>${latestAiredUnwatched ? '● Dernier épisode diffusé (non vu) :' : '✓ Dernier épisode diffusé :'} <strong>${latestAired.code}</strong> — ${latestAired.title} (${latestAired.released})</span>
       ${latestAiredUnwatched ? `<button class="btn" style="padding:2px 8px; font-size:0.7rem;" onclick="oneClickSeriesEpisode(this, ${latestAired.season}, ${latestAired.episode})">Play</button>` : ''}
     </div>
   ` : '';
 
   detail.innerHTML = `
-    <div class="detail-layout">
-      <img class="detail-poster" src="${poster}" alt="${media.name}" onerror="this.style.opacity=0.08">
-      <div class="detail-body">
-        <div class="detail-title">${meta.name || media.name}</div>
-        <div class="detail-sub">
-          ${year ? `<span>${year}</span>` : ''}
-          ${runtime ? `<span>• ${runtime}</span>` : ''}
-          ${rating ? `<span style="color:#fafafa; font-weight:600;">• ★ ${rating} IMDb</span>` : ''}
-          ${country ? `<span>• ${country.split(',').slice(0,2).join(', ')}</span>` : ''}
-          ${genres.map((g, idx) => {
-            const rawG = rawGenres[idx] || g;
-            const rawGJs = JSON.stringify(rawG).replace(/'/g, "&#39;");
-            return `<span class="badge" style="cursor:pointer;" title="Filtrer le catalogue par ${g}" onclick='selectGenre(${rawGJs}, document.querySelector("#genreFilters .chip[data-genre=\\"" + ${rawGJs} + "\\"]"))'>${g}</span>`;
-          }).join('')}
-        </div>
-        ${latestAiredBanner}
-        <div class="detail-desc">${desc}</div>
-        <div class="detail-credits">
-          ${dirLinks ? `<div><strong>Réalisation :</strong> ${dirLinks}</div>` : ''}
-          ${castLinks ? `<div><strong>Distribution :</strong> ${castLinks}</div>` : ''}
-          ${awards ? `<div style="color:var(--dim); margin-top:2px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H8v2h8v-2h-1c-.55 0-1-.45-1-1v-2.34c3.27-.47 5.73-3.23 6-6.66H4c.27 3.43 2.73 6.19 6 6.66z"/></svg>${awards}</div>` : ''}
-        </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center;">
-          <button class="btn" id="detailMainPlayBtn" onclick='oneClickCard(event, this, ${mediaPayload})'>${playBtnLabel}</button>
-          <button class="btn btn-secondary" onclick='openTrailerModal(${JSON.stringify(trailerId)}, ${safeNameJs}, ${safeYearJs}, "vf")'><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>Bande-annonce</button>
-          <button class="btn btn-secondary" id="detailWlBtn" onclick='toggleWatchlist(event, ${mediaPayload})'>${inList ? '✓ Dans ma liste' : '+ Ma Liste'}</button>
-          ${media.type !== 'series' ? `<button class="btn btn-secondary" style="${isMovieDone ? 'border-color:var(--text); color:var(--text);' : ''}" onclick='toggleWatchedItem(${mediaPayload})'>${isMovieDone ? '✓ Vu' : '✓ Marquer comme vu'}</button>` : ''}
-          ${media.id && String(media.id).startsWith('tt') ? `<a class="btn btn-secondary" href="https://www.imdb.com/title/${encodeURIComponent(media.id)}/" target="_blank" style="padding:7px 11px; font-size:0.76rem;" title="Voir la fiche sur IMDb">IMDb ↗</a>` : ''}
-          ${media.id && String(media.id).startsWith('tt') && media.type !== 'series' ? `<a class="btn btn-secondary" href="https://letterboxd.com/imdb/${encodeURIComponent(media.id)}/" target="_blank" style="padding:7px 11px; font-size:0.76rem; border-color:rgba(0,224,84,0.35);" title="Voir sur Letterboxd">Letterboxd ↗</a>` : ''}
+    <div class="detail-backdrop-wrap">
+      <img class="detail-backdrop-img" src="${backdropUrl}" alt="" onerror="this.style.opacity='0';">
+      <div class="detail-backdrop-gradient"></div>
+      <button class="detail-close-btn" onclick="closeDetailPanel()" title="Fermer la fiche">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="detail-hero-content">
+        <img class="detail-poster-cinematic" src="${poster}" alt="${media.name}" onerror="this.style.opacity=0.08">
+        <div class="detail-info-block">
+          <div class="detail-title-cinematic">${meta.name || media.name}</div>
+          <div class="detail-meta-row">
+            ${rating ? `<span class="badge-imdb-gold"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f5c518"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${rating} IMDb</span>` : ''}
+            ${year ? `<span class="badge" style="font-weight:600;">${year}</span>` : ''}
+            ${runtime ? `<span>• ${runtime}</span>` : ''}
+            ${country ? `<span>• ${country.split(',').slice(0,2).join(', ')}</span>` : ''}
+            ${genres.map((g, idx) => {
+              const rawG = rawGenres[idx] || g;
+              const rawGJs = JSON.stringify(rawG).replace(/'/g, "&#39;");
+              return `<span class="badge" style="cursor:pointer;" title="Filtrer par ${g}" onclick='selectGenre(${rawGJs}, document.querySelector("#genreFilters .chip[data-genre=\\"" + ${rawGJs} + "\\"]"))'>${g}</span>`;
+            }).join('')}
+          </div>
+          ${latestAiredBanner}
+          <div class="detail-desc">${desc}</div>
+          <div class="detail-credits">
+            ${dirLinks ? `<div><strong>Réalisation :</strong> ${dirLinks}</div>` : ''}
+            ${castLinks ? `<div><strong>Distribution :</strong> ${castLinks}</div>` : ''}
+            ${awards ? `<div style="color:var(--dim); margin-top:2px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H8v2h8v-2h-1c-.55 0-1-.45-1-1v-2.34c3.27-.47 5.73-3.23 6-6.66H4c.27 3.43 2.73 6.19 6 6.66z"/></svg>${awards}</div>` : ''}
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;">
+            <button class="btn btn-play-hero" id="detailMainPlayBtn" onclick='oneClickCard(event, this, ${mediaPayload})'>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="margin-right:2px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              ${playBtnLabel}
+            </button>
+            <button class="btn btn-secondary" onclick='openTrailerModal(${JSON.stringify(trailerId)}, ${safeNameJs}, ${safeYearJs}, "vf")'>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Bande-annonce
+            </button>
+            <button class="btn btn-secondary" id="detailWlBtn" onclick='toggleWatchlist(event, ${mediaPayload})'>
+              ${inList ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Dans ma liste' : '+ Ma Liste'}
+            </button>
+            ${media.type !== 'series' ? `<button class="btn btn-secondary" style="${isMovieDone ? 'border-color:var(--text); color:var(--text);' : ''}" onclick='toggleWatchedItem(${mediaPayload})'>${isMovieDone ? '✓ Vu' : '✓ Marquer comme vu'}</button>` : ''}
+            ${media.id && String(media.id).startsWith('tt') ? `<a class="btn btn-secondary" href="https://www.imdb.com/title/${encodeURIComponent(media.id)}/" target="_blank" style="padding:7px 11px; font-size:0.76rem;" title="Voir la fiche sur IMDb">IMDb ↗</a>` : ''}
+            ${media.id && String(media.id).startsWith('tt') && media.type !== 'series' ? `<a class="btn btn-secondary" href="https://letterboxd.com/imdb/${encodeURIComponent(media.id)}/" target="_blank" style="padding:7px 11px; font-size:0.76rem; border-color:rgba(0,224,84,0.35);" title="Voir sur Letterboxd">Letterboxd ↗</a>` : ''}
+          </div>
         </div>
       </div>
     </div>
@@ -10835,6 +11403,16 @@ async function selectMedia(media) {
       runtime: media.runtime || (meta && meta.runtime) || ''
     }, false);
   }
+}
+
+function closeDetailPanel() {
+  const p = document.getElementById('detailPanel');
+  if (p) p.style.display = 'none';
+  const tor = document.getElementById('torrentsPanel');
+  if (tor) tor.style.display = 'none';
+  const deb = document.getElementById('debridResultPanel');
+  if (deb) deb.style.display = 'none';
+  currentMedia = null;
 }
 
 function selectDetailSeason(seasonNum) {
@@ -10881,23 +11459,28 @@ function renderDetailEpisodes(seasonNum) {
     const isWatched = watchedList.includes(code);
     const epProg = epPosMap[code] ? Number(epPosMap[code].pct || 0) : 0;
     const watchedBadge = isWatched
-      ? '<span class="badge" style="border-color:var(--text); color:var(--text);">✓ Vu</span>'
-      : (epProg > 1 ? `<span class="badge">${Math.round(epProg)}%</span>` : '');
+      ? '<span class="badge" style="border-color:var(--text); color:var(--text); font-weight:600;">✓ Vu</span>'
+      : (epProg > 1 ? `<span class="badge badge-hi">${Math.round(epProg)}%</span>` : '');
     const progBar = epProg > 0 ? `
-      <div style="height:2px; background:var(--surface-2); border-radius:2px; overflow:hidden; margin-top:5px; max-width:220px;">
-        <div style="height:100%; width:${Math.min(100, epProg)}%; background:var(--text);"></div>
+      <div style="height:3px; background:var(--surface-2); border-radius:2px; overflow:hidden; margin-top:6px; max-width:260px;">
+        <div style="height:100%; width:${Math.min(100, epProg)}%; background:#ffffff;"></div>
       </div>
     ` : '';
     return `
       <div class="ep-card" style="${isWatched ? 'opacity:0.75;' : ''}">
-        <img class="ep-thumb" src="${thumb}" alt="" loading="lazy" onerror="this.style.opacity=0.08">
+        <div class="ep-thumb-wrap" onclick="oneClickSeriesEpisode(this, ${seasonNum}, ${epNum})" style="cursor:pointer;" title="Lancer ${code}">
+          <img class="ep-thumb" src="${thumb}" alt="" loading="lazy" onerror="this.style.opacity=0.08">
+          <div class="ep-thumb-overlay">
+            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+        </div>
         <div class="ep-info">
           <div class="ep-title"><span class="badge badge-hi">${code}</span> <span id="filler-badge-${seasonNum}-${epNum}"></span> ${watchedBadge}${epTitle}</div>
           ${epOverview ? `<div class="ep-desc">${epOverview}</div>` : ''}
           ${progBar}
         </div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-          <button class="btn" style="padding:6px 11px; font-size:0.78rem;" onclick="oneClickSeriesEpisode(this, ${seasonNum}, ${epNum})">${epProg > 1 && epProg < 92 ? 'Reprendre' : 'Play'}</button>
+          <button class="btn" style="padding:6px 12px; font-size:0.78rem;" onclick="oneClickSeriesEpisode(this, ${seasonNum}, ${epNum})">${epProg > 1 && epProg < 92 ? 'Reprendre' : 'Play'}</button>
           <button class="btn btn-secondary" style="padding:6px 10px; font-size:0.78rem;" onclick="pickSeriesEpisodeSources(${seasonNum}, ${epNum})">Sources</button>
           <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.75rem; ${isWatched ? 'border-color:var(--text); color:var(--text);' : ''}" title="${isWatched ? 'Démarquer comme vu' : 'Marquer cet épisode comme vu'}" onclick="toggleWatchedSeriesEp(${seasonNum}, ${epNum})">${isWatched ? '✓ Vu' : '✓'}</button>
         </div>
@@ -11136,26 +11719,60 @@ function renderTorrents() {
 
   list.innerHTML = filtered.slice(0, 75).map((t, idx) => {
     const isBest = (idx === bestIdx && maxScore >= 120);
-    const recBadge = isBest ? '<span class="badge badge-recommended" title="Équilibre optimal Seeders + Résolution + Langue">Recommandé</span>' : '';
+    const recBadge = isBest ? '<span class="badge badge-recommended" title="Optimal : Meilleure combinaison de seeders, résolution, langue et cache">Optimal Recommandé</span>' : '';
+    const isCached = (t.source && t.source.includes('+')) || (t.qualities && t.qualities.some(q => q.endsWith('+')));
+    const cachedBadge = isCached ? '<span class="badge badge-cached" title="Fichier disponible instantanément sur Real-Debrid">RD+ En cache</span>' : '';
+
     const qualBadges = (t.qualities || []).map(q => {
-      const isHi = q.endsWith('+') || (q === 'SDR' && (window.kinoHdrMode || 'sdr_pref') === 'sdr_pref');
-      const tip = q === 'DV' ? ' title="Dolby Vision (Tone-Mapping anti-noirs bouchés actif)"'
-                : q === 'HDR' ? ' title="HDR10 (Tone-Mapping anti-noirs bouchés actif)"'
-                : q === 'SDR' ? ' title="Standard Dynamic Range (Étalonnage lumineux standard)"' : '';
-      return `<span class="badge ${isHi ? 'badge-hi' : ''}"${tip}>${q}</span>`;
+      const qClean = q.replace(/\+$/, '');
+      let cls = 'badge';
+      let tip = '';
+      if (qClean === '4K' || qClean === '2160p') {
+        cls = 'badge badge-res-4k';
+        tip = ' title="Ultra Haute Définition 4K"';
+      } else if (qClean === '1080p') {
+        cls = 'badge badge-res-1080p';
+        tip = ' title="Haute Définition 1080p"';
+      } else if (qClean === 'DV' || qClean === 'Dolby Vision') {
+        cls = 'badge badge-codec-dv';
+        tip = ' title="Dolby Vision (Tone-Mapping anti-noirs bouchés actif)"';
+      } else if (qClean === 'HDR' || qClean === 'HDR10' || qClean === 'HDR10+') {
+        cls = 'badge badge-codec-hdr';
+        tip = ' title="High Dynamic Range (HDR10)"';
+      } else if (qClean === 'REMUX') {
+        cls = 'badge badge-codec-remux';
+        tip = ' title="Qualité Blu-Ray intégrale sans recompression"';
+      } else if (['Atmos', 'DTS', 'DTS-HD', 'TrueHD', '5.1', '7.1'].includes(qClean)) {
+        cls = 'badge badge-codec-audio';
+        tip = ` title="Audio spatial / multicanal ${qClean}"`;
+      } else {
+        cls = 'badge';
+      }
+      return `<span class="${cls}"${tip}>${qClean}</span>`;
     }).join('');
-    const langBadges = (t.langs || []).map(l => `<span class="badge badge-hi">${l}</span>`).join('');
+
+    const langBadges = (t.langs || []).map(l => {
+      const isFr = ['MULTI', 'TRUEFRENCH', 'VFF', 'VF', 'VOSTFR'].includes(l.toUpperCase());
+      return `<span class="badge ${isFr ? 'badge-lang-fr' : 'badge-hi'}">${l}</span>`;
+    }).join('');
+
     return `
       <div class="torrent-item ${isBest ? 'is-recommended' : ''}">
         <div style="flex:1; min-width:260px;">
           <div class="torrent-title">
-            ${recBadge}${qualBadges}${langBadges}${t.title}
+            ${recBadge}${cachedBadge}${qualBadges}${langBadges}${t.title}
           </div>
-          <div class="torrent-meta">${t.source}${t.meta ? ' • ' + t.meta : ''}</div>
+          <div class="torrent-meta">
+            <span style="color:var(--text); font-weight:500;">${t.source}</span>
+            ${t.meta ? '<span>• ' + t.meta + '</span>' : ''}
+          </div>
         </div>
-        <div style="display:flex; gap:6px; align-items:center;">
-          ${t.magnet ? `<button class="btn btn-secondary" style="padding:6px 10px; font-size:0.75rem;" onclick="copyTorrentMagnet(event, this, ${idx})" title="Copier le lien Magnet">Magnet</button>` : ''}
-          <button class="btn ${isBest ? '' : 'btn-secondary'}" style="${isBest ? 'font-weight:600;' : ''}" onclick="debridFromIndex(${idx})">${isBest ? 'Lancer' : 'Sélectionner'}</button>
+        <div style="display:flex; gap:8px; align-items:center;">
+          ${t.magnet ? `<button class="btn btn-secondary" style="padding:6px 11px; font-size:0.75rem;" onclick="copyTorrentMagnet(event, this, ${idx})" title="Copier le lien Magnet"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:3px;"><path d="M6 3v7a6 6 0 0 0 12 0V3"/><line x1="4" y1="3" x2="8" y2="3"/><line x1="16" y1="3" x2="20" y2="3"/></svg>Magnet</button>` : ''}
+          ${isBest
+            ? `<button class="btn btn-play-hero" style="padding:7px 16px !important; font-size:0.82rem !important;" onclick="debridFromIndex(${idx})"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="margin-right:2px;"><polygon points="5 3 19 12 5 21 5 3"/></svg> Lancer</button>`
+            : `<button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem;" onclick="debridFromIndex(${idx})">Sélectionner</button>`
+          }
         </div>
       </div>
     `;
@@ -12849,6 +13466,7 @@ checkConfig();
 checkTraktStatus();
 startRemotePolling();
 pollDownloads();
+initSearchPlatformShortcuts();
 switchTab('movies');
 initResizeHandles();
 syncWindowState();
