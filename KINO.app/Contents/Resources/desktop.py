@@ -440,9 +440,49 @@ def dock_mpv_window(identifier):
         return None
 
 
+def set_kino_fullscreen(target_state: bool):
+    global desktop_window
+    if not desktop_window:
+        return
+    current = getattr(desktop_window, "fullscreen", False)
+    if bool(current) != bool(target_state):
+        try:
+            desktop_window.toggle_fullscreen()
+        except Exception:
+            pass
+
+
+def set_kino_maximized(target_state: bool):
+    global desktop_window, window_api_instance
+    if not desktop_window:
+        return
+    current = getattr(desktop_window, "maximized", False)
+    if bool(current) != bool(target_state):
+        if window_api_instance:
+            try:
+                window_api_instance.toggle_maximize()
+            except Exception:
+                pass
+
+
+def minimize_kino():
+    global window_api_instance
+    if window_api_instance:
+        try:
+            window_api_instance.minimize()
+        except Exception:
+            pass
+
+
 def undock_mpv_window():
     global CURRENT_DOCKED_MPV_HWND, desktop_window
     CURRENT_DOCKED_MPV_HWND = None
+    if desktop_window:
+        if getattr(desktop_window, "fullscreen", False):
+            try:
+                desktop_window.toggle_fullscreen()
+            except Exception:
+                pass
     if desktop_window and IS_WIN:
         try:
             form = desktop_window.gui.BrowserView.instances.get(desktop_window.uid)
@@ -669,6 +709,9 @@ def main():
     app.GET_FORM_HWND = get_form_hwnd
     app.DOCK_MPV_WINDOW = dock_mpv_window
     app.UNDOCK_MPV_WINDOW = undock_mpv_window
+    app.SET_FULLSCREEN = set_kino_fullscreen
+    app.SET_MAXIMIZED = set_kino_maximized
+    app.MINIMIZE_WINDOW = minimize_kino
 
     if IS_MAC:
         install_macos_hooks()

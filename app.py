@@ -59,6 +59,9 @@ GET_WINDOW_GEOMETRY = None
 GET_FORM_HWND = None
 DOCK_MPV_WINDOW = None
 UNDOCK_MPV_WINDOW = None
+SET_FULLSCREEN = None
+SET_MAXIMIZED = None
+MINIMIZE_WINDOW = None
 _CURRENT_MPV_PROC_PID = None
 
 # Migration automatique douce de l'ancien fichier JSON vers SQLite au démarrage
@@ -3194,10 +3197,43 @@ def monitor_mpv_lifecycle(pid, media_ctx=None, is_embedded=False):
         SYNCHRONIZE = 0x00100000
         h_proc = ctypes.windll.kernel32.OpenProcess(SYNCHRONIZE, False, pid)
         if h_proc:
+            if is_embedded:
+                def _ipc_events_worker():
+                    time.sleep(0.35)
+                    try:
+                        with open(IPC_SOCK_PATH, "r+b", buffering=0) as pipe:
+                            pipe.write(json.dumps({"command": ["observe_property", 1, "fullscreen"]}).encode("utf-8") + b"\n")
+                            pipe.write(json.dumps({"command": ["observe_property", 2, "window-maximized"]}).encode("utf-8") + b"\n")
+                            pipe.write(json.dumps({"command": ["observe_property", 3, "window-minimized"]}).encode("utf-8") + b"\n")
+                            initial_events = 3
+                            while _CURRENT_MPV_PROC_PID == pid:
+                                line = pipe.readline()
+                                if not line:
+                                    break
+                                try:
+                                    msg = json.loads(line.decode("utf-8", errors="ignore"))
+                                    if msg.get("event") == "property-change":
+                                        if initial_events > 0:
+                                            initial_events -= 1
+                                            continue
+                                        name = msg.get("name")
+                                        val = msg.get("data")
+                                        if name == "fullscreen" and SET_FULLSCREEN and val is not None:
+                                            SET_FULLSCREEN(bool(val))
+                                        elif name == "window-maximized" and SET_MAXIMIZED and val is not None:
+                                            SET_MAXIMIZED(bool(val))
+                                        elif name == "window-minimized" and MINIMIZE_WINDOW and val is True:
+                                            MINIMIZE_WINDOW()
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
+                threading.Thread(target=_ipc_events_worker, daemon=True).start()
+
             base_ep = int((media_ctx or {}).get("episode") or 1)
             season = int((media_ctx or {}).get("season") or 1) if (media_ctx and media_ctx.get("type") == "series") else None
             # Polling régulier de l'IPC mpv sous Windows
-            while ctypes.windll.kernel32.WaitForSingleObject(h_proc, 2500) == 258:
+            while ctypes.windll.kernel32.WaitForSingleObject(h_proc, 2000) == 258:
                 if media_ctx:
                     try:
                         pos = query_mpv_ipc(IPC_SOCK_PATH, "time-pos")
@@ -3390,6 +3426,8 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
             f"--slang={slang}",
             "--no-border",
             "--border=no",
+            "--no-window-dragging",
+            "--window-dragging=no",
             "--title=KINO",
             "--force-window=immediate",
         ])
@@ -3429,6 +3467,9 @@ def launch_mpv(url: str, title: str = "", playlist_items=None, media_ctx=None, s
 
         if is_docked:
             args.append(f"--title={dock_title}")
+            bridge_script = Path(__file__).resolve().parent / "kino_bridge.lua"
+            if bridge_script.exists():
+                args.append(f"--scripts={bridge_script}")
         elif GET_WINDOW_GEOMETRY:
             try:
                 geo = GET_WINDOW_GEOMETRY()
