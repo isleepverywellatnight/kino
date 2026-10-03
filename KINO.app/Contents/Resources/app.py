@@ -1013,16 +1013,6 @@ if __name__ == "__main__":
 
     print(f"\nKINO est lancé sur : {url}")
     print("Appuyez sur Ctrl+C pour arrêter.\n")
-
-    # Auto-synchronisation Google Drive en arrière-plan (mode developpement / local)
-    if not getattr(sys, "frozen", False):
-        try:
-            import sync_drive
-            import threading
-            threading.Thread(target=sync_drive.watch_and_sync, kwargs={"verbose": False}, daemon=True).start()
-        except Exception:
-            pass
-
     if "--no-browser" not in sys.argv:
         webbrowser.open(url)
     try:

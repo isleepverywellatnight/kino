@@ -37,3 +37,4 @@ L'application fonctionne :
 - **Dépendances minimales :** Privilégier la bibliothèque standard Python et `pywebview`.
 - **Compatibilité multiplateforme :** Toujours garantir le bon fonctionnement sous Windows et macOS.
 - **Ergonomie UI :** Interface sombre (Dark Theme), moderne, sans éléments superflus, typographie travaillée et animations fluides.
+- **Synchronisation Google Drive automatique :** À chaque modification de code ou commit dans le projet, toujours synchroniser automatiquement les changements vers Google Drive (`python sync_drive.py`) sans attendre que l'utilisateur le demande. Ne jamais exécuter cette synchronisation de code au lancement de l'application.
