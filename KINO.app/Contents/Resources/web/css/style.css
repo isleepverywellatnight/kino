@@ -1,4 +1,5 @@
   :root {
+    color-scheme: dark;
     --bg: #09090b;
     --surface: #111113;
     --surface-2: #18181b;
@@ -7,6 +8,49 @@
     --text: #fafafa;
     --muted: #a1a1aa;
     --dim: #71717a;
+  }
+
+  select, input, textarea {
+    color-scheme: dark;
+    font-family: inherit;
+  }
+
+  /* Style global cohérent pour toutes les listes déroulantes (Dark Theme) */
+  select {
+    color-scheme: dark;
+    background-color: #141416;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 0.81rem;
+    font-weight: 500;
+    padding: 6px 10px;
+    outline: none;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  select:hover {
+    border-color: var(--border-hover);
+    background-color: #1a1a1d;
+  }
+  select:focus {
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+  }
+
+  /* Rendu sombre forcé pour le menu popup natif Chromium et macOS */
+  select option,
+  optgroup {
+    background-color: #141416 !important;
+    color: #fafafa !important;
+    padding: 9px 12px;
+    font-size: 0.85rem;
+  }
+  select option:checked,
+  select option:hover,
+  select option:focus {
+    background-color: #27272a !important;
+    color: #ffffff !important;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: none !important; -ms-overflow-style: none !important; }
   html, body {
@@ -284,9 +328,10 @@
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 8px 24px rgba(0,0,0,0.4);
   }
   .search-type-select {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text);
+    color-scheme: dark;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #141416;
+    color: #fafafa;
     padding: 7px 11px;
     border-radius: 7px;
     font-size: 0.81rem;
@@ -296,8 +341,13 @@
     transition: background 0.15s, border-color 0.15s;
   }
   .search-type-select:hover {
-    background: rgba(255, 255, 255, 0.09);
-    border-color: rgba(255, 255, 255, 0.18);
+    background: #1c1c20;
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+  .search-type-select option {
+    background-color: #141416 !important;
+    color: #fafafa !important;
+    padding: 8px 12px;
   }
   .search-input-wrap {
     flex: 1;
@@ -1646,6 +1696,30 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  .settings-field select,
+  .settings-field input[type="text"],
+  .settings-field input[type="password"] {
+    color-scheme: dark;
+    background: #141416;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.83rem;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%;
+  }
+  .settings-field select:focus,
+  .settings-field input:focus {
+    border-color: var(--border-hover);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+  }
+  .settings-field select option {
+    background-color: #141416 !important;
+    color: #fafafa !important;
+    padding: 8px 12px;
   }
   .settings-field-row {
     display: grid;
