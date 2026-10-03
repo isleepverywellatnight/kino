@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KINO</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2309090b'/%3E%3Crect x='3' y='3' width='26' height='26' rx='2' fill='none' stroke='%23fafafa' stroke-width='2'/%3E%3Cpath d='M10 8v16M10 16l11-8v16L10 16z' fill='%23fafafa' stroke='%23fafafa' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- Overlay Glisser-Déposer (.torrent / Magnet) -->
+<div id="dropZoneOverlay" class="drop-zone-overlay">
+  <div class="drop-zone-box">
+    <div style="margin-bottom:12px;">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text); opacity:0.85;">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div style="font-size:1.1rem; font-weight:600; color:#fafafa;">Déposez votre fichier .torrent ou lien Magnet</div>
+    <div style="font-size:0.82rem; color:var(--muted); margin-top:6px;">Débridage et lecture instantanée via votre compte Cloud</div>
+  </div>
+</div>
+
+<div id="windowResizeHandles" class="win-resize-handles">
+  <div class="win-resize-handle rh-top" data-dir="top"></div>
+  <div class="win-resize-handle rh-bottom" data-dir="bottom"></div>
+  <div class="win-resize-handle rh-left" data-dir="left"></div>
+  <div class="win-resize-handle rh-right" data-dir="right"></div>
+  <div class="win-resize-handle rh-topleft" data-dir="topleft"></div>
+  <div class="win-resize-handle rh-topright" data-dir="topright"></div>
+  <div class="win-resize-handle rh-bottomleft" data-dir="bottomleft"></div>
+  <div class="win-resize-handle rh-bottomright" data-dir="bottomright"></div>
+</div>
+
+<header class="pywebview-drag-region" ondblclick="windowAction('maximize')">
+  <div class="header-left">
+    <div class="mac-controls no-drag">
+      <button class="mac-btn mac-close" onclick="windowAction('close')" title="Fermer (Alt+F4)">
+        <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+          <path d="M2.2 2.2l7.6 7.6M9.8 2.2l-7.6 7.6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="mac-btn mac-min" onclick="windowAction('minimize')" title="Réduire (Ctrl+M)">
+        <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+          <line x1="2" y1="6" x2="10" y2="6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="mac-btn mac-max" onclick="windowAction('maximize')" title="Agrandir / Plein écran (F11)">
+        <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+          <polygon points="2.2,7.5 2.2,2.2 7.5,2.2" fill="rgba(0,0,0,0.65)"/>
+          <polygon points="9.8,4.5 9.8,9.8 4.5,9.8" fill="rgba(0,0,0,0.65)"/>
+        </svg>
+      </button>
+    </div>
+    <div class="logo no-drag" onclick="switchTab('movies')">
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="28" height="28" rx="3" stroke="#fafafa" stroke-width="2"/>
+        <line x1="10.5" y1="7.5" x2="10.5" y2="24.5" stroke="#fafafa" stroke-width="2.4"/>
+        <polygon points="12,16 23.5,7.5 23.5,24.5" fill="#fafafa"/>
+      </svg>
+      <span class="logo-wordmark">KINO</span>
+      <span class="logo-divider"></span>
+      <span class="logo-sub" id="logoProviderSub">Real-Debrid</span>
+    </div>
+  </div>
+  <div class="header-right no-drag">
+    <!-- Badge Utilisateur interactif / statut -->
+    <div id="userBadge" class="header-user-pill" onclick="openConfig()" title="Gérer le compte et la configuration">
+      <span class="user-status-dot"></span>
+      <span style="color:var(--muted); font-size:0.75rem;">Chargement...</span>
+    </div>
+
+    <div class="header-v-divider"></div>
+
+    <!-- Bouton rapide + Torrent -->
+    <input type="file" id="torrentFileInput" accept=".torrent" style="display:none;" onchange="handleTorrentFileSelect(this.files)">
+    <button class="header-tool-btn header-btn-torrent" onclick="document.getElementById('torrentFileInput').click()" title="Ouvrir un fichier .torrent (ou glisser-déposer)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Torrent</span>
+    </button>
+
+    <!-- Groupe de fonctionnalités sociales & extensions (icônes vectorielles épurées) -->
+    <div class="header-action-group">
+      <button class="header-tool-btn" onclick="openRemoteModal()" title="Télécommande smartphone sans fil via QR Code">
+        <svg class="btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        <span class="btn-text">Remote</span>
+      </button>
+      <button class="header-tool-btn" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P (Code à 6 lettres)">
+        <svg class="btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span class="btn-text">Watch Party</span>
+      </button>
+      <button class="header-tool-btn" onclick="openAddonsModal()" title="Add-ons et Scrapers Communautaires">
+        <svg class="btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="btn-text">Add-ons</span>
+      </button>
+    </div>
+
+    <!-- Menu Déroulant Réglages & Outils -->
+    <div class="header-menu-wrap">
+      <button id="headerSettingsBtn" class="header-tool-btn header-btn-settings" onclick="toggleHeaderMenu(event)" title="Réglages et Outils">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="btn-text">Réglages</span>
+        <svg class="chevron-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+
+      <div id="headerDropdownMenu" class="header-dropdown-menu">
+        <div class="header-dropdown-item" onclick="openConfig(); closeHeaderMenu();">
+          <span class="hdi-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>
+          <div class="hdi-content">
+            <span class="hdi-title">Configuration</span>
+            <span class="hdi-desc">Débrideurs, Trakt.tv, Qualité vidéo</span>
+          </div>
+        </div>
+        <div class="header-dropdown-item" onclick="openFolder(); closeHeaderMenu();">
+          <span class="hdi-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <div class="hdi-content">
+            <span class="hdi-title">Dossier Téléchargements</span>
+            <span class="hdi-desc">Ouvrir l'emplacement local des vidéos</span>
+          </div>
+        </div>
+        <div class="header-dropdown-item" onclick="triggerGdriveSync(); closeHeaderMenu();">
+          <span class="hdi-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+          </span>
+          <div class="hdi-content">
+            <span class="hdi-title">Synchronisation Cloud</span>
+            <span class="hdi-desc">Synchroniser Google Drive (Mac ⇄ PC)</span>
+          </div>
+        </div>
+        <div class="header-dropdown-divider"></div>
+        <div class="header-dropdown-item" onclick="toggleShortcutsModal(); closeHeaderMenu();">
+          <span class="hdi-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+          </span>
+          <div class="hdi-content">
+            <span class="hdi-title">Raccourcis Clavier &amp; Aide</span>
+            <span class="hdi-desc">Commandes du lecteur et raccourcis</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <!-- Barre de recherche moderne en verre -->
+  <div class="search-box" style="position:relative;">
+    <select id="searchType" class="search-type-select" onchange="toggleSearchMode()">
+      <option value="movie">Films</option>
+      <option value="series">Séries</option>
+      <option value="anime">Anime</option>
+      <option value="raw">Mots-clés</option>
+      <option value="magnet">Magnet</option>
+    </select>
+    <div class="search-input-wrap">
+      <span class="search-icon-svg">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
+      <input type="text" id="searchInput" placeholder="Rechercher un film, une série ou un anime..." oninput="onSearchInput()" onkeydown="onSearchKeyDown(event)" autocomplete="off">
+      <div class="search-right-controls">
+        <button id="searchClearBtn" class="search-clear-btn" style="display:none;" onclick="clearSearchInput()" title="Effacer la recherche">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <kbd id="searchKbdBadge" class="search-kbd-badge">Ctrl+K</kbd>
+      </div>
+      <div id="searchDropdown" class="search-dropdown" style="display:none;"></div>
+    </div>
+    <button class="btn btn-search-bar" onclick="runSearch()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      Rechercher
+    </button>
+  </div>
+
+  <!-- Navigation principale épurée (5 onglets primaires sans encombrement) -->
+  <div class="nav-tabs">
+    <div class="nav-tabs-primary">
+      <button class="nav-tab active" id="tab-movies" onclick="switchTab('movies')">Films</button>
+      <button class="nav-tab" id="tab-series" onclick="switchTab('series')">Séries</button>
+      <button class="nav-tab" id="tab-anime" onclick="switchTab('anime')">Anime</button>
+      <button class="nav-tab" id="tab-community" onclick="switchTab('community')">Tendances</button>
+      <button class="nav-tab" id="tab-library" onclick="switchTab('library')">
+        <span>Ma Bibliothèque</span>
+        <span id="libraryTotalBadge" class="nav-badge"></span>
+      </button>
+      <button class="nav-tab" id="tab-settings" onclick="switchTab('settings')">Paramètres</button>
+    </div>
+  </div>
+
+  <!-- Sous-navigation Bibliothèque (contextuelle, propre et fluide) -->
+  <div id="librarySubNav" class="library-subnav" style="display:none;">
+    <button class="lib-subtab active" id="subtab-watchlist" onclick="switchTab('watchlist')">Ma Liste <span id="wlCount"></span></button>
+    <button class="lib-subtab" id="subtab-history" onclick="switchTab('history')">Reprendre <span id="histCount"></span></button>
+    <button class="lib-subtab" id="subtab-watched" onclick="switchTab('watched')">Déjà vus <span id="watchedCount"></span></button>
+    <button class="lib-subtab" id="subtab-customlists" onclick="switchTab('customlists')">Listes Letterboxd <span id="customListsCount"></span></button>
+    <button class="lib-subtab" id="subtab-rdcloud" onclick="switchTab('rdcloud')">Cloud RD</button>
+  </div>
+
+  <!-- Téléchargements PC actifs -->
+  <div id="downloadsPanel" class="panel" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <h3>Téléchargements</h3>
+      <button class="btn btn-secondary" style="padding:5px 10px; font-size:0.78rem;" onclick="openFolder()">Ouvrir le dossier</button>
+    </div>
+    <div id="downloadsList"></div>
+  </div>
+
+  <!-- Résultat Débridage -->
+  <div id="debridResultPanel" class="panel" style="display:none;"></div>
+
+  <!-- Fiche Détail Média & Grille d'épisodes -->
+  <div id="detailPanel" class="panel" style="display:none;"></div>
+
+  <!-- Panneau des torrents -->
+  <div id="torrentsPanel" class="panel" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h3 id="torrentsHeading">Sources</h3>
+        <p id="torrentsSub" style="color:var(--dim); font-size:0.8rem; margin-top:3px;"></p>
+      </div>
+      <div id="seriesControls" style="display:none; gap:8px; align-items:center; flex-wrap:wrap;">
+        <label style="font-size:0.8rem; color:var(--muted);">Saison</label>
+        <select id="seasonSelect" onchange="onSeasonChange()" style="min-width:95px;"></select>
+        <button class="btn btn-secondary" id="markSeasonWatchedBtn" onclick="toggleWatchedWholeSeason()" title="Marquer ou démarquer tous les épisodes de cette saison comme vus" style="padding:6px 10px; font-size:0.76rem;">✓ Saison vue</button>
+        <label style="font-size:0.8rem; color:var(--muted);">Épisode</label>
+        <select id="episodeSelect" onchange="reloadSeriesEpisode()" style="min-width:190px;"></select>
+        <button class="btn btn-secondary" onclick="reloadSeriesEpisode()">Sources</button>
+        <button class="btn" onclick="oneClickSeriesEpisode(this)">Play</button>
+      </div>
+    </div>
+
+    <div class="filters" style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+      <span class="chip active" onclick="setFilter('', this)">Tous</span>
+      <span class="chip" onclick="setFilter('fr', this)">VF / MULTI / VOSTFR</span>
+      <span class="chip" onclick="setFilter('sdr', this)" title="Afficher uniquement les sources SDR">SDR</span>
+      <span class="chip" onclick="setFilter('4k', this)">4K</span>
+      <span class="chip" onclick="setFilter('1080p', this)">1080p</span>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <select id="torrentSortSelect" onchange="renderTorrents()" style="padding:5px 9px; font-size:0.78rem; width:auto; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--text); cursor:pointer;">
+          <option value="default">Tri : Recommandé</option>
+          <option value="seeds">Tri : Seeders (Max)</option>
+          <option value="size_desc">Tri : Taille (Plus grand)</option>
+          <option value="size_asc">Tri : Taille (Plus léger)</option>
+        </select>
+        <input type="text" id="customFilter" placeholder="Filtrer (ex: multi, hevc...)" oninput="renderTorrents()" style="padding:5px 10px; font-size:0.78rem; min-width:180px;">
+      </div>
+    </div>
+
+    <div id="torrentsList" class="torrent-list"></div>
+  </div>
+
+  <!-- Bandeau Reprendre la lecture (affiché sur l'accueil) -->
+  <div id="homeResumeSection" style="display:none;">
+    <div class="section-header">
+      <span class="section-title">Reprendre la lecture</span>
+      <button class="btn btn-secondary" style="padding:4px 9px; font-size:0.74rem;" onclick="clearAllHistory()">Effacer</button>
+    </div>
+    <div id="homeResumeGrid" class="resume-grid"></div>
+  </div>
+
+  <!-- Bannière Hero Spotlight Cinéma -->
+  <div id="heroSpotlight" class="hero-spotlight" style="display:none;"></div>
+
+  <!-- Section Catalogue / Grille principale -->
+  <div id="catalogHeader" class="section-header" style="flex-direction:column; align-items:stretch; gap:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span id="catalogTitle" class="section-title">Films populaires du moment</span>
+        <span id="listStatsBadge" style="display:none; font-size:0.73rem; font-weight:500; color:var(--muted); background:var(--surface); border:1px solid var(--border); padding:3px 9px; border-radius:5px;"></span>
+        <!-- Sélecteur Sous-Vue Anime (Catalogue vs Planning Simulcast) -->
+        <div id="animeSubNav" style="display:none; gap:6px; align-items:center; margin-left:6px;">
+          <button id="animeSubTabCatalog" class="chip active" onclick="switchAnimeSubTab('catalog')">Catalogue</button>
+          <button id="animeSubTabSchedule" class="chip" onclick="switchAnimeSubTab('schedule')">Planning Simulcast</button>
+        </div>
+      </div>
+      <div id="catalogSortWrap" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <button class="btn-surprise" onclick="surpriseMeMedia(activeTab === 'classics' ? 'classics' : 'catalog')" title="Lancer la roulette KINO et tirer un titre non encore vu">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="3"/>
+            <line x1="12" y1="4" x2="12" y2="20"/>
+          </svg>
+          <span>Surprends-moi</span>
+        </button>
+        <button id="hideWatchedChip" type="button" class="chip" style="padding:4px 10px; font-size:0.75rem;" onclick="toggleHideWatchedCatalog()" title="Masquer du catalogue les films que vous avez déjà vus">Masquer déjà vus</button>
+        <span style="font-size:0.76rem; color:var(--dim);">Tri :</span>
+        <select id="catalogSortSelect" style="padding:4px 10px; font-size:0.78rem; width:auto;" onchange="onChangeCatalogSort(this.value)">
+          <option value="top">Sélection / Tendances</option>
+          <option value="imdbRating">★ Mieux notés IMDb</option>
+          <option value="recent">Plus récents</option>
+          <option value="oldest">Chronologique (Anciens)</option>
+        </select>
+      </div>
+      <div id="watchlistActionsWrap" style="display:none; gap:8px; align-items:center; flex-wrap:wrap;">
+        <input type="text" id="listFilterInput" placeholder="Filtrer par titre ou année..." oninput="renderActiveListTab()" style="padding:5px 10px; font-size:0.76rem; width:190px;">
+        <select id="listSortSelect" style="padding:4px 10px; font-size:0.76rem; width:auto;" onchange="renderActiveListTab()">
+          <option value="added">Tri : Ajout récent</option>
+          <option value="rating">Tri : ★ Note IMDb</option>
+          <option value="year_desc">Tri : Plus récents</option>
+          <option value="year_asc">Tri : Plus anciens</option>
+          <option value="alpha">Tri : A → Z</option>
+        </select>
+        <button id="listSurpriseBtn" class="btn-surprise" onclick="surpriseMeFromCurrentList()" title="Lancer la roulette parmi les films de cette liste">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="3"/>
+            <line x1="12" y1="4" x2="12" y2="20"/>
+          </svg>
+          <span id="listSurpriseBtnLabel">Tirage sur Ma Liste</span>
+        </button>
+        <button class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:7px; padding:5px 12px; font-size:0.76rem; border-color:rgba(0,224,84,0.4);" onclick="openLetterboxdModal()">
+          <svg width="20" height="10" viewBox="0 0 30 12" fill="none">
+            <circle cx="6" cy="6" r="5" fill="#ff8000"/>
+            <circle cx="15" cy="6" r="5" fill="#00e054"/>
+            <circle cx="24" cy="6" r="5" fill="#40bcf4"/>
+          </svg>
+          <span>Importer Letterboxd</span>
+        </button>
+      </div>
+    </div>
+    <div id="genreFilters" style="display:flex; gap:5px; flex-wrap:wrap; align-items:center;">
+      <span class="chip active" data-genre="" onclick="selectGenre('', this)">Tous</span>
+      <span class="chip" data-genre="Action" onclick="selectGenre('Action', this)">Action</span>
+      <span class="chip" data-genre="Sci-Fi" onclick="selectGenre('Sci-Fi', this)">Sci-Fi</span>
+      <span class="chip" data-genre="Thriller" onclick="selectGenre('Thriller', this)">Thriller</span>
+      <span class="chip" data-genre="Crime" onclick="selectGenre('Crime', this)">Policier</span>
+      <span class="chip" data-genre="Adventure" onclick="selectGenre('Adventure', this)">Aventure</span>
+      <span class="chip" data-genre="Animation" onclick="selectGenre('Animation', this)">Animation</span>
+      <span class="chip" data-genre="Comedy" onclick="selectGenre('Comedy', this)">Comédie</span>
+      <span class="chip" data-genre="Drama" onclick="selectGenre('Drama', this)">Drame</span>
+      <span class="chip" data-genre="Fantasy" onclick="selectGenre('Fantasy', this)">Fantastique</span>
+      <span class="chip" data-genre="Horror" onclick="selectGenre('Horror', this)">Horreur</span>
+      <span class="chip" data-genre="War" onclick="selectGenre('War', this)">Guerre</span>
+      <span class="chip" data-genre="Western" onclick="selectGenre('Western', this)">Western</span>
+      <span class="chip" data-genre="Documentary" onclick="selectGenre('Documentary', this)">Documentaire</span>
+    </div>
+  </div>
+  <div id="postersGrid" class="posters-grid"></div>
+  <div id="loadMoreWrap" style="display:none; justify-content:center; margin-top:22px;">
+    <button id="loadMoreBtn" class="btn btn-secondary" style="padding:9px 24px;" onclick="loadMoreCatalog()">Voir plus de titres</button>
+  </div>
+
+  <!-- Section Cloud Multi-Debrid -->
+  <div id="rdCloudPanel" class="panel" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+      <div>
+        <h3 id="rdCloudHeading">Derniers fichiers débridés sur le Cloud</h3>
+        <div id="rdCloudStatusNote" style="color:var(--dim); font-size:0.76rem; margin-top:3px;">Gérez ou nettoyez automatiquement les fichiers et torrents stockés sur votre débrideur.</div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <select id="rdCloudRetentionSelect" style="padding:5px 10px; font-size:0.78rem; width:auto;" onchange="onChangeRdRetention(this.value)" title="Suppression automatique des fichiers et torrents anciens">
+          <option value="0">Auto-suppression : Jamais</option>
+          <option value="1">Auto-suppression : &gt; 24h</option>
+          <option value="3">Auto-suppression : &gt; 3 jours</option>
+          <option value="7">Auto-suppression : &gt; 7 jours</option>
+          <option value="14">Auto-suppression : &gt; 14 jours</option>
+          <option value="30">Auto-suppression : &gt; 30 jours</option>
+        </select>
+        <button class="btn btn-secondary" style="padding:5px 10px; font-size:0.78rem;" onclick="purgeRdCloud('all', this)">Tout vider</button>
+        <button class="btn btn-secondary" style="padding:5px 10px; font-size:0.78rem;" onclick="loadRdCloud()">Actualiser</button>
+      </div>
+    </div>
+    <div id="rdCloudList" class="torrent-list"></div>
+  </div>
+
+  <!-- Panneau Communauté & Tendances Letterboxd -->
+  <div id="communityPanel" class="panel" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+      <div>
+        <h3 style="font-size:1.15rem; font-weight:700;">Tendances Cinéphiles &amp; Collections</h3>
+        <p style="color:var(--dim); font-size:0.8rem; margin-top:3px;">Collections cultes, palmarès Letterboxd et pépites sélectionnées par la communauté.</p>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; width:100%; max-width:540px;">
+        <input type="text" id="communityLetterboxdInput" placeholder="Coller une URL Letterboxd (ex: https://letterboxd.com/... ou boxd.it/...)" style="flex:1; padding:7px 12px; font-size:0.8rem; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--text);">
+        <button class="btn" style="padding:7px 14px; font-size:0.8rem;" onclick="importCustomLetterboxdFromInput()">Importer</button>
+      </div>
+    </div>
+
+    <!-- Grille des sélections communautaires -->
+    <div id="communityListsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:14px; margin-bottom:24px;"></div>
+
+    <!-- Titres de la liste sélectionnée -->
+    <div id="communityActiveListSection" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:14px;">
+        <div>
+          <h4 id="communityActiveListTitle" style="font-size:1rem; font-weight:700;"></h4>
+          <p id="communityActiveListDesc" style="color:var(--muted); font-size:0.78rem; margin-top:3px;"></p>
+        </div>
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" onclick="closeCommunityActiveList()">← Fermer la sélection</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panneau Planning Simulcast Anime -->
+  <div id="animeSchedulePanel" class="panel" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <div>
+        <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:8px;">
+          <span>Planning des Sorties Simulcast</span>
+          <span style="font-size:0.7rem; font-weight:600; padding:2px 8px; border-radius:12px; background:rgba(229,9,20,0.15); color:var(--red); border:1px solid rgba(229,9,20,0.3);">Japon - Heure Locale</span>
+        </h3>
+        <p style="color:var(--dim); font-size:0.8rem; margin-top:3px;">
+          Épisodes diffusés cette semaine au Japon. Cliquez sur un épisode pour lancer la recherche immédiate en VOSTFR / MULTI.
+        </p>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn btn-secondary" style="padding:5px 12px; font-size:0.78rem;" onclick="loadAnimeSchedule(true)">Actualiser</button>
+      </div>
+    </div>
+
+    <!-- Sélecteur de jour (Chips) -->
+    <div id="animeScheduleDays" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:16px; scrollbar-width:thin;"></div>
+
+    <!-- Grille des animes du jour sélectionné -->
+    <div id="animeScheduleGrid" class="schedule-grid"></div>
+  </div>
+
+  <!-- Page Dédiée des Paramètres KINO -->
+  <div id="settingsPanel" class="settings-page" style="display:none;">
+    <div class="settings-header">
+      <div class="settings-header-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Paramètres &amp; Configuration</span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button type="button" class="btn btn-secondary" onclick="closeConfig()" style="padding:7px 14px; font-size:0.8rem;">Retour</button>
+        <button type="button" class="btn" onclick="saveConfig()" style="padding:7px 18px; font-size:0.8rem;">Enregistrer les modifications</button>
+      </div>
+    </div>
+
+    <div class="settings-grid">
+      <!-- Carte 1 : Fournisseurs Débrideurs & Compte -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+            </span>
+            <span>Débrideurs &amp; Authentification</span>
+          </div>
+          <span class="settings-card-badge">Cloud</span>
+        </div>
+
+        <div id="cfgAccountInfo" style="padding:10px 14px; background:var(--surface-2); border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; font-size:0.84rem; color:var(--text);" id="cfgAccountTitle">Statut du compte</div>
+            <div style="font-size:0.73rem; color:var(--dim); margin-top:2px;" id="cfgAccountSub">Vérification de la clé API...</div>
+          </div>
+          <span id="cfgAccountBadge" class="settings-card-badge">En attente</span>
+        </div>
+
+        <div class="settings-field">
+          <label class="settings-label" for="cfgProvider">Fournisseur Actif</label>
+          <select id="cfgProvider" onchange="onConfigProviderChange()">
+            <option value="realdebrid">Real-Debrid (RD+)</option>
+            <option value="alldebrid">AllDebrid (AD+)</option>
+            <option value="torbox">TorBox (TB+)</option>
+            <option value="debridlink">Debrid-Link (DL+)</option>
+            <option value="premiumize">Premiumize (PM+)</option>
+            <option value="megadebrid">Mega-Debrid (MD+)</option>
+          </select>
+          <div id="cfgProviderHelp" class="settings-desc">
+            Clé API disponible sur <a id="cfgProviderLink" href="https://real-debrid.com/apitoken" target="_blank" style="color:var(--text); text-decoration:underline;">real-debrid.com/apitoken</a>
+          </div>
+        </div>
+
+        <div class="settings-field">
+          <label class="settings-label" for="cfgToken" id="cfgTokenLabel">Clé API Débrideur</label>
+          <div style="position:relative; display:flex; align-items:center;">
+            <input type="password" id="cfgToken" placeholder="Laisser vide pour conserver la clé actuelle" style="width:100%; padding-right:38px;">
+            <button type="button" onclick="togglePasswordVisibility('cfgToken', this)" style="position:absolute; right:8px; background:none; border:none; color:var(--muted); cursor:pointer; padding:4px;" title="Afficher ou masquer la clé">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="settings-desc">La clé reste stockée localement de manière sécurisée sur votre ordinateur.</div>
+        </div>
+
+        <div class="settings-field">
+          <div class="settings-label">
+            <span>Nettoyage Automatique Cloud</span>
+            <button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="purgeRdCloud('all', this)" title="Supprimer manuellement tous les torrents et fichiers débridés expirés">Purger le Cloud</button>
+          </div>
+          <select id="cfgRdRetention">
+            <option value="0">Désactivé (Conserver les fichiers)</option>
+            <option value="1">Supprimer après 24 heures</option>
+            <option value="3">Supprimer après 3 jours</option>
+            <option value="7">Supprimer après 7 jours</option>
+            <option value="14">Supprimer après 14 jours</option>
+            <option value="30">Supprimer après 30 jours</option>
+          </select>
+          <div class="settings-desc">Supprime automatiquement les anciens liens de votre compte débrideur après le délai choisi.</div>
+        </div>
+      </div>
+
+      <!-- Carte 2 : Lecteur Multimédia & Préférences Vidéo -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </span>
+            <span>Lecteur Vidéo &amp; Rendu</span>
+          </div>
+          <span class="settings-card-badge">Moteur Natif</span>
+        </div>
+
+        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:0.78rem;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <div style="font-weight:600; color:#fafafa; display:flex; align-items:center; gap:6px;">
+              <span>Moteur KINO Natif (MPV Ultra HD)</span>
+            </div>
+            <span style="font-size:0.7rem; color:#4ade80; background:rgba(74,222,128,0.12); padding:2px 7px; border-radius:4px; font-weight:600;">Actif</span>
+          </div>
+          <p style="margin:0; color:var(--dim); font-size:0.73rem; line-height:1.45;">
+            Lecteur intégré dans la fenêtre avec accélération matérielle, Tone-Mapping HDR / Dolby Vision dynamique, décodage sans perte (DTS, TrueHD, Atmos) et sous-titres animés ASS.
+          </p>
+          <input type="hidden" id="cfgPlayerMode" value="kino">
+        </div>
+
+        <div class="settings-field-row">
+          <div class="settings-field">
+            <label class="settings-label" for="cfgPrefLang">Langue 1-Clic</label>
+            <select id="cfgPrefLang">
+              <option value="vf">VF / MULTI (Français)</option>
+              <option value="vostfr">VOSTFR / VO (Sous-titres FR)</option>
+            </select>
+            <div class="settings-desc">Priorité audio au lancement.</div>
+          </div>
+          <div class="settings-field">
+            <label class="settings-label" for="cfgPrefQuality">Qualité 1-Clic</label>
+            <select id="cfgPrefQuality">
+              <option value="4k">4K UHD (2160p)</option>
+              <option value="1080p">1080p Full HD</option>
+            </select>
+            <div class="settings-desc">Résolution maximale ciblée.</div>
+          </div>
+        </div>
+
+        <div class="settings-field">
+          <label class="settings-label" for="cfgHdrMode">Plage Dynamique (HDR / SDR)</label>
+          <select id="cfgHdrMode">
+            <option value="sdr_pref">SDR Standard (Compatible tous moniteurs)</option>
+            <option value="hdr_native">HDR / Dolby Vision Natif (Écrans compatibles)</option>
+          </select>
+          <div class="settings-desc">En SDR, les flux HDR bénéficient d'un Tone-Mapping préservant la fidélité des teintes sans voile terne.</div>
+        </div>
+
+        <div class="settings-field">
+          <label class="settings-label" for="cfgAudioMode">Mode Audio &amp; Voix</label>
+          <select id="cfgAudioMode">
+            <option value="voice_boost">Boost Voix &amp; Normalisation (Idéal écouteurs/TV)</option>
+            <option value="standard">Audio Standard / Direct Passthrough</option>
+          </select>
+          <div class="settings-desc">Amplifie la bande de fréquences des dialogues pour une parfaite intelligibilité en toute circonstance.</div>
+        </div>
+      </div>
+
+      <!-- Carte 3 : Synchronisations Cloud & Trakt -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </span>
+            <span>Synchronisations &amp; Sauvegardes</span>
+          </div>
+          <span class="settings-card-badge">Multiplateforme</span>
+        </div>
+
+        <!-- Google Drive Sync -->
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:13px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+            <div>
+              <div style="font-size:0.84rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:7px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                <span>Google Drive (Mac ⇄ Windows)</span>
+              </div>
+              <div class="settings-desc" style="margin-top:2px;">
+                Synchronisation transparente de l'historique et des favoris entre votre Mac et votre PC.
+              </div>
+            </div>
+            <button type="button" class="btn btn-secondary" style="padding:5px 12px; font-size:0.75rem; white-space:nowrap;" onclick="triggerGdriveSync(this)">Synchroniser</button>
+          </div>
+          <div id="gdriveSyncStatus" style="font-size:0.75rem; color:var(--dim); padding:6px 10px; background:var(--surface-2); border-radius:6px;">
+            Détection automatique du Google Drive...
+          </div>
+        </div>
+
+        <!-- Trakt.tv -->
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:13px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+            <div>
+              <div style="font-size:0.84rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:7px;">
+                <span style="color:#ed1c24; font-weight:800; font-size:0.92rem;">trakt.tv</span>
+                <span>Scrobble &amp; Watchlist</span>
+              </div>
+              <div class="settings-desc" style="margin-top:2px;">
+                Marquage automatique des épisodes vus et synchronisation en direct avec votre profil Trakt.
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button type="button" id="traktConnectBtn" class="btn btn-secondary" style="padding:5px 12px; font-size:0.75rem; white-space:nowrap;" onclick="toggleTraktAuth(this)">Connecter</button>
+              <button type="button" id="traktSyncBtn" class="btn btn-secondary" style="padding:5px 12px; font-size:0.75rem; display:none; white-space:nowrap;" onclick="triggerTraktSync(this)">Synchroniser</button>
+            </div>
+          </div>
+          <div id="traktSyncStatus" style="font-size:0.75rem; color:var(--dim); padding:6px 10px; background:var(--surface-2); border-radius:6px;">
+            Non connecté
+          </div>
+          <div id="traktAuthBox" style="display:none; padding:10px; background:rgba(237,28,36,0.08); border-radius:6px; border:1px dashed rgba(237,28,36,0.3); font-size:0.76rem;">
+            <p style="margin:0 0 6px; color:var(--text);">1. Rendez-vous sur <a id="traktAuthUrl" href="https://trakt.tv/activate" target="_blank" style="color:#ed1c24; text-decoration:underline; font-weight:bold;">trakt.tv/activate</a></p>
+            <p style="margin:0; color:var(--text);">2. Entrez ce code d'activation : <b id="traktUserCode" style="font-size:1.05rem; letter-spacing:2px; color:#fff; background:#18181b; padding:2px 7px; border-radius:4px; display:inline-block; margin-left:4px;">------</b></p>
+            <p id="traktAuthCountdown" style="margin:6px 0 0; color:var(--muted); font-size:0.71rem;">En attente de validation sur votre compte Trakt...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte 4 : Intégrations Sociales & Discord -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.893.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+            </span>
+            <span>Discord Rich Presence</span>
+          </div>
+          <span class="settings-card-badge">Profil</span>
+        </div>
+
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:13px; display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div>
+              <div style="font-size:0.84rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:7px;">
+                <span style="color:#5865F2; font-weight:700;">Discord</span>
+                <span>Statut en direct</span>
+              </div>
+              <div id="discordRpcStatus" class="settings-desc">
+                Affiche sur votre profil le film ou épisode en cours avec jaquette et temps restant.
+              </div>
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.82rem; user-select:none; font-weight:600;">
+              <input type="checkbox" id="cfgDiscordRpc" checked onchange="toggleDiscordRpcFields()" style="cursor:pointer; accent-color:#5865F2; width:18px; height:18px;"> Actif
+            </label>
+          </div>
+
+          <div id="discordRpcOptions" style="display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--border); padding-top:10px;">
+            <div class="settings-field">
+              <label class="settings-label" for="cfgDiscordPreset">Profil affiché sur Discord</label>
+              <select id="cfgDiscordPreset" onchange="onDiscordPresetChange()">
+                <option value="631379801826918400">IMDb (Cinéma &amp; Séries)</option>
+                <option value="645028677033132033">Plex</option>
+                <option value="968880591003082783">trakt.tv</option>
+                <option value="938732156346314795">Letterboxd</option>
+                <option value="608065709741965327">Crunchyroll (Animés)</option>
+                <option value="926541425682829352">Netflix</option>
+                <option value="custom">KINO (Application personnalisée)</option>
+              </select>
+            </div>
+            <div id="cfgDiscordCustomBox" style="display:none; flex-direction:column; gap:6px; margin-top:2px;">
+              <label class="settings-label" for="cfgDiscordClientId">ID Client Discord personnalisé</label>
+              <input type="text" id="cfgDiscordClientId" placeholder="ID Client Discord (ex: 123456789012345678)">
+              <p style="margin:2px 0 0; font-size:0.71rem; color:var(--dim); line-height:1.35;">
+                Pour afficher <strong>Joue à KINO</strong>, créez une application nommée KINO sur le <a href="https://discord.com/developers/applications" target="_blank" style="color:#5865F2; text-decoration:underline;">Discord Developer Portal</a> et collez son Application ID.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte 5 : Stockage & Téléchargements Locaux -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </span>
+            <span>Stockage &amp; Téléchargements</span>
+          </div>
+          <span class="settings-card-badge">Local</span>
+        </div>
+
+        <div class="settings-field">
+          <div class="settings-label">
+            <span>Dossier de destination</span>
+            <button type="button" class="btn btn-secondary" style="padding:3px 9px; font-size:0.72rem;" onclick="openFolder()">Ouvrir l'emplacement ↗</button>
+          </div>
+          <input type="text" id="cfgDir" placeholder="Chemin du dossier local (ex: C:\Users\...\Downloads ou /Users/.../Downloads)">
+          <div class="settings-desc">Emplacement où sont stockés les fichiers débridés et téléchargements complets.</div>
+        </div>
+
+        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:11px; font-size:0.75rem; color:var(--dim); line-height:1.4;">
+          Astuce : vous pouvez accéder à vos fichiers locaux téléchargés à tout moment en cliquant sur le bouton <strong>Dossier Téléchargements</strong> dans le menu haut droit.
+        </div>
+      </div>
+
+      <!-- Carte 6 : Informations & Raccourcis Système -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+            </span>
+            <span>Système &amp; Raccourcis</span>
+          </div>
+          <span class="settings-card-badge">Desktop</span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px;">
+          <div>
+            <div style="font-weight:600; font-size:0.86rem; color:var(--text);">KINO Media Center</div>
+            <div style="font-size:0.73rem; color:var(--dim); margin-top:2px;">Application Desktop Autonome • Multiplateforme</div>
+          </div>
+          <button type="button" class="btn btn-secondary" style="padding:5px 12px; font-size:0.75rem;" onclick="toggleShortcutsModal()">Tous les raccourcis</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.74rem; color:var(--muted);">
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Lecture / Pause</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">Espace</kbd>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Plein écran</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">F</kbd>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Reculer / Avancer</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">← →</kbd>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Sous-titres</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">C</kbd>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Passer l'intro</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">S</kbd>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Recherche</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">Ctrl+K</kbd>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barre d'action fixe / Sticky Save Bar -->
+    <div class="settings-save-bar">
+      <div id="settingsSaveStatus" style="font-size:0.82rem; color:var(--muted); display:flex; align-items:center; gap:8px;">
+        <span>Appuyez sur Enregistrer pour appliquer vos modifications.</span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button type="button" class="btn btn-secondary" onclick="closeConfig()">Retour</button>
+        <button type="button" id="settingsSaveBtn" class="btn" onclick="saveConfig()">Enregistrer les paramètres</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtres SVG Gamma pour déboucher les ombres / scènes sombres sans brûler les blancs -->
+<svg width="0" height="0" style="position:absolute; pointer-events:none;">
+  <defs>
+    <filter id="kinoShadowBoost1" color-interpolation-filters="sRGB">
+      <feComponentTransfer>
+        <feFuncR type="gamma" amplitude="1" exponent="0.76" offset="0.015"/>
+        <feFuncG type="gamma" amplitude="1" exponent="0.76" offset="0.015"/>
+        <feFuncB type="gamma" amplitude="1" exponent="0.76" offset="0.015"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="kinoShadowBoost2" color-interpolation-filters="sRGB">
+      <feComponentTransfer>
+        <feFuncR type="gamma" amplitude="1" exponent="0.62" offset="0.025"/>
+        <feFuncG type="gamma" amplitude="1" exponent="0.62" offset="0.025"/>
+        <feFuncB type="gamma" amplitude="1" exponent="0.62" offset="0.025"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="kinoShadowBoost3" color-interpolation-filters="sRGB">
+      <feComponentTransfer>
+        <feFuncR type="gamma" amplitude="1" exponent="0.50" offset="0.038"/>
+        <feFuncG type="gamma" amplitude="1" exponent="0.50" offset="0.038"/>
+        <feFuncB type="gamma" amplitude="1" exponent="0.50" offset="0.038"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+</svg>
+
+<!-- Lecteur Intégré KINO (Plein écran dans l'app) -->
+<div id="inAppPlayerOverlay" class="inapp-player-overlay">
+  <video id="inAppVideo" playsinline></video>
+  <div id="inAppSubOverlay" style="position:absolute; left:50%; bottom:86px; transform:translateX(-50%); z-index:12; max-width:82%; text-align:center; pointer-events:none; font-size:1.32rem; font-weight:600; color:#fafafa; text-shadow:0 2px 6px rgba(0,0,0,0.95), 0 0 12px rgba(0,0,0,0.85); background:rgba(9,9,11,0.68); padding:5px 14px; border-radius:6px; display:none; line-height:1.38;"></div>
+  <div id="inAppStatusToast" class="inapp-toast"></div>
+  <!-- Bouton Skip Intro Intelligent -->
+  <div id="inAppSkipIntroCard" class="inapp-floating-card">
+    <button class="btn" id="inAppSkipIntroBtn" style="padding:7px 14px; font-size:0.82rem;" onclick="skipInAppIntro()">Passer l'intro</button>
+    <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="dismissSkipIntro()" title="Masquer">✕</button>
+  </div>
+  <!-- Bouton Annuler le saut (Undo) -->
+  <div id="inAppUndoSkipCard" class="inapp-floating-card" style="display:none; bottom:86px; border-color:rgba(124,58,237,0.5); background:rgba(18,18,24,0.92);">
+    <button class="btn btn-secondary" id="inAppUndoSkipBtn" style="padding:6px 12px; font-size:0.80rem; border-color:rgba(124,58,237,0.7); color:#ddd6fe;" onclick="undoInAppSkip()">Annuler le saut</button>
+  </div>
+  <!-- Carte Prochain épisode dans 10s -->
+  <div id="inAppNextEpCard" class="inapp-floating-card">
+    <div>
+      <div style="font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">À suivre dans <span id="inAppNextEpCountdown">10</span>s</div>
+      <div id="inAppNextEpTitle" style="font-size:0.86rem; font-weight:600; margin-top:2px; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Épisode suivant</div>
+    </div>
+    <button class="btn" style="padding:6px 12px; font-size:0.78rem;" onclick="inAppNextTrack()">Lancer</button>
+    <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="cancelNextEpAuto()">Annuler</button>
+  </div>
+  <div class="inapp-hud-top pywebview-drag-region" ondblclick="windowAction('maximize')">
+    <div style="display:flex; align-items:center; gap:14px;" class="no-drag">
+      <div class="mac-controls">
+        <button class="mac-btn mac-close" onclick="windowAction('close')" title="Fermer (Alt+F4)">
+          <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+            <path d="M2.2 2.2l7.6 7.6M9.8 2.2l-7.6 7.6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="mac-btn mac-min" onclick="windowAction('minimize')" title="Réduire (Ctrl+M)">
+          <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+            <line x1="2" y1="6" x2="10" y2="6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="mac-btn mac-max" onclick="windowAction('maximize')" title="Agrandir / Plein écran (F11)">
+          <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+            <polygon points="2.2,7.5 2.2,2.2 7.5,2.2" fill="rgba(0,0,0,0.65)"/>
+            <polygon points="9.8,4.5 9.8,9.8 4.5,9.8" fill="rgba(0,0,0,0.65)"/>
+          </svg>
+        </button>
+      </div>
+      <button class="inapp-btn" onclick="closeInAppPlayer()">← Retour</button>
+    </div>
+    <div id="inAppTitle" style="font-weight:600; font-size:0.95rem; color:#fafafa; text-align:center; flex:1; margin:0 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;" class="no-drag">
+      <button class="inapp-btn" id="inAppMpvSuggestBtn" onclick="switchToExternalPlayer()" style="display:none; border-color:rgba(124,58,237,0.8); background:rgba(124,58,237,0.18);" title="Optimisé pour 4K HDR & DTS sans saccades"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Basculer MPV</button>
+      <button class="inapp-btn" id="inAppAudioFixBtn" onclick="fixInAppAudio()" style="display:none; border-color:rgba(234,179,8,0.75); color:#facc15; background:rgba(234,179,8,0.14);" title="Convertir l'audio multi-canal (DTS/TrueHD/E-AC3) en flux stéréo AAC compatible avec le navigateur"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Son AAC</button>
+      <button class="inapp-btn" id="inAppSubsBtn" onclick="cycleInAppSubtitles()" title="Sous-titres OpenSubtitles FR / EN (Touche C)">CC : Off</button>
+      <button class="inapp-btn" id="inAppSubSizeBtn" onclick="cycleInAppSubSize()" title="Taille des sous-titres (S / M / L / XL)">A±</button>
+      <button class="inapp-btn" id="inAppAudioBtn" onclick="cycleInAppAudioBoost()" title="Boost des dialogues / Mode Audio Nuit (Touche V)">Voix : Normal</button>
+      <button class="inapp-btn" id="inAppClarityBtn" onclick="cycleInAppClarity()" title="Déboucher les noirs / Éclaircir les scènes sombres (Touche B)">Clarté : Normal</button>
+      <button class="inapp-btn" id="inAppSpeedBtn" onclick="cycleInAppSpeed()" title="Vitesse de lecture (Touches [ et ])">1.0x</button>
+      <button class="inapp-btn" id="inAppShotBtn" onclick="captureInAppScreenshot()" title="Capturer une image du film dans Téléchargements"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+      <button class="inapp-btn" id="inAppRemoteBtn" onclick="openRemoteModal()" title="Télécommande smartphone tactile via QR Code"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>Remote</button>
+      <button class="inapp-btn" id="inAppWpBtn" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P (Code à 6 lettres)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Watch Party</button>
+      <button class="inapp-btn" id="inAppExternalBtn" onclick="switchToExternalPlayer()">Lecteur externe</button>
+    </div>
+  </div>
+  <!-- Volet Chat Watch Party dans le lecteur -->
+  <div id="inAppWpChatBox" style="position:absolute; right:20px; bottom:90px; width:280px; max-height:260px; background:rgba(18,18,21,0.92); backdrop-filter:blur(10px); border:1px solid var(--border); border-radius:12px; display:none; flex-direction:column; z-index:25; box-shadow:0 8px 30px rgba(0,0,0,0.8);">
+    <div style="padding:10px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.8rem; font-weight:600; color:#fafafa;">Watch Party Chat</span>
+      <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.7rem;" onclick="toggleWpChat()">✕</button>
+    </div>
+    <div id="inAppWpMessages" style="flex:1; overflow-y:auto; padding:10px; font-size:0.78rem; display:flex; flex-direction:column; gap:6px; max-height:160px;"></div>
+    <div style="padding:8px 10px; border-top:1px solid var(--border); display:flex; gap:6px;">
+      <input type="text" id="inAppWpInput" placeholder="Message..." onkeydown="if(event.key==='Enter') sendWpMessage()" style="flex:1; padding:4px 8px; font-size:0.78rem; border-radius:6px; background:var(--surface-2); border:1px solid var(--border); color:#fafafa;">
+      <button class="btn" style="padding:4px 9px; font-size:0.75rem;" onclick="sendWpMessage()">Envoyer</button>
+    </div>
+  </div>
+  <div class="inapp-hud-bottom">
+    <div class="inapp-seekbar-container" id="inAppSeekbar" onclick="seekInApp(event)">
+      <div class="inapp-seekbar-bg">
+        <div id="inAppSeekFill" class="inapp-seekbar-fill"></div>
+      </div>
+    </div>
+    <div class="inapp-controls-row">
+      <div class="inapp-controls-group">
+        <button class="inapp-btn inapp-btn-icon" onclick="inAppPrevTrack()" title="Épisode précédent (<)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </button>
+        <button class="inapp-btn inapp-btn-icon" onclick="inAppSeekRel(-10)" title="Reculer 10s (Flèche Gauche)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+            <text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text>
+          </svg>
+        </button>
+        <button class="inapp-btn inapp-btn-icon" id="inAppPlayPauseBtn" onclick="toggleInAppPlay()" title="Lecture / Pause (Espace)" style="min-width:36px;">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+        </button>
+        <button class="inapp-btn inapp-btn-icon" onclick="inAppSeekRel(10)" title="Avancer 10s (Flèche Droite)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            <text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text>
+          </svg>
+        </button>
+        <button class="inapp-btn inapp-btn-icon" onclick="inAppNextTrack()" title="Épisode suivant (>)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </button>
+        <span id="inAppTimeText" style="color:var(--muted); font-size:0.82rem; margin-left:8px; font-variant-numeric:tabular-nums;">00:00 / 00:00</span>
+      </div>
+      <div class="inapp-controls-group">
+        <div class="inapp-vol-group" id="inAppVolGroup">
+          <button class="inapp-btn inapp-btn-icon" id="inAppMuteBtn" onclick="toggleInAppMute()" title="Muet (M)">
+            <span id="inAppVolIcon">
+              <svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              </svg>
+            </span>
+          </button>
+          <div class="inapp-vol-slider-wrap" id="inAppVolSliderWrap" onmousedown="onVolMouseDown(event)" onclick="handleVolScrub(event)">
+            <div class="inapp-vol-slider-bg">
+              <div id="inAppVolFill" class="inapp-vol-slider-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+          <span id="inAppVolText" class="inapp-vol-text">100%</span>
+        </div>
+        <button class="inapp-btn inapp-btn-icon" onclick="toggleInAppPiP()" title="Picture-in-Picture (I)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><rect x="12" y="9" width="8" height="6" rx="1" fill="currentColor"/>
+          </svg>
+        </button>
+        <button class="inapp-btn inapp-btn-icon" id="inAppFsBtn" onclick="toggleInAppFullscreen()" title="Plein écran (F)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Roulette KINO (Mode Surprends-moi) -->
+<div id="caseModal" class="modal-bg" onclick="if(event.target===this) closeCaseModal()">
+  <div class="case-modal-box">
+    <div class="case-header">
+      <div class="case-title-wrap">
+        <span class="case-kicker" id="caseModalKicker">ROULETTE KINO</span>
+        <h3 id="caseModalTitle" style="font-size:1.0rem; font-weight:700; color:#fafafa;">Tirage en cours...</h3>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <div id="casePoolChips" style="display:flex; gap:5px; align-items:center; margin-right:6px;">
+          <button type="button" class="chip active" data-pool="catalog" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('catalog')">Catalogue</button>
+          <button type="button" class="chip" data-pool="classics" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('classics')">Classiques</button>
+          <button type="button" class="chip" data-pool="watchlist" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('watchlist')">Ma Liste</button>
+          <button type="button" class="chip" data-pool="watched" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('watched')">Rewatch (Déjà vus)</button>
+        </div>
+        <button id="caseSoundBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" onclick="toggleCaseSound()">Son : Activé</button>
+        <button id="caseSkipBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" onclick="skipCaseSpin()">Passer l'animation</button>
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" onclick="closeCaseModal()">Fermer (Échap)</button>
+      </div>
+    </div>
+
+    <div id="caseRollerViewport" class="case-roller-viewport">
+      <div class="case-center-laser"></div>
+      <div id="caseRollerStrip" class="case-roller-strip"></div>
+    </div>
+
+    <div id="caseWinnerPanel" class="case-winner-panel"></div>
+  </div>
+</div>
+
+<!-- Modal Importation Watchlist & Films Déjà Vus Letterboxd -->
+<div id="letterboxdModal" class="modal-bg" onclick="if(event.target===this) closeLetterboxdModal()">
+  <div class="modal" style="max-width:480px; width:92%; padding:20px 22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <svg width="22" height="11" viewBox="0 0 30 12" fill="none">
+          <circle cx="6" cy="6" r="5" fill="#ff8000"/>
+          <circle cx="15" cy="6" r="5" fill="#00e054"/>
+          <circle cx="24" cy="6" r="5" fill="#40bcf4"/>
+        </svg>
+        <h3 style="font-size:0.96rem; font-weight:600; margin:0;">Letterboxd</h3>
+      </div>
+      <button onclick="closeLetterboxdModal()" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem; line-height:1; padding:2px 6px;" title="Fermer">✕</button>
+    </div>
+
+    <!-- Onglets du modal -->
+    <div style="display:flex; gap:6px; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:14px;">
+      <button type="button" id="lbxTabBtnProfile" class="chip active" onclick="switchLbxModalTab('profile')" style="padding:4px 11px; font-size:0.76rem;">Profil &amp; Watchlist</button>
+      <button type="button" id="lbxTabBtnList" class="chip" onclick="switchLbxModalTab('list')" style="padding:4px 11px; font-size:0.76rem;">Importer une Liste publique</button>
+    </div>
+
+    <!-- Section 1 : Profil & Watchlist -->
+    <div id="lbxSectionProfile">
+      <p style="color:var(--muted); font-size:0.78rem; line-height:1.45; margin:0 0 14px 0;">
+        Importe automatiquement votre <strong>Watchlist</strong> (dans <em>Ma Liste</em>) et vos <strong>Films visionnés</strong> (dans <em>Déjà vus</em>, exclus de la roulette).
+      </p>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div>
+          <label for="lbxUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;">Pseudo Letterboxd</label>
+          <input type="text" id="lbxUrlInput" placeholder="Ex: passionia ou lien public" style="width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter') submitLetterboxdImport()">
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; padding-top:2px; font-size:0.74rem;">
+          <input type="file" id="lbxCsvFileInput" accept=".csv,.txt" style="display:none;" onchange="handleLetterboxdCsvFile(this.files)">
+          <button type="button" onclick="document.getElementById('lbxCsvFileInput').click()" style="background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:0; font-size:0.74rem; display:inline-flex; align-items:center; gap:5px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>Importer un export .csv</span>
+          </button>
+          <div style="display:inline-flex; align-items:center; gap:4px; max-width:210px; overflow:hidden;">
+            <span id="lbxCsvFileName" style="font-size:0.74rem; color:#00e054; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"></span>
+            <button type="button" id="lbxCsvClearBtn" onclick="clearLetterboxdCsv(event)" style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:0.75rem;" title="Retirer">✕</button>
+          </div>
+        </div>
+        <div id="lbxImportStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+          <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" onclick="closeLetterboxdModal()">Annuler</button>
+          <button id="lbxSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" onclick="submitLetterboxdImport()">Synchroniser</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2 : Liste publique Letterboxd -->
+    <div id="lbxSectionList" style="display:none;">
+      <p style="color:var(--muted); font-size:0.78rem; line-height:1.45; margin:0 0 14px 0;">
+        Collez l'URL de n'importe quelle liste Letterboxd (ex: <em>Top 250</em>, <em>A24</em>, <em>Films cultes</em>). Elle sera consultable et disponible pour la Roulette !
+      </p>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div>
+          <label for="lbxCustomListUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;">URL de la liste Letterboxd</label>
+          <input type="text" id="lbxCustomListUrlInput" placeholder="https://letterboxd.com/username/list/nom-de-la-liste/" style="width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter') submitLetterboxdCustomListImport()">
+        </div>
+        <div id="lbxCustomListStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+          <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" onclick="closeLetterboxdModal()">Fermer</button>
+          <button id="lbxCustomListSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" onclick="submitLetterboxdCustomListImport()">Importer cette liste</button>
+        </div>
+
+        <div id="lbxSavedListsWrap" style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px; display:none;">
+          <div style="font-size:0.74rem; font-weight:600; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.04em;">Listes enregistrées</div>
+          <div id="lbxSavedListsContainer" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Bande-Annonce Intégré -->
+<div id="trailerModal" class="modal-bg" onclick="if(event.target===this) closeTrailerModal()">
+  <div class="modal" style="max-width:860px; width:94%; padding:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+      <h3 id="trailerModalTitle" style="font-size:0.95rem;">Bande-annonce</h3>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button id="trailerBtnVf" class="chip active" style="padding:4px 10px; font-size:0.75rem;" onclick="switchTrailerLang('vf')">VF</button>
+        <button id="trailerBtnVo" class="chip" style="padding:4px 10px; font-size:0.75rem;" onclick="switchTrailerLang('vo')">VO</button>
+        <a id="trailerExternalLink" href="#" target="_blank" class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;">YouTube ↗</a>
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" onclick="closeTrailerModal()">Fermer (Échap)</button>
+      </div>
+    </div>
+    <div style="position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:6px; overflow:hidden; border:1px solid var(--border);">
+      <div id="trailerLoading" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; color:var(--muted); font-size:0.85rem; background:#09090b; z-index:2;">Chargement de la bande-annonce...</div>
+      <video id="trailerVideo" controls playsinline style="width:100%; height:100%; display:none; background:#000;"></video>
+      <iframe id="trailerIframe" src="" style="width:100%; height:100%; border:none; display:none;" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- Ancien modal config remplace par la page dediee de parametres (#settingsPanel) -->
+<div id="configModal" style="display:none;"></div>
+
+<!-- Modal Raccourcis Clavier -->
+<div id="shortcutsModal" class="shortcuts-modal" onclick="if(event.target===this) toggleShortcutsModal()">
+  <div class="shortcuts-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <h3 style="font-size:1rem; font-weight:600;">Raccourcis Clavier KINO</h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="toggleShortcutsModal()">Fermer (Échap)</button>
+    </div>
+    <div class="shortcuts-grid">
+      <div class="shortcut-row"><span>Lecture / Pause</span><kbd>Espace</kbd></div>
+      <div class="shortcut-row"><span>Plein écran</span><kbd>F</kbd></div>
+      <div class="shortcut-row"><span>Reculer / Avancer 10s</span><div><kbd>←</kbd> <kbd>→</kbd></div></div>
+      <div class="shortcut-row"><span>Volume +/-</span><div><kbd>↑</kbd> <kbd>↓</kbd></div></div>
+      <div class="shortcut-row"><span>Activer / Couper son</span><kbd>M</kbd></div>
+      <div class="shortcut-row"><span>Sous-titres On / Off</span><kbd>C</kbd></div>
+      <div class="shortcut-row"><span>Synchro sous-titres (±250ms)</span><div><kbd>Z</kbd> <kbd>X</kbd></div></div>
+      <div class="shortcut-row"><span>Vitesse de lecture</span><div><kbd>[</kbd> <kbd>]</kbd></div></div>
+      <div class="shortcut-row"><span>Bascule MPV (Flux 4K HDR)</span><kbd>E</kbd></div>
+      <div class="shortcut-row"><span>Épisode suivant</span><kbd>N</kbd></div>
+      <div class="shortcut-row"><span>Passer l'intro (+85s)</span><kbd>S</kbd></div>
+      <div class="shortcut-row"><span>Picture-in-Picture</span><kbd>I</kbd></div>
+      <div class="shortcut-row"><span>Focus recherche</span><div><kbd>Ctrl+K</kbd> / <kbd>Cmd+K</kbd> / <kbd>/</kbd></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Télécommande Smartphone -->
+<div id="remoteModal" class="modal-bg" onclick="if(event.target===this) closeRemoteModal()">
+  <div class="modal" style="max-width:440px; text-align:center; padding:22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        <span>KINO Remote</span>
+      </h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeRemoteModal()">✕</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;">
+      Scannez ce QR Code avec votre smartphone connecté au même Wi-Fi pour contrôler la lecture, le volume et naviguer depuis votre canapé.
+    </p>
+    <div id="remoteQrContainer" style="display:flex; justify-content:center; align-items:center; margin:0 auto 14px; background:#fff; padding:12px; border-radius:12px; width:220px; height:220px; box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+      <div style="color:#666; font-size:0.8rem;">Génération du QR Code...</div>
+    </div>
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+      <span id="remoteDirectUrl" style="font-size:0.78rem; color:var(--dim); word-break:break-all; text-align:left; font-family:monospace;">http://...</span>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem; white-space:nowrap;" onclick="copyRemoteUrl()">Copier</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Watch Party P2P -->
+<div id="watchPartyModal" class="modal-bg" onclick="if(event.target===this) closeWatchPartyModal()">
+  <div class="modal" style="max-width:480px; padding:20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Mode Watch Party P2P</span>
+      </h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeWatchPartyModal()">✕</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 16px;">
+      Regardez vos films et séries en parfaite synchronisation avec vos amis. Play, pause et temps de lecture calés à la seconde près sans serveur tiers (P2P direct).
+    </p>
+
+    <!-- Zone Non Connecté -->
+    <div id="wpSetupView">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+        <button class="btn" style="padding:10px 14px; font-size:0.82rem; font-weight:600;" onclick="createWatchPartyRoom()">
+          Créer une Salle
+        </button>
+        <button class="btn btn-secondary" style="padding:10px 14px; font-size:0.82rem;" onclick="showJoinWatchParty()">
+          Rejoindre une Salle
+        </button>
+      </div>
+      <div id="wpJoinBox" style="display:none; padding:12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
+        <label style="font-size:0.76rem; color:var(--muted); display:block; margin-bottom:6px;">Entrez le code de salle :</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="wpJoinCodeInput" placeholder="Ex: KINO9X" maxlength="12" style="text-transform:uppercase; font-weight:bold; letter-spacing:2px; font-size:0.95rem; text-align:center;">
+          <button class="btn" style="padding:6px 14px; font-size:0.8rem;" onclick="joinWatchPartyRoom()">Rejoindre</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zone Connecté / Salle Active -->
+    <div id="wpActiveView" style="display:none;">
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:14px; text-align:center;">
+        <span style="font-size:0.72rem; color:var(--dim); text-transform:uppercase; letter-spacing:1px;">Code de votre Salle</span>
+        <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin:6px 0;">
+          <span id="wpRoomCodeDisplay" style="font-size:1.6rem; font-weight:800; letter-spacing:4px; color:#4ade80; font-family:monospace;">------</span>
+          <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem;" onclick="copyWpRoomCode()">Copier</button>
+        </div>
+        <p style="font-size:0.72rem; color:var(--muted); margin:0;">Partagez ce code à vos amis pour synchroniser vos lecteurs instantanément.</p>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:0.8rem;">
+        <span style="color:var(--muted);">Statut : <b id="wpConnectionStatus" style="color:#4ade80;">Connecté</b></span>
+        <span style="color:var(--muted);">Pairs connectés : <b id="wpPeersCount" style="color:var(--text);">1</b></span>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem; color:#ef4444;" onclick="leaveWatchPartyRoom()">Quitter la salle</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Gestionnaire d'Add-ons -->
+<div id="addonsModal" class="modal-bg" onclick="if(event.target===this) closeAddonsModal()">
+  <div class="modal" style="max-width:640px; padding:20px; max-height:85vh; display:flex; flex-direction:column;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Add-ons &amp; Scrapers Communautaires</span>
+      </h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeAddonsModal()">✕</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;">
+      Activez ou ajoutez des indexeurs et scrapers communautaires pour démultiplier les sources de recherche (Nyaa Anime VOSTFR, YggTorrent, Sharewood, etc.).
+    </p>
+
+    <!-- Bouton d'importation d'add-on -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
+      <span style="font-size:0.78rem; color:var(--dim);">Installer un add-on externe (.kino / .json)</span>
+      <div>
+        <input type="file" id="addonFileInput" accept=".kino,.json,.zip" style="display:none;" onchange="uploadAddonFile(this)">
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" onclick="document.getElementById('addonFileInput').click()">+ Installer un Add-on</button>
+      </div>
+    </div>
+
+    <!-- Liste des addons avec scroll -->
+    <div id="addonsListContainer" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
+      <div style="color:var(--dim); font-size:0.8rem; text-align:center; padding:20px;">Chargement des add-ons...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* QRCode.js local embed */
+var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this.parsedData=[];for(var b=[],d=0,e=this.data.length;e>d;d++){var f=this.data.charCodeAt(d);f>65536?(b[0]=240|(1835008&f)>>>18,b[1]=128|(258048&f)>>>12,b[2]=128|(4032&f)>>>6,b[3]=128|63&f):f>2048?(b[0]=224|(61440&f)>>>12,b[1]=128|(4032&f)>>>6,b[2]=128|63&f):f>128?(b[0]=192|(1984&f)>>>6,b[1]=128|63&f):b[0]=f,this.parsedData=this.parsedData.concat(b)}this.parsedData.length!=this.data.length&&(this.parsedData.unshift(191),this.parsedData.unshift(187),this.parsedData.unshift(239))}function b(a,b){this.typeNumber=a,this.errorCorrectLevel=b,this.modules=null,this.moduleCount=0,this.dataCache=null,this.dataList=[]}function i(a,b){if(void 0==a.length)throw new Error(a.length+"/"+b);for(var c=0;c<a.length&&0==a[c];)c++;this.num=new Array(a.length-c+b);for(var d=0;d<a.length-c;d++)this.num[d]=a[d+c]}function j(a,b){this.totalCount=a,this.dataCount=b}function k(){this.buffer=[],this.length=0}function m(){return"undefined"!=typeof CanvasRenderingContext2D}function n(){var a=!1,b=navigator.userAgent;return/android/i.test(b)&&(a=!0,aMat=b.toString().match(/android ([0-9]\.[0-9])/i),aMat&&aMat[1]&&(a=parseFloat(aMat[1]))),a}function r(a,b){for(var c=1,e=s(a),f=0,g=l.length;g>=f;f++){var h=0;switch(b){case d.L:h=l[f][0];break;case d.M:h=l[f][1];break;case d.Q:h=l[f][2];break;case d.H:h=l[f][3]}if(h>=e)break;c++}if(c>l.length)throw new Error("Too long data");return c}function s(a){var b=encodeURI(a).toString().replace(/\%[0-9a-fA-F]{2}/g,"a");return b.length+(b.length!=a?3:0)}a.prototype={getLength:function(){return this.parsedData.length},write:function(a){for(var b=0,c=this.parsedData.length;c>b;b++)a.put(this.parsedData[b],8)}},b.prototype={addData:function(b){var c=new a(b);this.dataList.push(c),this.dataCache=null},isDark:function(a,b){if(0>a||this.moduleCount<=a||0>b||this.moduleCount<=b)throw new Error(a+","+b);return this.modules[a][b]},getModuleCount:function(){return this.moduleCount},make:function(){this.makeImpl(!1,this.getBestMaskPattern())},makeImpl:function(a,c){this.moduleCount=4*this.typeNumber+17,this.modules=new Array(this.moduleCount);for(var d=0;d<this.moduleCount;d++){this.modules[d]=new Array(this.moduleCount);for(var e=0;e<this.moduleCount;e++)this.modules[d][e]=null}this.setupPositionProbePattern(0,0),this.setupPositionProbePattern(this.moduleCount-7,0),this.setupPositionProbePattern(0,this.moduleCount-7),this.setupPositionAdjustPattern(),this.setupTimingPattern(),this.setupTypeInfo(a,c),this.typeNumber>=7&&this.setupTypeNumber(a),null==this.dataCache&&(this.dataCache=b.createData(this.typeNumber,this.errorCorrectLevel,this.dataList)),this.mapData(this.dataCache,c)},setupPositionProbePattern:function(a,b){for(var c=-1;7>=c;c++)if(!(-1>=a+c||this.moduleCount<=a+c))for(var d=-1;7>=d;d++)-1>=b+d||this.moduleCount<=b+d||(this.modules[a+c][b+d]=c>=0&&6>=c&&(0==d||6==d)||d>=0&&6>=d&&(0==c||6==c)||c>=2&&4>=c&&d>=2&&4>=d?!0:!1)},getBestMaskPattern:function(){for(var a=0,b=0,c=0;8>c;c++){this.makeImpl(!0,c);var d=f.getLostPoint(this);(0==c||a>d)&&(a=d,b=c)}return b},createMovieClip:function(a,b,c){var d=a.createEmptyMovieClip(b,c),e=1;this.make();for(var f=0;f<this.modules.length;f++)for(var g=f*e,h=0;h<this.modules[f].length;h++){var i=h*e,j=this.modules[f][h];j&&(d.beginFill(0,100),d.moveTo(i,g),d.lineTo(i+e,g),d.lineTo(i+e,g+e),d.lineTo(i,g+e),d.endFill())}return d},setupTimingPattern:function(){for(var a=8;a<this.moduleCount-8;a++)null==this.modules[a][6]&&(this.modules[a][6]=0==a%2);for(var b=8;b<this.moduleCount-8;b++)null==this.modules[6][b]&&(this.modules[6][b]=0==b%2)},setupPositionAdjustPattern:function(){for(var a=f.getPatternPosition(this.typeNumber),b=0;b<a.length;b++)for(var c=0;c<a.length;c++){var d=a[b],e=a[c];if(null==this.modules[d][e])for(var g=-2;2>=g;g++)for(var h=-2;2>=h;h++)this.modules[d+g][e+h]=-2==g||2==g||-2==h||2==h||0==g&&0==h?!0:!1}},setupTypeNumber:function(a){for(var b=f.getBCHTypeNumber(this.typeNumber),c=0;18>c;c++){var d=!a&&1==(1&b>>c);this.modules[Math.floor(c/3)][c%3+this.moduleCount-8-3]=d}for(var c=0;18>c;c++){var d=!a&&1==(1&b>>c);this.modules[c%3+this.moduleCount-8-3][Math.floor(c/3)]=d}},setupTypeInfo:function(a,b){for(var c=this.errorCorrectLevel<<3|b,d=f.getBCHTypeInfo(c),e=0;15>e;e++){var g=!a&&1==(1&d>>e);6>e?this.modules[e][8]=g:8>e?this.modules[e+1][8]=g:this.modules[this.moduleCount-15+e][8]=g}for(var e=0;15>e;e++){var g=!a&&1==(1&d>>e);8>e?this.modules[8][this.moduleCount-e-1]=g:9>e?this.modules[8][15-e-1+1]=g:this.modules[8][15-e-1]=g}this.modules[this.moduleCount-8][8]=!a},mapData:function(a,b){for(var c=-1,d=this.moduleCount-1,e=7,g=0,h=this.moduleCount-1;h>0;h-=2)for(6==h&&h--;;){for(var i=0;2>i;i++)if(null==this.modules[d][h-i]){var j=!1;g<a.length&&(j=1==(1&a[g]>>>e));var k=f.getMask(b,d,h-i);k&&(j=!j),this.modules[d][h-i]=j,e--,-1==e&&(g++,e=7)}if(d+=c,0>d||this.moduleCount<=d){d-=c,c=-c;break}}}},b.PAD0=236,b.PAD1=17,b.createData=function(a,c,d){for(var e=j.getRSBlocks(a,c),g=new k,h=0;h<d.length;h++){var i=d[h];g.put(i.mode,4),g.put(i.getLength(),f.getLengthInBits(i.mode,a)),i.write(g)}for(var l=0,h=0;h<e.length;h++)l+=e[h].dataCount;if(g.getLengthInBits()>8*l)throw new Error("code length overflow. ("+g.getLengthInBits()+">"+8*l+")");for(g.getLengthInBits()+4<=8*l&&g.put(0,4);0!=g.getLengthInBits()%8;)g.putBit(!1);for(;;){if(g.getLengthInBits()>=8*l)break;if(g.put(b.PAD0,8),g.getLengthInBits()>=8*l)break;g.put(b.PAD1,8)}return b.createBytes(g,e)},b.createBytes=function(a,b){for(var c=0,d=0,e=0,g=new Array(b.length),h=new Array(b.length),j=0;j<b.length;j++){var k=b[j].dataCount,l=b[j].totalCount-k;d=Math.max(d,k),e=Math.max(e,l),g[j]=new Array(k);for(var m=0;m<g[j].length;m++)g[j][m]=255&a.buffer[m+c];c+=k;var n=f.getErrorCorrectPolynomial(l),o=new i(g[j],n.getLength()-1),p=o.mod(n);h[j]=new Array(n.getLength()-1);for(var m=0;m<h[j].length;m++){var q=m+p.getLength()-h[j].length;h[j][m]=q>=0?p.get(q):0}}for(var r=0,m=0;m<b.length;m++)r+=b[m].totalCount;for(var s=new Array(r),t=0,m=0;d>m;m++)for(var j=0;j<b.length;j++)m<g[j].length&&(s[t++]=g[j][m]);for(var m=0;e>m;m++)for(var j=0;j<b.length;j++)m<h[j].length&&(s[t++]=h[j][m]);return s};for(var c={MODE_NUMBER:1,MODE_ALPHA_NUM:2,MODE_8BIT_BYTE:4,MODE_KANJI:8},d={L:1,M:0,Q:3,H:2},e={PATTERN000:0,PATTERN001:1,PATTERN010:2,PATTERN011:3,PATTERN100:4,PATTERN101:5,PATTERN110:6,PATTERN111:7},f={PATTERN_POSITION_TABLE:[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],G15:1335,G18:7973,G15_MASK:21522,getBCHTypeInfo:function(a){for(var b=a<<10;f.getBCHDigit(b)-f.getBCHDigit(f.G15)>=0;)b^=f.G15<<f.getBCHDigit(b)-f.getBCHDigit(f.G15);return(a<<10|b)^f.G15_MASK},getBCHTypeNumber:function(a){for(var b=a<<12;f.getBCHDigit(b)-f.getBCHDigit(f.G18)>=0;)b^=f.G18<<f.getBCHDigit(b)-f.getBCHDigit(f.G18);return a<<12|b},getBCHDigit:function(a){for(var b=0;0!=a;)b++,a>>>=1;return b},getPatternPosition:function(a){return f.PATTERN_POSITION_TABLE[a-1]},getMask:function(a,b,c){switch(a){case e.PATTERN000:return 0==(b+c)%2;case e.PATTERN001:return 0==b%2;case e.PATTERN010:return 0==c%3;case e.PATTERN011:return 0==(b+c)%3;case e.PATTERN100:return 0==(Math.floor(b/2)+Math.floor(c/3))%2;case e.PATTERN101:return 0==b*c%2+b*c%3;case e.PATTERN110:return 0==(b*c%2+b*c%3)%2;case e.PATTERN111:return 0==(b*c%3+(b+c)%2)%2;default:throw new Error("bad maskPattern:"+a)}},getErrorCorrectPolynomial:function(a){for(var b=new i([1],0),c=0;a>c;c++)b=b.multiply(new i([1,g.gexp(c)],0));return b},getLengthInBits:function(a,b){if(b>=1&&10>b)switch(a){case c.MODE_NUMBER:return 10;case c.MODE_ALPHA_NUM:return 9;case c.MODE_8BIT_BYTE:return 8;case c.MODE_KANJI:return 8;default:throw new Error("mode:"+a)}else if(27>b)switch(a){case c.MODE_NUMBER:return 12;case c.MODE_ALPHA_NUM:return 11;case c.MODE_8BIT_BYTE:return 16;case c.MODE_KANJI:return 10;default:throw new Error("mode:"+a)}else{if(!(41>b))throw new Error("type:"+b);switch(a){case c.MODE_NUMBER:return 14;case c.MODE_ALPHA_NUM:return 13;case c.MODE_8BIT_BYTE:return 16;case c.MODE_KANJI:return 12;default:throw new Error("mode:"+a)}}},getLostPoint:function(a){for(var b=a.getModuleCount(),c=0,d=0;b>d;d++)for(var e=0;b>e;e++){for(var f=0,g=a.isDark(d,e),h=-1;1>=h;h++)if(!(0>d+h||d+h>=b))for(var i=-1;1>=i;i++)0>e+i||e+i>=b||(0!=h||0!=i)&&g==a.isDark(d+h,e+i)&&f++;f>5&&(c+=3+f-5)}for(var d=0;b-1>d;d++)for(var e=0;b-1>e;e++){var j=0;a.isDark(d,e)&&j++,a.isDark(d+1,e)&&j++,a.isDark(d,e+1)&&j++,a.isDark(d+1,e+1)&&j++,(0==j||4==j)&&(c+=3)}for(var d=0;b>d;d++)for(var e=0;b-6>e;e++)a.isDark(d,e)&&!a.isDark(d,e+1)&&a.isDark(d,e+2)&&a.isDark(d,e+3)&&a.isDark(d,e+4)&&!a.isDark(d,e+5)&&a.isDark(d,e+6)&&(c+=40);for(var e=0;b>e;e++)for(var d=0;b-6>d;d++)a.isDark(d,e)&&!a.isDark(d+1,e)&&a.isDark(d+2,e)&&a.isDark(d+3,e)&&a.isDark(d+4,e)&&!a.isDark(d+5,e)&&a.isDark(d+6,e)&&(c+=40);for(var k=0,e=0;b>e;e++)for(var d=0;b>d;d++)a.isDark(d,e)&&k++;var l=Math.abs(100*k/b/b-50)/5;return c+=10*l}},g={glog:function(a){if(1>a)throw new Error("glog("+a+")");return g.LOG_TABLE[a]},gexp:function(a){for(;0>a;)a+=255;for(;a>=256;)a-=255;return g.EXP_TABLE[a]},EXP_TABLE:new Array(256),LOG_TABLE:new Array(256)},h=0;8>h;h++)g.EXP_TABLE[h]=1<<h;for(var h=8;256>h;h++)g.EXP_TABLE[h]=g.EXP_TABLE[h-4]^g.EXP_TABLE[h-5]^g.EXP_TABLE[h-6]^g.EXP_TABLE[h-8];for(var h=0;255>h;h++)g.LOG_TABLE[g.EXP_TABLE[h]]=h;i.prototype={get:function(a){return this.num[a]},getLength:function(){return this.num.length},multiply:function(a){for(var b=new Array(this.getLength()+a.getLength()-1),c=0;c<this.getLength();c++)for(var d=0;d<a.getLength();d++)b[c+d]^=g.gexp(g.glog(this.get(c))+g.glog(a.get(d)));return new i(b,0)},mod:function(a){if(this.getLength()-a.getLength()<0)return this;for(var b=g.glog(this.get(0))-g.glog(a.get(0)),c=new Array(this.getLength()),d=0;d<this.getLength();d++)c[d]=this.get(d);for(var d=0;d<a.getLength();d++)c[d]^=g.gexp(g.glog(a.get(d))+b);return new i(c,0).mod(a)}},j.RS_BLOCK_TABLE=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],j.getRSBlocks=function(a,b){var c=j.getRsBlockTable(a,b);if(void 0==c)throw new Error("bad rs block @ typeNumber:"+a+"/errorCorrectLevel:"+b);for(var d=c.length/3,e=[],f=0;d>f;f++)for(var g=c[3*f+0],h=c[3*f+1],i=c[3*f+2],k=0;g>k;k++)e.push(new j(h,i));return e},j.getRsBlockTable=function(a,b){switch(b){case d.L:return j.RS_BLOCK_TABLE[4*(a-1)+0];case d.M:return j.RS_BLOCK_TABLE[4*(a-1)+1];case d.Q:return j.RS_BLOCK_TABLE[4*(a-1)+2];case d.H:return j.RS_BLOCK_TABLE[4*(a-1)+3];default:return void 0}},k.prototype={get:function(a){var b=Math.floor(a/8);return 1==(1&this.buffer[b]>>>7-a%8)},put:function(a,b){for(var c=0;b>c;c++)this.putBit(1==(1&a>>>b-c-1))},getLengthInBits:function(){return this.length},putBit:function(a){var b=Math.floor(this.length/8);this.buffer.length<=b&&this.buffer.push(0),a&&(this.buffer[b]|=128>>>this.length%8),this.length++}};var l=[[17,14,11,7],[32,26,20,14],[53,42,32,24],[78,62,46,34],[106,84,60,44],[134,106,74,58],[154,122,86,64],[192,152,108,84],[230,180,130,98],[271,213,151,119],[321,251,177,137],[367,287,203,155],[425,331,241,177],[458,362,258,194],[520,412,292,220],[586,450,322,250],[644,504,364,280],[718,560,394,310],[792,624,442,338],[858,666,482,382],[929,711,509,403],[1003,779,565,439],[1091,857,611,461],[1171,911,661,511],[1273,997,715,535],[1367,1059,751,593],[1465,1125,805,625],[1528,1190,868,658],[1628,1264,908,698],[1732,1370,982,742],[1840,1452,1030,790],[1952,1538,1112,842],[2068,1628,1168,898],[2188,1722,1228,958],[2303,1809,1283,983],[2431,1911,1351,1051],[2563,1989,1423,1093],[2699,2099,1499,1139],[2809,2213,1579,1219],[2953,2331,1663,1273]],o=function(){var a=function(a,b){this._el=a,this._htOption=b};return a.prototype.draw=function(a){function g(a,b){var c=document.createElementNS("http://www.w3.org/2000/svg",a);for(var d in b)b.hasOwnProperty(d)&&c.setAttribute(d,b[d]);return c}var b=this._htOption,c=this._el,d=a.getModuleCount();Math.floor(b.width/d),Math.floor(b.height/d),this.clear();var h=g("svg",{viewBox:"0 0 "+String(d)+" "+String(d),width:"100%",height:"100%",fill:b.colorLight});h.setAttributeNS("http://www.w3.org/2000/xmlns/","xmlns:xlink","http://www.w3.org/1999/xlink"),c.appendChild(h),h.appendChild(g("rect",{fill:b.colorDark,width:"1",height:"1",id:"template"}));for(var i=0;d>i;i++)for(var j=0;d>j;j++)if(a.isDark(i,j)){var k=g("use",{x:String(i),y:String(j)});k.setAttributeNS("http://www.w3.org/1999/xlink","href","#template"),h.appendChild(k)}},a.prototype.clear=function(){for(;this._el.hasChildNodes();)this._el.removeChild(this._el.lastChild)},a}(),p="svg"===document.documentElement.tagName.toLowerCase(),q=p?o:m()?function(){function a(){this._elImage.src=this._elCanvas.toDataURL("image/png"),this._elImage.style.display="block",this._elCanvas.style.display="none"}function d(a,b){var c=this;if(c._fFail=b,c._fSuccess=a,null===c._bSupportDataURI){var d=document.createElement("img"),e=function(){c._bSupportDataURI=!1,c._fFail&&_fFail.call(c)},f=function(){c._bSupportDataURI=!0,c._fSuccess&&c._fSuccess.call(c)};return d.onabort=e,d.onerror=e,d.onload=f,d.src="data:image/gif;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==",void 0}c._bSupportDataURI===!0&&c._fSuccess?c._fSuccess.call(c):c._bSupportDataURI===!1&&c._fFail&&c._fFail.call(c)}if(this._android&&this._android<=2.1){var b=1/window.devicePixelRatio,c=CanvasRenderingContext2D.prototype.drawImage;CanvasRenderingContext2D.prototype.drawImage=function(a,d,e,f,g,h,i,j){if("nodeName"in a&&/img/i.test(a.nodeName))for(var l=arguments.length-1;l>=1;l--)arguments[l]=arguments[l]*b;else"undefined"==typeof j&&(arguments[1]*=b,arguments[2]*=b,arguments[3]*=b,arguments[4]*=b);c.apply(this,arguments)}}var e=function(a,b){this._bIsPainted=!1,this._android=n(),this._htOption=b,this._elCanvas=document.createElement("canvas"),this._elCanvas.width=b.width,this._elCanvas.height=b.height,a.appendChild(this._elCanvas),this._el=a,this._oContext=this._elCanvas.getContext("2d"),this._bIsPainted=!1,this._elImage=document.createElement("img"),this._elImage.style.display="none",this._el.appendChild(this._elImage),this._bSupportDataURI=null};return e.prototype.draw=function(a){var b=this._elImage,c=this._oContext,d=this._htOption,e=a.getModuleCount(),f=d.width/e,g=d.height/e,h=Math.round(f),i=Math.round(g);b.style.display="none",this.clear();for(var j=0;e>j;j++)for(var k=0;e>k;k++){var l=a.isDark(j,k),m=k*f,n=j*g;c.strokeStyle=l?d.colorDark:d.colorLight,c.lineWidth=1,c.fillStyle=l?d.colorDark:d.colorLight,c.fillRect(m,n,f,g),c.strokeRect(Math.floor(m)+.5,Math.floor(n)+.5,h,i),c.strokeRect(Math.ceil(m)-.5,Math.ceil(n)-.5,h,i)}this._bIsPainted=!0},e.prototype.makeImage=function(){this._bIsPainted&&d.call(this,a)},e.prototype.isPainted=function(){return this._bIsPainted},e.prototype.clear=function(){this._oContext.clearRect(0,0,this._elCanvas.width,this._elCanvas.height),this._bIsPainted=!1},e.prototype.round=function(a){return a?Math.floor(1e3*a)/1e3:a},e}():function(){var a=function(a,b){this._el=a,this._htOption=b};return a.prototype.draw=function(a){for(var b=this._htOption,c=this._el,d=a.getModuleCount(),e=Math.floor(b.width/d),f=Math.floor(b.height/d),g=['<table style="border:0;border-collapse:collapse;">'],h=0;d>h;h++){g.push("<tr>");for(var i=0;d>i;i++)g.push('<td style="border:0;border-collapse:collapse;padding:0;margin:0;width:'+e+"px;height:"+f+"px;background-color:"+(a.isDark(h,i)?b.colorDark:b.colorLight)+';"></td>');g.push("</tr>")}g.push("</table>"),c.innerHTML=g.join("");var j=c.childNodes[0],k=(b.width-j.offsetWidth)/2,l=(b.height-j.offsetHeight)/2;k>0&&l>0&&(j.style.margin=l+"px "+k+"px")},a.prototype.clear=function(){this._el.innerHTML=""},a}();QRCode=function(a,b){if(this._htOption={width:256,height:256,typeNumber:4,colorDark:"#000000",colorLight:"#ffffff",correctLevel:d.H},"string"==typeof b&&(b={text:b}),b)for(var c in b)this._htOption[c]=b[c];"string"==typeof a&&(a=document.getElementById(a)),this._android=n(),this._el=a,this._oQRCode=null,this._oDrawing=new q(this._el,this._htOption),this._htOption.text&&this.makeCode(this._htOption.text)},QRCode.prototype.makeCode=function(a){this._oQRCode=new b(r(a,this._htOption.correctLevel),this._htOption.correctLevel),this._oQRCode.addData(a),this._oQRCode.make(),this._el.title=a,this._oDrawing.draw(this._oQRCode),this.makeImage()},QRCode.prototype.makeImage=function(){"function"==typeof this._oDrawing.makeImage&&(!this._android||this._android>=3)&&this._oDrawing.makeImage()},QRCode.prototype.clear=function(){this._oDrawing.clear()},QRCode.CorrectLevel=d}();
+</script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="/qrcode.min.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

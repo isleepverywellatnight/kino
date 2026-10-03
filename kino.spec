@@ -11,10 +11,15 @@ datas = [
     (str(project_root / 'qrcode.min.js'), '.'),
     (str(project_root / 'kino_bridge.lua'), '.'),
     (str(project_root / 'addons'), 'addons'),
+    (str(project_root / 'web'), 'web'),
 ]
 
 # Dépendances cachées requises pour pywebview sous Windows (Edge WebView2 / pythonnet)
 hiddenimports = [
+    'config',
+    'meta_engine',
+    'debrid_engine',
+    'player_engine',
     'kino_db',
     'torrent_engine',
     'remote_controller',
