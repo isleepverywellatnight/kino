@@ -4723,6 +4723,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
     justify-content: center;
     align-items: center;
     z-index: 100;
+    overflow-y: auto;
+    padding: 20px 10px;
+    box-sizing: border-box;
   }
   .modal {
     background: var(--surface);
@@ -4731,6 +4734,134 @@ HTML_PAGE = r"""<!DOCTYPE html>
     padding: 22px;
     width: 92%;
     max-width: 480px;
+    max-height: 88vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  /* Page de Parametres Dediee & Ergonomique */
+  .settings-page {
+    margin-top: 14px;
+    margin-bottom: 40px;
+    animation: fadeIn 0.16s ease-in-out;
+  }
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+  }
+  .settings-header-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .settings-header-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 18px;
+  }
+  @media (max-width: 768px) {
+    .settings-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    transition: border-color 0.15s ease;
+  }
+  .settings-card:hover {
+    border-color: var(--border-hover);
+  }
+  .settings-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-card-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .settings-card-badge {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--surface-2);
+    color: var(--dim);
+    border: 1px solid var(--border);
+    font-weight: 600;
+  }
+  .settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .settings-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 480px) {
+    .settings-field-row {
+      grid-template-columns: 1fr;
+    }
+  }
+  .settings-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .settings-desc {
+    font-size: 0.74rem;
+    color: var(--dim);
+    line-height: 1.4;
+    margin: 2px 0 0;
+  }
+  .settings-save-bar {
+    position: sticky;
+    bottom: 20px;
+    margin-top: 24px;
+    padding: 14px 20px;
+    background: rgba(18, 18, 21, 0.92);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-hover);
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    z-index: 10;
   }
   .progress-bar {
     height: 4px;
@@ -5682,6 +5813,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
         <span>Ma Bibliothèque</span>
         <span id="libraryTotalBadge" class="nav-badge"></span>
       </button>
+      <button class="nav-tab" id="tab-settings" onclick="switchTab('settings')">Paramètres</button>
     </div>
   </div>
 
@@ -5909,6 +6041,341 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     <!-- Grille des animes du jour sélectionné -->
     <div id="animeScheduleGrid" class="schedule-grid"></div>
+  </div>
+
+  <!-- Page Dédiée des Paramètres KINO -->
+  <div id="settingsPanel" class="settings-page" style="display:none;">
+    <div class="settings-header">
+      <div class="settings-header-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Paramètres &amp; Configuration</span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button type="button" class="btn btn-secondary" onclick="closeConfig()" style="padding:7px 14px; font-size:0.8rem;">Retour</button>
+        <button type="button" class="btn" onclick="saveConfig()" style="padding:7px 18px; font-size:0.8rem;">Enregistrer les modifications</button>
+      </div>
+    </div>
+
+    <div class="settings-grid">
+      <!-- Carte 1 : Fournisseurs Débrideurs & Compte -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+            </span>
+            <span>Débrideurs &amp; Authentification</span>
+          </div>
+          <span class="settings-card-badge">Cloud</span>
+        </div>
+
+        <div id="cfgAccountInfo" style="padding:10px 14px; background:var(--surface-2); border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; font-size:0.84rem; color:var(--text);" id="cfgAccountTitle">Statut du compte</div>
+            <div style="font-size:0.73rem; color:var(--dim); margin-top:2px;" id="cfgAccountSub">Vérification de la clé API...</div>
+          </div>
+          <span id="cfgAccountBadge" class="settings-card-badge">En attente</span>
+        </div>
+
+        <div class="settings-field">
+          <label class="settings-label" for="cfgProvider">Fournisseur Actif</label>
+          <select id="cfgProvider" onchange="onConfigProviderChange()">
+            <option value="realdebrid">Real-Debrid (RD+)</option>
+            <option value="alldebrid">AllDebrid (AD+)</option>
+            <option value="torbox">TorBox (TB+)</option>
+            <option value="debridlink">Debrid-Link (DL+)</option>
+            <option value="premiumize">Premiumize (PM+)</option>
+            <option value="megadebrid">Mega-Debrid (MD+)</option>
+          </select>
+          <div id="cfgProviderHelp" class="settings-desc">
+            Clé API disponible sur <a id="cfgProviderLink" href="https://real-debrid.com/apitoken" target="_blank" style="color:var(--text); text-decoration:underline;">real-debrid.com/apitoken</a>
+          </div>
+        </div>
+
+        <div class="settings-field">
+          <label class="settings-label" for="cfgToken" id="cfgTokenLabel">Clé API Débrideur</label>
+          <div style="position:relative; display:flex; align-items:center;">
+            <input type="password" id="cfgToken" placeholder="Laisser vide pour conserver la clé actuelle" style="width:100%; padding-right:38px;">
+            <button type="button" onclick="togglePasswordVisibility('cfgToken', this)" style="position:absolute; right:8px; background:none; border:none; color:var(--muted); cursor:pointer; padding:4px;" title="Afficher ou masquer la clé">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="settings-desc">La clé reste stockée localement de manière sécurisée sur votre ordinateur.</div>
+        </div>
+
+        <div class="settings-field">
+          <div class="settings-label">
+            <span>Nettoyage Automatique Cloud</span>
+            <button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="purgeRdCloud('all', this)" title="Supprimer manuellement tous les torrents et fichiers débridés expirés">Purger le Cloud</button>
+          </div>
+          <select id="cfgRdRetention">
+            <option value="0">Désactivé (Conserver les fichiers)</option>
+            <option value="1">Supprimer après 24 heures</option>
+            <option value="3">Supprimer après 3 jours</option>
+            <option value="7">Supprimer après 7 jours</option>
+            <option value="14">Supprimer après 14 jours</option>
+            <option value="30">Supprimer après 30 jours</option>
+          </select>
+          <div class="settings-desc">Supprime automatiquement les anciens liens de votre compte débrideur après le délai choisi.</div>
+        </div>
+      </div>
+
+      <!-- Carte 2 : Lecteur Multimédia & Préférences Vidéo -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </span>
+            <span>Lecteur Vidéo &amp; Rendu</span>
+          </div>
+          <span class="settings-card-badge">Moteur Natif</span>
+        </div>
+
+        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:0.78rem;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <div style="font-weight:600; color:#fafafa; display:flex; align-items:center; gap:6px;">
+              <span>Moteur KINO Natif (MPV Ultra HD)</span>
+            </div>
+            <span style="font-size:0.7rem; color:#4ade80; background:rgba(74,222,128,0.12); padding:2px 7px; border-radius:4px; font-weight:600;">Actif</span>
+          </div>
+          <p style="margin:0; color:var(--dim); font-size:0.73rem; line-height:1.45;">
+            Lecteur intégré dans la fenêtre avec accélération matérielle, Tone-Mapping HDR / Dolby Vision dynamique, décodage sans perte (DTS, TrueHD, Atmos) et sous-titres animés ASS.
+          </p>
+          <input type="hidden" id="cfgPlayerMode" value="kino">
+        </div>
+
+        <div class="settings-field-row">
+          <div class="settings-field">
+            <label class="settings-label" for="cfgPrefLang">Langue 1-Clic</label>
+            <select id="cfgPrefLang">
+              <option value="vf">VF / MULTI (Français)</option>
+              <option value="vostfr">VOSTFR / VO (Sous-titres FR)</option>
+            </select>
+            <div class="settings-desc">Priorité audio au lancement.</div>
+          </div>
+          <div class="settings-field">
+            <label class="settings-label" for="cfgPrefQuality">Qualité 1-Clic</label>
+            <select id="cfgPrefQuality">
+              <option value="4k">4K UHD (2160p)</option>
+              <option value="1080p">1080p Full HD</option>
+            </select>
+            <div class="settings-desc">Résolution maximale ciblée.</div>
+          </div>
+        </div>
+
+        <div class="settings-field">
+          <label class="settings-label" for="cfgHdrMode">Plage Dynamique (HDR / SDR)</label>
+          <select id="cfgHdrMode">
+            <option value="sdr_pref">SDR Standard (Compatible tous moniteurs)</option>
+            <option value="hdr_native">HDR / Dolby Vision Natif (Écrans compatibles)</option>
+          </select>
+          <div class="settings-desc">En SDR, les flux HDR bénéficient d'un Tone-Mapping préservant la fidélité des teintes sans voile terne.</div>
+        </div>
+
+        <div class="settings-field">
+          <label class="settings-label" for="cfgAudioMode">Mode Audio &amp; Voix</label>
+          <select id="cfgAudioMode">
+            <option value="voice_boost">Boost Voix &amp; Normalisation (Idéal écouteurs/TV)</option>
+            <option value="standard">Audio Standard / Direct Passthrough</option>
+          </select>
+          <div class="settings-desc">Amplifie la bande de fréquences des dialogues pour une parfaite intelligibilité en toute circonstance.</div>
+        </div>
+      </div>
+
+      <!-- Carte 3 : Synchronisations Cloud & Trakt -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </span>
+            <span>Synchronisations &amp; Sauvegardes</span>
+          </div>
+          <span class="settings-card-badge">Multiplateforme</span>
+        </div>
+
+        <!-- Google Drive Sync -->
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:13px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+            <div>
+              <div style="font-size:0.84rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:7px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                <span>Google Drive (Mac ⇄ Windows)</span>
+              </div>
+              <div class="settings-desc" style="margin-top:2px;">
+                Synchronisation transparente de l'historique et des favoris entre votre Mac et votre PC.
+              </div>
+            </div>
+            <button type="button" class="btn btn-secondary" style="padding:5px 12px; font-size:0.75rem; white-space:nowrap;" onclick="triggerGdriveSync(this)">Synchroniser</button>
+          </div>
+          <div id="gdriveSyncStatus" style="font-size:0.75rem; color:var(--dim); padding:6px 10px; background:var(--surface-2); border-radius:6px;">
+            Détection automatique du Google Drive...
+          </div>
+        </div>
+
+        <!-- Trakt.tv -->
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:13px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+            <div>
+              <div style="font-size:0.84rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:7px;">
+                <span style="color:#ed1c24; font-weight:800; font-size:0.92rem;">trakt.tv</span>
+                <span>Scrobble &amp; Watchlist</span>
+              </div>
+              <div class="settings-desc" style="margin-top:2px;">
+                Marquage automatique des épisodes vus et synchronisation en direct avec votre profil Trakt.
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button type="button" id="traktConnectBtn" class="btn btn-secondary" style="padding:5px 12px; font-size:0.75rem; white-space:nowrap;" onclick="toggleTraktAuth(this)">Connecter</button>
+              <button type="button" id="traktSyncBtn" class="btn btn-secondary" style="padding:5px 12px; font-size:0.75rem; display:none; white-space:nowrap;" onclick="triggerTraktSync(this)">Synchroniser</button>
+            </div>
+          </div>
+          <div id="traktSyncStatus" style="font-size:0.75rem; color:var(--dim); padding:6px 10px; background:var(--surface-2); border-radius:6px;">
+            Non connecté
+          </div>
+          <div id="traktAuthBox" style="display:none; padding:10px; background:rgba(237,28,36,0.08); border-radius:6px; border:1px dashed rgba(237,28,36,0.3); font-size:0.76rem;">
+            <p style="margin:0 0 6px; color:var(--text);">1. Rendez-vous sur <a id="traktAuthUrl" href="https://trakt.tv/activate" target="_blank" style="color:#ed1c24; text-decoration:underline; font-weight:bold;">trakt.tv/activate</a></p>
+            <p style="margin:0; color:var(--text);">2. Entrez ce code d'activation : <b id="traktUserCode" style="font-size:1.05rem; letter-spacing:2px; color:#fff; background:#18181b; padding:2px 7px; border-radius:4px; display:inline-block; margin-left:4px;">------</b></p>
+            <p id="traktAuthCountdown" style="margin:6px 0 0; color:var(--muted); font-size:0.71rem;">En attente de validation sur votre compte Trakt...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte 4 : Intégrations Sociales & Discord -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.893.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+            </span>
+            <span>Discord Rich Presence</span>
+          </div>
+          <span class="settings-card-badge">Profil</span>
+        </div>
+
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:13px; display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div>
+              <div style="font-size:0.84rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:7px;">
+                <span style="color:#5865F2; font-weight:700;">Discord</span>
+                <span>Statut en direct</span>
+              </div>
+              <div id="discordRpcStatus" class="settings-desc">
+                Affiche sur votre profil le film ou épisode en cours avec jaquette et temps restant.
+              </div>
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.82rem; user-select:none; font-weight:600;">
+              <input type="checkbox" id="cfgDiscordRpc" checked onchange="toggleDiscordRpcFields()" style="cursor:pointer; accent-color:#5865F2; width:18px; height:18px;"> Actif
+            </label>
+          </div>
+
+          <div id="discordRpcOptions" style="display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--border); padding-top:10px;">
+            <div class="settings-field">
+              <label class="settings-label" for="cfgDiscordPreset">Profil affiché sur Discord</label>
+              <select id="cfgDiscordPreset" onchange="onDiscordPresetChange()">
+                <option value="631379801826918400">IMDb (Cinéma &amp; Séries)</option>
+                <option value="645028677033132033">Plex</option>
+                <option value="968880591003082783">trakt.tv</option>
+                <option value="938732156346314795">Letterboxd</option>
+                <option value="608065709741965327">Crunchyroll (Animés)</option>
+                <option value="926541425682829352">Netflix</option>
+                <option value="custom">KINO (Application personnalisée)</option>
+              </select>
+            </div>
+            <div id="cfgDiscordCustomBox" style="display:none; flex-direction:column; gap:6px; margin-top:2px;">
+              <label class="settings-label" for="cfgDiscordClientId">ID Client Discord personnalisé</label>
+              <input type="text" id="cfgDiscordClientId" placeholder="ID Client Discord (ex: 123456789012345678)">
+              <p style="margin:2px 0 0; font-size:0.71rem; color:var(--dim); line-height:1.35;">
+                Pour afficher <strong>Joue à KINO</strong>, créez une application nommée KINO sur le <a href="https://discord.com/developers/applications" target="_blank" style="color:#5865F2; text-decoration:underline;">Discord Developer Portal</a> et collez son Application ID.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte 5 : Stockage & Téléchargements Locaux -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </span>
+            <span>Stockage &amp; Téléchargements</span>
+          </div>
+          <span class="settings-card-badge">Local</span>
+        </div>
+
+        <div class="settings-field">
+          <div class="settings-label">
+            <span>Dossier de destination</span>
+            <button type="button" class="btn btn-secondary" style="padding:3px 9px; font-size:0.72rem;" onclick="openFolder()">Ouvrir l'emplacement ↗</button>
+          </div>
+          <input type="text" id="cfgDir" placeholder="Chemin du dossier local (ex: C:\Users\...\Downloads ou /Users/.../Downloads)">
+          <div class="settings-desc">Emplacement où sont stockés les fichiers débridés et téléchargements complets.</div>
+        </div>
+
+        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:11px; font-size:0.75rem; color:var(--dim); line-height:1.4;">
+          Astuce : vous pouvez accéder à vos fichiers locaux téléchargés à tout moment en cliquant sur le bouton <strong>Dossier Téléchargements</strong> dans le menu haut droit.
+        </div>
+      </div>
+
+      <!-- Carte 6 : Informations & Raccourcis Système -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <span class="settings-card-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+            </span>
+            <span>Système &amp; Raccourcis</span>
+          </div>
+          <span class="settings-card-badge">Desktop</span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px;">
+          <div>
+            <div style="font-weight:600; font-size:0.86rem; color:var(--text);">KINO Media Center</div>
+            <div style="font-size:0.73rem; color:var(--dim); margin-top:2px;">Application Desktop Autonome • Multiplateforme</div>
+          </div>
+          <button type="button" class="btn btn-secondary" style="padding:5px 12px; font-size:0.75rem;" onclick="toggleShortcutsModal()">Tous les raccourcis</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.74rem; color:var(--muted);">
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Lecture / Pause</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">Espace</kbd>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Plein écran</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">F</kbd>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Reculer / Avancer</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">← →</kbd>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Sous-titres</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">C</kbd>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Passer l'intro</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">S</kbd>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:5px 8px; background:var(--surface-2); border-radius:4px;">
+            <span>Recherche</span><kbd style="color:var(--text); background:var(--bg); padding:1px 5px; border-radius:3px;">Ctrl+K</kbd>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barre d'action fixe / Sticky Save Bar -->
+    <div class="settings-save-bar">
+      <div id="settingsSaveStatus" style="font-size:0.82rem; color:var(--muted); display:flex; align-items:center; gap:8px;">
+        <span>Appuyez sur Enregistrer pour appliquer vos modifications.</span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button type="button" class="btn btn-secondary" onclick="closeConfig()">Retour</button>
+        <button type="button" id="settingsSaveBtn" class="btn" onclick="saveConfig()">Enregistrer les paramètres</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -6200,141 +6667,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
   </div>
 </div>
 
-<!-- Modal Config -->
-<div id="configModal" class="modal-bg" onclick="if(event.target===this) closeConfig()">
-  <div class="modal">
-    <h3>Configuration KINO</h3>
-    <p id="cfgProviderHelp" style="color:var(--muted); font-size:0.82rem; margin:8px 0 14px; line-height:1.4;">
-      Clé API disponible sur <a id="cfgProviderLink" href="https://real-debrid.com/apitoken" target="_blank" style="color:var(--text); text-decoration:underline;">real-debrid.com/apitoken</a>
-    </p>
-    <div style="display:flex; flex-direction:column; gap:10px;">
-      <label style="font-size:0.8rem; color:var(--muted);">Service Débrideur</label>
-      <select id="cfgProvider" onchange="onConfigProviderChange()">
-        <option value="realdebrid">Real-Debrid (RD+)</option>
-        <option value="alldebrid">AllDebrid (AD+)</option>
-        <option value="torbox">TorBox (TB+)</option>
-        <option value="debridlink">Debrid-Link (DL+)</option>
-        <option value="premiumize">Premiumize (PM+)</option>
-        <option value="megadebrid">Mega-Debrid (MD+)</option>
-      </select>
-      <label id="cfgTokenLabel" style="font-size:0.8rem; color:var(--muted);">Clé API Real-Debrid</label>
-      <input type="password" id="cfgToken" placeholder="Laisser vide pour conserver la clé actuelle">
-      <label style="font-size:0.8rem; color:var(--muted);">Dossier de téléchargement</label>
-      <input type="text" id="cfgDir" placeholder="/Users/kaiser/Downloads">
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div style="display:flex; flex-direction:column; gap:6px;">
-          <label style="font-size:0.8rem; color:var(--muted);">Langue 1-Clic</label>
-          <select id="cfgPrefLang">
-            <option value="vf">VF / MULTI</option>
-            <option value="vostfr">VOSTFR / VO</option>
-          </select>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:6px;">
-          <label style="font-size:0.8rem; color:var(--muted);">Qualité 1-Clic</label>
-          <select id="cfgPrefQuality">
-            <option value="4k">4K UHD</option>
-            <option value="1080p">1080p</option>
-          </select>
-        </div>
-      </div>
-      <label style="font-size:0.8rem; color:var(--muted);">Format Vidéo</label>
-      <select id="cfgHdrMode">
-        <option value="sdr_pref">SDR</option>
-        <option value="hdr_native">HDR / Dolby Atmos</option>
-      </select>
-      <label style="font-size:0.8rem; color:var(--muted);">Mode Audio</label>
-      <select id="cfgAudioMode">
-        <option value="voice_boost">Boost Voix &amp; Normalisation</option>
-        <option value="standard">Audio Standard</option>
-      </select>
-      <label style="font-size:0.8rem; color:var(--muted);">Nettoyage Cloud Débrideur</label>
-      <select id="cfgRdRetention">
-        <option value="0">Désactivé</option>
-        <option value="1">Supprimer après 24 heures</option>
-        <option value="3">Supprimer après 3 jours</option>
-        <option value="7">Supprimer après 7 jours</option>
-        <option value="14">Supprimer après 14 jours</option>
-        <option value="30">Supprimer après 30 jours</option>
-      </select>
-      <label style="font-size:0.8rem; color:var(--muted);">Lecteur multimédia</label>
-      <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-size:0.78rem;">
-        <div style="font-weight:600; color:#fafafa;">Moteur KINO Natif (MPV Ultra HD)</div>
-        <p style="margin:3px 0 0; color:var(--dim); font-size:0.72rem; line-height:1.4;">
-          Lecteur intégré optimisé : accélération matérielle, Tone-Mapping HDR / Dolby Vision, décodage sans perte (DTS-HD, TrueHD, Atmos) et sous-titres animés ASS.
-        </p>
-        <input type="hidden" id="cfgPlayerMode" value="kino">
-      </div>
-      <!-- Section Synchronisation Google Drive -->
-      <div style="margin-top:6px; padding:10px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <span style="font-size:0.82rem; font-weight:600; color:var(--text);">Synchronisation Cloud (Mac ⇄ Windows)</span>
-            <p id="gdriveSyncStatus" style="font-size:0.74rem; color:var(--dim); margin:2px 0 0;">Détection automatique du Google Drive...</p>
-          </div>
-          <button class="btn btn-secondary" style="padding:4px 9px; font-size:0.74rem;" onclick="triggerGdriveSync(this)">Synchroniser</button>
-        </div>
-      </div>
-      <!-- Section Synchronisation Trakt.tv -->
-      <div style="margin-top:8px; padding:10px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <span style="font-size:0.82rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:6px;">
-              <span style="color:#ed1c24; font-weight:800;">Trakt.tv</span> Scrobble &amp; Watchlist
-            </span>
-            <p id="traktSyncStatus" style="font-size:0.74rem; color:var(--dim); margin:2px 0 0;">Non connecté</p>
-          </div>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button id="traktConnectBtn" class="btn btn-secondary" style="padding:4px 9px; font-size:0.74rem;" onclick="toggleTraktAuth(this)">Connecter</button>
-            <button id="traktSyncBtn" class="btn btn-secondary" style="padding:4px 9px; font-size:0.74rem; display:none;" onclick="triggerTraktSync(this)">Synchroniser</button>
-          </div>
-        </div>
-        <div id="traktAuthBox" style="display:none; margin-top:8px; padding:8px; background:rgba(237,28,36,0.08); border-radius:6px; border:1px dashed rgba(237,28,36,0.3); font-size:0.75rem;">
-          <p style="margin:0 0 4px; color:var(--text);">1. Rendez-vous sur <a id="traktAuthUrl" href="https://trakt.tv/activate" target="_blank" style="color:#ed1c24; text-decoration:underline; font-weight:bold;">trakt.tv/activate</a></p>
-          <p style="margin:0; color:var(--text);">2. Entrez ce code : <b id="traktUserCode" style="font-size:1rem; letter-spacing:2px; color:#fff; background:#18181b; padding:2px 6px; border-radius:4px;">------</b></p>
-          <p id="traktAuthCountdown" style="margin:4px 0 0; color:var(--muted); font-size:0.7rem;">En attente de validation sur votre compte Trakt...</p>
-        </div>
-      </div>
-      <!-- Section Discord Rich Presence -->
-      <div style="margin-top:8px; padding:10px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <span style="font-size:0.82rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:6px;">
-              <span style="color:#5865F2; font-weight:800;">Discord</span> Rich Presence
-            </span>
-            <p id="discordRpcStatus" style="font-size:0.74rem; color:var(--dim); margin:2px 0 0;">Statut en direct sur votre profil Discord (titre, saison, progression)</p>
-          </div>
-          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.8rem; user-select:none;">
-            <input type="checkbox" id="cfgDiscordRpc" checked onchange="toggleDiscordRpcFields()" style="cursor:pointer; accent-color:#5865F2; width:16px; height:16px;"> Actif
-          </label>
-        </div>
-        <div id="discordRpcOptions" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-            <span style="font-size:0.75rem; color:var(--muted);">Profil affiché :</span>
-            <select id="cfgDiscordPreset" onchange="onDiscordPresetChange()" style="background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:5px; font-size:0.75rem;">
-              <option value="631379801826918400">IMDb (Cinéma &amp; Séries)</option>
-              <option value="645028677033132033">Plex</option>
-              <option value="968880591003082783">trakt.tv</option>
-              <option value="938732156346314795">Letterboxd</option>
-              <option value="608065709741965327">Crunchyroll (Animés)</option>
-              <option value="926541425682829352">Netflix</option>
-              <option value="custom">KINO (Application personnalisée)</option>
-            </select>
-          </div>
-          <div id="cfgDiscordCustomBox" style="display:none; flex-direction:column; gap:4px; margin-top:2px;">
-            <input type="text" id="cfgDiscordClientId" placeholder="ID Client Discord (ex: 123456789012345678)" style="background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:5px 8px; border-radius:5px; font-size:0.75rem;">
-            <p style="margin:2px 0 0; font-size:0.7rem; color:var(--dim); line-height:1.3;">
-              Pour afficher <strong>Joue à KINO</strong>, créez une application nommée KINO sur le <a href="https://discord.com/developers/applications" target="_blank" style="color:#5865F2; text-decoration:underline;">Discord Developer Portal</a> et collez son Application ID.
-            </p>
-          </div>
-        </div>
-      </div>
-      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
-        <button class="btn btn-secondary" onclick="closeConfig()">Annuler</button>
-        <button class="btn" onclick="saveConfig()">Enregistrer</button>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Ancien modal config remplace par la page dediee de parametres (#settingsPanel) -->
+<div id="configModal" style="display:none;"></div>
 
 <!-- Modal Raccourcis Clavier -->
 <div id="shortcutsModal" class="shortcuts-modal" onclick="if(event.target===this) toggleShortcutsModal()">
@@ -6594,6 +6928,35 @@ async function checkConfig() {
     }
     toggleDiscordRpcFields();
     window.kinoPlayerMode = cfg.player_mode || 'kino';
+    const cfgAccTitle = document.getElementById('cfgAccountTitle');
+    const cfgAccSub = document.getElementById('cfgAccountSub');
+    const cfgAccBadge = document.getElementById('cfgAccountBadge');
+    if (cfgAccTitle && cfgAccBadge) {
+      if (cfg.user) {
+        const exp = cfg.user.premium > 0 ? Math.ceil(cfg.user.premium / 86400) + ' jours' : 'Gratuit';
+        cfgAccTitle.textContent = `${pmeta.name} - Connecté (@${cfg.user.username})`;
+        cfgAccSub.textContent = `Abonnement premium valide (${exp} restants).`;
+        cfgAccBadge.textContent = 'Actif';
+        cfgAccBadge.style.color = '#4ade80';
+        cfgAccBadge.style.borderColor = 'rgba(74,222,128,0.4)';
+        cfgAccBadge.style.background = 'rgba(74,222,128,0.1)';
+      } else if (cfg.has_token) {
+        cfgAccTitle.textContent = `${pmeta.name} - Clé invalide`;
+        cfgAccSub.textContent = 'La clé API renseignée est invalide ou expirée.';
+        cfgAccBadge.textContent = 'Erreur Clé';
+        cfgAccBadge.style.color = '#ef4444';
+        cfgAccBadge.style.borderColor = 'rgba(239,68,68,0.4)';
+        cfgAccBadge.style.background = 'rgba(239,68,68,0.1)';
+      } else {
+        cfgAccTitle.textContent = `${pmeta.name} - Non configuré`;
+        cfgAccSub.textContent = 'Veuillez saisir votre clé API pour débrider vos contenus.';
+        cfgAccBadge.textContent = 'Non connecté';
+        cfgAccBadge.style.color = '#eab308';
+        cfgAccBadge.style.borderColor = 'rgba(234,179,8,0.4)';
+        cfgAccBadge.style.background = 'rgba(234,179,8,0.1)';
+      }
+    }
+
     const badge = document.getElementById('userBadge');
     if (badge) {
       if (cfg.user) {
@@ -8444,8 +8807,12 @@ function clearDiscordRpc() {
 }
 
 let lastActiveLibraryTab = 'watchlist';
+let previousTab = 'movies';
 
 async function switchTab(tab) {
+  if (activeTab && activeTab !== 'settings') {
+    previousTab = activeTab;
+  }
   const isLibraryTab = ['watchlist', 'history', 'watched', 'customlists', 'rdcloud', 'library'].includes(tab);
   if (isLibraryTab) {
     if (tab === 'library') {
@@ -8492,8 +8859,17 @@ async function switchTab(tab) {
   if (asPanel) asPanel.style.display = 'none';
   const asNav = document.getElementById('animeSubNav');
   if (asNav) asNav.style.display = (tab === 'anime') ? 'flex' : 'none';
-  document.getElementById('postersGrid').style.display = 'grid';
-  document.getElementById('catalogHeader').style.display = 'flex';
+  const setP = document.getElementById('settingsPanel');
+  if (setP) setP.style.display = (tab === 'settings') ? 'block' : 'none';
+
+  if (tab !== 'settings') {
+    document.getElementById('postersGrid').style.display = 'grid';
+    document.getElementById('catalogHeader').style.display = 'flex';
+  } else {
+    document.getElementById('postersGrid').style.display = 'none';
+    document.getElementById('catalogHeader').style.display = 'none';
+  }
+
   const gf = document.getElementById('genreFilters');
   const sw = document.getElementById('catalogSortWrap');
   const wlw = document.getElementById('watchlistActionsWrap');
@@ -8501,6 +8877,21 @@ async function switchTab(tab) {
   const hs = document.getElementById('heroSpotlight');
   const statsEl = document.getElementById('listStatsBadge');
   const surpriseLbl = document.getElementById('listSurpriseBtnLabel');
+
+  if (tab === 'settings') {
+    if (gf) gf.style.display = 'none';
+    if (sw) sw.style.display = 'none';
+    if (wlw) wlw.style.display = 'none';
+    if (lm) lm.style.display = 'none';
+    if (hs) hs.style.display = 'none';
+    if (statsEl) statsEl.style.display = 'none';
+    document.getElementById('homeResumeSection').style.display = 'none';
+    triggerGdriveSync();
+    checkTraktStatus();
+    checkConfig();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    return;
+  }
 
   await refreshUserLists();
 
@@ -8922,11 +9313,27 @@ window.addEventListener('click', (e) => {
 });
 
 function openConfig() { 
-  document.getElementById('configModal').style.display = 'flex'; 
-  triggerGdriveSync();
-  checkTraktStatus();
+  if (activeTab && activeTab !== 'settings') {
+    previousTab = activeTab;
+  }
+  switchTab('settings');
 }
-function closeConfig() { document.getElementById('configModal').style.display = 'none'; }
+
+function closeConfig() {
+  switchTab(previousTab || 'movies');
+}
+
+function togglePasswordVisibility(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    if (btn) btn.style.color = 'var(--text)';
+  } else {
+    inp.type = 'password';
+    if (btn) btn.style.color = 'var(--muted)';
+  }
+}
 
 async function triggerGdriveSync(btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'En cours...'; }
@@ -8965,8 +9372,8 @@ function onDiscordPresetChange() {
 
 async function saveConfig() {
   const debrid_provider = document.getElementById('cfgProvider') ? document.getElementById('cfgProvider').value : 'realdebrid';
-  const token = document.getElementById('cfgToken').value.trim();
-  const dir = document.getElementById('cfgDir').value.trim();
+  const token = document.getElementById('cfgToken') ? document.getElementById('cfgToken').value.trim() : '';
+  const dir = document.getElementById('cfgDir') ? document.getElementById('cfgDir').value.trim() : '';
   const player_mode = document.getElementById('cfgPlayerMode') ? document.getElementById('cfgPlayerMode').value : 'kino';
   const pref_lang = document.getElementById('cfgPrefLang') ? document.getElementById('cfgPrefLang').value : 'vf';
   const pref_quality = document.getElementById('cfgPrefQuality') ? document.getElementById('cfgPrefQuality').value : '4k';
@@ -8984,18 +9391,47 @@ async function saveConfig() {
       discord_client_id = presetEl.value;
     }
   }
-  await api('/api/config', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({debrid_provider, rd_token: token, download_dir: dir, player_mode, pref_lang, pref_quality, hdr_mode, audio_mode, rd_retention_days, discord_rpc, discord_client_id})
-  });
-  window.kinoPlayerMode = player_mode;
-  window.kinoHdrMode = hdr_mode;
-  window.kinoAudioMode = audio_mode;
-  document.getElementById('cfgToken').value = '';
-  closeConfig();
-  await checkConfig();
-  if (activeTab === 'rdcloud') loadRdCloud();
+
+  const saveBtn = document.getElementById('settingsSaveBtn');
+  const saveStatus = document.getElementById('settingsSaveStatus');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Enregistrement...';
+  }
+  if (saveStatus) {
+    saveStatus.innerHTML = '<span style="color:var(--muted);">Enregistrement des configurations...</span>';
+  }
+
+  try {
+    await api('/api/config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({debrid_provider, rd_token: token, download_dir: dir, player_mode, pref_lang, pref_quality, hdr_mode, audio_mode, rd_retention_days, discord_rpc, discord_client_id})
+    });
+    window.kinoPlayerMode = player_mode;
+    window.kinoHdrMode = hdr_mode;
+    window.kinoAudioMode = audio_mode;
+    if (document.getElementById('cfgToken')) document.getElementById('cfgToken').value = '';
+    await checkConfig();
+    if (saveStatus) {
+      saveStatus.innerHTML = '<span style="color:#4ade80; font-weight:600;">✓ Paramètres enregistrés avec succès</span>';
+      setTimeout(() => {
+        if (saveStatus && saveStatus.innerHTML.includes('succès')) {
+          saveStatus.innerHTML = '<span style="color:var(--muted);">Tous les paramètres sont à jour.</span>';
+        }
+      }, 4000);
+    }
+    if (activeTab === 'rdcloud') loadRdCloud();
+  } catch (e) {
+    if (saveStatus) {
+      saveStatus.innerHTML = `<span style="color:#ef4444; font-weight:600;">Erreur : ${escapeHtml(e.message)}</span>`;
+    }
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Enregistrer les paramètres';
+    }
+  }
 }
 
 async function openFolder() {
@@ -10081,6 +10517,10 @@ async function runSearch() {
   if (gf) gf.style.display = 'none';
   if (sw) sw.style.display = 'none';
   if (lm) lm.style.display = 'none';
+  const setP = document.getElementById('settingsPanel');
+  if (setP) setP.style.display = 'none';
+  const setTab = document.getElementById('tab-settings');
+  if (setTab) setTab.classList.remove('active');
 
   if (mode === 'raw') {
     document.getElementById('postersGrid').innerHTML = '';
@@ -10206,6 +10646,10 @@ async function oneClickPlay(params, btn) {
 
 async function selectMedia(media) {
   currentMedia = media;
+  const setP = document.getElementById('settingsPanel');
+  if (setP) setP.style.display = 'none';
+  const setTab = document.getElementById('tab-settings');
+  if (setTab) setTab.classList.remove('active');
   const detail = document.getElementById('detailPanel');
   detail.style.display = 'block';
   detail.innerHTML = '<p style="color:var(--dim); font-size:0.84rem;">Chargement de la fiche...</p>';
@@ -12262,8 +12706,8 @@ window.addEventListener('keydown', (e) => {
         closeTrailerModal();
         return;
       }
-      const cm = document.getElementById('configModal');
-      if (cm && (cm.classList.contains('active') || cm.style.display === 'flex')) {
+      const setP = document.getElementById('settingsPanel');
+      if (setP && setP.style.display === 'block') {
         closeConfig();
         return;
       }
