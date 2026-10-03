@@ -750,6 +750,15 @@ def main():
 
     icon_arg = str(ICON_PATH) if ICON_PATH.exists() else None
     
+    # Auto-synchronisation Google Drive en arrière-plan (mode developpement / local)
+    if not getattr(sys, "frozen", False):
+        try:
+            import sync_drive
+            import threading
+            threading.Thread(target=sync_drive.watch_and_sync, kwargs={"verbose": False}, daemon=True).start()
+        except Exception:
+            pass
+
     if IS_WIN:
         webview.start(configure_window_styles, desktop_window, gui="edgechromium", debug=False, icon=icon_arg)
     elif IS_MAC:

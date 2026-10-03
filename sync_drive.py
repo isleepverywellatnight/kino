@@ -100,28 +100,35 @@ def run_sync(silent=False):
     return True
 
 
-def watch_and_sync(poll_interval=1.5):
-    """Surveille les modifications de fichiers en temps reel et synchronise immediatement."""
-    print("=" * 65)
-    print("   KINO DRIVE LIVE SYNC (SURVEILLANCE TEMPS REEL ACTIVE)")
-    print(f"   Dossier source : {BASE_DIR}")
-    target = get_gdrive_dir()
-    print(f"   Dossier Drive  : {target}")
-    print("   Chaque modification locale est automatiquement propagee sur Drive.")
-    print("   Appuyez sur Ctrl+C pour arreter.")
-    print("=" * 65)
+_WATCHER_RUNNING = False
 
+def watch_and_sync(poll_interval=2.0, verbose=True):
+    """Surveille les modifications de fichiers en temps reel et synchronise immediatement."""
+    global _WATCHER_RUNNING
+    if _WATCHER_RUNNING:
+        return
+    _WATCHER_RUNNING = True
+
+    target = get_gdrive_dir()
     if not target:
-        print("[ERREUR] Google Drive KINO introuvable. Verifiez que l'application Google Drive est lancee.")
+        if verbose:
+            print("[SYNC DRIVE] Google Drive KINO introuvable. Surveillance inactive.")
         return
 
-    # Effectuer une premiere synchronisation immediate
-    run_sync()
+    if verbose:
+        print("=" * 65)
+        print("   KINO DRIVE LIVE SYNC (SURVEILLANCE TEMPS REEL ACTIVE)")
+        print(f"   Dossier source : {BASE_DIR}")
+        print(f"   Dossier Drive  : {target}")
+        print("   Chaque modification locale est automatiquement propagee sur Drive.")
+        print("=" * 65)
+
+    # Premiere synchronisation au demarrage
+    run_sync(silent=not verbose)
 
     def get_snapshot():
         snap = {}
         for root, dirs, files in os.walk(BASE_DIR):
-            # Exclure dossiers speciaux
             dirs[:] = [d for d in dirs if d not in (".git", ".agents", ".gemini", "build", "__pycache__", ".vscode")]
             for f in files:
                 if f.endswith((".pyc", ".log")) or f == "desktop.ini":
@@ -150,17 +157,19 @@ def watch_and_sync(poll_interval=1.5):
                         break
 
             if changed:
-                # Laisser le temps aux ecritures multiples de se terminer (debounce)
                 time.sleep(0.5)
                 last_snap = get_snapshot()
-                print(f"[{time.strftime('%H:%M:%S')}] Modification detectee, synchronisation Drive en cours...")
-                run_sync()
+                print(f"[{time.strftime('%H:%M:%S')}] [AUTO-SYNC DRIVE] Modification detectee, synchronisation en cours...")
+                run_sync(silent=True)
     except KeyboardInterrupt:
-        print("\n[SYNC DRIVE] Surveillance arretee.")
+        if verbose:
+            print("\n[SYNC DRIVE] Surveillance arretee.")
+    finally:
+        _WATCHER_RUNNING = False
 
 
 if __name__ == "__main__":
     if "--watch" in sys.argv or "-w" in sys.argv:
-        watch_and_sync()
+        watch_and_sync(verbose=True)
     else:
-        run_sync()
+        run_sync(silent=False)
