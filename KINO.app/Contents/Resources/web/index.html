@@ -816,7 +816,7 @@
     <button class="btn" style="padding:6px 12px; font-size:0.78rem;" onclick="inAppNextTrack()">Lancer</button>
     <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="cancelNextEpAuto()">Annuler</button>
   </div>
-  <div class="inapp-hud-top pywebview-drag-region" ondblclick="windowAction('maximize')">
+  <div class="inapp-hud-top pywebview-drag-region" ondblclick="if(document.body.classList.contains('is-fullscreen')||Boolean(document.fullscreenElement||document.webkitFullscreenElement)){toggleInAppFullscreen();}else{windowAction('maximize');}">
     <div style="display:flex; align-items:center; gap:14px;" class="no-drag">
       <div class="mac-controls">
         <button class="mac-btn mac-close" onclick="windowAction('close')" title="Fermer (Alt+F4)">

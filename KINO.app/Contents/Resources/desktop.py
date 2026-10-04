@@ -26,6 +26,15 @@ if IS_WIN:
         "--enable-features=PlatformAudioDecoder,MediaFoundationClearPlay,MediaFoundationAudioDecoder "
         "--disable-features=AudioServiceSandbox"
     )
+    try:
+        import webview.platforms.winforms as wf
+        def safe_wf_toggle(uid):
+            global window_api_instance
+            if window_api_instance:
+                window_api_instance.toggle_fullscreen()
+        wf.toggle_fullscreen = safe_wf_toggle
+    except Exception:
+        pass
 else:
     user32 = None
     WM_NCLBUTTONDOWN = None
@@ -206,6 +215,10 @@ class WindowApi:
         self._get_window = get_window
         self._saved_mac_frame = None
         self._is_fullscreen = False
+        self._win32_saved_rect = None
+        self._win32_saved_style = None
+        self._win32_saved_exstyle = None
+        self._win32_was_maximized = False
 
     def minimize(self):
         w = self._get_window()
@@ -279,17 +292,141 @@ class WindowApi:
         except Exception:
             pass
 
+    def _win32_set_fullscreen(self, enable: bool):
+        w = self._get_window()
+        if not w or not IS_WIN or not user32:
+            self._is_fullscreen = bool(enable)
+            return self._is_fullscreen
+        try:
+            form = w.gui.BrowserView.instances.get(w.uid)
+            if not form or not form.Handle:
+                self._is_fullscreen = bool(enable)
+                return self._is_fullscreen
+            hwnd = form.Handle.ToInt64()
+            import System.Windows.Forms as s_wf
+
+            if enable:
+                if self._is_fullscreen:
+                    return True
+                rect = wintypes.RECT()
+                user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                self._win32_saved_rect = (rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top)
+                self._win32_saved_style = user32.GetWindowLongW(hwnd, -16)
+                self._win32_saved_exstyle = user32.GetWindowLongW(hwnd, -20)
+                self._win32_was_maximized = bool(form.WindowState == s_wf.FormWindowState.Maximized)
+
+                class MONITORINFO(ctypes.Structure):
+                    _fields_ = [
+                        ("cbSize", wintypes.DWORD),
+                        ("rcMonitor", wintypes.RECT),
+                        ("rcWork", wintypes.RECT),
+                        ("dwFlags", wintypes.DWORD),
+                    ]
+                hmon = user32.MonitorFromWindow(hwnd, 2)
+                mi = MONITORINFO()
+                mi.cbSize = ctypes.sizeof(MONITORINFO)
+                user32.GetMonitorInfoW(hmon, ctypes.byref(mi))
+                mx = mi.rcMonitor.left
+                my = mi.rcMonitor.top
+                mw = mi.rcMonitor.right - mi.rcMonitor.left
+                mh = mi.rcMonitor.bottom - mi.rcMonitor.top
+
+                WS_CAPTION = 0x00C00000
+                WS_THICKFRAME = 0x00040000
+                WS_MINIMIZEBOX = 0x00020000
+                WS_MAXIMIZEBOX = 0x00010000
+                WS_SYSMENU = 0x00080000
+                WS_POPUP = 0x80000000
+                fs_style = (self._win32_saved_style & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU)) | WS_POPUP
+                user32.SetWindowLongW(hwnd, -16, fs_style)
+
+                try:
+                    form.FormBorderStyle = getattr(s_wf.FormBorderStyle, "None")
+                    form.WindowState = s_wf.FormWindowState.Normal
+                except Exception:
+                    pass
+
+                SWP_FRAMECHANGED = 0x0020
+                SWP_SHOWWINDOW = 0x0040
+                user32.SetWindowPos(hwnd, 0, mx, my, mw, mh, SWP_FRAMECHANGED | SWP_SHOWWINDOW)
+
+                try:
+                    dwmapi = ctypes.windll.dwmapi
+                    c_int = ctypes.c_int
+                    byref = ctypes.byref
+                    dwmapi.DwmSetWindowAttribute(hwnd, 33, byref(c_int(1)), 4)
+                    dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(0xFFFFFFFE)), 4)
+                except Exception:
+                    pass
+
+                self._is_fullscreen = True
+                w.fullscreen = True
+                try:
+                    form.is_fullscreen = True
+                except Exception:
+                    pass
+
+                global CURRENT_DOCKED_MPV_HWND
+                if CURRENT_DOCKED_MPV_HWND and user32.IsWindow(CURRENT_DOCKED_MPV_HWND):
+                    user32.SetWindowPos(CURRENT_DOCKED_MPV_HWND, 0, 0, 0, mw, mh, 0x0014)
+                    user32.BringWindowToTop(CURRENT_DOCKED_MPV_HWND)
+
+                return True
+            else:
+                if not self._is_fullscreen:
+                    return False
+
+                saved_style = getattr(self, "_win32_saved_style", None)
+                if saved_style:
+                    user32.SetWindowLongW(hwnd, -16, saved_style)
+                else:
+                    apply_win32_window_styles(hwnd)
+
+                saved_rect = getattr(self, "_win32_saved_rect", None)
+                if saved_rect and len(saved_rect) == 4:
+                    rx, ry, rw, rh = saved_rect
+                else:
+                    rx, ry, rw, rh = 100, 100, 1280, 820
+
+                if getattr(self, "_win32_was_maximized", False):
+                    try:
+                        form.WindowState = s_wf.FormWindowState.Maximized
+                        w.maximized = True
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        form.WindowState = s_wf.FormWindowState.Normal
+                        w.maximized = False
+                    except Exception:
+                        pass
+                    user32.SetWindowPos(hwnd, 0, rx, ry, rw, rh, 0x0020 | 0x0040)
+
+                apply_win32_window_styles(hwnd)
+
+                self._is_fullscreen = False
+                w.fullscreen = False
+                try:
+                    form.is_fullscreen = False
+                except Exception:
+                    pass
+
+                if CURRENT_DOCKED_MPV_HWND and user32.IsWindow(CURRENT_DOCKED_MPV_HWND):
+                    rect_c = wintypes.RECT()
+                    user32.GetClientRect(hwnd, ctypes.byref(rect_c))
+                    user32.SetWindowPos(CURRENT_DOCKED_MPV_HWND, 0, 0, 0, rect_c.right, rect_c.bottom, 0x0014)
+                    user32.BringWindowToTop(CURRENT_DOCKED_MPV_HWND)
+
+                return False
+        except Exception:
+            return bool(self._is_fullscreen)
+
     def is_fullscreen(self):
         w = self._get_window()
         if not w:
             return bool(self._is_fullscreen)
         if IS_WIN:
-            try:
-                form = w.gui.BrowserView.instances.get(w.uid)
-                if form and hasattr(form, "is_fullscreen"):
-                    return bool(form.is_fullscreen)
-            except Exception:
-                pass
+            return bool(self._is_fullscreen)
         elif IS_MAC and getattr(w, "native", None) is not None:
             try:
                 if hasattr(w.native, "styleMask"):
@@ -302,6 +439,8 @@ class WindowApi:
         w = self._get_window()
         if not w:
             return False
+        if IS_WIN:
+            return self._win32_set_fullscreen(not self._is_fullscreen)
         try:
             w.toggle_fullscreen()
         except Exception:
@@ -309,19 +448,14 @@ class WindowApi:
         is_fs = self.is_fullscreen()
         self._is_fullscreen = is_fs
         w.fullscreen = is_fs
-        if IS_WIN and not is_fs:
-            try:
-                form = w.gui.BrowserView.instances.get(w.uid)
-                if form and form.Handle:
-                    apply_win32_window_styles(form.Handle.ToInt64())
-            except Exception:
-                pass
         return is_fs
 
     def enter_fullscreen(self):
         w = self._get_window()
         if not w:
             return False
+        if IS_WIN:
+            return self._win32_set_fullscreen(True)
         if not self.is_fullscreen():
             try:
                 w.toggle_fullscreen()
@@ -335,6 +469,8 @@ class WindowApi:
         w = self._get_window()
         if not w:
             return False
+        if IS_WIN:
+            return self._win32_set_fullscreen(False)
         if self.is_fullscreen():
             try:
                 w.toggle_fullscreen()
@@ -342,13 +478,6 @@ class WindowApi:
                 pass
         self._is_fullscreen = False
         w.fullscreen = False
-        if IS_WIN:
-            try:
-                form = w.gui.BrowserView.instances.get(w.uid)
-                if form and form.Handle:
-                    apply_win32_window_styles(form.Handle.ToInt64())
-            except Exception:
-                pass
         return False
 
     def close(self):
@@ -706,6 +835,13 @@ def configure_window_styles(w):
                 except Exception:
                     pass
                 apply_win32_window_styles(hwnd)
+                try:
+                    def hooked_form_toggle():
+                        if window_api_instance:
+                            window_api_instance.toggle_fullscreen()
+                    form.toggle_fullscreen = hooked_form_toggle
+                except Exception:
+                    pass
 
                 # Auto-redimensionnement du lecteur MPV intégré lors du redimensionnement de KINO
                 try:

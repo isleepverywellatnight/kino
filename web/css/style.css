@@ -1817,9 +1817,10 @@
     justify-content: space-between;
     align-items: center;
     background: linear-gradient(to bottom, rgba(9,9,11,0.9), transparent);
-    z-index: 2;
+    z-index: 20;
     opacity: 1;
-    transition: opacity 0.25s ease;
+    visibility: visible;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
   }
   .inapp-hud-bottom {
     position: absolute;
@@ -1828,18 +1829,29 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    background: linear-gradient(to top, rgba(9,9,11,0.92), transparent);
-    z-index: 2;
+    background: linear-gradient(to top, rgba(9,9,11,0.95) 0%, rgba(9,9,11,0.6) 60%, transparent 100%);
+    z-index: 20;
     opacity: 1;
-    transition: opacity 0.25s ease;
+    visibility: visible;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
   }
   .inapp-player-overlay.idle .inapp-hud-top,
   .inapp-player-overlay.idle .inapp-hud-bottom {
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
   .inapp-player-overlay.idle {
-    cursor: none;
+    cursor: none !important;
+  }
+  .inapp-player-overlay *:focus,
+  .inapp-player-overlay *:focus-visible,
+  .inapp-btn:focus,
+  .inapp-btn:focus-visible,
+  .inapp-seekbar-container:focus,
+  .inapp-vol-slider-wrap:focus {
+    outline: none !important;
+    box-shadow: none !important;
   }
   .inapp-seekbar-container {
     position: relative;
@@ -2061,6 +2073,25 @@
   }
   body.is-mac-native .inapp-hud-top {
     padding-left: 96px;
+  }
+
+  /* Immersion Plein Ecran KINO */
+  body.is-fullscreen header {
+    display: none !important;
+  }
+  body.is-fullscreen .inapp-hud-top .win-controls {
+    display: none !important;
+  }
+  body.is-fullscreen.is-mac-native .inapp-hud-top .mac-controls {
+    display: none !important;
+  }
+  body.is-fullscreen .inapp-hud-top {
+    -webkit-app-region: no-drag !important;
+    app-region: no-drag !important;
+    padding: 24px 44px;
+  }
+  body.is-fullscreen .inapp-hud-bottom {
+    padding: 24px 44px 34px 44px;
   }
 
   /* Hero Spotlight Banner */

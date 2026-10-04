@@ -5808,11 +5808,14 @@ async function exitInAppFullscreen() {
         await window.pywebview.api.exit_fullscreen();
         wasFs = true;
       } else if (typeof window.pywebview.api.toggle_fullscreen === 'function') {
+        let isFs = false;
         if (typeof window.pywebview.api.is_fullscreen === 'function') {
-          const isFs = await window.pywebview.api.is_fullscreen();
-          if (isFs) {
-            await window.pywebview.api.toggle_fullscreen();
-          }
+          isFs = await window.pywebview.api.is_fullscreen();
+        } else {
+          isFs = document.body.classList.contains('is-fullscreen');
+        }
+        if (isFs) {
+          await window.pywebview.api.toggle_fullscreen();
         }
         wasFs = true;
       }
@@ -5839,7 +5842,7 @@ async function exitInAppFullscreen() {
 
   document.body.classList.remove('is-fullscreen');
   updateInAppFsBtnUI();
-  setTimeout(syncWindowState, 80);
+  setTimeout(syncWindowState, 50);
   return wasFs;
 }
 
@@ -5853,7 +5856,7 @@ async function toggleInAppFullscreen() {
         const isFs = await window.pywebview.api.toggle_fullscreen();
         document.body.classList.toggle('is-fullscreen', Boolean(isFs));
         updateInAppFsBtnUI();
-        setTimeout(syncWindowState, 80);
+        setTimeout(syncWindowState, 50);
         return;
       }
     } catch (e) {
@@ -5877,7 +5880,7 @@ async function toggleInAppFullscreen() {
     if (res && res.ok) {
       document.body.classList.add('is-fullscreen');
       updateInAppFsBtnUI();
-      setTimeout(syncWindowState, 80);
+      setTimeout(syncWindowState, 50);
       return;
     }
   } catch (e) {}
@@ -5897,14 +5900,17 @@ async function toggleInAppFullscreen() {
       } else if (docEl.requestFullscreen) {
         await docEl.requestFullscreen();
       }
+      document.body.classList.add('is-fullscreen');
     } else {
       if (document.exitFullscreen) {
         await document.exitFullscreen();
       } else if (document.webkitExitFullscreen) {
         document.webkitExitFullscreen();
       }
+      document.body.classList.remove('is-fullscreen');
     }
-    setTimeout(syncWindowState, 60);
+    updateInAppFsBtnUI();
+    setTimeout(syncWindowState, 50);
   } catch (err) {
     console.debug('HTML5 fullscreen error:', err);
   }
@@ -6091,16 +6097,29 @@ if (inAppVideoEl) {
       inAppNextTrack();
     }
   });
+  let inAppVideoClickTimer = null;
   inAppVideoEl.addEventListener('click', () => {
-    if (inAppVideoEl.muted && !inAppVideoEl._userMuted) {
-      inAppVideoEl.muted = false;
-      updateInAppVolUI();
+    if (inAppVideoClickTimer) {
+      clearTimeout(inAppVideoClickTimer);
+      inAppVideoClickTimer = null;
+      return;
     }
-    toggleInAppPlay();
+    inAppVideoClickTimer = setTimeout(() => {
+      inAppVideoClickTimer = null;
+      if (inAppVideoEl.muted && !inAppVideoEl._userMuted) {
+        inAppVideoEl.muted = false;
+        updateInAppVolUI();
+      }
+      toggleInAppPlay();
+    }, 220);
   });
   inAppVideoEl.addEventListener('dblclick', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (inAppVideoClickTimer) {
+      clearTimeout(inAppVideoClickTimer);
+      inAppVideoClickTimer = null;
+    }
     toggleInAppFullscreen();
   });
 }
@@ -6195,10 +6214,16 @@ window.addEventListener('keydown', (e) => {
         document.getElementById('torrentsPanel').style.display = 'none';
         return;
       }
-      if (document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement)) {
-        exitInAppFullscreen();
-        return;
-      }
+      (async () => {
+        let isFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+        if (!isFs && window.pywebview && window.pywebview.api && typeof window.pywebview.api.is_fullscreen === 'function') {
+          try { isFs = await window.pywebview.api.is_fullscreen(); } catch (_) {}
+        }
+        if (isFs) {
+          await exitInAppFullscreen();
+        }
+      })();
+      return;
     }
     return;
   }
@@ -6237,12 +6262,17 @@ window.addEventListener('keydown', (e) => {
       toggleShortcutsModal();
       return;
     }
-    const isFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-    if (isFs) {
-      exitInAppFullscreen();
-    } else {
-      closeInAppPlayer();
-    }
+    (async () => {
+      let isFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      if (!isFs && window.pywebview && window.pywebview.api && typeof window.pywebview.api.is_fullscreen === 'function') {
+        try { isFs = await window.pywebview.api.is_fullscreen(); } catch (_) {}
+      }
+      if (isFs) {
+        await exitInAppFullscreen();
+      } else {
+        closeInAppPlayer();
+      }
+    })();
   } else if (e.key === '>' || e.key === 'n' || e.key === 'N') {
     e.preventDefault();
     inAppNextTrack();
