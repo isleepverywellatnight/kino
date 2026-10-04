@@ -124,29 +124,49 @@ def on_closed():
             pass
 
 
-FRAMELESS_HELPER = None
+WIN32_ORIG_WNDPROC = None
+WIN32_SUBCLASS_PROC = None
+
+
+def win32_custom_wndproc(hwnd, msg, wparam, lparam):
+    global WIN32_ORIG_WNDPROC
+    if msg == 0x0083:  # WM_NCCALCSIZE
+        if wparam != 0:
+            return 0
+    elif msg == 0x0112:  # WM_SYSCOMMAND
+        cmd = wparam & 0xFFF0
+        if cmd == 0xF020:  # SC_MINIMIZE
+            if user32:
+                user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE
+            return 0
+        elif cmd == 0xF120:  # SC_RESTORE
+            if user32:
+                user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+            return 0
+    if WIN32_ORIG_WNDPROC and user32:
+        return user32.CallWindowProcW(WIN32_ORIG_WNDPROC, hwnd, msg, wparam, lparam)
+    return 0
 
 
 def apply_win32_window_styles(hwnd):
-    global FRAMELESS_HELPER
+    global WIN32_ORIG_WNDPROC, WIN32_SUBCLASS_PROC
     if not IS_WIN or not user32 or not hwnd:
         return
     try:
-        if FRAMELESS_HELPER is None:
-            import webview.platforms.winforms as wf
-            import System
-            import System.Windows.Forms as s_wf
+        if WIN32_ORIG_WNDPROC is None:
+            LRESULT = ctypes.c_int64
+            HWND_T = wintypes.HWND
+            UINT = wintypes.UINT
+            WPARAM = wintypes.WPARAM
+            LPARAM = wintypes.LPARAM
+            WNDPROC_T = ctypes.WINFUNCTYPE(LRESULT, HWND_T, UINT, WPARAM, LPARAM)
+            user32.SetWindowLongPtrW.restype = ctypes.c_void_p
+            user32.SetWindowLongPtrW.argtypes = [HWND_T, ctypes.c_int, ctypes.c_void_p]
+            user32.CallWindowProcW.restype = LRESULT
+            user32.CallWindowProcW.argtypes = [ctypes.c_void_p, HWND_T, UINT, WPARAM, LPARAM]
 
-            class FramelessHelper(s_wf.NativeWindow):
-                def WndProc(self, m):
-                    if m.Msg == 0x0083:  # WM_NCCALCSIZE
-                        if m.WParam.ToInt64() != 0:
-                            m.Result = System.IntPtr(0)
-                            return
-                    super().WndProc(m)
-
-            FRAMELESS_HELPER = FramelessHelper()
-            FRAMELESS_HELPER.AssignHandle(System.IntPtr(hwnd))
+            WIN32_SUBCLASS_PROC = WNDPROC_T(win32_custom_wndproc)
+            WIN32_ORIG_WNDPROC = user32.SetWindowLongPtrW(hwnd, -4, ctypes.cast(WIN32_SUBCLASS_PROC, ctypes.c_void_p))
     except Exception:
         pass
     try:
