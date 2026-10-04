@@ -124,10 +124,39 @@ def on_closed():
             pass
 
 
+def apply_win32_window_styles(hwnd):
+    if not IS_WIN or not user32 or not hwnd:
+        return
+    try:
+        GWL_STYLE = -16
+        WS_MINIMIZEBOX = 0x00020000
+        WS_MAXIMIZEBOX = 0x00010000
+        WS_SYSMENU = 0x00080000
+        style = user32.GetWindowLongW(hwnd, GWL_STYLE)
+        user32.SetWindowLongW(hwnd, GWL_STYLE, style | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU)
+        user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0037)  # SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+    except Exception:
+        pass
+    try:
+        import ctypes
+        dwmapi = ctypes.windll.dwmapi
+        c_int = ctypes.c_int
+        byref = ctypes.byref
+        # DWMWA_BORDER_COLOR = 34 (0xFFFFFFFE = DWMWA_COLOR_NONE)
+        dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(0xFFFFFFFE)), 4)
+        # DWMWA_WINDOW_CORNER_PREFERENCE = 33 (2 = DWMWCP_ROUND)
+        dwmapi.DwmSetWindowAttribute(hwnd, 33, byref(c_int(2)), 4)
+        # DWMWA_CAPTION_COLOR = 35 (0x000B0909 = #09090b)
+        dwmapi.DwmSetWindowAttribute(hwnd, 35, byref(c_int(0x000B0909)), 4)
+    except Exception:
+        pass
+
+
 class WindowApi:
     def __init__(self, get_window):
         self._get_window = get_window
         self._saved_mac_frame = None
+        self._is_fullscreen = False
 
     def minimize(self):
         w = self._get_window()
@@ -186,11 +215,64 @@ class WindowApi:
         except Exception:
             pass
 
+    def is_fullscreen(self):
+        w = self._get_window()
+        if not w:
+            return bool(self._is_fullscreen)
+        if IS_WIN:
+            try:
+                form = w.gui.BrowserView.instances.get(w.uid)
+                if form and hasattr(form, "is_fullscreen"):
+                    return bool(form.is_fullscreen)
+            except Exception:
+                pass
+        elif IS_MAC and getattr(w, "native", None) is not None:
+            try:
+                if hasattr(w.native, "styleMask"):
+                    return bool(w.native.styleMask() & (1 << 14))
+            except Exception:
+                pass
+        return bool(getattr(w, "fullscreen", False) or self._is_fullscreen)
+
     def toggle_fullscreen(self):
         w = self._get_window()
-        if w:
+        if not w:
+            return
+        if self.is_fullscreen():
+            self.exit_fullscreen()
+        else:
+            self.enter_fullscreen()
+
+    def enter_fullscreen(self):
+        w = self._get_window()
+        if not w:
+            return
+        if self.is_fullscreen():
+            return
+        try:
+            w.toggle_fullscreen()
+            self._is_fullscreen = True
+            w.fullscreen = True
+        except Exception:
+            pass
+
+    def exit_fullscreen(self):
+        w = self._get_window()
+        if not w:
+            return
+        if not self.is_fullscreen():
+            return
+        try:
+            w.toggle_fullscreen()
+            self._is_fullscreen = False
+            w.fullscreen = False
+        except Exception:
+            pass
+        if IS_WIN:
             try:
-                w.toggle_fullscreen()
+                form = w.gui.BrowserView.instances.get(w.uid)
+                if form and form.Handle:
+                    apply_win32_window_styles(form.Handle.ToInt64())
             except Exception:
                 pass
 
@@ -266,14 +348,13 @@ class WindowApi:
         if not w:
             return {}
         try:
+            is_fs = self.is_fullscreen()
             if IS_MAC and getattr(w, "native", None) is not None:
                 import AppKit
                 frame = w.native.frame()
                 screen = AppKit.NSScreen.mainScreen().frame()
                 top_left_y = int(screen.size.height - (frame.origin.y + frame.size.height))
-                is_fs = bool(getattr(w, "fullscreen", False))
-                if hasattr(w.native, "styleMask"):
-                    is_fs = is_fs or bool(w.native.styleMask() & (1 << 14))
+                is_zoomed = bool(w.native.isZoomed()) if hasattr(w.native, "isZoomed") else bool(getattr(w, "maximized", False))
                 return {
                     "maximized": is_zoomed,
                     "fullscreen": is_fs,
@@ -285,7 +366,7 @@ class WindowApi:
                 }
             return {
                 "maximized": bool(getattr(w, "maximized", False)),
-                "fullscreen": bool(getattr(w, "fullscreen", False)),
+                "fullscreen": is_fs,
                 "width": int(w.width),
                 "height": int(w.height),
                 "x": int(w.x),
@@ -304,7 +385,10 @@ def handle_backend_window_action(action):
     if not desktop_window:
         return
     if action == "minimize":
-        desktop_window.minimize()
+        if window_api_instance:
+            window_api_instance.minimize()
+        else:
+            desktop_window.minimize()
     elif action == "maximize":
         if window_api_instance:
             window_api_instance.toggle_maximize()
@@ -313,12 +397,28 @@ def handle_backend_window_action(action):
         else:
             desktop_window.maximize()
     elif action == "fullscreen":
-        try:
-            desktop_window.toggle_fullscreen()
-        except Exception:
-            pass
+        if window_api_instance:
+            window_api_instance.toggle_fullscreen()
+        else:
+            try:
+                desktop_window.toggle_fullscreen()
+            except Exception:
+                pass
+    elif action == "enter_fullscreen":
+        if window_api_instance:
+            window_api_instance.enter_fullscreen()
+        else:
+            set_kino_fullscreen(True)
+    elif action == "exit_fullscreen":
+        if window_api_instance:
+            window_api_instance.exit_fullscreen()
+        else:
+            set_kino_fullscreen(False)
     elif action == "close":
-        desktop_window.destroy()
+        if window_api_instance:
+            window_api_instance.close()
+        else:
+            desktop_window.destroy()
     elif action == "hide":
         try:
             desktop_window.hide()
@@ -441,13 +541,22 @@ def dock_mpv_window(identifier):
 
 
 def set_kino_fullscreen(target_state: bool):
-    global desktop_window
+    global desktop_window, window_api_instance
     if not desktop_window:
+        return
+    if window_api_instance:
+        current = window_api_instance.is_fullscreen()
+        if bool(current) != bool(target_state):
+            if target_state:
+                window_api_instance.enter_fullscreen()
+            else:
+                window_api_instance.exit_fullscreen()
         return
     current = getattr(desktop_window, "fullscreen", False)
     if bool(current) != bool(target_state):
         try:
             desktop_window.toggle_fullscreen()
+            desktop_window.fullscreen = bool(target_state)
         except Exception:
             pass
 
@@ -475,19 +584,22 @@ def minimize_kino():
 
 
 def undock_mpv_window():
-    global CURRENT_DOCKED_MPV_HWND, desktop_window
+    global CURRENT_DOCKED_MPV_HWND, desktop_window, window_api_instance
     CURRENT_DOCKED_MPV_HWND = None
-    if desktop_window:
-        if getattr(desktop_window, "fullscreen", False):
-            try:
-                desktop_window.toggle_fullscreen()
-            except Exception:
-                pass
+    if window_api_instance and window_api_instance.is_fullscreen():
+        window_api_instance.exit_fullscreen()
+    elif desktop_window and getattr(desktop_window, "fullscreen", False):
+        try:
+            desktop_window.toggle_fullscreen()
+            desktop_window.fullscreen = False
+        except Exception:
+            pass
     if desktop_window and IS_WIN:
         try:
             form = desktop_window.gui.BrowserView.instances.get(desktop_window.uid)
             if form and form.Handle:
                 form_hwnd = form.Handle.ToInt64()
+                apply_win32_window_styles(form_hwnd)
                 user32.InvalidateRect(form_hwnd, None, True)
                 user32.UpdateWindow(form_hwnd)
                 user32.SetFocus(form_hwnd)
@@ -505,18 +617,11 @@ def configure_window_styles(w):
             if form and form.Handle:
                 hwnd = form.Handle.ToInt64()
                 try:
-                    import ctypes
-                    dwmapi = ctypes.windll.dwmapi
-                    c_int = ctypes.c_int
-                    byref = ctypes.byref
-                    # DWMWA_BORDER_COLOR = 34 (0xFFFFFFFE = DWMWA_COLOR_NONE, retire la bordure grise)
-                    dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(0xFFFFFFFE)), 4)
-                    # DWMWA_WINDOW_CORNER_PREFERENCE = 33 (2 = DWMWCP_ROUND, coins arrondis macos)
-                    dwmapi.DwmSetWindowAttribute(hwnd, 33, byref(c_int(2)), 4)
-                    # DWMWA_CAPTION_COLOR = 35 (0x000B0909 = #09090b)
-                    dwmapi.DwmSetWindowAttribute(hwnd, 35, byref(c_int(0x000B0909)), 4)
+                    form.MinimizeBox = True
+                    form.MaximizeBox = True
                 except Exception:
                     pass
+                apply_win32_window_styles(hwnd)
 
                 # Auto-redimensionnement du lecteur MPV intégré lors du redimensionnement de KINO
                 try:

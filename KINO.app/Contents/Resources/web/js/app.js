@@ -5710,6 +5710,7 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
 
 function closeInAppPlayer() {
   clearTimeout(inAppFallbackTimer);
+  exitInAppFullscreen();
   const overlay = document.getElementById('inAppPlayerOverlay');
   const video = document.getElementById('inAppVideo');
   const subOverlay = document.getElementById('inAppSubOverlay');
@@ -5797,15 +5798,71 @@ function inAppNextTrack() {
   }
 }
 
+async function exitInAppFullscreen() {
+  let wasFs = false;
+  try {
+    if (window.pywebview && window.pywebview.api) {
+      if (typeof window.pywebview.api.exit_fullscreen === 'function') {
+        await window.pywebview.api.exit_fullscreen();
+        wasFs = true;
+      } else if (typeof window.pywebview.api.is_fullscreen === 'function') {
+        const isFs = await window.pywebview.api.is_fullscreen();
+        if (isFs && window.pywebview.api.toggle_fullscreen) {
+          await window.pywebview.api.toggle_fullscreen();
+          wasFs = true;
+        }
+      }
+    }
+  } catch (e) {}
+
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    try {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
+      wasFs = true;
+    } catch (e) {}
+  }
+
+  try {
+    await api('/api/window/action', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'exit_fullscreen'})
+    });
+  } catch (e) {}
+
+  document.body.classList.remove('is-fullscreen');
+  updateInAppFsBtnUI();
+  setTimeout(syncWindowState, 80);
+  return wasFs;
+}
+
 async function toggleInAppFullscreen() {
   resetInAppIdleTimer();
 
+  const isCurrentlyFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  if (isCurrentlyFs) {
+    await exitInAppFullscreen();
+    return;
+  }
+
   // 1. Application de bureau pywebview native (Windows & macOS)
-  if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.toggle_fullscreen === 'function') {
+  if (window.pywebview && window.pywebview.api) {
     try {
-      window.pywebview.api.toggle_fullscreen();
-      setTimeout(syncWindowState, 80);
-      return;
+      if (typeof window.pywebview.api.enter_fullscreen === 'function') {
+        await window.pywebview.api.enter_fullscreen();
+        document.body.classList.add('is-fullscreen');
+        updateInAppFsBtnUI();
+        setTimeout(syncWindowState, 80);
+        return;
+      }
+      if (typeof window.pywebview.api.toggle_fullscreen === 'function') {
+        await window.pywebview.api.toggle_fullscreen();
+        document.body.classList.add('is-fullscreen');
+        updateInAppFsBtnUI();
+        setTimeout(syncWindowState, 80);
+        return;
+      }
     } catch (e) {
       console.debug('pywebview toggle_fullscreen fallback:', e);
     }
@@ -5816,9 +5873,11 @@ async function toggleInAppFullscreen() {
     const res = await api('/api/window/action', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({action: 'fullscreen'})
+      body: JSON.stringify({action: 'enter_fullscreen'})
     });
     if (res && res.ok) {
+      document.body.classList.add('is-fullscreen');
+      updateInAppFsBtnUI();
       setTimeout(syncWindowState, 80);
       return;
     }
@@ -6137,6 +6196,10 @@ window.addEventListener('keydown', (e) => {
         document.getElementById('torrentsPanel').style.display = 'none';
         return;
       }
+      if (document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement)) {
+        exitInAppFullscreen();
+        return;
+      }
     }
     return;
   }
@@ -6175,8 +6238,9 @@ window.addEventListener('keydown', (e) => {
       toggleShortcutsModal();
       return;
     }
-    if (document.fullscreenElement || document.body.classList.contains('is-fullscreen')) {
-      toggleInAppFullscreen();
+    const isFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    if (isFs) {
+      exitInAppFullscreen();
     } else {
       closeInAppPlayer();
     }
