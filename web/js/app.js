@@ -4811,7 +4811,9 @@ async function windowAction(action) {
         return;
       }
       if (action === 'fullscreen' && window.pywebview.api.toggle_fullscreen) {
-        window.pywebview.api.toggle_fullscreen();
+        const isFs = await window.pywebview.api.toggle_fullscreen();
+        document.body.classList.toggle('is-fullscreen', Boolean(isFs));
+        updateInAppFsBtnUI();
         setTimeout(syncWindowState, 80);
         return;
       }
@@ -5805,12 +5807,14 @@ async function exitInAppFullscreen() {
       if (typeof window.pywebview.api.exit_fullscreen === 'function') {
         await window.pywebview.api.exit_fullscreen();
         wasFs = true;
-      } else if (typeof window.pywebview.api.is_fullscreen === 'function') {
-        const isFs = await window.pywebview.api.is_fullscreen();
-        if (isFs && window.pywebview.api.toggle_fullscreen) {
-          await window.pywebview.api.toggle_fullscreen();
-          wasFs = true;
+      } else if (typeof window.pywebview.api.toggle_fullscreen === 'function') {
+        if (typeof window.pywebview.api.is_fullscreen === 'function') {
+          const isFs = await window.pywebview.api.is_fullscreen();
+          if (isFs) {
+            await window.pywebview.api.toggle_fullscreen();
+          }
         }
+        wasFs = true;
       }
     }
   } catch (e) {}
@@ -5823,13 +5827,15 @@ async function exitInAppFullscreen() {
     } catch (e) {}
   }
 
-  try {
-    await api('/api/window/action', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({action: 'exit_fullscreen'})
-    });
-  } catch (e) {}
+  if (!wasFs) {
+    try {
+      await api('/api/window/action', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'exit_fullscreen'})
+      });
+    } catch (e) {}
+  }
 
   document.body.classList.remove('is-fullscreen');
   updateInAppFsBtnUI();
@@ -5840,25 +5846,12 @@ async function exitInAppFullscreen() {
 async function toggleInAppFullscreen() {
   resetInAppIdleTimer();
 
-  const isCurrentlyFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-  if (isCurrentlyFs) {
-    await exitInAppFullscreen();
-    return;
-  }
-
   // 1. Application de bureau pywebview native (Windows & macOS)
   if (window.pywebview && window.pywebview.api) {
     try {
-      if (typeof window.pywebview.api.enter_fullscreen === 'function') {
-        await window.pywebview.api.enter_fullscreen();
-        document.body.classList.add('is-fullscreen');
-        updateInAppFsBtnUI();
-        setTimeout(syncWindowState, 80);
-        return;
-      }
       if (typeof window.pywebview.api.toggle_fullscreen === 'function') {
-        await window.pywebview.api.toggle_fullscreen();
-        document.body.classList.add('is-fullscreen');
+        const isFs = await window.pywebview.api.toggle_fullscreen();
+        document.body.classList.toggle('is-fullscreen', Boolean(isFs));
         updateInAppFsBtnUI();
         setTimeout(syncWindowState, 80);
         return;
@@ -5868,12 +5861,18 @@ async function toggleInAppFullscreen() {
     }
   }
 
-  // 2. Appel backend au contrôleur de fenêtre KINO
+  // 2. Mode Web App sans pywebview
+  const isCurrentlyFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  if (isCurrentlyFs) {
+    await exitInAppFullscreen();
+    return;
+  }
+
   try {
     const res = await api('/api/window/action', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({action: 'enter_fullscreen'})
+      body: JSON.stringify({action: 'fullscreen'})
     });
     if (res && res.ok) {
       document.body.classList.add('is-fullscreen');

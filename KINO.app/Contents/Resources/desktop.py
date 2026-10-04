@@ -124,16 +124,45 @@ def on_closed():
             pass
 
 
+FRAMELESS_HELPER = None
+
+
 def apply_win32_window_styles(hwnd):
+    global FRAMELESS_HELPER
     if not IS_WIN or not user32 or not hwnd:
         return
     try:
+        if FRAMELESS_HELPER is None:
+            import webview.platforms.winforms as wf
+            import System
+            import System.Windows.Forms as s_wf
+
+            class FramelessHelper(s_wf.NativeWindow):
+                def WndProc(self, m):
+                    if m.Msg == 0x0083:  # WM_NCCALCSIZE
+                        if m.WParam.ToInt64() != 0:
+                            m.Result = System.IntPtr(0)
+                            return
+                    super().WndProc(m)
+
+            FRAMELESS_HELPER = FramelessHelper()
+            FRAMELESS_HELPER.AssignHandle(System.IntPtr(hwnd))
+    except Exception:
+        pass
+    try:
         GWL_STYLE = -16
+        GWL_EXSTYLE = -20
+        WS_CAPTION = 0x00C00000
+        WS_THICKFRAME = 0x00040000
         WS_MINIMIZEBOX = 0x00020000
         WS_MAXIMIZEBOX = 0x00010000
         WS_SYSMENU = 0x00080000
+        WS_EX_APPWINDOW = 0x00040000
+
         style = user32.GetWindowLongW(hwnd, GWL_STYLE)
-        user32.SetWindowLongW(hwnd, GWL_STYLE, style | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU)
+        user32.SetWindowLongW(hwnd, GWL_STYLE, style | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU)
+        exstyle = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+        user32.SetWindowLongW(hwnd, GWL_EXSTYLE, exstyle | WS_EX_APPWINDOW)
         user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0037)  # SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
     except Exception:
         pass
@@ -166,7 +195,7 @@ class WindowApi:
     def toggle_maximize(self):
         w = self._get_window()
         if not w:
-            return
+            return False
         if IS_MAC and getattr(w, "native", None) is not None:
             try:
                 from PyObjCTools import AppHelper
@@ -177,7 +206,21 @@ class WindowApi:
                     w.maximized = bool(ns_win.isZoomed())
 
                 AppHelper.callAfter(_mac_zoom)
-                return
+                return True
+            except Exception:
+                pass
+        if IS_WIN:
+            try:
+                import System.Windows.Forms as s_wf
+                form = w.gui.BrowserView.instances.get(w.uid)
+                if form and hasattr(form, "WindowState"):
+                    if form.WindowState == s_wf.FormWindowState.Maximized:
+                        w.restore()
+                        w.maximized = False
+                    else:
+                        w.maximize()
+                        w.maximized = True
+                    return bool(w.maximized)
             except Exception:
                 pass
         if getattr(w, "maximized", False):
@@ -186,6 +229,7 @@ class WindowApi:
         else:
             w.maximize()
             w.maximized = True
+        return bool(w.maximized)
 
     def start_window_drag(self):
         if not IS_MAC:
@@ -232,42 +276,52 @@ class WindowApi:
                     return bool(w.native.styleMask() & (1 << 14))
             except Exception:
                 pass
-        return bool(getattr(w, "fullscreen", False) or self._is_fullscreen)
+        return bool(self._is_fullscreen or getattr(w, "fullscreen", False))
 
     def toggle_fullscreen(self):
         w = self._get_window()
         if not w:
-            return
-        if self.is_fullscreen():
-            self.exit_fullscreen()
-        else:
-            self.enter_fullscreen()
+            return False
+        try:
+            w.toggle_fullscreen()
+        except Exception:
+            pass
+        is_fs = self.is_fullscreen()
+        self._is_fullscreen = is_fs
+        w.fullscreen = is_fs
+        if IS_WIN and not is_fs:
+            try:
+                form = w.gui.BrowserView.instances.get(w.uid)
+                if form and form.Handle:
+                    apply_win32_window_styles(form.Handle.ToInt64())
+            except Exception:
+                pass
+        return is_fs
 
     def enter_fullscreen(self):
         w = self._get_window()
         if not w:
-            return
-        if self.is_fullscreen():
-            return
-        try:
-            w.toggle_fullscreen()
-            self._is_fullscreen = True
-            w.fullscreen = True
-        except Exception:
-            pass
+            return False
+        if not self.is_fullscreen():
+            try:
+                w.toggle_fullscreen()
+            except Exception:
+                pass
+        self._is_fullscreen = True
+        w.fullscreen = True
+        return True
 
     def exit_fullscreen(self):
         w = self._get_window()
         if not w:
-            return
-        if not self.is_fullscreen():
-            return
-        try:
-            w.toggle_fullscreen()
-            self._is_fullscreen = False
-            w.fullscreen = False
-        except Exception:
-            pass
+            return False
+        if self.is_fullscreen():
+            try:
+                w.toggle_fullscreen()
+            except Exception:
+                pass
+        self._is_fullscreen = False
+        w.fullscreen = False
         if IS_WIN:
             try:
                 form = w.gui.BrowserView.instances.get(w.uid)
@@ -275,6 +329,7 @@ class WindowApi:
                     apply_win32_window_styles(form.Handle.ToInt64())
             except Exception:
                 pass
+        return False
 
     def close(self):
         w = self._get_window()
@@ -364,8 +419,17 @@ class WindowApi:
                     "y": top_left_y,
                     "platform": sys.platform,
                 }
+            is_max = bool(getattr(w, "maximized", False))
+            if IS_WIN:
+                try:
+                    import System.Windows.Forms as s_wf
+                    form = w.gui.BrowserView.instances.get(w.uid)
+                    if form and hasattr(form, "WindowState"):
+                        is_max = bool(form.WindowState == s_wf.FormWindowState.Maximized)
+                except Exception:
+                    pass
             return {
-                "maximized": bool(getattr(w, "maximized", False)),
+                "maximized": is_max,
                 "fullscreen": is_fs,
                 "width": int(w.width),
                 "height": int(w.height),
