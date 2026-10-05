@@ -139,9 +139,8 @@ WIN32_SUBCLASS_PROC = None
 
 def win32_custom_wndproc(hwnd, msg, wparam, lparam):
     global WIN32_ORIG_WNDPROC
-    if msg == 0x0083:  # WM_NCCALCSIZE
-        if wparam != 0:
-            return 0
+    if msg == 0x0083:  # WM_NCCALCSIZE : 100% de la surface de la fenetre est cliente (aucune barre native)
+        return 0
     elif msg == 0x0112:  # WM_SYSCOMMAND
         cmd = wparam & 0xFFF0
         if cmd == 0xF020:  # SC_MINIMIZE
@@ -189,7 +188,9 @@ def apply_win32_window_styles(hwnd):
         WS_EX_APPWINDOW = 0x00040000
 
         style = user32.GetWindowLongW(hwnd, GWL_STYLE)
-        user32.SetWindowLongW(hwnd, GWL_STYLE, style | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU)
+        # SUPPRIMER formellement WS_CAPTION pour qu'aucune barre native Windows n'apparaisse
+        new_style = (style & ~WS_CAPTION) | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU
+        user32.SetWindowLongW(hwnd, GWL_STYLE, new_style)
         exstyle = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
         user32.SetWindowLongW(hwnd, GWL_EXSTYLE, exstyle | WS_EX_APPWINDOW)
         user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0037)  # SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
@@ -829,11 +830,6 @@ def configure_window_styles(w):
             form = w.gui.BrowserView.instances.get(w.uid)
             if form and form.Handle:
                 hwnd = form.Handle.ToInt64()
-                try:
-                    form.MinimizeBox = True
-                    form.MaximizeBox = True
-                except Exception:
-                    pass
                 apply_win32_window_styles(hwnd)
                 try:
                     def hooked_form_toggle():
