@@ -2680,6 +2680,7 @@ function onDiscordPresetChange() {
 async function saveConfig() {
   const debrid_provider = document.getElementById('cfgProvider') ? document.getElementById('cfgProvider').value : 'realdebrid';
   const token = document.getElementById('cfgToken') ? document.getElementById('cfgToken').value.trim() : '';
+  const dir = document.getElementById('cfgDir') ? document.getElementById('cfgDir').value.trim() : '';
   const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
   const player_mode = document.getElementById('cfgPlayerMode') ? document.getElementById('cfgPlayerMode').value : (window.kinoPlayerMode || (isMacPlatform ? 'integrated' : 'kino'));
   const pref_lang = document.getElementById('cfgPrefLang') ? document.getElementById('cfgPrefLang').value : 'vf';
@@ -2767,20 +2768,22 @@ async function testCurrentToken(btn) {
   }
 
   try {
-    const res = await api('/api/test-token', {
+    const url = resolveKinoUrl('/api/test-token');
+    const resp = await fetch(url, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({provider: prov, token: tok})
     });
-    if (res.ok && res.user) {
+    const res = await resp.json().catch(() => ({}));
+    if (resp.ok && res.ok && res.user) {
       const exp = res.user.premium > 0 ? `${Math.ceil(res.user.premium / 86400)} jours` : 'Gratuit';
       resEl.style.background = 'rgba(74, 222, 128, 0.12)';
       resEl.style.color = '#4ade80';
       resEl.style.borderColor = 'rgba(74, 222, 128, 0.35)';
-      resEl.innerHTML = `<strong>✓ Clé valide !</strong> Compte <strong>@${escapeHtml(res.user.username)}</strong> (${exp} Premium restants). Pensez à cliquer sur <em>Enregistrer les paramètres</em> ci-dessous.`;
+      resEl.innerHTML = `<strong>✓ Clé valide !</strong> Compte <strong>@${escapeHtml(res.user.username)}</strong> (${exp} Premium restants). Cliquez sur <em>Enregistrer les paramètres</em> en bas pour la conserver.`;
       checkConfig();
     } else {
-      const errMsg = res.error || 'Clé refusée par le fournisseur';
+      const errMsg = res.error || (resp.status === 404 ? "Moteur de test en cours de rechargement. Vous pouvez enregistrer directement votre clé ci-dessous." : `Erreur serveur (${resp.status})`);
       const isBadToken = /bad_token|401|invalide/i.test(errMsg);
       resEl.style.background = 'rgba(239, 68, 68, 0.12)';
       resEl.style.color = '#ef4444';
@@ -2789,7 +2792,7 @@ async function testCurrentToken(btn) {
         resEl.innerHTML = `<strong>✗ Clé refusée par Real-Debrid ("bad_token")</strong><br>
           <span style="font-size:0.75rem; color:#fca5a5; line-height:1.4; display:block; margin-top:3px;">
             Real-Debrid indique que cette clé est invalide, a été révoquée ou que votre abonnement Premium est expiré.<br>
-            1. Vérifiez sur <a href="https://real-debrid.com/apitoken" target="_blank" style="color:#fff; text-decoration:underline;">real-debrid.com/apitoken</a> que vous avez bien copié la clé active.<br>
+            1. Rendez-vous sur <a href="https://real-debrid.com/apitoken" target="_blank" style="color:#fff; text-decoration:underline;">real-debrid.com/apitoken</a> pour copier votre clé active.<br>
             2. Collez-la dans ce champ puis cliquez sur <strong>Enregistrer les paramètres</strong> en bas.
           </span>`;
       } else {
