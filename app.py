@@ -574,8 +574,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                 updates = {}
                 if body.get("debrid_provider"):
                     updates["debrid_provider"] = body["debrid_provider"].strip().lower()
-                if body.get("rd_token"):
-                    updates["rd_token"] = body["rd_token"].strip()
+                new_token = (body.get("rd_token") or "").strip()
+                if new_token:
+                    updates["rd_token"] = new_token
                 if body.get("download_dir"):
                     updates["download_dir"] = body["download_dir"].strip()
                 if body.get("player_mode"):
@@ -595,7 +596,34 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if "discord_client_id" in body and body["discord_client_id"] is not None:
                     updates["discord_client_id"] = str(body["discord_client_id"]).strip()
                 save_config(updates)
-                self.send_json({"ok": True})
+
+                # Validation immédiate auprès du fournisseur débrideur
+                check_result = None
+                prov = updates.get("debrid_provider") or load_config().get("debrid_provider", "realdebrid")
+                target_tok = new_token or load_config().get("rd_token", "")
+                if target_tok:
+                    try:
+                        check_result = rd_get_user(target_tok, provider=prov)
+                    except Exception as err:
+                        check_result = {"error": str(err)}
+
+                self.send_json({"ok": True, "token_check": check_result})
+                return
+
+            if parsed.path == "/api/test-token":
+                prov = (body.get("provider") or "realdebrid").strip().lower()
+                tok = (body.get("token") or "").strip()
+                if not tok:
+                    cfg = load_config()
+                    tok = cfg.get("provider_tokens", {}).get(prov) or cfg.get("rd_token", "")
+                if not tok:
+                    self.send_json({"ok": False, "error": "Aucune clé API renseignée."})
+                    return
+                try:
+                    user_info = rd_get_user(tok, provider=prov)
+                    self.send_json({"ok": True, "user": user_info})
+                except Exception as e:
+                    self.send_json({"ok": False, "error": str(e)})
                 return
 
             if parsed.path == "/api/discord-rpc/update":

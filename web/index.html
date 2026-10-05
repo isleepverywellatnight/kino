@@ -499,13 +499,17 @@
         </div>
 
         <div class="settings-field">
-          <label class="settings-label" for="cfgToken" id="cfgTokenLabel">Clé API Débrideur</label>
-          <div style="position:relative; display:flex; align-items:center;">
-            <input type="password" id="cfgToken" placeholder="Laisser vide pour conserver la clé actuelle" style="width:100%; padding-right:38px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label class="settings-label" for="cfgToken" id="cfgTokenLabel" style="margin-bottom:0;">Clé API Débrideur</label>
+            <button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="testCurrentToken(this)" title="Tester la clé immédiatement">Tester la clé</button>
+          </div>
+          <div style="position:relative; display:flex; align-items:center; margin-top:6px;">
+            <input type="password" id="cfgToken" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Laisser vide pour conserver la clé actuelle" style="width:100%; padding-right:38px;">
             <button type="button" onclick="togglePasswordVisibility('cfgToken', this)" style="position:absolute; right:8px; background:none; border:none; color:var(--muted); cursor:pointer; padding:4px;" title="Afficher ou masquer la clé">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
           </div>
+          <div id="cfgTokenTestResult" style="margin-top:6px; font-size:0.78rem; display:none; padding:6px 10px; border-radius:6px;"></div>
           <div class="settings-desc">La clé reste stockée localement de manière sécurisée sur votre ordinateur.</div>
         </div>
 

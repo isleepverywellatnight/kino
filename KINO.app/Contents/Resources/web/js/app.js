@@ -2710,7 +2710,7 @@ async function saveConfig() {
   }
 
   try {
-    await api('/api/config', {
+    const resp = await api('/api/config', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({debrid_provider, rd_token: token, download_dir: dir, player_mode, pref_lang, pref_quality, hdr_mode, audio_mode, rd_retention_days, discord_rpc, discord_client_id})
@@ -2721,12 +2721,18 @@ async function saveConfig() {
     if (document.getElementById('cfgToken')) document.getElementById('cfgToken').value = '';
     await checkConfig();
     if (saveStatus) {
-      saveStatus.innerHTML = '<span style="color:#4ade80; font-weight:600;">✓ Paramètres enregistrés avec succès</span>';
+      if (resp && resp.token_check && resp.token_check.error) {
+        saveStatus.innerHTML = `<span style="color:#ef4444; font-weight:600;">⚠ Paramètres enregistrés mais la clé a été rejetée par ${debrid_provider} (${escapeHtml(resp.token_check.error)})</span>`;
+      } else if (resp && resp.token_check && resp.token_check.username) {
+        saveStatus.innerHTML = `<span style="color:#4ade80; font-weight:600;">✓ Compte débrideur connecté (@${escapeHtml(resp.token_check.username)})</span>`;
+      } else {
+        saveStatus.innerHTML = '<span style="color:#4ade80; font-weight:600;">✓ Paramètres enregistrés avec succès</span>';
+      }
       setTimeout(() => {
         if (saveStatus && saveStatus.innerHTML.includes('succès')) {
           saveStatus.innerHTML = '<span style="color:var(--muted);">Tous les paramètres sont à jour.</span>';
         }
-      }, 4000);
+      }, 5000);
     }
     if (activeTab === 'rdcloud') loadRdCloud();
   } catch (e) {
@@ -2737,6 +2743,71 @@ async function saveConfig() {
     if (saveBtn) {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Enregistrer les paramètres';
+    }
+  }
+}
+
+async function testCurrentToken(btn) {
+  const inp = document.getElementById('cfgToken');
+  const resEl = document.getElementById('cfgTokenTestResult');
+  const provEl = document.getElementById('cfgProvider');
+  const prov = provEl ? provEl.value : 'realdebrid';
+  const tok = inp ? inp.value.trim() : '';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Test...';
+  }
+  if (resEl) {
+    resEl.style.display = 'block';
+    resEl.style.background = 'rgba(255,255,255,0.05)';
+    resEl.style.color = 'var(--muted)';
+    resEl.style.border = '1px solid var(--border)';
+    resEl.innerHTML = 'Vérification de la clé en cours auprès du serveur...';
+  }
+
+  try {
+    const res = await api('/api/test-token', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({provider: prov, token: tok})
+    });
+    if (res.ok && res.user) {
+      const exp = res.user.premium > 0 ? `${Math.ceil(res.user.premium / 86400)} jours` : 'Gratuit';
+      resEl.style.background = 'rgba(74, 222, 128, 0.12)';
+      resEl.style.color = '#4ade80';
+      resEl.style.borderColor = 'rgba(74, 222, 128, 0.35)';
+      resEl.innerHTML = `<strong>✓ Clé valide !</strong> Compte <strong>@${escapeHtml(res.user.username)}</strong> (${exp} Premium restants). Pensez à cliquer sur <em>Enregistrer les paramètres</em> ci-dessous.`;
+      checkConfig();
+    } else {
+      const errMsg = res.error || 'Clé refusée par le fournisseur';
+      const isBadToken = /bad_token|401|invalide/i.test(errMsg);
+      resEl.style.background = 'rgba(239, 68, 68, 0.12)';
+      resEl.style.color = '#ef4444';
+      resEl.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+      if (isBadToken) {
+        resEl.innerHTML = `<strong>✗ Clé refusée par Real-Debrid ("bad_token")</strong><br>
+          <span style="font-size:0.75rem; color:#fca5a5; line-height:1.4; display:block; margin-top:3px;">
+            Real-Debrid indique que cette clé est invalide, a été révoquée ou que votre abonnement Premium est expiré.<br>
+            1. Vérifiez sur <a href="https://real-debrid.com/apitoken" target="_blank" style="color:#fff; text-decoration:underline;">real-debrid.com/apitoken</a> que vous avez bien copié la clé active.<br>
+            2. Collez-la dans ce champ puis cliquez sur <strong>Enregistrer les paramètres</strong> en bas.
+          </span>`;
+      } else {
+        resEl.innerHTML = `<strong>✗ Erreur :</strong> ${escapeHtml(errMsg)}`;
+      }
+    }
+  } catch (e) {
+    if (resEl) {
+      resEl.style.display = 'block';
+      resEl.style.background = 'rgba(239, 68, 68, 0.12)';
+      resEl.style.color = '#ef4444';
+      resEl.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+      resEl.innerHTML = `<strong>✗ Erreur :</strong> ${escapeHtml(e.message)}`;
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Tester la clé';
     }
   }
 }

@@ -405,7 +405,31 @@
         return { status: 'ok' };
       }
 
-      // 10. /api/remote/qr
+      // 10. /api/test-token
+      if (pathname === '/api/test-token') {
+        const body = typeof opts.body === 'string' ? JSON.parse(opts.body) : (opts.body || {});
+        const tok = (body.token || this.token || localStorage.getItem('kino_rd_token') || '').trim();
+        const prov = (body.provider || this.provider || 'realdebrid').toLowerCase();
+        if (!tok) return { ok: false, error: 'Aucune clé API renseignée.' };
+        if (prov === 'realdebrid') {
+          try {
+            const resp = await fetch('https://api.real-debrid.com/rest/1.0/user', {
+              headers: { 'Authorization': `Bearer ${tok}` }
+            });
+            if (!resp.ok) {
+              const errData = await resp.json().catch(() => ({}));
+              return { ok: false, error: errData.error || `Erreur HTTP ${resp.status}` };
+            }
+            const u = await resp.json();
+            return { ok: true, user: u };
+          } catch (e) {
+            return { ok: false, error: e.message };
+          }
+        }
+        return { ok: true, user: { username: 'Utilisateur', premium: 86400 * 30 } };
+      }
+
+      // 11. /api/remote/qr
       if (pathname === '/api/remote/qr') {
         return { url: window.location.href };
       }
