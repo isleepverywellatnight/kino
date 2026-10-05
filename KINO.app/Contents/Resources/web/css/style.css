@@ -87,7 +87,7 @@
     background: var(--bg);
     border-top: none !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 14px 28px;
+    padding: 14px clamp(16px, 2.5vw, 44px);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -309,7 +309,20 @@
     text-transform: uppercase;
     color: var(--dim);
   }
-  .container { max-width: 1200px; margin: 18px auto 28px auto; padding: 0 20px; }
+  .container {
+    width: 100%;
+    max-width: 1840px;
+    margin: 18px auto 36px auto;
+    padding: 0 clamp(16px, 2.5vw, 44px);
+    box-sizing: border-box;
+    transition: max-width 0.2s ease, padding 0.2s ease;
+  }
+  @media (min-width: 2200px) {
+    .container {
+      max-width: 2400px;
+      padding: 0 clamp(24px, 3.5vw, 64px);
+    }
+  }
   .search-box {
     display: flex;
     gap: 8px;
@@ -700,8 +713,8 @@
 
   .resume-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(clamp(250px, 17vw, 340px), 1fr));
+    gap: clamp(14px, 1.4vw, 20px);
     margin-top: 14px;
   }
   .resume-card {
@@ -856,8 +869,8 @@
 
   .posters-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 10.5vw, 195px), 1fr));
+    gap: clamp(14px, 1.4vw, 22px);
     margin-top: 14px;
   }
   .poster-card {
@@ -1288,14 +1301,14 @@
   .detail-hero-content {
     position: relative;
     z-index: 2;
-    padding: 30px 32px 24px 32px;
+    padding: clamp(24px, 2.5vw, 36px) clamp(24px, 3vw, 44px);
     display: flex;
-    gap: 28px;
+    gap: clamp(20px, 2.5vw, 36px);
     align-items: flex-start;
     flex-wrap: wrap;
   }
   .detail-poster-cinematic {
-    width: 175px;
+    width: clamp(160px, 11vw, 210px);
     aspect-ratio: 2/3;
     object-fit: cover;
     border-radius: 8px;
@@ -1312,10 +1325,10 @@
     gap: 12px;
   }
   .detail-title-cinematic {
-    font-size: 1.65rem;
+    font-size: clamp(1.65rem, 2.2vw, 2.4rem);
     font-weight: 700;
     letter-spacing: -0.025em;
-    line-height: 1.25;
+    line-height: 1.2;
     color: #fff;
   }
   .detail-meta-row {
@@ -1381,9 +1394,9 @@
   }
   .detail-desc {
     color: #d4d4d8;
-    font-size: 0.88rem;
-    line-height: 1.55;
-    max-width: 820px;
+    font-size: clamp(0.88rem, 0.95vw, 0.98rem);
+    line-height: 1.58;
+    max-width: clamp(800px, 58vw, 1200px);
   }
   .detail-credits {
     color: var(--dim);
@@ -2097,17 +2110,17 @@
   /* Hero Spotlight Banner */
   .hero-spotlight {
     position: relative;
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
     border: 1px solid var(--border);
     background: #09090b;
-    min-height: 280px;
-    margin-bottom: 20px;
+    min-height: clamp(300px, 32vh, 460px);
+    margin-bottom: 22px;
     display: flex;
     align-items: flex-end;
-    padding: 24px 26px;
+    padding: clamp(24px, 3vw, 44px);
     background-size: cover;
-    background-position: center 22%;
+    background-position: center 25%;
     transition: background-image 0.35s ease;
   }
   .hero-spotlight::before {
@@ -2121,27 +2134,27 @@
   .hero-content {
     position: relative;
     z-index: 2;
-    max-width: 620px;
+    max-width: clamp(580px, 50vw, 880px);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
   }
   .hero-kicker {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--muted);
     font-weight: 600;
   }
   .hero-title {
-    font-size: 1.75rem;
+    font-size: clamp(1.75rem, 2.5vw, 2.75rem);
     font-weight: 700;
     color: #fafafa;
     letter-spacing: -0.02em;
     line-height: 1.15;
   }
   .hero-meta {
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     color: var(--muted);
     display: flex;
     gap: 10px;
@@ -2149,11 +2162,11 @@
     flex-wrap: wrap;
   }
   .hero-desc {
-    font-size: 0.84rem;
+    font-size: clamp(0.85rem, 0.95vw, 0.96rem);
     color: #d4d4d8;
-    line-height: 1.48;
+    line-height: 1.54;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -2579,4 +2592,156 @@
     font-size: 0.76rem;
     padding: 7px 10px;
     border-radius: 6px;
+  }
+
+  /* ==========================================================================
+     KINO BIG PICTURE & GAMEPAD TV NAVIGATION ENGINE
+     ========================================================================== */
+
+  /* Focus universel KINO (Manette / Clavier) */
+  .kino-focused {
+    outline: none !important;
+    position: relative;
+    z-index: 20 !important;
+    transform: scale(1.04) translateY(-3px) !important;
+    box-shadow: 0 0 0 2.5px #ffffff, 0 16px 36px rgba(0, 0, 0, 0.75), 0 0 20px rgba(255, 255, 255, 0.28) !important;
+    border-color: #ffffff !important;
+    transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.16s ease !important;
+  }
+
+  /* Affichage de la bulle de lecture sur les posters quand focusés */
+  .poster-card.kino-focused .poster-play-bubble,
+  .poster-card.kino-focused .poster-play-hint {
+    opacity: 1 !important;
+    transform: translate(-50%, -50%) scale(1.1) !important;
+  }
+
+  .poster-card.kino-focused img,
+  .card.kino-focused img {
+    filter: saturate(1.12) !important;
+  }
+
+  /* Focus sur les boutons, onglets et éléments d'action */
+  button.kino-focused,
+  .nav-tab.kino-focused,
+  .lib-subtab.kino-focused,
+  .header-tool-btn.kino-focused,
+  .btn.kino-focused,
+  .filter-btn.kino-focused,
+  .genre-pill.kino-focused,
+  .season-btn.kino-focused,
+  .ep-item.kino-focused,
+  .torrent-item.kino-focused {
+    transform: scale(1.05) !important;
+    box-shadow: 0 0 0 2px #ffffff, 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+    border-color: #ffffff !important;
+  }
+
+  /* Badge Manette dans le Header */
+  #gamepadHeaderBtn.active {
+    background: rgba(34, 197, 94, 0.14) !important;
+    border-color: rgba(34, 197, 94, 0.45) !important;
+    color: #4ade80 !important;
+  }
+
+  #gamepadHeaderBtn.active .btn-icon {
+    animation: gamepad-pulse 2.2s infinite ease-in-out;
+  }
+
+  @keyframes gamepad-pulse {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0px #22c55e); }
+    50% { transform: scale(1.15); filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.8)); }
+  }
+
+  /* Toast global KINO (Mode TV & Notifications système) */
+  .kino-global-toast {
+    position: fixed;
+    bottom: 26px;
+    right: 26px;
+    background: rgba(18, 18, 22, 0.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    padding: 12px 18px;
+    color: #fafafa;
+    font-size: 0.86rem;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 999999;
+    transform: translateY(24px) scale(0.95);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .kino-global-toast.show {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .kino-global-toast-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    font-size: 1.15rem;
+    flex-shrink: 0;
+  }
+
+  .kino-global-toast-content {
+    line-height: 1.35;
+  }
+
+  /* Onglets de la modale Raccourcis (Clavier vs Manette) */
+  .shortcuts-tab-bar {
+    display: flex;
+    gap: 8px;
+    margin: 14px 0 16px 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  .shortcut-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+
+  .shortcut-tab-btn:hover {
+    color: var(--text);
+    background: var(--surface-2);
+  }
+
+  .shortcut-tab-btn.active {
+    color: #ffffff;
+    background: var(--surface);
+    border: 1px solid var(--border-hover);
+  }
+
+  .gamepad-badge {
+    background: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 6px;
+    padding: 2px 7px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #e4e4e7;
+    font-family: monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   }

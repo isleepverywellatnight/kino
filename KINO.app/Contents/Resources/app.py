@@ -484,11 +484,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                 })
                 return
 
-            if parsed.path == "/api/sync/gdrive":
-                res = kino_db.db_sync_gdrive()
-                self.send_json(res)
-                return
-
             if parsed.path == "/api/rd-history":
                 cfg = load_config()
                 prov = cfg.get("debrid_provider", "realdebrid")
@@ -717,11 +712,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                     self.send_json({"ok": True, "history": hist})
                     return
                 self.send_json({"ok": True})
-                return
-
-            if parsed.path == "/api/sync/gdrive":
-                res = kino_db.db_sync_gdrive()
-                self.send_json(res)
                 return
 
             if parsed.path == "/api/window/action":

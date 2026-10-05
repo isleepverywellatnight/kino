@@ -41,11 +41,34 @@ function onConfigProviderChange() {
   }
 }
 
+function resolveKinoUrl(url) {
+  if (!url) return '';
+  const base = (window.KINO_SERVER_HOST || '').replace(/\/+$/, '');
+  if (base && url.startsWith('/')) {
+    return `${base}${url}`;
+  }
+  return url;
+}
+
 async function api(path, opts) {
-  const res = await fetch(path, opts);
-  const data = await res.json();
-  if (!res.ok || data.error) throw new Error(data.error || 'Erreur serveur');
-  return data;
+  if (window.StandaloneEngine && window.StandaloneEngine.active) {
+    return await window.StandaloneEngine.handleApi(path, opts);
+  }
+
+  const url = resolveKinoUrl(path);
+  try {
+    const res = await fetch(url, opts);
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Erreur serveur');
+    return data;
+  } catch (err) {
+    // Si le serveur local Python n'est pas joignable, basculer instantanément en mode 100% autonome
+    if (window.StandaloneEngine && !window.StandaloneEngine.active) {
+      window.StandaloneEngine.enableStandaloneMode();
+      return await window.StandaloneEngine.handleApi(path, opts);
+    }
+    throw err;
+  }
 }
 
 async function checkConfig() {
@@ -2128,7 +2151,6 @@ async function switchTab(tab) {
     if (hs) hs.style.display = 'none';
     if (statsEl) statsEl.style.display = 'none';
     document.getElementById('homeResumeSection').style.display = 'none';
-    triggerGdriveSync();
     checkTraktStatus();
     checkConfig();
     window.scrollTo({top: 0, behavior: 'smooth'});
@@ -2592,26 +2614,6 @@ function togglePasswordVisibility(inputId, btn) {
   }
 }
 
-async function triggerGdriveSync(btn) {
-  if (btn) { btn.disabled = true; btn.textContent = 'En cours...'; }
-  try {
-    const res = await api('/api/sync/gdrive');
-    const el = document.getElementById('gdriveSyncStatus');
-    if (res && res.status === 'synced') {
-      const d = new Date((res.updated_at || Date.now()/1000) * 1000);
-      const timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      if (el) el.innerHTML = `<span style="color:#4ade80;">✓ Synchronisé (${res.history_count || 0} films, ${res.watchlist_count || 0} favoris) à ${timeStr}</span>`;
-      if (typeof loadUserData === 'function') await loadUserData();
-    } else {
-      if (el) el.innerHTML = `<span style="color:var(--muted);">${(res && res.message) ? res.message : 'Google Drive non détecté'}</span>`;
-    }
-  } catch(e) {
-    const el = document.getElementById('gdriveSyncStatus');
-    if (el) el.innerHTML = `<span style="color:#ef4444;">Erreur : ${e.message}</span>`;
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Synchroniser'; }
-  }
-}
 
 function toggleDiscordRpcFields() {
   const chk = document.getElementById('cfgDiscordRpc');
@@ -3603,11 +3605,33 @@ window.addEventListener('drop', async (e) => {
 let searchSuggestItems = [];
 let searchSuggestIndex = -1;
 
-function toggleShortcutsModal() {
+function toggleShortcutsModal(initialTab = 'keyboard') {
   const m = document.getElementById('shortcutsModal');
   if (!m) return;
   const isOpen = m.style.display === 'flex';
   m.style.display = isOpen ? 'none' : 'flex';
+  if (!isOpen) {
+    switchShortcutTab(initialTab);
+  }
+}
+
+function switchShortcutTab(tab) {
+  const btnKbd = document.getElementById('btnShortcutKeyboard');
+  const btnGp = document.getElementById('btnShortcutGamepad');
+  const secKbd = document.getElementById('shortcutSectionKeyboard');
+  const secGp = document.getElementById('shortcutSectionGamepad');
+
+  if (tab === 'gamepad') {
+    if (btnGp) btnGp.classList.add('active');
+    if (btnKbd) btnKbd.classList.remove('active');
+    if (secGp) secGp.style.display = 'grid';
+    if (secKbd) secKbd.style.display = 'none';
+  } else {
+    if (btnKbd) btnKbd.classList.add('active');
+    if (btnGp) btnGp.classList.remove('active');
+    if (secKbd) secKbd.style.display = 'grid';
+    if (secGp) secGp.style.display = 'none';
+  }
 }
 
 function initSearchPlatformShortcuts() {
@@ -5134,7 +5158,7 @@ function fixInAppAudio() {
   const curSec = Math.floor(video.currentTime || 0);
   const remuxUrl = `/api/remux?url=${encodeURIComponent(inAppCurrentUrl)}&ss=${curSec}`;
   showInAppToast('<strong>Conversion Audio AAC compatible en cours...</strong><br><span style="font-size:0.78rem; color:var(--muted);">Remuxing audio instantané stéréo sans perte vidéo</span>', 2800);
-  video.src = remuxUrl;
+  video.src = resolveKinoUrl(remuxUrl);
   video.load();
   video.muted = false;
   video._userMuted = false;
@@ -5701,7 +5725,7 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
       video.addEventListener('playing', remuxPlaying, { once: true });
       video.addEventListener('error', remuxError, { once: true });
       const curSec = Math.floor(video.currentTime || resumeSec || 0);
-      video.src = `/api/remux?url=${encodeURIComponent(streamUrl)}&ss=${curSec}`;
+      video.src = resolveKinoUrl(`/api/remux?url=${encodeURIComponent(streamUrl)}&ss=${curSec}`);
       video.load();
       video.play().catch(() => {});
       inAppFallbackTimer = setTimeout(() => {
@@ -5727,7 +5751,7 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
   video.addEventListener('playing', video._onPlayingHandler, { once: true });
   video.addEventListener('error', video._onErrorHandler, { once: true });
 
-  video.src = streamUrl;
+  video.src = resolveKinoUrl(streamUrl);
   video.load();
 
   const playPromise = video.play();

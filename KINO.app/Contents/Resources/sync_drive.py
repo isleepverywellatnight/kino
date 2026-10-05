@@ -82,21 +82,10 @@ def run_sync(silent=False):
         try:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
-            if not silent:
                 print(f"[SYNC DRIVE] Erreur rsync : {e}")
 
-    # 2. Synchronisation de la base SQLite vers kino_sync.json
-    try:
-        import kino_db
-        res = kino_db.db_sync_gdrive()
-        if not silent and res.get("status") == "synced":
-            print(f"[SYNC DRIVE] Base KINO synchronisee ({res.get('watchlist_count', 0)} watchlist, {res.get('history_count', 0)} historique).")
-    except Exception as e:
-        if not silent:
-            print(f"[SYNC DRIVE] Avertissement sync BD : {e}")
-
     if not silent:
-        print(f"[SYNC DRIVE] Synchronisation terminee avec succes a {time.strftime('%H:%M:%S')}.")
+        print(f"[SYNC DRIVE] Code KINO synchronisé avec succès à {time.strftime('%H:%M:%S')}.")
     return True
 
 

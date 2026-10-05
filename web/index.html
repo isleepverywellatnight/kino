@@ -140,15 +140,6 @@
             <span class="hdi-desc">Ouvrir l'emplacement local des vidéos</span>
           </div>
         </div>
-        <div class="header-dropdown-item" onclick="triggerGdriveSync(); closeHeaderMenu();">
-          <span class="hdi-icon">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-          </span>
-          <div class="hdi-content">
-            <span class="hdi-title">Synchronisation Cloud</span>
-            <span class="hdi-desc">Synchroniser Google Drive (Mac ⇄ PC)</span>
-          </div>
-        </div>
         <div class="header-dropdown-divider"></div>
         <div class="header-dropdown-item" onclick="toggleShortcutsModal(); closeHeaderMenu();">
           <span class="hdi-icon">
@@ -587,30 +578,11 @@
         <div class="settings-card-header">
           <div class="settings-card-title">
             <span class="settings-card-icon">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#ed1c24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
             </span>
-            <span>Synchronisations &amp; Sauvegardes</span>
+            <span>Intégration Trakt.tv</span>
           </div>
-          <span class="settings-card-badge">Multiplateforme</span>
-        </div>
-
-        <!-- Google Drive Sync -->
-        <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:13px; display:flex; flex-direction:column; gap:10px;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-            <div>
-              <div style="font-size:0.84rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:7px;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-                <span>Google Drive (Mac ⇄ Windows)</span>
-              </div>
-              <div class="settings-desc" style="margin-top:2px;">
-                Synchronisation transparente de l'historique et des favoris entre votre Mac et votre PC.
-              </div>
-            </div>
-            <button type="button" class="btn btn-secondary" style="padding:5px 12px; font-size:0.75rem; white-space:nowrap;" onclick="triggerGdriveSync(this)">Synchroniser</button>
-          </div>
-          <div id="gdriveSyncStatus" style="font-size:0.75rem; color:var(--dim); padding:6px 10px; background:var(--surface-2); border-radius:6px;">
-            Détection automatique du Google Drive...
-          </div>
+          <span class="settings-card-badge">Cloud</span>
         </div>
 
         <!-- Trakt.tv -->
