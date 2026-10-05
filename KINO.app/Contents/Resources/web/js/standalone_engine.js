@@ -372,16 +372,30 @@
       if (pathname === '/api/history-record' || pathname === '/api/watched-toggle') {
         if (opts.method === 'POST') {
           const body = typeof opts.body === 'string' ? JSON.parse(opts.body) : (opts.body || {});
+          const m = body.media || body;
           let hist = JSON.parse(localStorage.getItem('kino_tv_history') || '[]');
-          if (body.id) {
-            const idx = hist.findIndex(x => x.id === body.id);
-            if (idx >= 0) hist.splice(idx, 1);
+          const itemId = m.id || m.filename;
+          if (itemId) {
+            const idx = hist.findIndex(x => x.id === itemId);
+            const prev = idx >= 0 ? hist.splice(idx, 1)[0] : {};
+            const dur = Number(m.duration || prev.duration || 0);
+            const pos = Number(m.position || prev.position || 0);
+            const pct = dur > 0 ? Math.round((pos / dur) * 100) : Number(m.progress_pct || prev.progress_pct || 0);
             hist.unshift({
-              id: body.id,
-              name: body.title || body.name || 'Média',
-              poster: body.poster || '',
-              position: body.position || 0,
-              duration: body.duration || 0,
+              ...prev,
+              ...m,
+              id: itemId,
+              name: m.name || prev.name || m.title || 'Média',
+              title: m.title || prev.title || m.name || '',
+              type: m.type || prev.type || 'movie',
+              season: m.season !== undefined ? m.season : prev.season,
+              episode: m.episode !== undefined ? m.episode : prev.episode,
+              year: m.year || prev.year || '',
+              poster: m.poster || prev.poster || '',
+              position: pos,
+              duration: dur,
+              progress_pct: pct,
+              completed: Boolean(m.completed || pct >= 85),
               updated_at: Date.now() / 1000
             });
             if (hist.length > 100) hist.pop();

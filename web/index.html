@@ -267,17 +267,31 @@
     <div id="torrentsList" class="torrent-list"></div>
   </div>
 
+  <!-- Bannière Hero Spotlight Cinéma -->
+  <div id="heroSpotlight" class="hero-spotlight" style="display:none;"></div>
+
   <!-- Bandeau Reprendre la lecture (affiché sur l'accueil) -->
-  <div id="homeResumeSection" style="display:none;">
-    <div class="section-header">
-      <span class="section-title">Reprendre la lecture</span>
-      <button class="btn btn-secondary" style="padding:4px 9px; font-size:0.74rem;" onclick="clearAllHistory()">Effacer</button>
+  <div id="homeResumeSection" class="home-resume-section" style="display:none;">
+    <div class="resume-section-header">
+      <div class="resume-section-title-wrap">
+        <span class="resume-section-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </span>
+        <span class="resume-section-title">Reprendre la lecture</span>
+        <span id="resumeCountBadge" class="resume-count-badge"></span>
+      </div>
+      <button class="resume-clear-btn" onclick="clearAllHistory()" title="Effacer l'historique des lectures en cours">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+        <span>Effacer</span>
+      </button>
     </div>
     <div id="homeResumeGrid" class="resume-grid"></div>
   </div>
-
-  <!-- Bannière Hero Spotlight Cinéma -->
-  <div id="heroSpotlight" class="hero-spotlight" style="display:none;"></div>
 
   <!-- Section Catalogue / Grille principale -->
   <div id="catalogHeader" class="section-header" style="flex-direction:column; align-items:stretch; gap:10px;">

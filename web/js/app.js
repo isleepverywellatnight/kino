@@ -307,9 +307,33 @@ function getSeriesTargetEpisode(h) {
   };
 }
 
+function resolveMediaTitle(h) {
+  let n = (h.name || '').trim();
+  const generic = !n || ['série', 'film', 'séries', 'films', 'média', 'media', 'movie', 'series'].includes(n.toLowerCase());
+  if (generic) {
+    const ref = (userWatchlist || []).find(x => x.id === h.id) || (catalogItems || []).find(x => x.id === h.id);
+    if (ref && ref.name && !['série', 'film', 'séries', 'films', 'média', 'media'].includes(ref.name.toLowerCase())) {
+      return ref.name;
+    }
+    if (h.title && !['série', 'film', 'séries', 'films', 'média', 'media'].includes(h.title.toLowerCase())) {
+      n = h.title;
+    } else if (h.filename) {
+      n = h.filename;
+    }
+  }
+  if (n) {
+    n = n.replace(/\.(mkv|mp4|avi|ts|mov)$/i, '');
+    n = n.replace(/\s*[—–-]\s*S\d+E\d+.*$/i, '');
+    n = n.replace(/\b(1080p|720p|2160p|4k|uhd|bluray|bdrip|web-dl|webrip|hdlight|x264|x265|hevc|multi|vostfr|vf|french|truefrench)\b.*$/gi, '').trim();
+    n = n.replace(/[\._]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  return n || (h.type === 'series' ? 'Série' : 'Film');
+}
+
 function renderHomeResume() {
   const sec = document.getElementById('homeResumeSection');
   const grid = document.getElementById('homeResumeGrid');
+  const countBadge = document.getElementById('resumeCountBadge');
   const inProg = getInProgressHistory();
   if (activeTab !== 'movies' && activeTab !== 'series' && activeTab !== 'history') {
     sec.style.display = 'none';
@@ -317,6 +341,7 @@ function renderHomeResume() {
   }
   const items = activeTab === 'history' ? inProg : inProg.slice(0, 4);
   if (!items.length) {
+    if (countBadge) countBadge.style.display = 'none';
     if (activeTab === 'history') {
       sec.style.display = 'block';
       grid.innerHTML = '<p style="color:var(--dim); font-size:0.84rem; grid-column:1/-1;">Aucune lecture en cours pour le moment. Vos films terminés se trouvent dans l\'onglet <strong>Déjà vus</strong>.</p>';
@@ -326,8 +351,13 @@ function renderHomeResume() {
     return;
   }
   sec.style.display = 'block';
+  if (countBadge) {
+    countBadge.textContent = items.length;
+    countBadge.style.display = 'inline-flex';
+  }
   grid.innerHTML = items.map(h => {
     const isSeries = h.type === 'series';
+    const cleanName = resolveMediaTitle(h);
     const epTag = isSeries && h.season && h.episode
       ? `S${String(h.season).padStart(2,'0')}E${String(h.episode).padStart(2,'0')}`
       : '';
@@ -347,14 +377,14 @@ function renderHomeResume() {
         <div class="resume-progress-fill" style="width:${Math.min(100, pct)}%;"></div>
       </div>
     ` : '';
-    const mediaPayload = JSON.stringify({id: h.id, name: h.name, type: h.type || 'movie', year: h.year || '', poster: h.poster || ''}).replace(/'/g, "&#39;");
+    const mediaPayload = JSON.stringify({id: h.id, name: cleanName, type: h.type || 'movie', year: h.year || '', poster: h.poster || ''}).replace(/'/g, "&#39;");
     const resumePayload = JSON.stringify({
       imdb_id: h.id,
       type: h.type || 'movie',
       season: h.season || 1,
       episode: h.episode || 1,
-      title: isSeries ? `${h.name} — ${epTag}` : h.name,
-      name: h.name,
+      title: isSeries ? `${cleanName} — ${epTag}` : cleanName,
+      name: cleanName,
       poster: h.poster || '',
       year: h.year || ''
     }).replace(/'/g, "&#39;");
@@ -363,8 +393,8 @@ function renderHomeResume() {
       type: 'series',
       season: nextS || 1,
       episode: nextEp || 1,
-      title: `${h.name} — ${nextTag}`,
-      name: h.name,
+      title: `${cleanName} — ${nextTag}`,
+      name: cleanName,
       poster: h.poster || '',
       year: h.year || ''
     }).replace(/'/g, "&#39;") : '';
@@ -374,29 +404,47 @@ function renderHomeResume() {
 
     const buttonsHtml = (isSeries && isEpDone)
       ? `
-        <button class="btn" style="padding:6px 12px; font-size:0.75rem;" onclick='oneClickPlay(${nextPayload}, this)'>Épisode suivant (${nextTag})</button>
-        <button class="btn btn-secondary" style="padding:6px 10px; font-size:0.75rem;" onclick='oneClickPlay(${resumePayload}, this)'>Revoir ${epTag}</button>
+        <button class="resume-btn resume-btn-primary" onclick='oneClickPlay(${nextPayload}, this)'>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Épisode suivant (${nextTag})</span>
+        </button>
+        <button class="resume-btn resume-btn-secondary" onclick='oneClickPlay(${resumePayload}, this)' title="Revoir ${epTag}">
+          <span>Revoir ${epTag}</span>
+        </button>
       `
       : `
-        <button class="btn" style="padding:6px 12px; font-size:0.75rem;" onclick='oneClickPlay(${resumePayload}, this)'>Reprendre ${epTag}</button>
-        ${isSeries ? `<button class="btn btn-secondary" style="padding:6px 10px; font-size:0.75rem;" onclick='oneClickPlay(${nextPayload}, this)'>Suivant (${nextTag})</button>` : ''}
+        <button class="resume-btn resume-btn-primary" onclick='oneClickPlay(${resumePayload}, this)'>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Reprendre ${epTag ? `(${epTag})` : ''}</span>
+        </button>
+        ${isSeries && nextTag ? `
+          <button class="resume-btn resume-btn-secondary" onclick='oneClickPlay(${nextPayload}, this)' title="Passer directement au prochain épisode">
+            <span>Suivant (${nextTag})</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        ` : ''}
       `;
 
     return `
       <div class="resume-card">
         <div class="resume-thumb-wrap" onclick='oneClickPlay(${primaryPlayPayload}, this)' title="Reprendre la lecture">
-          <img class="resume-thumb-img" src="${thumbUrl}" alt="${h.name}" onerror="if(this.src !== '${h.poster || ''}' && '${h.poster || ''}') { this.src='${h.poster}'; } else { this.style.opacity=0.08; }">
+          <img class="resume-thumb-img" src="${thumbUrl}" alt="${cleanName}" onerror="if(this.src !== '${h.poster || ''}' && '${h.poster || ''}') { this.src='${h.poster}'; } else { this.style.opacity=0.08; }">
           <div class="resume-thumb-overlay">
             <div class="resume-play-bubble">
               <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </div>
           </div>
           ${epTag ? `<span class="resume-badge-tag">${epTag}</span>` : (h.type === 'movie' ? `<span class="resume-badge-tag">Film</span>` : '')}
-          <button class="resume-dismiss-btn" onclick='event.stopPropagation(); removeHistoryItem(${JSON.stringify(h.id)})' title="Retirer">×</button>
+          <button class="resume-dismiss-btn" onclick='event.stopPropagation(); removeHistoryItem(${JSON.stringify(h.id)})' title="Retirer des lectures en cours">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
           ${progBar}
         </div>
         <div class="resume-card-body">
-          <div class="resume-title" onclick='selectMedia(${mediaPayload})' title="${h.name}">${h.name}</div>
+          <div class="resume-title" onclick='selectMedia(${mediaPayload})' title="${cleanName}">${cleanName}</div>
           <div class="resume-subinfo">${subInfo}</div>
           <div class="resume-actions-row">
             ${buttonsHtml}
