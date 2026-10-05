@@ -143,6 +143,17 @@ async function checkConfig() {
     }
     toggleDiscordRpcFields();
     window.kinoPlayerMode = effPlayerMode;
+
+    const lbxUser = (cfg.letterboxd_user || window.savedLetterboxdUser || '').trim();
+    if (lbxUser) {
+      window.savedLetterboxdUser = lbxUser;
+      const lbxInp = document.getElementById('cfgLetterboxdUser');
+      if (lbxInp && !lbxInp.value) lbxInp.value = lbxUser;
+      const lbxSt = document.getElementById('lbxSettingsStatus');
+      if (lbxSt) {
+        lbxSt.innerHTML = `<span style="color:#00e054; font-weight:600;">✓ Connecté (@${escapeHtml(lbxUser)})</span>`;
+      }
+    }
     const cfgAccTitle = document.getElementById('cfgAccountTitle');
     const cfgAccSub = document.getElementById('cfgAccountSub');
     const cfgAccBadge = document.getElementById('cfgAccountBadge');
@@ -2700,6 +2711,8 @@ async function saveConfig() {
     }
   }
 
+  const letterboxd_user = document.getElementById('cfgLetterboxdUser') ? document.getElementById('cfgLetterboxdUser').value.trim() : '';
+
   const saveBtn = document.getElementById('settingsSaveBtn');
   const saveStatus = document.getElementById('settingsSaveStatus');
   if (saveBtn) {
@@ -2714,7 +2727,7 @@ async function saveConfig() {
     const resp = await api('/api/config', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({debrid_provider, rd_token: token, download_dir: dir, player_mode, pref_lang, pref_quality, hdr_mode, audio_mode, rd_retention_days, discord_rpc, discord_client_id})
+      body: JSON.stringify({debrid_provider, rd_token: token, download_dir: dir, player_mode, pref_lang, pref_quality, hdr_mode, audio_mode, rd_retention_days, discord_rpc, discord_client_id, letterboxd_user})
     });
     window.kinoPlayerMode = player_mode;
     window.kinoHdrMode = hdr_mode;
@@ -2940,6 +2953,72 @@ async function triggerTraktSync(btn) {
     alert('Erreur Trakt sync : ' + e.message);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Synchroniser'; }
+  }
+}
+
+async function triggerLetterboxdSettingsSync(btn) {
+  const inp = document.getElementById('cfgLetterboxdUser');
+  const user = (inp ? inp.value.trim() : (window.savedLetterboxdUser || '')).replace(/^@/, '');
+  const statusEl = document.getElementById('lbxSettingsStatus');
+
+  if (!user) {
+    if (statusEl) {
+      statusEl.style.color = '#f87171';
+      statusEl.textContent = 'Indiquez votre pseudo Letterboxd avant de synchroniser.';
+    }
+    if (inp) inp.focus();
+    return;
+  }
+
+  const origTxt = btn ? btn.textContent : 'Synchroniser';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Synchro...';
+  }
+  if (statusEl) {
+    statusEl.style.color = '#fbbf24';
+    statusEl.textContent = `Synchronisation avec @${user}...`;
+  }
+
+  try {
+    const res = await api('/api/import-letterboxd', {
+      method: 'POST',
+      body: JSON.stringify({
+        url_or_user: user,
+        csv_text: '',
+        mode: 'both'
+      })
+    });
+    userWatchlist = res.watchlist || [];
+    if (res.history) userHistory = res.history;
+    window.savedLetterboxdUser = user;
+    updateListBadges();
+    renderHomeResume();
+    if (activeTab === 'watchlist' || activeTab === 'watched') {
+      renderActiveListTab();
+    } else if (activeTab === 'movies' || activeTab === 'series' || activeTab === 'classics') {
+      updateClassicsStatsBadge();
+      renderPosterCards(catalogItems, activeTab === 'series' ? 'series' : 'movie');
+    }
+    if (statusEl) {
+      statusEl.style.color = '#00e054';
+      statusEl.innerHTML = `<strong>✓ Synchronisé</strong> (@${escapeHtml(user)} : +${res.added_wl_count || 0} dans Ma Liste, +${res.added_watched_count || 0} dans Déjà vus)`;
+    }
+    api('/api/config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({letterboxd_user: user})
+    }).catch(() => {});
+  } catch (err) {
+    if (statusEl) {
+      statusEl.style.color = '#f87171';
+      statusEl.textContent = `Erreur : ${err.message}`;
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = origTxt;
+    }
   }
 }
 

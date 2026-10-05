@@ -367,6 +367,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "rd_retention_days": ret_days,
                     "discord_rpc": cfg.get("discord_rpc", True),
                     "discord_client_id": cfg.get("discord_client_id", "631379801826918400"),
+                    "letterboxd_user": cfg.get("letterboxd_user", ""),
                 })
                 return
 
@@ -595,6 +596,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                     updates["discord_rpc"] = bool(body["discord_rpc"])
                 if "discord_client_id" in body and body["discord_client_id"] is not None:
                     updates["discord_client_id"] = str(body["discord_client_id"]).strip()
+                if "letterboxd_user" in body and body["letterboxd_user"] is not None:
+                    updates["letterboxd_user"] = str(body["letterboxd_user"]).strip().lstrip("@")
                 save_config(updates)
 
                 # Validation immédiate auprès du fournisseur débrideur
