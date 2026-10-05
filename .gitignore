@@ -47,3 +47,5 @@ config.json
 test_anime_match.py
 KINO_export_ai.zip
 KINO_codebase_context.md
+build_tizen/
+*.wgt
