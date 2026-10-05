@@ -522,17 +522,15 @@
           <span class="settings-card-badge">Moteur Natif</span>
         </div>
 
-        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:0.78rem;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-            <div style="font-weight:600; color:#fafafa; display:flex; align-items:center; gap:6px;">
-              <span>Moteur KINO Natif (MPV Ultra HD)</span>
-            </div>
-            <span style="font-size:0.7rem; color:#4ade80; background:rgba(74,222,128,0.12); padding:2px 7px; border-radius:4px; font-weight:600;">Actif</span>
+        <div class="settings-field" style="margin-bottom:12px;">
+          <label class="settings-label" for="cfgPlayerMode">Moteur de Lecture</label>
+          <select id="cfgPlayerMode">
+            <option value="integrated">Lecteur KINO Intégré (In-App WebKit / Metal — Direct dans l'app)</option>
+            <option value="external">Lecteur Externe (IINA / MPV / VLC)</option>
+          </select>
+          <div class="settings-desc">
+            Le lecteur intégré joue la vidéo directement à l'intérieur de la fenêtre KINO (avec sous-titres, plein écran immersif et Picture-in-Picture).
           </div>
-          <p style="margin:0; color:var(--dim); font-size:0.73rem; line-height:1.45;">
-            Lecteur intégré dans la fenêtre avec accélération matérielle, Tone-Mapping HDR / Dolby Vision dynamique, décodage sans perte (DTS, TrueHD, Atmos) et sous-titres animés ASS.
-          </p>
-          <input type="hidden" id="cfgPlayerMode" value="kino">
         </div>
 
         <div class="settings-field-row">

@@ -15,7 +15,11 @@ import sys
 import zipfile
 from pathlib import Path
 from PIL import Image
-import pycdlib
+try:
+    import pycdlib
+except ImportError:
+    pycdlib = None
+
 
 BASE_DIR = Path(__file__).resolve().parent
 DIST_DIR = BASE_DIR / "dist"
@@ -267,11 +271,43 @@ Bon visionnage avec KINO !
 
 
 def build_dmg(app_path: Path, readme_path: Path):
-    """Génère KINO.dmg avec pycdlib (Rock Ridge + Joliet + Symlink vers /Applications)."""
+    """Génère KINO.dmg nativement avec hdiutil sur macOS, ou avec pycdlib en fallback cross-plateforme."""
     dmg_path = DIST_DIR / "KINO.dmg"
     print(f"--> Génération de {dmg_path.name}...")
     if dmg_path.exists():
         dmg_path.unlink()
+
+    if sys.platform == "darwin" and shutil.which("hdiutil"):
+        import subprocess
+        import tempfile
+        with tempfile.TemporaryDirectory() as staging:
+            staging_path = Path(staging)
+            shutil.copytree(app_path, staging_path / "KINO.app", symlinks=True)
+            if readme_path.exists():
+                shutil.copy2(readme_path, staging_path / "LISEZMOI_INSTALLATION.txt")
+            try:
+                os.symlink("/Applications", staging_path / "Applications")
+            except Exception:
+                pass
+            cmd = [
+                "hdiutil", "create",
+                "-volname", "KINO",
+                "-srcfolder", str(staging_path),
+                "-ov",
+                "-format", "UDZO",
+                str(dmg_path)
+            ]
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode == 0:
+                dmg_size_mb = dmg_path.stat().st_size / (1024 * 1024)
+                print(f" [OK] {dmg_path.name} créé nativement via hdiutil ({dmg_size_mb:.2f} Mo).")
+                return
+            else:
+                print(f" [!] hdiutil a échoué: {res.stderr}")
+
+    if not pycdlib:
+        print(f" [!] Ni hdiutil ni pycdlib n'est disponible. Le fichier {dmg_path.name} n'a pas été créé.")
+        return
 
     iso = pycdlib.PyCdlib()
     iso.new(interchange_level=3, rock_ridge="1.09", joliet=3, vol_ident="KINO")

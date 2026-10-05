@@ -1038,6 +1038,13 @@ def main():
     app.SET_MAXIMIZED = set_kino_maximized
     app.MINIMIZE_WINDOW = minimize_kino
 
+    try:
+        import config
+        for _k in ["WINDOW_ACTION_CALLBACK", "GET_WINDOW_GEOMETRY", "GET_FORM_HWND", "DOCK_MPV_WINDOW", "UNDOCK_MPV_WINDOW", "SET_FULLSCREEN", "SET_MAXIMIZED", "MINIMIZE_WINDOW"]:
+            setattr(config, _k, getattr(app, _k))
+    except Exception:
+        pass
+
     if IS_MAC:
         install_macos_hooks()
 

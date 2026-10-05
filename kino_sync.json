@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": 1791060605.370493,
+  "updated_at": 1791083826.859489,
   "device": "Darwin",
   "config": {
     "addons_enabled": {
@@ -151,6 +151,25 @@
     }
   ],
   "history": [
+    {
+      "id": "tt2359704",
+      "data": {
+        "id": "tt2359704",
+        "name": "Série",
+        "type": "series",
+        "year": "2012–",
+        "poster": "https://images.metahub.space/poster/small/tt2359704/img",
+        "season": 6,
+        "episode": 4,
+        "filename": "4",
+        "next_season": 6,
+        "next_episode": 5,
+        "watched_episodes": [],
+        "ep_positions": {},
+        "last_watched": 1791083613.22051
+      },
+      "last_watched": 1791083613.22051
+    },
     {
       "id": "tt33764258",
       "data": {

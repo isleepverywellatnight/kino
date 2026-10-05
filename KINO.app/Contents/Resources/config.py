@@ -142,7 +142,7 @@ def load_config():
         "provider_tokens": {},
         "rd_token": "",
         "download_dir": str(DEFAULT_DOWNLOAD_DIR),
-        "player_mode": "kino",
+        "player_mode": "integrated" if sys.platform == "darwin" else "kino",
         "pref_lang": "vf",
         "pref_quality": "4k",
         "hdr_mode": "sdr_pref",
@@ -168,7 +168,8 @@ def load_config():
 
     active_prov = cfg["debrid_provider"]
     cfg["rd_token"] = cfg["provider_tokens"].get(active_prov, "")
-    cfg["player_mode"] = "kino"
+    if "player_mode" not in cfg or not cfg["player_mode"]:
+        cfg["player_mode"] = "integrated" if sys.platform == "darwin" else "kino"
 
     cfg["watchlist"] = kino_db.db_get_watchlist()
     cfg["history"] = kino_db.db_get_history()
@@ -211,7 +212,10 @@ def save_config(new_data):
             discord_rpc.discord_rpc.set_client_id(cid)
 
     cfg.update(new_data)
-    cfg["player_mode"] = "kino"
+    if "player_mode" in new_data and new_data["player_mode"]:
+        cfg["player_mode"] = str(new_data["player_mode"]).strip().lower()
+    elif "player_mode" not in cfg or not cfg["player_mode"]:
+        cfg["player_mode"] = "integrated" if sys.platform == "darwin" else "kino"
     cfg["debrid_provider"] = target_prov
     cfg["provider_tokens"] = prov_tokens
     cfg["rd_token"] = prov_tokens.get(target_prov, "")

@@ -73,8 +73,10 @@ async function checkConfig() {
     }
 
     document.getElementById('cfgDir').value = cfg.download_dir || '';
+    const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
+    const effPlayerMode = (cfg.player_mode && cfg.player_mode !== 'kino') ? cfg.player_mode : (isMacPlatform ? 'integrated' : 'kino');
     if (document.getElementById('cfgPlayerMode')) {
-      document.getElementById('cfgPlayerMode').value = cfg.player_mode || 'kino';
+      document.getElementById('cfgPlayerMode').value = (effPlayerMode === 'external') ? 'external' : 'integrated';
     }
     if (document.getElementById('cfgPrefLang')) {
       document.getElementById('cfgPrefLang').value = cfg.pref_lang || 'vf';
@@ -117,7 +119,7 @@ async function checkConfig() {
       }
     }
     toggleDiscordRpcFields();
-    window.kinoPlayerMode = cfg.player_mode || 'kino';
+    window.kinoPlayerMode = effPlayerMode;
     const cfgAccTitle = document.getElementById('cfgAccountTitle');
     const cfgAccSub = document.getElementById('cfgAccountSub');
     const cfgAccBadge = document.getElementById('cfgAccountBadge');
@@ -2628,8 +2630,8 @@ function onDiscordPresetChange() {
 async function saveConfig() {
   const debrid_provider = document.getElementById('cfgProvider') ? document.getElementById('cfgProvider').value : 'realdebrid';
   const token = document.getElementById('cfgToken') ? document.getElementById('cfgToken').value.trim() : '';
-  const dir = document.getElementById('cfgDir') ? document.getElementById('cfgDir').value.trim() : '';
-  const player_mode = document.getElementById('cfgPlayerMode') ? document.getElementById('cfgPlayerMode').value : 'kino';
+  const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
+  const player_mode = document.getElementById('cfgPlayerMode') ? document.getElementById('cfgPlayerMode').value : (window.kinoPlayerMode || (isMacPlatform ? 'integrated' : 'kino'));
   const pref_lang = document.getElementById('cfgPrefLang') ? document.getElementById('cfgPrefLang').value : 'vf';
   const pref_quality = document.getElementById('cfgPrefQuality') ? document.getElementById('cfgPrefQuality').value : '4k';
   const hdr_mode = document.getElementById('cfgHdrMode') ? document.getElementById('cfgHdrMode').value : 'sdr_pref';
@@ -3899,8 +3901,9 @@ async function oneClickPlay(params, btn) {
     btn.innerHTML = 'Play...';
   }
 
+  const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
   if (!params.player_mode) {
-    params.player_mode = window.kinoPlayerMode || 'kino';
+    params.player_mode = window.kinoPlayerMode || (isMacPlatform ? 'integrated' : 'kino');
   }
 
   const box = document.getElementById('debridResultPanel');
@@ -3921,6 +3924,12 @@ async function oneClickPlay(params, btn) {
     const plCount = (res.mpv && res.mpv.playlist_count) ? res.mpv.playlist_count : 1;
     renderDebridState(res.debrid, params.season, params.episode, res.chosen_torrent, plCount);
     refreshUserLists();
+
+    const isIntegrated = res.mpv?.mode === 'integrated' || params.player_mode === 'integrated' || (params.player_mode !== 'external' && isMacPlatform);
+    if (res.stream_url && isIntegrated) {
+      const pl = (res.playlist && res.playlist.length) ? res.playlist : [{ title: params.title, url: res.stream_url }];
+      openInAppPlayer(res.stream_url, params.title, pl, currentMedia, res.resume_sec || 0);
+    }
 
   } catch (e) {
     box.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${e.message}</p>`;
@@ -4720,13 +4729,40 @@ async function openMpv(btn, url, filename) {
     btn.disabled = true;
     btn.innerHTML = 'Play...';
   }
-  const s = currentMedia && currentMedia.type === 'series' ? document.getElementById('seasonSelect').value : null;
-  const e = currentMedia && currentMedia.type === 'series' ? document.getElementById('episodeSelect').value : null;
+  const s = currentMedia && currentMedia.type === 'series' ? document.getElementById('seasonSelect')?.value : null;
+  const e = currentMedia && currentMedia.type === 'series' ? document.getElementById('episodeSelect')?.value : null;
   let packFiles = null;
   if (window.lastDebridFiles && window.lastDebridFiles.length > 1 && window.lastDebridFiles.some(f => f.download === url)) {
     const sorted = [...window.lastDebridFiles].sort((a, b) => (a.filename || '').localeCompare(b.filename || ''));
     const idx = sorted.findIndex(f => f.download === url);
     if (idx >= 0) packFiles = sorted.slice(idx);
+  }
+
+  const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
+  const isIntegrated = window.kinoPlayerMode === 'integrated' || (window.kinoPlayerMode !== 'external' && isMacPlatform);
+  if (isIntegrated) {
+    const pl = (packFiles && packFiles.length > 1)
+      ? packFiles.map(p => ({ title: p.filename, url: p.download }))
+      : [{ title: filename, url: url }];
+    const histItem = userHistory.find(h => h.id === currentMedia?.id);
+    let resumeSec = 0;
+    if (histItem) {
+      if (s && e && histItem.ep_positions) {
+        resumeSec = histItem.ep_positions[`s${s}e${e}`]?.position || 0;
+      } else {
+        resumeSec = histItem.position || 0;
+      }
+    }
+    openInAppPlayer(url, filename, pl, currentMedia, resumeSec);
+    if (btn) btn.innerHTML = 'Lancé';
+    refreshUserLists();
+    if (btn) {
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+      }, 2500);
+    }
+    return;
   }
 
 
@@ -5647,9 +5683,36 @@ function openInAppPlayer(streamUrl, title, playlist = null, media = null, resume
 
   const onFallbackRequired = (reason) => {
     if (playbackStarted || fallbackTriggered) return;
-    fallbackTriggered = true;
     clearTimeout(inAppFallbackTimer);
-    showInAppToast(`Flux 4K/MKV non décodable dans le navigateur.<br><strong>Lancement instantané du moteur KINO...</strong>`, 2600);
+    if (!video.src.includes('/api/remux')) {
+      showInAppToast(`Format conteneur MKV/Audio non natif.<br><strong>Remuxing vidéo/audio instantané...</strong>`, 2200);
+      video.removeEventListener('playing', video._onPlayingHandler || (() => {}));
+      video.removeEventListener('error', video._onErrorHandler || (() => {}));
+      const remuxPlaying = () => {
+        playbackStarted = true;
+        clearTimeout(inAppFallbackTimer);
+        hideInAppToast();
+      };
+      const remuxError = () => {
+        fallbackTriggered = true;
+        showInAppToast(`Flux non décodable dans le navigateur.<br><strong>Lancement du lecteur externe...</strong>`, 2600);
+        setTimeout(switchToExternalPlayer, 600);
+      };
+      video.addEventListener('playing', remuxPlaying, { once: true });
+      video.addEventListener('error', remuxError, { once: true });
+      const curSec = Math.floor(video.currentTime || resumeSec || 0);
+      video.src = `/api/remux?url=${encodeURIComponent(streamUrl)}&ss=${curSec}`;
+      video.load();
+      video.play().catch(() => {});
+      inAppFallbackTimer = setTimeout(() => {
+        if (!playbackStarted && (video.paused || video.readyState === 0)) {
+          remuxError();
+        }
+      }, 5000);
+      return;
+    }
+    fallbackTriggered = true;
+    showInAppToast(`Flux 4K/MKV non décodable dans le navigateur.<br><strong>Lancement du lecteur externe...</strong>`, 2600);
     setTimeout(() => {
       switchToExternalPlayer();
     }, 600);

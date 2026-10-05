@@ -769,7 +769,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 episode = body.get("episode", 1)
                 title = body.get("title", "KINO")
                 series_name = body.get("name") or title.split(" — ")[0]
-                player_mode = body.get("player_mode") or cfg.get("player_mode", "kino")
+                player_mode = str(body.get("player_mode") or cfg.get("player_mode") or ("integrated" if sys.platform == "darwin" else "kino")).lower()
 
                 runtime_min = 0
                 if imdb_id and mtype == "movie":
@@ -840,7 +840,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                                 "filename": target_file["filename"],
                             } if imdb_id else None
                             mpv_info = None
-                            if player_mode in ("external", "kino"):
+                            is_integrated = (player_mode == "integrated") or (sys.platform == "darwin" and player_mode != "external")
+                            if not is_integrated:
                                 mpv_info = launch_mpv(
                                     target_file["download"],
                                     title,
