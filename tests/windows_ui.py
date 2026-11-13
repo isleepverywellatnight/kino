@@ -279,6 +279,12 @@ def main():
                 return {cls: el.className, x: Math.round(r.x), w: Math.round(r.width), top: hit === el || el.contains(hit),
                         hit: hit ? (hit.id || hit.className || hit.tagName) : null, inner: innerWidth};
             })""")
+            corner = page.screenshot(clip={"x": page.evaluate("innerWidth") - 200, "y": 0, "width": 200, "height": 60}, type="jpeg")
+            print(f"SCREENSHOT player-corner-page\n{base64.b64encode(corner).decode()}\nEND SCREENSHOT", flush=True)
+            print("player corner styles:", json.dumps(page.evaluate("""() => { const el = document.querySelector('.inapp-hud-top .win-close');
+                const svg = el.querySelector('svg'), path = el.querySelector('path'), cs = getComputedStyle(el), ps = getComputedStyle(path);
+                return {color: cs.color, bg: cs.backgroundColor, svgDisplay: getComputedStyle(svg).display, stroke: ps.stroke, strokeWidth: ps.strokeWidth,
+                        opacity: cs.opacity, filter: cs.filter, html: el.outerHTML.slice(0, 400)}; }""")), flush=True)
             check("player shows the three Windows buttons", len(buttons) == 3 and all(b["top"] and b["w"] > 0 for b in buttons),
                   json.dumps(buttons))
             before = window_rect(hwnd)
