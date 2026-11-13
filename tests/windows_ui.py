@@ -264,11 +264,12 @@ def main():
                 # Maximize button: the work area, taskbar visible; again: back.
                 before = window_rect(hwnd)
                 click(*center_of(page, hwnd, "header .win-max"))
-                page.wait_for_timeout(400)
+                page.wait_for_timeout(600)
                 check("maximize fills the work area", window_rect(hwnd) == work_area(hwnd),
                       f"{window_rect(hwnd)} vs {work_area(hwnd)}")
                 check("restore icon when maximized", page.evaluate("document.body.classList.contains('is-maximized')"))
                 screenshot("maximized", hwnd)
+                page.wait_for_function("innerWidth === %d" % (work_area(hwnd)[2] / page.evaluate("devicePixelRatio")), timeout=5000)
                 click(*center_of(page, hwnd, "header .win-max"))
                 page.wait_for_timeout(400)
                 check("restore returns", window_rect(hwnd) == before, f"{window_rect(hwnd)} vs {before}")
@@ -281,8 +282,12 @@ def main():
                 down(); time.sleep(0.05); up()
                 time.sleep(0.6)
                 check("double press maximizes", window_rect(hwnd) == work_area(hwnd), f"{window_rect(hwnd)}")
+                # Wait for the page to lay out at the new size before aiming at a button.
+                page.wait_for_function("innerWidth === %d" % (work_area(hwnd)[2] / page.evaluate("devicePixelRatio")), timeout=5000)
+                page.wait_for_timeout(300)
                 click(*center_of(page, hwnd, "header .win-max"))
-                page.wait_for_timeout(400)
+                page.wait_for_timeout(600)
+                check("restore after double press", window_rect(hwnd) != work_area(hwnd), f"{window_rect(hwnd)}")
 
             # The player: its buttons do not move the window.
             page.evaluate("(url) => openInAppPlayer(url, 'Test KINO')", video_url)
@@ -337,6 +342,7 @@ def main():
             page.wait_for_timeout(800)
             browser.close()
     finally:
+        print(f"KINO still running at the end: {kino.poll() is None} (exit code {kino.poll()})", flush=True)
         kino.terminate()
         try:
             kino.wait(10)
