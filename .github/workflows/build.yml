@@ -235,9 +235,13 @@ jobs:
           gh release create "v$VERSION" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "KINO $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --generate-notes
 
-  # The published release, installed the way users do: the one-line commands of the README.
+  # The latest release, installed the way users do: the install scripts of the
+  # README, as they stand in this commit. After each publication and on every push.
   verify-release:
-    needs: release
+    needs: [checks, release]
+    if: >-
+      always() && needs.checks.result == 'success' && (needs.release.result == 'success' ||
+      (needs.release.result == 'skipped' && github.event_name == 'push'))
     strategy:
       fail-fast: false
       matrix:
@@ -252,9 +256,10 @@ jobs:
           /Applications/KINO.app/Contents/MacOS/KINO --self-check
       - name: Install (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
+        # Windows PowerShell 5.1, as on users' PCs, running the script the way « irm | iex » does.
+        shell: powershell
         run: |
-          & ./packaging/install.ps1
+          Get-Content -Raw -Encoding UTF8 packaging/install.ps1 | Invoke-Expression
           Start-Sleep -Seconds 5
           Stop-Process -Name KINO -Force -ErrorAction SilentlyContinue
           $report = Join-Path $env:RUNNER_TEMP "self-check.json"
