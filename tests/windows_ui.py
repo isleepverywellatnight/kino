@@ -252,6 +252,8 @@ def main():
                 check("drag moves the window", abs(after[0] - before[0] - 140) <= 3 and abs(after[1] - before[1] - 70) <= 3,
                       f"{before} -> {after}")
                 check("drag keeps the size", after[2:] == before[2:])
+                page.evaluate("pywebview.api.set_bounds(20, 20, 900, 620)")  # back on the small screen
+                page.wait_for_timeout(500)
 
                 # Maximize button: the work area, taskbar visible; again: back.
                 before = window_rect(hwnd)
@@ -286,24 +288,6 @@ def main():
                 return {cls: el.className, x: Math.round(r.x), w: Math.round(r.width), top: hit === el || el.contains(hit),
                         hit: hit ? (hit.id || hit.className || hit.tagName) : null, inner: innerWidth};
             })""")
-            def os_corner(name):
-                from PIL import ImageGrab
-                x, y, w, h = window_rect(hwnd)
-                img = ImageGrab.grab(bbox=(x + w - 200, y, x + w, y + 60), all_screens=True).convert("RGB")
-                buf = io.BytesIO(); img.save(buf, "JPEG", quality=85)
-                print(f"SCREENSHOT {name}\n{base64.b64encode(buf.getvalue()).decode()}\nEND SCREENSHOT", flush=True)
-            os_corner("corner-playing")
-            page.evaluate("document.getElementById('inAppVideo').pause()")
-            page.wait_for_timeout(600)
-            os_corner("corner-paused")
-            page.evaluate("document.getElementById('inAppVideo').play()")
-            page.wait_for_timeout(600)
-            corner = page.screenshot(clip={"x": page.evaluate("innerWidth") - 200, "y": 0, "width": 200, "height": 60}, type="jpeg")
-            print(f"SCREENSHOT player-corner-page\n{base64.b64encode(corner).decode()}\nEND SCREENSHOT", flush=True)
-            print("player corner styles:", json.dumps(page.evaluate("""() => { const el = document.querySelector('.inapp-hud-top .win-close');
-                const svg = el.querySelector('svg'), path = el.querySelector('path'), cs = getComputedStyle(el), ps = getComputedStyle(path);
-                return {color: cs.color, bg: cs.backgroundColor, svgDisplay: getComputedStyle(svg).display, stroke: ps.stroke, strokeWidth: ps.strokeWidth,
-                        opacity: cs.opacity, filter: cs.filter, html: el.outerHTML.slice(0, 400)}; }""")), flush=True)
             check("player shows the three Windows buttons", len(buttons) == 3 and all(b["top"] and b["w"] > 0 for b in buttons),
                   json.dumps(buttons))
             before = window_rect(hwnd)
@@ -320,6 +304,8 @@ def main():
                 after = window_rect(hwnd)
                 check("player bar drags the window", abs(after[0] - before[0] + 60) <= 3 and abs(after[1] - before[1] - 40) <= 3,
                       f"{before} -> {after}")
+                page.evaluate("pywebview.api.set_bounds(20, 20, 900, 620)")
+                page.wait_for_timeout(500)
 
             # Fullscreen: once the controls hide, a mouse move brings the cursor back.
             page.evaluate("toggleInAppFullscreen()")
