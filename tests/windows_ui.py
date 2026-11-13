@@ -201,6 +201,7 @@ def main():
                 time.sleep(0.5)
             check("KINO page loaded", page, str([pg.url for ctx in browser.contexts for pg in ctx.pages]))
             if not page:
+                screenshot("no-page", hwnd)
                 return
             page.wait_for_function("document.body.classList.contains('is-win-native')", timeout=30000)
             page.wait_for_timeout(1500)
