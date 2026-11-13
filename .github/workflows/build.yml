@@ -1,7 +1,8 @@
 # Builds KINO for macOS (Apple Silicon) and Windows (x64) on every push and pull
-# request to main. Pushing a tag vX.Y.Z (equal to APP_VERSION in src/kino_version.py)
-# publishes a GitHub release with the .dmg, the Windows installer and, when the
-# KINO_UPDATE_SIGNING_KEY secret is set, the signed files the in-app updater uses.
+# request to main. When main carries an APP_VERSION (src/kino_version.py) that
+# has no release yet, it publishes release vX.Y.Z (and its tag) with the .dmg,
+# the Windows installer and, when the KINO_UPDATE_SIGNING_KEY secret is set, the
+# signed files the in-app updater uses. Pushing a tag vX.Y.Z does the same.
 name: Build
 
 on:
@@ -27,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,6 +36,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Version
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           version=$(PYTHONPATH=src python -c "import kino_version; print(kino_version.APP_VERSION)")
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -41,6 +45,15 @@ jobs:
             echo "::error::Le tag ${GITHUB_REF#refs/tags/} ne correspond pas à APP_VERSION ($version) dans src/kino_version.py"
             exit 1
           fi
+          # A new version on main (or its tag) is published once.
+          publish=false
+          if [[ "$GITHUB_EVENT_NAME" == push && ( "$GITHUB_REF" == refs/heads/main || "$GITHUB_REF" == refs/tags/v* ) ]]; then
+            if ! gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              publish=true
+            fi
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Version $version, publication : $publish"
       - name: Compile
         run: python -m compileall -q src tools tests
       - name: Tests
@@ -199,7 +212,7 @@ jobs:
           if-no-files-found: ignore
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: needs.checks.outputs.publish == 'true'
     needs: [checks, macos, windows]
     runs-on: ubuntu-latest
     permissions:
@@ -219,8 +232,8 @@ jobs:
           cd release
           sha256sum * > SHA256SUMS.txt
           sed "s/{{VERSION}}/$VERSION/g" ../.github/release-notes.md > "$RUNNER_TEMP/notes.md"
-          gh release create "v$VERSION" * --repo "$GITHUB_REPOSITORY" --title "KINO $VERSION" \
-            --notes-file "$RUNNER_TEMP/notes.md" --generate-notes
+          gh release create "v$VERSION" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "KINO $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --generate-notes
 
   # The published release, installed the way users do: the one-line commands of the README.
   verify-release:
