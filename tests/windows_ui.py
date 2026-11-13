@@ -306,9 +306,9 @@ def main():
             if spot:
                 sx, sy = screen_point(page, hwnd, spot["x"], spot["y"])
                 before = window_rect(hwnd)
-                drag(sx, sy, -60, 40)
+                drag(sx, sy, 60, 40)  # to the right: the cursor cannot go left of the screen
                 after = window_rect(hwnd)
-                check("player bar drags the window", abs(after[0] - before[0] + 60) <= 3 and abs(after[1] - before[1] - 40) <= 3,
+                check("player bar drags the window", abs(after[0] - before[0] - 60) <= 3 and abs(after[1] - before[1] - 40) <= 3,
                       f"{before} -> {after}")
                 page.evaluate("pywebview.api.set_bounds(20, 20, 900, 620)")
                 page.wait_for_timeout(500)
