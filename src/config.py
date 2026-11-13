@@ -26,6 +26,8 @@ import ssl
 
 VALID_PLAYER_MODES = {"integrated", "kino", "external"}
 VALID_PREF_LANGS = {"vf", "vostfr", "vo", "multi"}
+# Interface languages (web/js/i18n.js); "" follows the system's language.
+UI_LANGUAGES = {"fr", "en", "de", "es", "it", "pt", "ru", "zh", "ja"}
 VALID_PREF_QUALITIES = {"2160p", "1080p", "720p", "4k", "480p", "sd"}
 VALID_HDR_MODES = {"sdr_pref", "hdr_native", "hdr_boost", "hdr_only", "sdr_only", "auto"}
 VALID_SOURCE_PRIORITIES = {"speed", "quality"}
@@ -152,6 +154,12 @@ def sanitize_config_payload(data):
         mode_value = _safe_string(player_mode, max_len=32).lower()
         if mode_value in VALID_PLAYER_MODES:
             cleaned["player_mode"] = mode_value
+
+    ui_language = data.get("ui_language")
+    if ui_language is not None:
+        ui_value = _safe_string(ui_language, max_len=8).lower()
+        if ui_value in UI_LANGUAGES or ui_value == "":
+            cleaned["ui_language"] = ui_value
 
     pref_lang = data.get("pref_lang")
     if pref_lang is not None:

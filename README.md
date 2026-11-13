@@ -5,7 +5,9 @@ catalogue de films, de séries et d'animes, le suivi de ce que l'on regarde et
 la lecture, à partir de votre propre compte chez un service de débridage
 (Real-Debrid, AllDebrid, TorBox, Debrid-Link, Premiumize).
 
-L'interface est en français.
+L'interface existe en français, anglais, allemand, espagnol, italien, portugais,
+russe, chinois et japonais : KINO prend la langue de l'ordinateur, et elle se
+change dans Paramètres → Application → Langue de l'interface.
 
 ## Avertissement
 

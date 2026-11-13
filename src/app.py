@@ -2135,6 +2135,11 @@ class RequestHandler(PlaybackRoutes, CatalogueRoutes, LibraryRoutes, DebridRoute
             # Fichiers statiques et page principale KINO
             if parsed.path in ("/", "/index.html"):
                 raw = load_frontend_file("index.html")
+                ui_language = load_config().get("ui_language", "")
+                if raw and ui_language in config.UI_LANGUAGES:
+                    # The language chosen in Paramètres, known before web/js/i18n.js runs
+                    # (Windows' WebView does not keep localStorage between launches).
+                    raw = raw.replace(b"<head>", f'<head><script>window.KINO_UI_LANGUAGE="{ui_language}";</script>'.encode(), 1)
                 if not raw:
                     raw = b"<!DOCTYPE html><html><body><h1>KINO Web</h1><p>Frontend non trouve dans web/</p></body></html>"
                 self.send_response(200)

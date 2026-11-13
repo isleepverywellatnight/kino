@@ -1,7 +1,7 @@
 // --- Episode row helpers (kept with renderDetailEpisodes) ---
 let detailEpisodeSeason = 0;
 const EPISODE_OVERVIEWS_FR = new Map();
-const EPISODE_MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const EPISODE_MONTHS = KINO_I18N.months('short');
 
 function episodeAirDate(video) {
   const day = String(video?.released || video?.firstAired || '').slice(0, 10);

@@ -237,8 +237,8 @@ function offlineFreeText(bytes) {
 }
 
 function offlineSize(bytes) {
-  if (!Number.isFinite(Number(bytes)) || Number(bytes) <= 0) return '0 octet';
-  const units = ['octets', 'Ko', 'Mo', 'Go', 'To'];
+  if (!Number.isFinite(Number(bytes)) || Number(bytes) <= 0) return (window.KINO_LANG || 'fr') === 'fr' ? '0 octet' : '0 B';
+  const units = (window.KINO_LANG || 'fr') === 'fr' ? ['octets', 'Ko', 'Mo', 'Go', 'To'] : ['B', 'KB', 'MB', 'GB', 'TB'];
   let value = Number(bytes), unit = 0;
   while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++; }
   return `${unit === 0 || value >= 10 ? value.toFixed(0) : value.toFixed(1).replace('.', ',')} ${units[unit]}`;
@@ -996,3 +996,11 @@ restoreCatalogView();
 loadSpoilerState().finally(openFirstTab);
 initResizeHandles();
 syncWindowState();
+
+// Paramètres → Langue de l'interface: each language under its own name.
+(function initUiLanguageSelect() {
+  const select = document.getElementById('cfgUiLanguage');
+  if (!select || !window.KINO_LANGUAGES) return;
+  for (const [code, name] of Object.entries(window.KINO_LANGUAGES)) select.add(new Option(name, code));
+  select.value = window.KINO_LANG;
+})();

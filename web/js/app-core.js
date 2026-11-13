@@ -810,7 +810,7 @@ function getSeriesTargetEpisode(h) {
   };
 }
 
-const FRENCH_MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+const FRENCH_MONTHS = KINO_I18N.months('long');
 
 function episodeCode(season, episode) {
   return `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;

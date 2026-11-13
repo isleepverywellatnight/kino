@@ -6,7 +6,7 @@ const cloudOpen = new Set();
 const cloudAsked = new Set();
 const CLOUD_MATCHES = new Map();
 const CLOUD_VIDEO = /\.(mkv|mp4|avi|m4v|mov|ts|m2ts|wmv|webm|mpe?g)$/i;
-const CLOUD_MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const CLOUD_MONTHS = KINO_I18N.months('short');
 
 function cloudDate(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || ''));
@@ -595,10 +595,10 @@ async function loadSuggestionStatus() {
   try {
     const res = await api('/api/for-you/status');
     const pool = Number(res.pool || 0);
-    const when = res.updated_at ? new Date(res.updated_at * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
+    const when = res.updated_at ? new Date(res.updated_at * 1000).toLocaleDateString((window.KINO_LOCALE || 'fr-FR'), { day: 'numeric', month: 'long' }) : '';
     const removed = Number(res.not_for_me || 0);
     el.textContent = pool >= 500
-      ? `Réserve de ${pool.toLocaleString('fr-FR')} titres publics, mise à jour le ${when}.` + (removed ? ` ${removed} titre${removed > 1 ? 's' : ''} écarté${removed > 1 ? 's' : ''}.` : '')
+      ? `Réserve de ${pool.toLocaleString((window.KINO_LOCALE || 'fr-FR'))} titres publics, mise à jour le ${when}.` + (removed ? ` ${removed} titre${removed > 1 ? 's' : ''} écarté${removed > 1 ? 's' : ''}.` : '')
       : (res.building ? 'Préparation de la réserve de titres…' : 'La réserve de titres se prépare au prochain lancement, avec internet.');
   } catch (e) {
     el.textContent = '';
@@ -623,12 +623,12 @@ async function resetNotForMe(btn) {
 // --- Sauvegardes (data_backup.py): a copy a day, « Restaurer ».
 function backupWhen(seconds, now = Date.now()) {
   const date = new Date(seconds * 1000);
-  const hour = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const hour = date.toLocaleTimeString((window.KINO_LOCALE || 'fr-FR'), { hour: '2-digit', minute: '2-digit' });
   const day = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((day(new Date(now)) - day(date)) / 86400000);
   if (days === 0) return `Aujourd’hui, ${hour}`;
   if (days === 1) return `Hier, ${hour}`;
-  return `${date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}, ${hour}`;
+  return `${date.toLocaleDateString((window.KINO_LOCALE || 'fr-FR'), { weekday: 'long', day: 'numeric', month: 'long' })}, ${hour}`;
 }
 
 function backupCounts(counts = {}) {

@@ -15,7 +15,7 @@ const animeWorks = new Map();
 
 const ANIME_PAGES = { home: 'animeSubTabHome', schedule: 'animeSubTabSchedule', catalog: 'animeSubTabCatalog' };
 const ANIME_FORMATS = { TV: 'Série', TV_SHORT: 'Série courte', ONA: 'Série web', MOVIE: 'Film', OVA: 'OVA', SPECIAL: 'Spécial' };
-const ANIME_MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const ANIME_MONTHS = KINO_I18N.months('short');
 const ANIME_WEEKDAYS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
 // AniList counts the members who follow a work; below this the planning is
 // mostly shorts and children's programmes, kept for « Tout ».

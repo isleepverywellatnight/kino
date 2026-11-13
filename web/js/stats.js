@@ -43,7 +43,7 @@ function statsMonthsChart(months) {
   const peak = months.reduce((best, month) => (month.count > (best?.count || 0) ? month : best), null);
   const name = key => {
     const [year, month] = key.split('-').map(Number);
-    return { short: 'JFMAMJJASOND'[month - 1], long: `${CLOUD_MONTHS[month - 1].replace('.', '')} ${year}` };
+    return { short: KINO_I18N.months('narrow')[month - 1], long: `${CLOUD_MONTHS[month - 1].replace('.', '')} ${year}` };
   };
   const columns = months.map(month => {
     const label = name(month.month);

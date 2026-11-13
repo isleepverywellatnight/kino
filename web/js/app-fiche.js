@@ -972,6 +972,8 @@ async function fetchFrenchTitles() {
 }
 
 function initFrenchTitles() {
+  // French titles come from French Wikipedia: other languages keep the catalogue's (English) titles.
+  if ((window.KINO_LANG || 'fr') !== 'fr') return;
   scanFrenchTitles(document.body);
   new MutationObserver(records => {
     for (const record of records) {
