@@ -177,12 +177,15 @@ def main():
     env = dict(os.environ, KINO_DEVTOOLS_PORT=str(PORT), KINO_TRACE_FILE=str(work / "trace.txt"))
     kino = subprocess.Popen([sys.executable, str(PROJECT / "src" / "desktop.py")], env=env, cwd=str(PROJECT))
     try:
-        for _ in range(90):
+        # Connect once KINO's page is a DevTools target (before, Playwright may keep about:blank).
+        for _ in range(120):
             try:
-                urllib.request.urlopen(f"http://127.0.0.1:{PORT}/json/version", timeout=1)
-                break
-            except OSError:
-                time.sleep(1)
+                targets = json.load(urllib.request.urlopen(f"http://127.0.0.1:{PORT}/json/list", timeout=2))
+                if any("127.0.0.1" in t.get("url", "") and t.get("type") == "page" for t in targets):
+                    break
+            except (OSError, ValueError):
+                pass
+            time.sleep(1)
         hwnd = 0
         for _ in range(30):
             hwnd = user32.FindWindowW(None, "KINO")
