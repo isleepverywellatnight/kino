@@ -1,14 +1,15 @@
 # Builds KINO for macOS (Apple Silicon) and Windows (x64) on every push and pull
-# request. Pushing a tag vX.Y.Z (equal to APP_VERSION in kino_version.py)
+# request to main. Pushing a tag vX.Y.Z (equal to APP_VERSION in kino_version.py)
 # publishes a GitHub release with the .dmg, the Windows installer and, when the
 # KINO_UPDATE_SIGNING_KEY secret is set, the signed files the in-app updater uses.
 name: Build
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     tags: ["v*"]
   pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
