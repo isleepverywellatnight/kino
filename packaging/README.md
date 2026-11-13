@@ -5,15 +5,12 @@ télécharger (voir le [README](../README.md)).
 
 ## Publier une version
 
-Tout se fait sur GitHub Actions (`.github/workflows/build.yml`) :
-
-1. Mettez `APP_VERSION` à jour dans `src/kino_version.py` et poussez sur `main`.
-2. Créez le tag correspondant et poussez-le :
-   `git tag v1.2.0 && git push origin v1.2.0`.
-
-La CI construit les deux applications, les teste, publie la release
-(`KINO-macOS.dmg`, `KINO-Windows.exe`, `SHA256SUMS.txt`), puis réinstalle la
-release publiée sur un Mac et un Windows vierges avec les commandes du README.
+Changez `APP_VERSION` dans `src/kino_version.py` et poussez sur `main` : c'est
+tout. Quand la version de `main` n'a pas encore de release, GitHub Actions
+(`.github/workflows/build.yml`) construit les deux applications, les teste,
+publie la release avec son tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`,
+`SHA256SUMS.txt`), puis la réinstalle sur un Mac et un Windows vierges avec les
+commandes du README.
 
 Pour que KINO installe lui-même les nouvelles versions, la CI signe les mises à
 jour avec le secret `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables
