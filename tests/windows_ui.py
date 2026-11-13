@@ -273,7 +273,14 @@ def main():
             page.evaluate("(url) => openInAppPlayer(url, 'Test KINO')", video_url)
             page.wait_for_function("() => { const v = document.getElementById('inAppVideo'); return v && v.currentTime > 1; }", timeout=30000)
             screenshot("player", hwnd)
-            check("player shows the Windows buttons", page.is_visible(".inapp-hud-top .win-controls"))
+            buttons = page.evaluate("""() => [...document.querySelectorAll('.inapp-hud-top .win-btn')].map(el => {
+                const r = el.getBoundingClientRect();
+                const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+                return {cls: el.className, x: Math.round(r.x), w: Math.round(r.width), top: hit === el || el.contains(hit),
+                        hit: hit ? (hit.id || hit.className || hit.tagName) : null, inner: innerWidth};
+            })""")
+            check("player shows the three Windows buttons", len(buttons) == 3 and all(b["top"] and b["w"] > 0 for b in buttons),
+                  json.dumps(buttons))
             before = window_rect(hwnd)
             for selector in ("#inAppSubsBtn", "#inAppMoreBtn", "#inAppMoreBtn"):
                 if page.is_visible(selector):
