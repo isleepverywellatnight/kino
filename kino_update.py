@@ -1,7 +1,14 @@
-"""Offline, authenticated macOS update staging and native helper handoff.
+"""Authenticated KINO updates, from GitHub Releases or a local package.
 
-The public key is bundled with KINO. The matching private key is never bundled.
-No remote release channel is configured until distribution is decided.
+The public key is bundled with KINO. The matching private key is never bundled:
+the release workflow signs with it (see .github/workflows/build.yml).
+
+macOS: a signed .kinoupdate package (downloaded from the latest release, or
+found locally) is verified, staged, then installed by the native helper, which
+keeps the previous version for a rollback.
+Windows: the latest release's installer is downloaded with its signed
+description (.sig), checked against it, then run silently; it waits for KINO to
+quit and relaunches it.
 """
 
 from __future__ import annotations
@@ -16,24 +23,32 @@ import re
 import secrets
 import shutil
 import sqlite3
+import ssl
 import stat
 import subprocess
 import sys
 import tarfile
 import threading
 import time
+import urllib.request
 import zipfile
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from kino_version import APP_VERSION, BUNDLE_ID, DATA_SCHEMA, UPDATE_FORMAT
+from kino_version import APP_VERSION, BUNDLE_ID, DATA_SCHEMA, UPDATE_FORMAT, UPDATE_REPO
 
 MAX_PACKAGE_BYTES = 900 * 1024 * 1024
 MAX_APP_BYTES = 1800 * 1024 * 1024
 _VERSION_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 _ARTIFACT_RE = re.compile(r"^KINO-[0-9]+\.[0-9]+\.[0-9]+-(arm64|x86_64)\.tar\.gz$")
+RELEASES_API = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
+RELEASES_PAGE = f"https://github.com/{UPDATE_REPO}/releases/latest"
+_RELEASE_PAGE_PREFIX = f"https://github.com/{UPDATE_REPO}/releases/"
+_DOWNLOAD_PREFIX = f"https://github.com/{UPDATE_REPO}/releases/download/"
+MAX_RELEASE_JSON = 2_000_000
+MAX_SIGNATURE_BYTES = 32_768
 
 
 class UpdateError(ValueError):
@@ -57,9 +72,9 @@ def _public_key_path() -> Path:
     return Path(__file__).with_name("update_public_key.hex")
 
 
-def verify_manifest(raw: bytes, public_key_hex: str, *, current_version: str = APP_VERSION,
-                    architecture: str | None = None, os_version: str | None = None) -> dict:
-    if len(raw) > 32_768:
+def _signed_payload(raw: bytes, public_key_hex: str):
+    """The payload of a signed envelope {"payload": ..., "signature": base64}, once its signature checks."""
+    if len(raw) > MAX_SIGNATURE_BYTES:
         raise UpdateError("Manifeste trop volumineux.")
     try:
         envelope = json.loads(raw)
@@ -69,6 +84,142 @@ def verify_manifest(raw: bytes, public_key_hex: str, *, current_version: str = A
         public_key.verify(signature, canonical_json(payload))
     except (ValueError, KeyError, TypeError, InvalidSignature) as exc:
         raise UpdateError("Signature du manifeste invalide.") from exc
+    return payload
+
+
+def verify_installer_signature(raw: bytes, public_key_hex: str, *, current_version: str = APP_VERSION) -> dict:
+    """The signed description of a Windows installer (KINO-Setup-x.y.z-x64.exe.sig)."""
+    payload = _signed_payload(raw, public_key_hex)
+    if not isinstance(payload, dict) or set(payload) != {
+        "format", "version", "platform", "architecture", "bundle_id", "data_schema", "notes", "artifact",
+    }:
+        raise UpdateError("Champs de la signature invalides.")
+    if (payload["format"] != UPDATE_FORMAT or payload["platform"] != "win32"
+            or payload["architecture"] != "x64" or payload["bundle_id"] != BUNDLE_ID):
+        raise UpdateError("Cet installateur ne cible pas KINO sur Windows.")
+    if version_tuple(payload["version"]) <= version_tuple(current_version):
+        raise UpdateError("Cet installateur n'est pas plus récent que KINO.")
+    if type(payload["data_schema"]) is not int or payload["data_schema"] < DATA_SCHEMA:
+        raise UpdateError("La base de données de cette version est plus ancienne.")
+    if not isinstance(payload["notes"], str) or len(payload["notes"]) > 4000:
+        raise UpdateError("Notes de version invalides.")
+    artifact = payload["artifact"]
+    if not isinstance(artifact, dict) or set(artifact) != {"name", "sha256", "size"}:
+        raise UpdateError("Artefact invalide.")
+    if artifact["name"] != f"KINO-Setup-{payload['version']}-x64.exe":
+        raise UpdateError("Nom d'installateur incohérent.")
+    if not isinstance(artifact["sha256"], str) or not re.fullmatch(r"[a-f0-9]{64}", artifact["sha256"]):
+        raise UpdateError("Empreinte d'installateur invalide.")
+    if type(artifact["size"]) is not int or not 0 < artifact["size"] <= MAX_PACKAGE_BYTES:
+        raise UpdateError("Taille d'installateur invalide.")
+    return payload
+
+
+def _https_context() -> ssl.SSLContext:
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return ssl.create_default_context()
+
+
+def _open_url(url: str, *, timeout: float = 20, accept: str = "application/vnd.github+json"):
+    request = urllib.request.Request(url, headers={"User-Agent": f"KINO/{APP_VERSION}", "Accept": accept})
+    return urllib.request.urlopen(request, timeout=timeout, context=_https_context())
+
+
+def parse_release(data) -> dict:
+    """The parts of a GitHub release KINO uses: version, notes, page and downloadable assets."""
+    if not isinstance(data, dict) or data.get("draft") or data.get("prerelease"):
+        raise UpdateError("Aucune version publiée.")
+    version = str(data.get("tag_name") or "").removeprefix("v")
+    version_tuple(version)
+    assets = {}
+    for asset in data.get("assets") or []:
+        if not isinstance(asset, dict):
+            continue
+        name, url, size = asset.get("name"), asset.get("browser_download_url"), asset.get("size")
+        if (isinstance(name, str) and isinstance(url, str) and url.startswith(_DOWNLOAD_PREFIX)
+                and type(size) is int and 0 < size <= MAX_PACKAGE_BYTES):
+            assets[name] = {"url": url, "size": size}
+    page = data.get("html_url")
+    if not isinstance(page, str) or not page.startswith(_RELEASE_PAGE_PREFIX):
+        page = RELEASES_PAGE
+    notes = data.get("body") if isinstance(data.get("body"), str) else ""
+    return {"version": version, "notes": notes[:4000], "page": page, "assets": assets}
+
+
+def fetch_latest_release(opener=_open_url) -> dict:
+    with opener(RELEASES_API) as response:
+        raw = response.read(MAX_RELEASE_JSON + 1)
+    if len(raw) > MAX_RELEASE_JSON:
+        raise UpdateError("Réponse de GitHub trop volumineuse.")
+    try:
+        return parse_release(json.loads(raw))
+    except ValueError as exc:
+        raise UpdateError("Réponse de GitHub illisible.") from exc
+
+
+def release_asset_names(version: str, platform_name: str | None = None,
+                        architecture: str | None = None) -> tuple[str, str | None]:
+    """(file to download, its separate signature or None) for this system."""
+    platform_name = platform_name or sys.platform
+    if platform_name == "darwin":
+        return f"KINO-{version}-{architecture or platform.machine()}.kinoupdate", None
+    if platform_name == "win32":
+        name = f"KINO-Setup-{version}-x64.exe"
+        return name, f"{name}.sig"
+    raise UpdateError("Les mises à jour automatiques ne sont pas disponibles sur ce système.")
+
+
+def download_asset(asset: dict, target: Path, *, progress=None, opener=_open_url) -> Path:
+    """Download a release asset to target, refusing anything but its announced size."""
+    url, size = asset["url"], asset["size"]
+    if not url.startswith(_DOWNLOAD_PREFIX) or type(size) is not int or not 0 < size <= MAX_PACKAGE_BYTES:
+        raise UpdateError("Adresse de téléchargement refusée.")
+    part = target.with_name(target.name + ".part")
+    copied = 0
+    try:
+        with opener(url, timeout=60, accept="application/octet-stream") as response, part.open("wb") as out:
+            while chunk := response.read(1024 * 1024):
+                copied += len(chunk)
+                if copied > size:
+                    raise UpdateError("Le fichier téléchargé est plus gros qu'annoncé.")
+                out.write(chunk)
+                if progress:
+                    progress(copied / size)
+        if copied != size:
+            raise UpdateError("Téléchargement incomplet.")
+        os.replace(part, target)
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
+    return target
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        while chunk := fh.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def default_state_dir() -> Path:
+    if sys.platform == "win32":
+        return Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "KINO" / "Updates"
+    return Path.home() / "Library/Application Support/KINO/Updates"
+
+
+def default_app_path() -> Path:
+    """KINO.app on macOS, the installation folder (holding KINO.exe) on Windows."""
+    executable = Path(sys.executable).resolve()
+    return executable.parent if sys.platform == "win32" else executable.parent.parent.parent
+
+
+def verify_manifest(raw: bytes, public_key_hex: str, *, current_version: str = APP_VERSION,
+                    architecture: str | None = None, os_version: str | None = None) -> dict:
+    payload = _signed_payload(raw, public_key_hex)
     if not isinstance(payload, dict) or set(payload) != {
         "format", "version", "platform", "architecture", "bundle_id", "data_schema",
         "min_macos", "notes", "artifact",
@@ -307,19 +458,43 @@ def snapshot_user_data(destination: Path) -> None:
 class UpdateManager:
     def __init__(self, *, app_path: Path | None = None, state_dir: Path | None = None,
                  public_key_hex: str | None = None):
-        self.app_path = app_path or Path(sys.executable).resolve().parent.parent.parent
-        self.state_dir = state_dir or Path.home() / "Library/Application Support/KINO/Updates"
+        self.app_path = app_path or default_app_path()
+        self.state_dir = state_dir or default_state_dir()
         self.public_key_hex = public_key_hex
         self._lock = threading.RLock()
         self._progress = 0
+        self._progress_label = ""
         self._message = ""
         self._candidate: dict | None = None
+        self._latest: dict | None = None
+
+    def is_installed(self) -> bool:
+        """True for the copy of KINO that updates may replace."""
+        if sys.platform == "darwin":
+            return self.app_path == Path("/Applications/KINO.app") and self.app_path.is_dir()
+        if sys.platform == "win32":
+            # Installed by installer/kino.iss, which leaves its uninstaller next to KINO.exe.
+            return bool(getattr(sys, "frozen", False)) and (self.app_path / "unins000.exe").is_file()
+        return False
 
     def _require_installed(self) -> None:
-        if sys.platform != "darwin":
-            raise UpdateError("Les mises à jour locales sont disponibles sur macOS uniquement.")
-        if self.app_path != Path("/Applications/KINO.app") or not self.app_path.is_dir():
-            raise UpdateError("Ouvrez d'abord KINO depuis /Applications/KINO.app.")
+        if sys.platform == "darwin":
+            if not self.is_installed():
+                raise UpdateError("Ouvrez d'abord KINO depuis /Applications/KINO.app.")
+        elif sys.platform == "win32":
+            if not self.is_installed():
+                raise UpdateError("Installez KINO avec son installateur pour recevoir les mises à jour.")
+        else:
+            raise UpdateError("Les mises à jour automatiques ne sont pas disponibles sur ce système.")
+
+    def _public_key(self) -> str:
+        return self.public_key_hex or _public_key_path().read_text(encoding="ascii")
+
+    def _newer_latest_locked(self) -> dict | None:
+        latest = self._latest
+        if latest and version_tuple(latest["version"]) > version_tuple(APP_VERSION):
+            return latest
+        return None
 
     def _discard_candidate_locked(self) -> None:
         if self._candidate:
@@ -338,26 +513,176 @@ class UpdateManager:
         with self._lock:
             state = self._read_state()
             backup_path = Path(state.get("backup_path") or "/nonexistent")
+            latest = self._newer_latest_locked()
             return {
                 "version": APP_VERSION,
-                "channel": "local",
-                "remote_configured": False,
+                "platform": sys.platform,
+                "channel": "github",
+                "remote_configured": True,
+                "installed": self.is_installed(),
+                "local_packages": sys.platform == "darwin",
+                "rollback_supported": sys.platform == "darwin",
+                "latest": {key: latest[key] for key in ("version", "notes", "page")} if latest else None,
                 "candidate": self._candidate["payload"] if self._candidate else None,
                 "progress": self._progress,
+                "progress_label": self._progress_label,
                 "message": self._message or state.get("message", ""),
-                "rollback_available": backup_path.is_dir() and state.get("data_schema") == DATA_SCHEMA,
+                "rollback_available": (sys.platform == "darwin" and backup_path.is_dir()
+                                       and state.get("data_schema") == DATA_SCHEMA),
                 "rollback_version": state.get("backup_version", ""),
             }
 
+    def check_latest(self, fetch=fetch_latest_release) -> dict:
+        """Ask GitHub for the latest release; remembered for status()."""
+        release = fetch()
+        with self._lock:
+            self._latest = release
+        return release
+
+    def check_latest_quietly(self, delay: float = 20.0) -> None:
+        """Startup: learn about a new version in the background; failures stay silent."""
+        time.sleep(delay)
+        try:
+            self.check_latest()
+        except Exception:
+            pass
+
+    def check_for_updates(self, fetch=fetch_latest_release) -> dict:
+        """The « Rechercher une mise à jour » button: GitHub first, then (macOS) local packages."""
+        with self._lock:
+            self._discard_candidate_locked()
+            self._progress = 0
+            self._progress_label = ""
+            self._message = "Recherche d'une nouvelle version…"
+        try:
+            release = self.check_latest(fetch)
+        except Exception:
+            release = None
+        newer = bool(release) and version_tuple(release["version"]) > version_tuple(APP_VERSION)
+        if sys.platform == "win32":
+            return self._check_windows(release, newer)
+        download_note = ""
+        if newer and sys.platform == "darwin":
+            try:
+                self._download_mac_package(release)
+            except (OSError, UpdateError) as exc:
+                download_note = str(exc)
+        try:
+            result = self.check_local_updates()
+        except UpdateError as exc:
+            result = {**self.status(), "available": False}
+            download_note = download_note or str(exc)
+        if result.get("available"):
+            return result
+        with self._lock:
+            if newer:
+                self._message = (f"KINO {release['version']} est disponible. {download_note}".strip()
+                                 + " Vous pouvez aussi le télécharger depuis la page des versions.")
+            elif release:
+                self._message = f"KINO est à jour (version {APP_VERSION})."
+            else:
+                self._message = "Impossible de joindre GitHub. " + self._message
+        return {**self.status(), "available": False, "message": self._message}
+
+    def _download_progress(self, label: str):
+        def update(fraction: float) -> None:
+            with self._lock:
+                self._progress_label = label
+                self._progress = max(1, min(99, round(fraction * 100)))
+        return update
+
+    def _download_mac_package(self, release: dict) -> None:
+        self._require_installed()
+        name, _ = release_asset_names(release["version"])
+        asset = release["assets"].get(name)
+        if not asset:
+            raise UpdateError("Cette version n'a pas de paquet de mise à jour pour ce Mac.")
+        inbox = self.state_dir / "inbox"
+        inbox.mkdir(parents=True, exist_ok=True, mode=0o700)
+        inbox.chmod(0o700)
+        target = inbox / name
+        if target.is_file() and target.stat().st_size == asset["size"]:
+            return
+        with self._lock:
+            self._message = f"Téléchargement de KINO {release['version']}…"
+        download_asset(asset, target, progress=self._download_progress("Téléchargement"))
+
+    def _check_windows(self, release: dict | None, newer: bool) -> dict:
+        if not release:
+            message = "Impossible de joindre GitHub. Vérifiez la connexion Internet."
+        elif not newer:
+            message = f"KINO est à jour (version {APP_VERSION})."
+        else:
+            try:
+                self._require_installed()
+                self._prepare_windows(release)
+                with self._lock:
+                    self._message = f"KINO {release['version']} téléchargé et vérifié. Installation prête."
+                    self._progress, self._progress_label = 100, ""
+                return {**self.status(), "available": True}
+            except (OSError, UpdateError) as exc:
+                message = (f"KINO {release['version']} est disponible. {exc} "
+                           "Vous pouvez aussi le télécharger depuis la page des versions.")
+        with self._lock:
+            self._message = message
+            self._progress, self._progress_label = 0, ""
+        return {**self.status(), "available": False, "message": message}
+
+    def _prepare_windows(self, release: dict) -> None:
+        name, signature_name = release_asset_names(release["version"], "win32")
+        asset, signature_asset = release["assets"].get(name), release["assets"].get(signature_name)
+        if not asset or not signature_asset:
+            raise UpdateError("Cette version n'est pas signée pour les mises à jour automatiques.")
+        if signature_asset["size"] > MAX_SIGNATURE_BYTES:
+            raise UpdateError("Signature trop volumineuse.")
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+        stage = self.state_dir / f"stage-{secrets.token_hex(8)}"
+        stage.mkdir()
+        try:
+            signature_path = download_asset(signature_asset, stage / signature_name)
+            payload = verify_installer_signature(signature_path.read_bytes(), self._public_key())
+            if payload["version"] != release["version"] or payload["artifact"]["name"] != name \
+                    or payload["artifact"]["size"] != asset["size"]:
+                raise UpdateError("La signature ne correspond pas à cette version.")
+            with self._lock:
+                self._message = f"Téléchargement de KINO {release['version']}…"
+            installer = download_asset(asset, stage / name, progress=self._download_progress("Téléchargement"))
+            if _sha256_file(installer) != payload["artifact"]["sha256"]:
+                raise UpdateError("L'installateur téléchargé est modifié ou incomplet.")
+        except BaseException:
+            shutil.rmtree(stage, ignore_errors=True)
+            raise
+        with self._lock:
+            self._discard_candidate_locked()
+            self._candidate = {"payload": payload, "candidate": str(installer), "installer": str(installer)}
+
+    def _install_windows(self) -> dict:
+        with self._lock:
+            if not self._candidate or "installer" not in self._candidate:
+                raise UpdateError("Recherchez d'abord une mise à jour.")
+            installer = Path(self._candidate["installer"])
+            if _sha256_file(installer) != self._candidate["payload"]["artifact"]["sha256"]:
+                raise UpdateError("L'installateur a changé depuis sa vérification.")
+            # Detached: the installer waits for KINO to quit (/UPDATE=1), installs, then relaunches it.
+            flags = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+            subprocess.Popen([str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/UPDATE=1"],
+                             creationflags=flags, close_fds=True,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self._message = "KINO va fermer, s'installer puis redémarrer automatiquement."
+            return {"scheduled": True, "message": self._message}
+
     def prepare(self, package_path: Path) -> dict:
+        if sys.platform != "darwin":
+            raise UpdateError("Les paquets locaux ne concernent que KINO sur macOS.")
         self._require_installed()
         with self._lock:
             self._discard_candidate_locked()
             self._progress = 0
+            self._progress_label = "Vérification du paquet"
             self._message = "Vérification de la signature et de l'application…"
         self.state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.state_dir.chmod(0o700)
-        public_key = self.public_key_hex or _public_key_path().read_text(encoding="ascii")
+        public_key = self._public_key()
         stage = self.state_dir / f"stage-{secrets.token_hex(8)}"
         try:
             result = verify_and_extract(package_path, stage, public_key,
@@ -372,6 +697,8 @@ class UpdateManager:
         return self.status()
 
     def check_local_updates(self) -> dict:
+        if sys.platform != "darwin":
+            raise UpdateError("Les paquets locaux ne concernent que KINO sur macOS.")
         self._require_installed()
         with self._lock:
             self._discard_candidate_locked()
@@ -382,7 +709,7 @@ class UpdateManager:
         inbox = self.state_dir / "inbox"
         inbox.mkdir(parents=True, exist_ok=True, mode=0o700)
         inbox.chmod(0o700)
-        public_key = self.public_key_hex or _public_key_path().read_text(encoding="ascii")
+        public_key = self._public_key()
         directories = [(Path.home() / "Downloads", "Téléchargements"), (inbox, "dossier KINO")]
         candidates = local_update_candidates(directories, public_key)
         for path, payload, label in candidates:
@@ -443,9 +770,13 @@ class UpdateManager:
             return {"scheduled": True, "message": "KINO va fermer puis redémarrer automatiquement."}
 
     def install(self) -> dict:
+        if sys.platform == "win32":
+            return self._install_windows()
         return self._handoff("install")
 
     def rollback(self) -> dict:
+        if sys.platform != "darwin":
+            raise UpdateError("Le retour à la version précédente n'est disponible que sur macOS.")
         return self._handoff("rollback")
 
 
@@ -477,7 +808,7 @@ def prune_update_leftovers(*, app_path: Path = Path("/Applications/KINO.app"), s
     Removed: staged apps, old helper/job/ack files, inbox packages that are not
     newer than this version (KINO would refuse them), older snapshots and backups.
     """
-    state_dir = state_dir or Path.home() / "Library/Application Support/KINO/Updates"
+    state_dir = state_dir or default_state_dir()
     now = time.time() if now is None else now
     removed = {"stages": 0, "work_files": 0, "packages": 0, "snapshots": 0, "app_backups": 0}
     if not state_dir.is_dir() or (state_dir / "pending.json").exists():
@@ -542,7 +873,7 @@ def prune_installed_update_leftovers(*, app_path: Path | None = None, state_dir:
     try:
         app_path = app_path or manager.app_path
         state_dir = state_dir or manager.state_dir
-        if app_path is manager.app_path and (sys.platform != "darwin" or app_path != Path("/Applications/KINO.app")):
+        if app_path is manager.app_path and not manager.is_installed():
             return {}
         deadline = time.monotonic() + wait_sec
         while (state_dir / "pending.json").exists() and time.monotonic() < deadline:
@@ -554,7 +885,9 @@ def prune_installed_update_leftovers(*, app_path: Path | None = None, state_dir:
 
 def acknowledge_ready() -> None:
     """Called when the native WebView has loaded after a helper-launched update."""
-    state_dir = Path.home() / "Library/Application Support/KINO/Updates"
+    if sys.platform != "darwin":
+        return
+    state_dir = default_state_dir()
     pending = state_dir / "pending.json"
     try:
         data = json.loads(pending.read_text(encoding="utf-8"))

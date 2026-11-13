@@ -867,11 +867,12 @@
             <div class="set-row">
               <div class="set-text">
                 <span class="settings-label">Version installée <strong id="kinoUpdateVersion">—</strong></span>
-                <p class="settings-desc" id="kinoUpdateChannel">Recherche locale dans Téléchargements et le dossier KINO, sans connexion Internet.</p>
+                <p class="settings-desc" id="kinoUpdateChannel">Les nouvelles versions sont publiées sur GitHub. KINO vérifie leur signature avant de les installer.</p>
               </div>
               <div class="set-control-pair kino-update-actions">
-                <button type="button" class="btn btn-secondary btn-small" onclick="checkKinoUpdates()">Rechercher sur ce Mac</button>
-                <button type="button" class="btn btn-secondary btn-small" onclick="chooseKinoUpdate()">Choisir un paquet</button>
+                <button type="button" class="btn btn-secondary btn-small" onclick="checkKinoUpdates()">Rechercher une mise à jour</button>
+                <button type="button" class="btn btn-secondary btn-small" id="kinoUpdateChooseBtn" onclick="chooseKinoUpdate()" hidden>Choisir un paquet</button>
+                <button type="button" class="btn btn-secondary btn-small" id="kinoUpdatePageBtn" onclick="openKinoReleasePage()" hidden>Page des versions</button>
               </div>
             </div>
             <div class="kino-update-progress" id="kinoUpdateProgressBox" hidden>
@@ -883,7 +884,7 @@
               <p id="kinoUpdateNotes"></p>
               <button type="button" class="btn" id="kinoUpdateInstallBtn" onclick="installKinoUpdate()">Installer et redémarrer KINO</button>
             </div>
-            <div class="set-row kino-update-rollback">
+            <div class="set-row kino-update-rollback" id="kinoUpdateRollbackRow" hidden>
               <div class="set-text">
                 <span class="settings-label">Version précédente</span>
                 <p class="settings-desc" id="kinoUpdateRollbackDescription">Aucune sauvegarde disponible.</p>

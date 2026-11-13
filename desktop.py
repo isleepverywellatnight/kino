@@ -171,6 +171,7 @@ def run_server():
     # or synchronise Google Drive alongside the running app.
     app.kino_db.start_background_maintenance()
     threading.Thread(target=kino_update.prune_installed_update_leftovers, daemon=True).start()
+    threading.Thread(target=kino_update.manager.check_latest_quietly, daemon=True, name="update-check").start()
     threading.Thread(target=app.refresh_finished_series, daemon=True).start()
     threading.Thread(target=app.api_service.warm_account, daemon=True).start()
     threading.Thread(target=app.network_state.warm, daemon=True).start()
@@ -278,7 +279,17 @@ class WindowApi:
         return kino_update.manager.status()
 
     def check_for_updates(self):
-        return kino_update.manager.check_local_updates()
+        return kino_update.manager.check_for_updates()
+
+    def open_release_page(self):
+        """The release page of the version announced by update_status (GitHub only)."""
+        import webbrowser
+        latest = kino_update.manager.status().get("latest") or {}
+        page = latest.get("page") or kino_update.RELEASES_PAGE
+        if not page.startswith(f"https://github.com/{kino_update.UPDATE_REPO}/releases/"):
+            page = kino_update.RELEASES_PAGE
+        webbrowser.open(page)
+        return {"opened": True}
 
     def choose_update_package(self):
         window = self._get_window()
@@ -1353,7 +1364,11 @@ def self_check():
     import json
     import subprocess
     import imageio_ffmpeg
-    import webview.platforms.cocoa
+    if IS_MAC:
+        import webview.platforms.cocoa
+    elif IS_WIN:
+        # pythonnet, WinForms and the WebView2 assemblies load from the bundle.
+        import webview.platforms.winforms as winforms
 
     ffmpeg = Path(imageio_ffmpeg.get_ffmpeg_exe()).resolve()
     resource_dir = get_resource_dir().resolve()
@@ -1364,11 +1379,29 @@ def self_check():
     if not (resource_dir / "web" / "js" / "vendor" / "peerjs.min.js").is_file():
         raise RuntimeError("Watch Party library is missing")
     app.playback_support.excluded({"imdb_id": "self-check", "type": "movie"})
-    bundle_contents = Path(sys.executable).resolve().parent.parent
-    if getattr(sys, "frozen", False) and not ffmpeg.is_relative_to(bundle_contents):
+    # KINO.app/Contents on macOS, the installation folder on Windows.
+    bundle_contents = Path(sys.executable).resolve().parent if IS_WIN else Path(sys.executable).resolve().parent.parent
+    frozen = bool(getattr(sys, "frozen", False))
+    if frozen and not ffmpeg.is_relative_to(bundle_contents):
         raise RuntimeError("FFmpeg is outside the application bundle")
-    subprocess.run([str(ffmpeg), "-version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    result = {"ok": True, "frozen": bool(getattr(sys, "frozen", False)), "ffmpeg": str(ffmpeg)}
+    no_window = 0x08000000 if IS_WIN else 0  # CREATE_NO_WINDOW
+    subprocess.run([str(ffmpeg), "-version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                   creationflags=no_window)
+    result = {"ok": True, "frozen": frozen, "platform": sys.platform, "ffmpeg": str(ffmpeg)}
+    if IS_WIN:
+        import player_engine
+        mpv = player_engine.bundled_mpv()
+        if frozen and (not mpv or not Path(mpv).resolve().is_relative_to(bundle_contents)):
+            raise RuntimeError("mpv is missing from the installation folder")
+        if mpv:
+            subprocess.run([mpv, "--version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                           timeout=30, creationflags=no_window)
+        result["mpv"] = mpv
+        # Informational: the installer adds the WebView2 runtime when Windows lacks it.
+        try:
+            result["webview2"] = "available" if winforms._is_chromium() else "missing"
+        except Exception as error:
+            result["webview2"] = f"error: {type(error).__name__}"
     if IS_MAC:
         import native_player
         import native_view
@@ -1392,12 +1425,30 @@ def self_check():
         except Exception as error:
             result["notifications"] = f"error: {type(error).__name__}"
     print(json.dumps(result))
+    return result
+
+
+def _self_check_report(result):
+    """--self-check-report PATH: the windowed Windows build has no console to print to."""
+    if "--self-check-report" not in sys.argv:
+        return
+    import json
+    try:
+        target = Path(sys.argv[sys.argv.index("--self-check-report") + 1])
+        target.write_text(json.dumps(result), encoding="utf-8")
+    except (IndexError, OSError):
+        pass
 
 
 if __name__ == "__main__":
     if _SELF_CHECK_HOME:
         try:
-            self_check()
+            _self_check_report({"ok": True, **self_check()})
+        except Exception as error:
+            _self_check_report({"ok": False, "error": f"{type(error).__name__}: {error}"})
+            if sys.stderr:
+                print(f"self-check failed: {type(error).__name__}: {error}", file=sys.stderr)
+            sys.exit(1)
         finally:
             _SELF_CHECK_HOME.cleanup()
     else:

@@ -13,5 +13,6 @@ build/
 dist/
 *.kinoupdate
 vendor/libmpv/
+vendor/mpv-windows/
 
 .DS_Store

@@ -42,6 +42,7 @@ app = BUNDLE(collection, name="KINO.app", icon=str(project / "AppIcon.icns"),
              bundle_identifier="com.kino.desktop", info_plist={
                  "CFBundleShortVersionString": APP_VERSION,
                  "CFBundleVersion": APP_VERSION,
+                 "LSMinimumSystemVersion": "14.0",
                  "NSHighResolutionCapable": True,
                  "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True, "NSAllowsArbitraryLoads": True},
                  # « Lire sur la TV »: macOS asks once before KINO looks for the TV on the local network.
