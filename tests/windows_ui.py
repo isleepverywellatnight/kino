@@ -195,13 +195,19 @@ def main():
         check("window found", hwnd)
 
         with sync_playwright() as p:
-            browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{PORT}")
-            page = None
-            for _ in range(180):  # the page may still be about:blank
-                page = next((pg for ctx in browser.contexts for pg in ctx.pages if "127.0.0.1" in pg.url), None)
+            # Playwright may keep the about:blank it saw before KINO navigated: connect again.
+            browser, page = None, None
+            for _ in range(12):
+                browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{PORT}")
+                for _ in range(10):
+                    page = next((pg for ctx in browser.contexts for pg in ctx.pages if "127.0.0.1" in pg.url), None)
+                    if page:
+                        break
+                    time.sleep(0.5)
                 if page:
                     break
-                time.sleep(0.5)
+                browser.close()
+                time.sleep(2)
             check("KINO page loaded", page, str([pg.url for ctx in browser.contexts for pg in ctx.pages]))
             if not page:
                 screenshot("no-page", hwnd)
