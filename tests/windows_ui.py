@@ -194,11 +194,14 @@ def main():
         with sync_playwright() as p:
             browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{PORT}")
             page = None
-            for _ in range(60):  # the page may still be about:blank
+            for _ in range(180):  # the page may still be about:blank
                 page = next((pg for ctx in browser.contexts for pg in ctx.pages if "127.0.0.1" in pg.url), None)
                 if page:
                     break
                 time.sleep(0.5)
+            check("KINO page loaded", page, str([pg.url for ctx in browser.contexts for pg in ctx.pages]))
+            if not page:
+                return
             page.wait_for_function("document.body.classList.contains('is-win-native')", timeout=30000)
             page.wait_for_timeout(1500)
             # The test machine's screen is small: the whole window on it.
