@@ -1,5 +1,5 @@
 # PyInstaller configuration for KINO on Windows (x64): a folder with KINO.exe,
-# packaged by installer/kino.iss into a per-user installer.
+# packaged by packaging/kino.iss into a per-user installer.
 from pathlib import Path
 import runpy
 
@@ -7,18 +7,19 @@ import imageio_ffmpeg
 from PyInstaller.utils.win32.versioninfo import (FixedFileInfo, StringFileInfo, StringStruct, StringTable,
                                                  VarFileInfo, VarStruct, VSVersionInfo)
 
-project = Path(SPECPATH)
-APP_VERSION = runpy.run_path(str(project / "kino_version.py"))["APP_VERSION"]
+project = Path(SPECPATH).parent
+source = project / "src"
+APP_VERSION = runpy.run_path(str(source / "kino_version.py"))["APP_VERSION"]
 version_parts = tuple(int(part) for part in APP_VERSION.split(".")) + (0,)
 
+# Same layout as the repository: src/paths.py finds them in both places.
 datas = [
     (str(project / "web"), "web"),
     (str(project / "addons"), "addons"),
-    (str(project / "kino.png"), "."),
-    (str(project / "kino.ico"), "."),
-    (str(project / "qrcode.min.js"), "."),
-    (str(project / "kino_bridge.lua"), "."),
-    (str(project / "update_public_key.hex"), "."),
+    (str(project / "assets" / "kino.png"), "assets"),
+    (str(project / "assets" / "kino.ico"), "assets"),
+    (str(project / "assets" / "kino_bridge.lua"), "assets"),
+    (str(project / "assets" / "update_public_key.hex"), "assets"),
 ]
 binaries = [(imageio_ffmpeg.get_ffmpeg_exe(), "imageio_ffmpeg/binaries")]
 # The player: mpv.exe and its shader compiler, fetched by tools/fetch_mpv_windows.py.
@@ -47,8 +48,8 @@ version_info = VSVersionInfo(
 )
 
 a = Analysis(
-    [str(project / "desktop.py")],
-    pathex=[str(project)],
+    [str(source / "desktop.py")],
+    pathex=[str(source)],
     binaries=binaries,
     datas=datas,
     hiddenimports=["webview.platforms.winforms", "webview.platforms.edgechromium", "clr", "imageio_ffmpeg",
@@ -60,5 +61,5 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="KINO", console=False,
-          icon=str(project / "kino.ico"), version=version_info)
+          icon=str(project / "assets" / "kino.ico"), version=version_info)
 collection = COLLECT(exe, a.binaries, a.datas, name="KINO", strip=False, upx=False)

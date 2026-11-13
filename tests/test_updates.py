@@ -9,7 +9,9 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+PROJECT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT / "src"))
+sys.path.insert(0, str(PROJECT / "tools"))
 
 import build_update_package  # noqa: E402
 import kino_update  # noqa: E402
@@ -53,8 +55,7 @@ def test_parse_release_refuses_unpublished_or_unversioned(data):
 
 def test_asset_names():
     assert kino_update.release_asset_names("1.2.3", "darwin", "arm64") == ("KINO-1.2.3-arm64.kinoupdate", None)
-    assert kino_update.release_asset_names("1.2.3", "win32") == ("KINO-Setup-1.2.3-x64.exe",
-                                                                 "KINO-Setup-1.2.3-x64.exe.sig")
+    assert kino_update.release_asset_names("1.2.3", "win32") == ("KINO-Windows.exe", "KINO-Windows.exe.sig")
 
 
 class FakeResponse(io.BytesIO):
@@ -97,7 +98,7 @@ def signing_key(tmp_path, monkeypatch):
 
 def test_installer_signature_round_trip(tmp_path, signing_key):
     _, key_path, public = signing_key
-    installer = tmp_path / f"KINO-Setup-{APP_VERSION}-x64.exe"
+    installer = tmp_path / "KINO-Windows.exe"
     installer.write_bytes(b"MZ installer")
     signature = build_update_package.sign_installer(installer, key_path, "Notes")
     payload = kino_update.verify_installer_signature(signature.read_bytes(), public, current_version="0.0.1")
@@ -113,7 +114,7 @@ def test_installer_signature_refuses_tampering(signing_key):
     payload = {
         "format": UPDATE_FORMAT, "version": "9.0.0", "platform": "win32", "architecture": "x64",
         "bundle_id": BUNDLE_ID, "data_schema": DATA_SCHEMA, "notes": "",
-        "artifact": {"name": "KINO-Setup-9.0.0-x64.exe", "sha256": "a" * 64, "size": 10},
+        "artifact": {"name": "KINO-Windows.exe", "sha256": "a" * 64, "size": 10},
     }
     signature = base64.b64encode(key.sign(kino_update.canonical_json(payload))).decode()
     payload["artifact"]["size"] = 11
@@ -130,12 +131,12 @@ def test_windows_check_downloads_and_verifies(tmp_path, signing_key, monkeypatch
     payload = {
         "format": UPDATE_FORMAT, "version": version, "platform": "win32", "architecture": "x64",
         "bundle_id": BUNDLE_ID, "data_schema": DATA_SCHEMA, "notes": "",
-        "artifact": {"name": f"KINO-Setup-{version}-x64.exe", "sha256": hashlib.sha256(installer).hexdigest(),
+        "artifact": {"name": "KINO-Windows.exe", "sha256": hashlib.sha256(installer).hexdigest(),
                      "size": len(installer)},
     }
     sig = kino_update.canonical_json({"payload": payload, "signature": base64.b64encode(
         key.sign(kino_update.canonical_json(payload))).decode()})
-    files = {f"KINO-Setup-{version}-x64.exe": installer, f"KINO-Setup-{version}-x64.exe.sig": sig}
+    files = {"KINO-Windows.exe": installer, "KINO-Windows.exe.sig": sig}
     release = kino_update.parse_release(release_json(version, [(n, len(b)) for n, b in files.items()]))
 
     monkeypatch.setattr(kino_update.sys, "platform", "win32")

@@ -1285,7 +1285,8 @@ def migrate_from_json(json_config_path):
 def find_gdrive_sync_dir():
     """Détecte automatiquement le dossier Google Drive KINO sur Mac et Windows."""
     # 1. Dossier courant (si KINO est exécuté depuis Google Drive)
-    app_dir = Path(__file__).resolve().parent
+    import paths
+    app_dir = paths.PROJECT_DIR
     app_dir_str = str(app_dir).lower()
     if any(k in app_dir_str for k in ("googledrive", "google drive", "mon drive", "my drive")):
         return app_dir

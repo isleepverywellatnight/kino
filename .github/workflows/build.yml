@@ -1,5 +1,5 @@
 # Builds KINO for macOS (Apple Silicon) and Windows (x64) on every push and pull
-# request to main. Pushing a tag vX.Y.Z (equal to APP_VERSION in kino_version.py)
+# request to main. Pushing a tag vX.Y.Z (equal to APP_VERSION in src/kino_version.py)
 # publishes a GitHub release with the .dmg, the Windows installer and, when the
 # KINO_UPDATE_SIGNING_KEY secret is set, the signed files the in-app updater uses.
 name: Build
@@ -35,18 +35,20 @@ jobs:
       - name: Version
         id: version
         run: |
-          version=$(python -c "import kino_version; print(kino_version.APP_VERSION)")
+          version=$(PYTHONPATH=src python -c "import kino_version; print(kino_version.APP_VERSION)")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF#refs/tags/v}" != "$version" ]]; then
-            echo "::error::Le tag ${GITHUB_REF#refs/tags/} ne correspond pas à APP_VERSION ($version) dans kino_version.py"
+            echo "::error::Le tag ${GITHUB_REF#refs/tags/} ne correspond pas à APP_VERSION ($version) dans src/kino_version.py"
             exit 1
           fi
       - name: Compile
-        run: python -m compileall -q -x '(^|/)(\.git|vendor)/' .
+        run: python -m compileall -q src tools tests
       - name: Tests
         run: |
           pip install pytest cryptography==48.0.0 certifi
           python -m pytest -q tests
+      - name: Install scripts
+        run: bash -n packaging/install.sh
 
   macos:
     needs: checks
@@ -65,13 +67,13 @@ jobs:
           brew install --cask iina
           python tools/vendor_libmpv.py
       - name: Build KINO.app
-        run: pyinstaller --noconfirm kino_macos.spec
+        run: pyinstaller --noconfirm packaging/kino_macos.spec
       - name: Self-check
         run: |
           codesign --verify --deep --strict dist/KINO.app
           dist/KINO.app/Contents/MacOS/KINO --self-check
       - name: Disk image
-        run: tools/make_dmg.sh "dist/KINO-$VERSION-arm64.dmg"
+        run: packaging/make_dmg.sh dist/KINO-macOS.dmg
       - name: Signed update package
         env:
           KINO_UPDATE_SIGNING_KEY: ${{ secrets.KINO_UPDATE_SIGNING_KEY }}
@@ -82,14 +84,14 @@ jobs:
           fi
           key="$RUNNER_TEMP/kino-update-key.pem"
           printf '%s\n' "$KINO_UPDATE_SIGNING_KEY" > "$key"
-          python build_update_package.py --app dist/KINO.app --key "$key" \
+          python tools/build_update_package.py --app dist/KINO.app --key "$key" \
             --output "dist/KINO-$VERSION-arm64.kinoupdate" --notes "KINO $VERSION"
           rm -f "$key"
       - uses: actions/upload-artifact@v4
         with:
           name: kino-macos
           path: |
-            dist/KINO-*.dmg
+            dist/KINO-macOS.dmg
             dist/KINO-*.kinoupdate
           if-no-files-found: error
 
@@ -112,7 +114,7 @@ jobs:
       - name: mpv
         run: python tools/fetch_mpv_windows.py
       - name: Build KINO.exe
-        run: pyinstaller --noconfirm kino_windows.spec
+        run: pyinstaller --noconfirm packaging/kino_windows.spec
       - name: Self-check
         run: |
           $report = Join-Path $env:RUNNER_TEMP "self-check.json"
@@ -151,11 +153,11 @@ jobs:
             choco install innosetup -y --no-progress
             $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           }
-          & $iscc "/DAppVersion=$env:VERSION" installer\kino.iss
+          & $iscc "/DAppVersion=$env:VERSION" packaging\kino.iss
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
       - name: Install test
         run: |
-          $setup = "dist\KINO-Setup-$env:VERSION-x64.exe"
+          $setup = "dist\KINO-Windows.exe"
           $p = Start-Process -FilePath $setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Installation failed ($($p.ExitCode))" }
           $app = Join-Path $env:LOCALAPPDATA "Programs\KINO"
@@ -178,7 +180,7 @@ jobs:
           }
           $key = Join-Path $env:RUNNER_TEMP "kino-update-key.pem"
           Set-Content -Path $key -Value $env:KINO_UPDATE_SIGNING_KEY -NoNewline -Encoding ascii
-          python build_update_package.py --installer "dist\KINO-Setup-$env:VERSION-x64.exe" --key $key --notes "KINO $env:VERSION"
+          python tools/build_update_package.py --installer "dist\KINO-Windows.exe" --key $key --notes "KINO $env:VERSION"
           $code = $LASTEXITCODE
           Remove-Item $key
           if ($code -ne 0) { throw "Signing failed" }
@@ -186,8 +188,8 @@ jobs:
         with:
           name: kino-windows
           path: |
-            dist/KINO-Setup-*.exe
-            dist/KINO-Setup-*.exe.sig
+            dist/KINO-Windows.exe
+            dist/KINO-Windows.exe.sig
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
@@ -219,3 +221,31 @@ jobs:
           sed "s/{{VERSION}}/$VERSION/g" ../.github/release-notes.md > "$RUNNER_TEMP/notes.md"
           gh release create "v$VERSION" * --repo "$GITHUB_REPOSITORY" --title "KINO $VERSION" \
             --notes-file "$RUNNER_TEMP/notes.md" --generate-notes
+
+  # The published release, installed the way users do: the one-line commands of the README.
+  verify-release:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          bash packaging/install.sh
+          /Applications/KINO.app/Contents/MacOS/KINO --self-check
+      - name: Install (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & ./packaging/install.ps1
+          Start-Sleep -Seconds 5
+          Stop-Process -Name KINO -Force -ErrorAction SilentlyContinue
+          $report = Join-Path $env:RUNNER_TEMP "self-check.json"
+          $exe = Join-Path $env:LOCALAPPDATA "Programs\KINO\KINO.exe"
+          $p = Start-Process -FilePath $exe -ArgumentList "--self-check", "--self-check-report", $report -Wait -PassThru
+          Get-Content $report
+          if ($p.ExitCode -ne 0) { throw "Self-check failed" }

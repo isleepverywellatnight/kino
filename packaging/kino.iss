@@ -1,12 +1,13 @@
 ; KINO installer for Windows (Inno Setup 6.1 or newer).
-; Installs for the current user only: no administrator rights, and KINO can
-; later update itself in place. User data (~\.kino_data.db, the settings and
-; %APPDATA%\KINO) is never touched, neither on update nor on uninstall.
+; One click: no page to confirm. It installs for the current user only (no
+; administrator rights, KINO can later update itself in place), adds the Start
+; menu and desktop shortcuts, then starts KINO. User data (~\.kino_data.db, the
+; settings and %APPDATA%\KINO) is never touched, neither on update nor on uninstall.
 ;
-; Build: iscc /DAppVersion=1.2.0 installer\kino.iss   (after pyinstaller kino_windows.spec)
+; Build: iscc /DAppVersion=1.2.0 packaging\kino.iss   (after pyinstaller packaging\kino_windows.spec)
 
 #ifndef AppVersion
-  #error Pass the version: iscc /DAppVersion=x.y.z installer\kino.iss
+  #error Pass the version: iscc /DAppVersion=x.y.z packaging\kino.iss
 #endif
 
 [Setup]
@@ -20,16 +21,20 @@ AppPublisherURL=https://github.com/isleepverywellatnight/kino
 AppSupportURL=https://github.com/isleepverywellatnight/kino/issues
 AppUpdatesURL=https://github.com/isleepverywellatnight/kino/releases
 DefaultDirName={localappdata}\Programs\KINO
-DisableDirPage=auto
+DisableWelcomePage=yes
+DisableDirPage=yes
 DisableProgramGroupPage=yes
+DisableReadyPage=yes
+DisableFinishedPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ; Windows 10 1809 or newer (WebView2).
 MinVersion=10.0.17763
 OutputDir=..\dist
-OutputBaseFilename=KINO-Setup-{#AppVersion}-x64
-SetupIconFile=..\kino.ico
+; Same name for every version: the download link never changes.
+OutputBaseFilename=KINO-Windows
+SetupIconFile=..\assets\kino.ico
 UninstallDisplayIcon={app}\KINO.exe
 UninstallDisplayName=KINO
 Compression=lzma2/max
@@ -38,14 +43,10 @@ WizardStyle=modern
 ; KINO must be closed first: see InitializeSetup below.
 CloseApplications=yes
 RestartApplications=no
-LicenseFile=..\LICENSE
 
 [Languages]
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
-
-[Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [InstallDelete]
 ; The previous version's libraries: an update must not keep stale modules.
@@ -56,12 +57,12 @@ Source: "..\dist\KINO\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 
 [Icons]
 Name: "{autoprograms}\KINO"; Filename: "{app}\KINO.exe"
-Name: "{autodesktop}\KINO"; Filename: "{app}\KINO.exe"; Tasks: desktopicon
+Name: "{autodesktop}\KINO"; Filename: "{app}\KINO.exe"
 
 [Run]
-Filename: "{app}\KINO.exe"; Description: "{cm:LaunchProgram,KINO}"; Flags: nowait postinstall skipifsilent
-; An update started by KINO itself (/UPDATE=1) relaunches it at the end.
-Filename: "{app}\KINO.exe"; Flags: nowait; Check: IsKinoUpdate
+; KINO starts once installed; a silent install only restarts it for an update
+; started by KINO itself (/UPDATE=1).
+Filename: "{app}\KINO.exe"; Flags: nowait; Check: ShouldLaunch
 
 [Code]
 const
@@ -72,6 +73,11 @@ const
 function IsKinoUpdate: Boolean;
 begin
   Result := ExpandConstant('{param:UPDATE|0}') <> '0';
+end;
+
+function ShouldLaunch: Boolean;
+begin
+  Result := IsKinoUpdate or not WizardSilent;
 end;
 
 function WebView2VersionIn(RootKey: Integer; SubKey: String): Boolean;
