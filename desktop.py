@@ -1,0 +1,1404 @@
+#!/usr/bin/env python3
+"""
+KINO Desktop — Application de bureau native multiplateforme (macOS, Windows, Linux)
+- Windows : Edge Chromium WebView2 avec accélération matérielle et gestion native Aero.
+- macOS : Apple Cocoa + WebKit (WKWebView) natif, fluide et intégré.
+"""
+
+import os
+import sys
+import threading
+import time
+from pathlib import Path
+
+_SELF_CHECK_HOME = None
+if "--self-check" in sys.argv:
+    import tempfile
+    _SELF_CHECK_HOME = tempfile.TemporaryDirectory(prefix="kino-self-check-")
+    Path.home = classmethod(lambda cls: Path(_SELF_CHECK_HOME.name))
+
+import webview
+
+IS_WIN = sys.platform == "win32"
+IS_MAC = sys.platform == "darwin"
+
+if IS_WIN:
+    import ctypes
+    from ctypes import wintypes
+    user32 = ctypes.windll.user32
+    WM_NCLBUTTONDOWN = 0x00A1
+    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
+        "--hide-scrollbars "
+        "--autoplay-policy=no-user-gesture-required "
+        "--enable-features=PlatformAudioDecoder,MediaFoundationClearPlay,MediaFoundationAudioDecoder "
+        "--disable-features=AudioServiceSandbox"
+    )
+    try:
+        import webview.platforms.winforms as wf
+        def safe_wf_toggle(uid):
+            global window_api_instance
+            if window_api_instance:
+                window_api_instance.toggle_fullscreen()
+        wf.toggle_fullscreen = safe_wf_toggle
+    except Exception:
+        pass
+else:
+    user32 = None
+    WM_NCLBUTTONDOWN = None
+
+import app
+import kino_update
+
+_single_instance_mutex = None
+_single_instance_fd = None
+
+
+def _activate_existing_mac_instance(pid):
+    """Bring the process holding KINO's launch lock to the front when possible."""
+    try:
+        from AppKit import NSApplicationActivateIgnoringOtherApps, NSRunningApplication
+        running = NSRunningApplication.runningApplicationWithProcessIdentifier_(pid)
+        if running:
+            running.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+    except Exception:
+        pass
+
+
+def check_single_instance():
+    """Vérifie si une instance de KINO est déjà active. Si oui, l'amène au premier plan et quitte proprement."""
+    global _single_instance_mutex, _single_instance_fd
+    if IS_WIN and user32:
+        kernel32 = ctypes.windll.kernel32
+        ERROR_ALREADY_EXISTS = 183
+        mutex_name = "Local\\KINO_SINGLE_INSTANCE_MUTEX"
+        _single_instance_mutex = kernel32.CreateMutexW(None, False, mutex_name)
+        if kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+            hwnd = user32.FindWindowW(None, "KINO")
+            if hwnd:
+                user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                user32.SetForegroundWindow(hwnd)
+            sys.exit(0)
+    elif IS_MAC:
+        if _single_instance_fd is not None:
+            return
+        import errno
+        import fcntl
+
+        lock_path = Path.home() / "Library/Application Support/KINO/instance.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        flags = os.O_CREAT | os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW
+        fd = os.open(lock_path, flags, 0o600)
+        try:
+            os.fchmod(fd, 0o600)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                if exc.errno not in (errno.EAGAIN, errno.EACCES):
+                    raise
+                pid = None
+                try:
+                    pid = int(os.read(fd, 32).decode("ascii"))
+                except (OSError, UnicodeError, ValueError):
+                    pass
+                if pid and getattr(sys, "frozen", False):
+                    _activate_existing_mac_instance(pid)
+                sys.exit(0)
+            os.ftruncate(fd, 0)
+            os.write(fd, str(os.getpid()).encode("ascii"))
+            _single_instance_fd = fd
+        except BaseException:
+            if _single_instance_fd is None:
+                os.close(fd)
+            raise
+
+
+def find_available_port(start_port=8080, max_tries=10):
+    """Trouve un port TCP local disponible pour éviter tout blocage."""
+    return app.find_available_port(start_port, max_tries)
+
+
+PORT = find_available_port(app.PORT)
+app.PORT = PORT
+
+def get_resource_dir():
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent
+
+RESOURCE_DIR = get_resource_dir()
+ICON_PATH = RESOURCE_DIR / ("kino.png" if IS_MAC else "kino.ico")
+if not ICON_PATH.exists():
+    ICON_PATH = RESOURCE_DIR / "kino.ico"
+
+server_instance = None
+desktop_window = None
+
+HIT_TEST_MAP = {
+    "left": 10,         # HTLEFT
+    "right": 11,        # HTRIGHT
+    "top": 12,          # HTTOP
+    "topleft": 13,      # HTTOPLEFT
+    "top-left": 13,
+    "topright": 14,     # HTTOPRIGHT
+    "top-right": 14,
+    "bottom": 15,       # HTBOTTOM
+    "bottomleft": 16,   # HTBOTTOMLEFT
+    "bottom-left": 16,
+    "bottomright": 17,  # HTBOTTOMRIGHT
+    "bottom-right": 17,
+}
+
+
+# Set once the server holds its port: the window opens then, not after a fixed pause.
+SERVER_READY = threading.Event()
+
+
+def run_server():
+    global server_instance
+    try:
+        try:
+            server_instance = app.ThreadingHTTPServer(("0.0.0.0", PORT), app.RequestHandler)
+        except Exception:
+            server_instance = app.ThreadingHTTPServer(("127.0.0.1", PORT), app.RequestHandler)
+    except OSError:
+        return
+    finally:
+        SERVER_READY.set()
+    # Requests wait in the socket queue until serve_forever: the offline library
+    # is reconciled before the first one is answered.
+    app.offline_library.library.reconcile()
+    # After the single-instance check: a second window must not compact the database
+    # or synchronise Google Drive alongside the running app.
+    app.kino_db.start_background_maintenance()
+    threading.Thread(target=kino_update.prune_installed_update_leftovers, daemon=True).start()
+    threading.Thread(target=app.refresh_finished_series, daemon=True).start()
+    threading.Thread(target=app.api_service.warm_account, daemon=True).start()
+    threading.Thread(target=app.network_state.warm, daemon=True).start()
+    threading.Thread(target=watch_new_episodes, daemon=True).start()
+    # KINO's own suggestions: the public catalogues read again once a month.
+    threading.Thread(target=app.refresh_suggestion_pool, daemon=True, name="suggestions").start()
+    app.backups().start()
+    server_instance.serve_forever()
+
+
+def on_closed():
+    global server_instance
+    if sys.platform == "win32":
+        try:
+            import subprocess
+            subprocess.run(["taskkill", "/F", "/IM", "mpv.exe"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=0x08000000)
+        except Exception:
+            pass
+    if server_instance:
+        try:
+            server_instance.shutdown()
+        except Exception:
+            pass
+
+
+WIN32_ORIG_WNDPROC = None
+WIN32_SUBCLASS_PROC = None
+
+
+def win32_custom_wndproc(hwnd, msg, wparam, lparam):
+    global WIN32_ORIG_WNDPROC
+    if msg == 0x0083:  # WM_NCCALCSIZE
+        if wparam != 0:
+            return 0
+    elif msg == 0x0112:  # WM_SYSCOMMAND
+        cmd = wparam & 0xFFF0
+        if cmd == 0xF020:  # SC_MINIMIZE
+            if user32:
+                user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE
+            return 0
+        elif cmd == 0xF120:  # SC_RESTORE
+            if user32:
+                user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+            return 0
+    if WIN32_ORIG_WNDPROC and user32:
+        return user32.CallWindowProcW(WIN32_ORIG_WNDPROC, hwnd, msg, wparam, lparam)
+    return 0
+
+
+def apply_win32_window_styles(hwnd):
+    global WIN32_ORIG_WNDPROC, WIN32_SUBCLASS_PROC
+    if not IS_WIN or not user32 or not hwnd:
+        return
+    try:
+        if WIN32_ORIG_WNDPROC is None:
+            LRESULT = ctypes.c_int64
+            HWND_T = wintypes.HWND
+            UINT = wintypes.UINT
+            WPARAM = wintypes.WPARAM
+            LPARAM = wintypes.LPARAM
+            WNDPROC_T = ctypes.WINFUNCTYPE(LRESULT, HWND_T, UINT, WPARAM, LPARAM)
+            user32.SetWindowLongPtrW.restype = ctypes.c_void_p
+            user32.SetWindowLongPtrW.argtypes = [HWND_T, ctypes.c_int, ctypes.c_void_p]
+            user32.CallWindowProcW.restype = LRESULT
+            user32.CallWindowProcW.argtypes = [ctypes.c_void_p, HWND_T, UINT, WPARAM, LPARAM]
+
+            WIN32_SUBCLASS_PROC = WNDPROC_T(win32_custom_wndproc)
+            WIN32_ORIG_WNDPROC = user32.SetWindowLongPtrW(hwnd, -4, ctypes.cast(WIN32_SUBCLASS_PROC, ctypes.c_void_p))
+    except Exception:
+        pass
+    try:
+        GWL_STYLE = -16
+        GWL_EXSTYLE = -20
+        WS_CAPTION = 0x00C00000
+        WS_THICKFRAME = 0x00040000
+        WS_MINIMIZEBOX = 0x00020000
+        WS_MAXIMIZEBOX = 0x00010000
+        WS_SYSMENU = 0x00080000
+        WS_EX_APPWINDOW = 0x00040000
+
+        style = user32.GetWindowLongW(hwnd, GWL_STYLE)
+        user32.SetWindowLongW(hwnd, GWL_STYLE, style | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU)
+        exstyle = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+        user32.SetWindowLongW(hwnd, GWL_EXSTYLE, exstyle | WS_EX_APPWINDOW)
+        user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0037)  # SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+    except Exception:
+        pass
+    try:
+        import ctypes
+        dwmapi = ctypes.windll.dwmapi
+        c_int = ctypes.c_int
+        byref = ctypes.byref
+        # DWMWA_BORDER_COLOR = 34 (0xFFFFFFFE = DWMWA_COLOR_NONE)
+        dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(0xFFFFFFFE)), 4)
+        # DWMWA_WINDOW_CORNER_PREFERENCE = 33 (2 = DWMWCP_ROUND)
+        dwmapi.DwmSetWindowAttribute(hwnd, 33, byref(c_int(2)), 4)
+        # DWMWA_CAPTION_COLOR = 35 (0x000B0909 = #09090b)
+        dwmapi.DwmSetWindowAttribute(hwnd, 35, byref(c_int(0x000B0909)), 4)
+    except Exception:
+        pass
+
+
+class WindowApi:
+    def update_status(self):
+        return kino_update.manager.status()
+
+    def check_for_updates(self):
+        return kino_update.manager.check_local_updates()
+
+    def choose_update_package(self):
+        window = self._get_window()
+        if not window:
+            raise kino_update.UpdateError("La fenêtre KINO est indisponible.")
+        selection = window.create_file_dialog(webview.FileDialog.OPEN,
+                                              file_types=("Mise à jour KINO (*.kinoupdate)",))
+        if not selection:
+            return {"cancelled": True}
+        path = selection[0] if isinstance(selection, (list, tuple)) else selection
+        return kino_update.manager.prepare(Path(path))
+
+    def install_update(self):
+        playback = app.remote_controller.get_player_state()
+        if playback.get("playing") and time.time() - playback.get("updated_at", 0) < 5:
+            return {"deferred": True, "message": "Une lecture est en cours. Fermez le lecteur pour installer la mise à jour."}
+        result = kino_update.manager.install()
+        window = self._get_window()
+        if window:
+            threading.Timer(0.4, window.destroy).start()
+        return result
+
+    def rollback_update(self):
+        playback = app.remote_controller.get_player_state()
+        if playback.get("playing") and time.time() - playback.get("updated_at", 0) < 5:
+            return {"deferred": True, "message": "Une lecture est en cours. Fermez le lecteur pour revenir à l'ancienne version."}
+        result = kino_update.manager.rollback()
+        window = self._get_window()
+        if window:
+            threading.Timer(0.4, window.destroy).start()
+        return result
+
+    def export_playback_diagnostic(self, report):
+        """Save a numeric-only report after the user chooses a local destination."""
+        import json
+        import math
+        allowed = {
+            'schema', 'position', 'duration', 'paused', 'muted', 'volume',
+            'readyState', 'networkState', 'mediaError', 'compatibleStream',
+            'audioTrackCount', 'selectedAudioIndex', 'subtitleCueCount',
+            'subtitleDelay', 'sourceAttempts',
+        }
+        if not isinstance(report, dict):
+            raise ValueError('Rapport invalide')
+        safe = {key: value for key, value in report.items() if key in allowed and
+                (value is None or isinstance(value, (bool, int, float)) and math.isfinite(value))}
+        safe['player'] = 'KINO internal'
+        window = self._get_window()
+        if not window:
+            return False
+        destination = window.create_file_dialog(webview.FileDialog.SAVE,
+            save_filename='KINO-diagnostic.json', file_types=('JSON (*.json)',))
+        if not destination:
+            return False
+        path = destination[0] if isinstance(destination, (list, tuple)) else destination
+        Path(path).write_text(json.dumps(safe, indent=2, ensure_ascii=False), encoding='utf-8')
+        return True
+
+    def __init__(self, get_window):
+        self._get_window = get_window
+        self._saved_mac_frame = None
+        self._is_fullscreen = False
+        self._win32_saved_rect = None
+        self._win32_saved_style = None
+        self._win32_saved_exstyle = None
+        self._win32_was_maximized = False
+
+    def minimize(self):
+        w = self._get_window()
+        if w:
+            w.minimize()
+
+    def toggle_maximize(self):
+        w = self._get_window()
+        if not w:
+            return False
+        if IS_MAC and getattr(w, "native", None) is not None:
+            try:
+                from PyObjCTools import AppHelper
+
+                def _mac_zoom():
+                    ns_win = w.native
+                    ns_win.zoom_(None)
+                    w.maximized = bool(ns_win.isZoomed())
+
+                AppHelper.callAfter(_mac_zoom)
+                return True
+            except Exception:
+                pass
+        if IS_WIN:
+            try:
+                import System.Windows.Forms as s_wf
+                form = w.gui.BrowserView.instances.get(w.uid)
+                if form and hasattr(form, "WindowState"):
+                    if form.WindowState == s_wf.FormWindowState.Maximized:
+                        w.restore()
+                        w.maximized = False
+                    else:
+                        w.maximize()
+                        w.maximized = True
+                    return bool(w.maximized)
+            except Exception:
+                pass
+        if getattr(w, "maximized", False):
+            w.restore()
+            w.maximized = False
+        else:
+            w.maximize()
+            w.maximized = True
+        return bool(w.maximized)
+
+    def start_window_drag(self):
+        if not IS_MAC:
+            return
+        w = self._get_window()
+        if not w or getattr(w, "native", None) is None:
+            return
+        try:
+            import AppKit
+            from PyObjCTools import AppHelper
+            import webview.platforms.cocoa as cocoa
+
+            def _do_drag():
+                ns_win = w.native
+                bv = cocoa.BrowserView.instances.get(w.uid)
+                ev = getattr(bv.webview, "_last_mouse_down_event", None) if (bv and getattr(bv, "webview", None)) else None
+                if ev is None:
+                    ev = AppKit.NSApplication.sharedApplication().currentEvent()
+                if ev is not None:
+                    if ev.clickCount() >= 2:
+                        ns_win.zoom_(None)
+                        w.maximized = bool(ns_win.isZoomed())
+                    else:
+                        ns_win.performWindowDragWithEvent_(ev)
+
+            AppHelper.callAfter(_do_drag)
+        except Exception:
+            pass
+
+    def _win32_set_fullscreen(self, enable: bool):
+        w = self._get_window()
+        if not w or not IS_WIN or not user32:
+            self._is_fullscreen = bool(enable)
+            return self._is_fullscreen
+        try:
+            form = w.gui.BrowserView.instances.get(w.uid)
+            if not form or not form.Handle:
+                self._is_fullscreen = bool(enable)
+                return self._is_fullscreen
+            hwnd = form.Handle.ToInt64()
+            import System.Windows.Forms as s_wf
+
+            if enable:
+                if self._is_fullscreen:
+                    return True
+                rect = wintypes.RECT()
+                user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                self._win32_saved_rect = (rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top)
+                self._win32_saved_style = user32.GetWindowLongW(hwnd, -16)
+                self._win32_saved_exstyle = user32.GetWindowLongW(hwnd, -20)
+                self._win32_was_maximized = bool(form.WindowState == s_wf.FormWindowState.Maximized)
+
+                class MONITORINFO(ctypes.Structure):
+                    _fields_ = [
+                        ("cbSize", wintypes.DWORD),
+                        ("rcMonitor", wintypes.RECT),
+                        ("rcWork", wintypes.RECT),
+                        ("dwFlags", wintypes.DWORD),
+                    ]
+                hmon = user32.MonitorFromWindow(hwnd, 2)
+                mi = MONITORINFO()
+                mi.cbSize = ctypes.sizeof(MONITORINFO)
+                user32.GetMonitorInfoW(hmon, ctypes.byref(mi))
+                mx = mi.rcMonitor.left
+                my = mi.rcMonitor.top
+                mw = mi.rcMonitor.right - mi.rcMonitor.left
+                mh = mi.rcMonitor.bottom - mi.rcMonitor.top
+
+                WS_CAPTION = 0x00C00000
+                WS_THICKFRAME = 0x00040000
+                WS_MINIMIZEBOX = 0x00020000
+                WS_MAXIMIZEBOX = 0x00010000
+                WS_SYSMENU = 0x00080000
+                WS_POPUP = 0x80000000
+                fs_style = (self._win32_saved_style & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU)) | WS_POPUP
+                user32.SetWindowLongW(hwnd, -16, fs_style)
+
+                try:
+                    form.FormBorderStyle = getattr(s_wf.FormBorderStyle, "None")
+                    form.WindowState = s_wf.FormWindowState.Normal
+                except Exception:
+                    pass
+
+                SWP_FRAMECHANGED = 0x0020
+                SWP_SHOWWINDOW = 0x0040
+                user32.SetWindowPos(hwnd, 0, mx, my, mw, mh, SWP_FRAMECHANGED | SWP_SHOWWINDOW)
+
+                try:
+                    dwmapi = ctypes.windll.dwmapi
+                    c_int = ctypes.c_int
+                    byref = ctypes.byref
+                    dwmapi.DwmSetWindowAttribute(hwnd, 33, byref(c_int(1)), 4)
+                    dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(0xFFFFFFFE)), 4)
+                except Exception:
+                    pass
+
+                self._is_fullscreen = True
+                w.fullscreen = True
+                try:
+                    form.is_fullscreen = True
+                except Exception:
+                    pass
+
+                global CURRENT_DOCKED_MPV_HWND
+                if CURRENT_DOCKED_MPV_HWND and user32.IsWindow(CURRENT_DOCKED_MPV_HWND):
+                    user32.SetWindowPos(CURRENT_DOCKED_MPV_HWND, 0, 0, 0, mw, mh, 0x0014)
+                    user32.BringWindowToTop(CURRENT_DOCKED_MPV_HWND)
+
+                return True
+            else:
+                if not self._is_fullscreen:
+                    return False
+
+                saved_style = getattr(self, "_win32_saved_style", None)
+                if saved_style:
+                    user32.SetWindowLongW(hwnd, -16, saved_style)
+                else:
+                    apply_win32_window_styles(hwnd)
+
+                saved_rect = getattr(self, "_win32_saved_rect", None)
+                if saved_rect and len(saved_rect) == 4:
+                    rx, ry, rw, rh = saved_rect
+                else:
+                    rx, ry, rw, rh = 100, 100, 1280, 820
+
+                if getattr(self, "_win32_was_maximized", False):
+                    try:
+                        form.WindowState = s_wf.FormWindowState.Maximized
+                        w.maximized = True
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        form.WindowState = s_wf.FormWindowState.Normal
+                        w.maximized = False
+                    except Exception:
+                        pass
+                    user32.SetWindowPos(hwnd, 0, rx, ry, rw, rh, 0x0020 | 0x0040)
+
+                apply_win32_window_styles(hwnd)
+
+                self._is_fullscreen = False
+                w.fullscreen = False
+                try:
+                    form.is_fullscreen = False
+                except Exception:
+                    pass
+
+                if CURRENT_DOCKED_MPV_HWND and user32.IsWindow(CURRENT_DOCKED_MPV_HWND):
+                    rect_c = wintypes.RECT()
+                    user32.GetClientRect(hwnd, ctypes.byref(rect_c))
+                    user32.SetWindowPos(CURRENT_DOCKED_MPV_HWND, 0, 0, 0, rect_c.right, rect_c.bottom, 0x0014)
+                    user32.BringWindowToTop(CURRENT_DOCKED_MPV_HWND)
+
+                return False
+        except Exception:
+            return bool(self._is_fullscreen)
+
+    def is_fullscreen(self):
+        w = self._get_window()
+        if not w:
+            return bool(self._is_fullscreen)
+        if IS_WIN:
+            return bool(self._is_fullscreen)
+        elif IS_MAC and getattr(w, "native", None) is not None:
+            try:
+                if hasattr(w.native, "styleMask"):
+                    return bool(w.native.styleMask() & (1 << 14))
+            except Exception:
+                pass
+        return bool(self._is_fullscreen or getattr(w, "fullscreen", False))
+
+    def toggle_fullscreen(self):
+        w = self._get_window()
+        if not w:
+            return False
+        if IS_WIN:
+            return self._win32_set_fullscreen(not self._is_fullscreen)
+        try:
+            w.toggle_fullscreen()
+        except Exception:
+            pass
+        is_fs = self.is_fullscreen()
+        self._is_fullscreen = is_fs
+        w.fullscreen = is_fs
+        return is_fs
+
+    def enter_fullscreen(self):
+        w = self._get_window()
+        if not w:
+            return False
+        if IS_WIN:
+            return self._win32_set_fullscreen(True)
+        if not self.is_fullscreen():
+            try:
+                w.toggle_fullscreen()
+            except Exception:
+                pass
+        self._is_fullscreen = True
+        w.fullscreen = True
+        return True
+
+    def exit_fullscreen(self):
+        w = self._get_window()
+        if not w:
+            return False
+        if IS_WIN:
+            return self._win32_set_fullscreen(False)
+        if self.is_fullscreen():
+            try:
+                w.toggle_fullscreen()
+            except Exception:
+                pass
+        self._is_fullscreen = False
+        w.fullscreen = False
+        return False
+
+    def close(self):
+        w = self._get_window()
+        if w:
+            w.destroy()
+
+    def start_resize(self, direction):
+        if not IS_WIN or not user32:
+            return
+        w = self._get_window()
+        if not w or getattr(w, "maximized", False):
+            return
+        code = HIT_TEST_MAP.get(direction)
+        if not code:
+            return
+        try:
+            form = w.gui.BrowserView.instances.get(w.uid)
+            if form:
+                hwnd = form.Handle.ToInt64()
+                user32.ReleaseCapture()
+                user32.SendMessageW(hwnd, WM_NCLBUTTONDOWN, code, 0)
+        except Exception:
+            pass
+
+    def set_bounds(self, x, y, width, height):
+        w = self._get_window()
+        if not w:
+            return
+        min_w, min_h = 640, 420
+        width = max(min_w, int(width))
+        height = max(min_h, int(height))
+        x = int(x)
+        y = int(y)
+        if IS_MAC and getattr(w, "native", None) is not None:
+            try:
+                import AppKit
+                from PyObjCTools import AppHelper
+
+                def _apply():
+                    ns_win = w.native
+                    screen = AppKit.NSScreen.mainScreen().frame()
+                    flipped_y = screen.size.height - y - height
+                    rect = AppKit.NSMakeRect(
+                        screen.origin.x + x,
+                        screen.origin.y + flipped_y,
+                        width,
+                        height,
+                    )
+                    ns_win.setFrame_display_(rect, True)
+
+                AppHelper.callAfter(_apply)
+                return
+            except Exception:
+                pass
+        try:
+            w.move(x, y)
+            w.resize(width, height)
+        except Exception:
+            pass
+
+    def resize(self, width, height):
+        w = self._get_window()
+        if w:
+            try:
+                w.resize(int(width), int(height))
+            except Exception:
+                pass
+
+    def get_state(self):
+        w = self._get_window()
+        if not w:
+            return {}
+        try:
+            is_fs = self.is_fullscreen()
+            if IS_MAC and getattr(w, "native", None) is not None:
+                import AppKit
+                frame = w.native.frame()
+                screen = AppKit.NSScreen.mainScreen().frame()
+                top_left_y = int(screen.size.height - (frame.origin.y + frame.size.height))
+                is_zoomed = bool(w.native.isZoomed()) if hasattr(w.native, "isZoomed") else bool(getattr(w, "maximized", False))
+                return {
+                    "maximized": is_zoomed,
+                    "fullscreen": is_fs,
+                    "width": int(frame.size.width),
+                    "height": int(frame.size.height),
+                    "x": int(frame.origin.x),
+                    "y": top_left_y,
+                    "platform": sys.platform,
+                }
+            is_max = bool(getattr(w, "maximized", False))
+            if IS_WIN:
+                try:
+                    import System.Windows.Forms as s_wf
+                    form = w.gui.BrowserView.instances.get(w.uid)
+                    if form and hasattr(form, "WindowState"):
+                        is_max = bool(form.WindowState == s_wf.FormWindowState.Maximized)
+                except Exception:
+                    pass
+            return {
+                "maximized": is_max,
+                "fullscreen": is_fs,
+                "width": int(w.width),
+                "height": int(w.height),
+                "x": int(w.x),
+                "y": int(w.y),
+                "platform": sys.platform,
+            }
+        except Exception:
+            return {}
+
+
+window_api_instance = None
+
+
+def handle_backend_window_action(action):
+    global desktop_window, window_api_instance
+    if not desktop_window:
+        return
+    if action == "minimize":
+        if window_api_instance:
+            window_api_instance.minimize()
+        else:
+            desktop_window.minimize()
+    elif action == "maximize":
+        if window_api_instance:
+            window_api_instance.toggle_maximize()
+        elif getattr(desktop_window, "maximized", False):
+            desktop_window.restore()
+        else:
+            desktop_window.maximize()
+    elif action == "fullscreen":
+        if window_api_instance:
+            window_api_instance.toggle_fullscreen()
+        else:
+            try:
+                desktop_window.toggle_fullscreen()
+            except Exception:
+                pass
+    elif action == "enter_fullscreen":
+        if window_api_instance:
+            window_api_instance.enter_fullscreen()
+        else:
+            set_kino_fullscreen(True)
+    elif action == "exit_fullscreen":
+        if window_api_instance:
+            window_api_instance.exit_fullscreen()
+        else:
+            set_kino_fullscreen(False)
+    elif action == "close":
+        if window_api_instance:
+            window_api_instance.close()
+        else:
+            desktop_window.destroy()
+    elif action == "hide":
+        try:
+            desktop_window.hide()
+        except Exception:
+            pass
+    elif action == "show":
+        try:
+            desktop_window.show()
+            desktop_window.restore()
+            if IS_MAC:
+                import AppKit
+                from PyObjCTools import AppHelper
+                AppHelper.callAfter(
+                    lambda: AppKit.NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+                )
+        except Exception:
+            pass
+
+
+def get_window_geometry():
+    global desktop_window
+    if desktop_window:
+        try:
+            return {
+                "x": int(desktop_window.x),
+                "y": int(desktop_window.y),
+                "width": int(desktop_window.width),
+                "height": int(desktop_window.height),
+            }
+        except Exception:
+            pass
+    return None
+
+
+CURRENT_DOCKED_MPV_HWND = None
+
+
+def get_form_hwnd():
+    global desktop_window
+    if not desktop_window or not IS_WIN:
+        return None
+    try:
+        form = desktop_window.gui.BrowserView.instances.get(desktop_window.uid)
+        if form and form.Handle:
+            return form.Handle.ToInt64()
+    except Exception:
+        pass
+    return None
+
+
+def get_hwnd_for_pid(target_pid: int):
+    hwnds = []
+    def enum_cb(h, _):
+        pid = ctypes.c_ulong()
+        user32.GetWindowThreadProcessId(h, ctypes.byref(pid))
+        if pid.value == target_pid and user32.IsWindowVisible(h):
+            hwnds.append(h)
+        return True
+    CMPFUNC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_ulong, ctypes.c_ulong)
+    user32.EnumWindows(CMPFUNC(enum_cb), 0)
+    return hwnds[0] if hwnds else None
+
+
+def dock_mpv_window(identifier):
+    """Accroche immediatement la fenetre native MPV comme sous-fenetre integree (child) de KINO."""
+    global desktop_window, CURRENT_DOCKED_MPV_HWND
+    if not desktop_window or not IS_WIN:
+        return None
+    try:
+        form = desktop_window.gui.BrowserView.instances.get(desktop_window.uid)
+        if not form or not form.Handle:
+            return None
+        form_hwnd = form.Handle.ToInt64()
+
+        # Recherche dynamique de la fenetre MPV par PID ou par son titre
+        mpv_hwnd = None
+        for _ in range(60):
+            time.sleep(0.03)
+            if isinstance(identifier, int):
+                mpv_hwnd = get_hwnd_for_pid(identifier)
+            else:
+                mpv_hwnd = user32.FindWindowW(None, str(identifier))
+            if mpv_hwnd:
+                break
+        if not mpv_hwnd:
+            return None
+
+        CURRENT_DOCKED_MPV_HWND = mpv_hwnd
+
+        # Empêche le parent WinForms de repeindre par-dessus la fenêtre MPV
+        GWL_STYLE = -16
+        WS_CLIPCHILDREN = 0x02000000
+        parent_style = user32.GetWindowLongW(form_hwnd, GWL_STYLE)
+        user32.SetWindowLongW(form_hwnd, GWL_STYLE, parent_style | WS_CLIPCHILDREN)
+
+        # Transforme le style de la fenetre MPV en WS_CHILD clipsiblings
+        WS_CHILD = 0x40000000
+        WS_CLIPSIBLINGS = 0x04000000
+        WS_VISIBLE = 0x10000000
+        WS_POPUP = 0x80000000
+        style = user32.GetWindowLongW(mpv_hwnd, GWL_STYLE)
+        style = (style & ~WS_POPUP) | WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE
+        user32.SetWindowLongW(mpv_hwnd, GWL_STYLE, style)
+
+        # Reparente directement MPV dans la fenetre KINO
+        user32.SetParent(mpv_hwnd, form_hwnd)
+
+        # Positionne MPV pour recouvrir precisement la zone cliente
+        import ctypes.wintypes as wintypes
+        rect = wintypes.RECT()
+        user32.GetClientRect(form_hwnd, ctypes.byref(rect))
+        SWP_SHOWWINDOW = 0x0040
+        SWP_FRAMECHANGED = 0x0020
+        user32.SetWindowPos(mpv_hwnd, 0, 0, 0, rect.right, rect.bottom, SWP_SHOWWINDOW | SWP_FRAMECHANGED)
+        user32.BringWindowToTop(mpv_hwnd)
+        user32.SetFocus(mpv_hwnd)
+        return mpv_hwnd
+    except Exception:
+        return None
+
+
+def set_kino_fullscreen(target_state: bool):
+    global desktop_window, window_api_instance
+    if not desktop_window:
+        return
+    if window_api_instance:
+        current = window_api_instance.is_fullscreen()
+        if bool(current) != bool(target_state):
+            if target_state:
+                window_api_instance.enter_fullscreen()
+            else:
+                window_api_instance.exit_fullscreen()
+        return
+    current = getattr(desktop_window, "fullscreen", False)
+    if bool(current) != bool(target_state):
+        try:
+            desktop_window.toggle_fullscreen()
+            desktop_window.fullscreen = bool(target_state)
+        except Exception:
+            pass
+
+
+def set_kino_maximized(target_state: bool):
+    global desktop_window, window_api_instance
+    if not desktop_window:
+        return
+    current = getattr(desktop_window, "maximized", False)
+    if bool(current) != bool(target_state):
+        if window_api_instance:
+            try:
+                window_api_instance.toggle_maximize()
+            except Exception:
+                pass
+
+
+def minimize_kino():
+    global window_api_instance
+    if window_api_instance:
+        try:
+            window_api_instance.minimize()
+        except Exception:
+            pass
+
+
+def undock_mpv_window():
+    global CURRENT_DOCKED_MPV_HWND, desktop_window, window_api_instance
+    CURRENT_DOCKED_MPV_HWND = None
+    if window_api_instance and window_api_instance.is_fullscreen():
+        window_api_instance.exit_fullscreen()
+    elif desktop_window and getattr(desktop_window, "fullscreen", False):
+        try:
+            desktop_window.toggle_fullscreen()
+            desktop_window.fullscreen = False
+        except Exception:
+            pass
+    if desktop_window and IS_WIN:
+        try:
+            form = desktop_window.gui.BrowserView.instances.get(desktop_window.uid)
+            if form and form.Handle:
+                form_hwnd = form.Handle.ToInt64()
+                apply_win32_window_styles(form_hwnd)
+                user32.InvalidateRect(form_hwnd, None, True)
+                user32.UpdateWindow(form_hwnd)
+                user32.SetFocus(form_hwnd)
+        except Exception:
+            pass
+
+
+def configure_window_styles(w):
+    if not IS_WIN:
+        return
+    for _ in range(40):
+        time.sleep(0.05)
+        try:
+            form = w.gui.BrowserView.instances.get(w.uid)
+            if form and form.Handle:
+                hwnd = form.Handle.ToInt64()
+                try:
+                    form.MinimizeBox = True
+                    form.MaximizeBox = True
+                except Exception:
+                    pass
+                apply_win32_window_styles(hwnd)
+                try:
+                    def hooked_form_toggle():
+                        if window_api_instance:
+                            window_api_instance.toggle_fullscreen()
+                    form.toggle_fullscreen = hooked_form_toggle
+                except Exception:
+                    pass
+
+                # Auto-redimensionnement du lecteur MPV intégré lors du redimensionnement de KINO
+                try:
+                    import ctypes.wintypes as wintypes
+                    def on_form_resize(sender, e):
+                        global CURRENT_DOCKED_MPV_HWND
+                        if CURRENT_DOCKED_MPV_HWND and user32.IsWindow(CURRENT_DOCKED_MPV_HWND):
+                            rect = wintypes.RECT()
+                            user32.GetClientRect(hwnd, ctypes.byref(rect))
+                            user32.SetWindowPos(
+                                CURRENT_DOCKED_MPV_HWND, 0, 0, 0,
+                                rect.right, rect.bottom,
+                                0x0014 # SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE
+                            )
+                    form.Resize += on_form_resize
+                except Exception:
+                    pass
+                break
+        except Exception:
+            pass
+
+
+def install_macos_hooks():
+    """Active le glisser natif Cocoa (performWindowDragWithEvent_) pour le Window Tiling macOS."""
+    if not IS_MAC:
+        return
+    try:
+        import json
+        import AppKit
+        import webview.platforms.cocoa as cocoa
+
+        # Désactive le déplacement JS émulé de pywebview afin que seul le drag natif Cocoa opère
+        webview.settings["DRAG_REGION_SELECTOR"] = ".__pywebview_disabled_drag__"
+
+        orig_mouse_down = cocoa.BrowserView.WebKitHost.mouseDown_
+
+        def hooked_mouse_down(self, event):
+            self._last_mouse_down_event = event
+            return orig_mouse_down(self, event)
+
+        cocoa.BrowserView.WebKitHost.mouseDown_ = hooked_mouse_down
+
+        orig_did_receive = cocoa.BrowserView.JSBridge.userContentController_didReceiveScriptMessage_
+
+        def hooked_did_receive(self, controller, message):
+            try:
+                body = json.loads(message.body())
+                if body.get("funcName") == "start_window_drag":
+                    w = self.window
+                    ns_win = getattr(w, "native", None)
+                    bv = cocoa.BrowserView.instances.get(w.uid) if w else None
+                    wv = getattr(bv, "webview", None) if bv else None
+                    ev = getattr(wv, "_last_mouse_down_event", None) if wv else None
+                    if ev is None:
+                        ev = AppKit.NSApplication.sharedApplication().currentEvent()
+                    if ns_win is not None and ev is not None:
+                        if ev.clickCount() >= 2:
+                            ns_win.zoom_(None)
+                            w.maximized = bool(ns_win.isZoomed())
+                        else:
+                            ns_win.performWindowDragWithEvent_(ev)
+                    return
+            except Exception:
+                pass
+            return orig_did_receive(self, controller, message)
+
+        cocoa.BrowserView.JSBridge.userContentController_didReceiveScriptMessage_ = hooked_did_receive
+    except Exception:
+        pass
+
+
+def configure_macos_window(w):
+    """Configure les boutons tricolores natifs, le Window Tiling macOS Sequoia et le menu Fenêtre."""
+    if not IS_MAC:
+        return
+    for _ in range(40):
+        time.sleep(0.05)
+        if getattr(w, "native", None) is not None:
+            break
+    if getattr(w, "native", None) is None:
+        return
+    try:
+        import AppKit
+        from PyObjCTools import AppHelper
+
+        def _setup():
+            ns_win = w.native
+            if not ns_win:
+                return
+            try:
+                import webview.platforms.cocoa as cocoa
+                bv = cocoa.BrowserView.instances.get(w.uid)
+                wv = getattr(bv, "webview", None) if bv else None
+                if wv is not None and hasattr(wv, "configuration"):
+                    cfg_wk = wv.configuration()
+                    if hasattr(cfg_wk, "setAllowsPictureInPictureMediaPlayback_"):
+                        cfg_wk.setAllowsPictureInPictureMediaPlayback_(True)
+                    prefs = cfg_wk.preferences()
+                    if prefs is not None:
+                        try:
+                            prefs.setValue_forKey_(True, "allowsPictureInPictureMediaPlayback")
+                            prefs.setValue_forKey_(True, "elementFullscreenEnabled")
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+            # Style natif complet : Titled + Closable + Miniaturizable + Resizable + FullSizeContentView
+            mask = (
+                AppKit.NSTitledWindowMask
+                | AppKit.NSClosableWindowMask
+                | AppKit.NSMiniaturizableWindowMask
+                | AppKit.NSResizableWindowMask
+                | (1 << 15)  # NSWindowStyleMaskFullSizeContentView
+            )
+            ns_win.setStyleMask_(mask)
+            ns_win.setTitlebarAppearsTransparent_(True)
+            ns_win.setTitleVisibility_(1)  # NSWindowTitleHidden
+
+            # Toolbar unifiée invisible pour centrer verticalement les boutons macOS dans le header KINO
+            if ns_win.toolbar() is None:
+                tb = AppKit.NSToolbar.alloc().initWithIdentifier_("kino.toolbar")
+                tb.setShowsBaselineSeparator_(False)
+                ns_win.setToolbar_(tb)
+            if hasattr(ns_win, "setToolbarStyle_"):
+                ns_win.setToolbarStyle_(3)  # NSWindowToolbarStyleUnified
+
+            # An empty toolbar paints a grey band over fullscreen video. Hide it
+            # before the transition, then restore its windowed visibility.
+            # Notifications also cover the green button and the native menu.
+            center = AppKit.NSNotificationCenter.defaultCenter()
+            toolbar_state = {"visible": bool(ns_win.toolbar().isVisible())}
+
+            def hide_toolbar(notification):
+                toolbar_state["visible"] = bool(ns_win.toolbar().isVisible())
+                ns_win.toolbar().setVisible_(False)
+
+            def restore_toolbar(notification):
+                ns_win.toolbar().setVisible_(toolbar_state["visible"])
+
+            w._kino_fullscreen_observers = [
+                center.addObserverForName_object_queue_usingBlock_(name, ns_win, None, callback)
+                for name, callback in (
+                    (AppKit.NSWindowWillEnterFullScreenNotification, hide_toolbar),
+                    (AppKit.NSWindowDidExitFullScreenNotification, restore_toolbar),
+                )
+            ]
+
+            # Réaffiche et active les 3 boutons macOS natifs (dont le bouton vert de pré-configuration de taille)
+            for btn_id in (
+                AppKit.NSWindowCloseButton,
+                AppKit.NSWindowMiniaturizeButton,
+                AppKit.NSWindowZoomButton,
+            ):
+                btn = ns_win.standardWindowButton_(btn_id)
+                if btn is not None:
+                    btn.setHidden_(False)
+                    btn.setEnabled_(True)
+
+            # Active le comportement FullScreenPrimary requis pour le menu de disposition au survol du bouton vert
+            beh = ns_win.collectionBehavior()
+            beh |= getattr(AppKit, "NSWindowCollectionBehaviorFullScreenPrimary", 1 << 7)
+            ns_win.setCollectionBehavior_(beh)
+
+            # Ajoute le menu système "Fenêtre" pour activer "Déplacer et redimensionner" (Sequoia Tiling + raccourcis)
+            ns_app = AppKit.NSApplication.sharedApplication()
+            main_menu = ns_app.mainMenu()
+            if main_menu is not None and ns_app.windowsMenu() is None:
+                win_menu = AppKit.NSMenu.alloc().initWithTitle_("Fenêtre")
+                win_menu.addItemWithTitle_action_keyEquivalent_("Placer dans le Dock", "performMiniaturize:", "m")
+                win_menu.addItemWithTitle_action_keyEquivalent_("Réduire/agrandir", "performZoom:", "")
+                fs_item = win_menu.addItemWithTitle_action_keyEquivalent_("Plein écran", "toggleFullScreen:", "f")
+                fs_item.setKeyEquivalentModifierMask_(AppKit.NSControlKeyMask | AppKit.NSCommandKeyMask)
+                win_menu.addItem_(AppKit.NSMenuItem.separatorItem())
+                win_menu.addItemWithTitle_action_keyEquivalent_("Tout ramener au premier plan", "arrangeInFront:", "")
+
+                win_menu_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Fenêtre", None, "")
+                win_menu_item.setSubmenu_(win_menu)
+                main_menu.addItem_(win_menu_item)
+                ns_app.setWindowsMenu_(win_menu)
+                ns_app.addWindowsItem_title_filename_(ns_win, "KINO", False)
+
+        AppHelper.callAfter(_setup)
+    except Exception:
+        pass
+    global now_playing_center
+    # The window exists and Cocoa runs: « À l'écoute » can register its commands.
+    now_playing_center = start_now_playing()
+
+
+def save_current_window_bounds():
+    global window_api_instance
+    if not window_api_instance:
+        return
+    try:
+        st = window_api_instance.get_state()
+        if st and not st.get("maximized") and st.get("width", 0) >= 640 and st.get("height", 0) >= 420:
+            app.save_config({
+                "window_bounds": {
+                    "x": int(st["x"]),
+                    "y": int(st["y"]),
+                    "width": int(st["width"]),
+                    "height": int(st["height"]),
+                }
+            })
+    except Exception:
+        pass
+
+
+# New episodes: a first look 90 s after the start, then every 30 minutes.
+EPISODE_WATCH_FIRST = 90
+EPISODE_WATCH_EVERY = 30 * 60
+
+
+def open_from_notification(info):
+    """A notification was clicked: KINO comes to the front and opens the series."""
+    import json
+    try:
+        handle_backend_window_action("show")
+        if desktop_window is not None and info.get("id"):
+            desktop_window.evaluate_js(f"openFromNotification({json.dumps(info)})")
+    except Exception:
+        pass
+
+
+def make_notifier():
+    """macOS notifications, when this is the KINO.app bundle."""
+    try:
+        import notifier
+        return notifier.Notifier.create(on_click=open_from_notification)
+    except Exception:
+        return None
+
+
+def start_error_log():
+    """Uncaught errors and errors logged by modules go to KINO's error log."""
+    import logging
+    import error_log
+
+    error_log.log.install()
+
+    class ToErrorLog(logging.Handler):
+        def emit(self, record):
+            if record.levelno >= logging.ERROR:
+                error_log.log.record(f"module {record.name}"[:60], message=record.getMessage()[:500], kind=record.levelname,
+                                     error=record.exc_info[1] if record.exc_info else None)
+
+    logging.getLogger().addHandler(ToErrorLog(level=logging.ERROR))
+
+
+now_playing_center = None
+
+
+def start_now_playing():
+    """macOS « À l'écoute » and the playback keys, inside the KINO.app bundle."""
+    try:
+        import now_playing
+        from PyObjCTools import AppHelper
+        center = now_playing.NowPlaying.create(app.remote_controller.player_state, app.remote_controller.push_command, AppHelper.callAfter)
+        if center is not None:
+            center.start()
+        return center
+    except Exception:
+        return None
+
+
+def watch_new_episodes(stop=None, wait=time.sleep):
+    """Background loop of the desktop app: asks once for permission, then
+    announces new releases while KINO is open."""
+    if app.NOTIFIER is None:
+        return
+    if app.load_config().get("episode_notifications", True) is not False:
+        try:
+            app.NOTIFIER.request_permission()
+        except Exception:
+            pass
+    delay = EPISODE_WATCH_FIRST
+    while not (stop and stop.is_set()):
+        wait(delay)
+        delay = EPISODE_WATCH_EVERY
+        try:
+            app.check_new_episodes(app.send_notification)
+        except Exception:
+            pass
+
+
+def make_native_player():
+    """Native mpv player under the web view, when libmpv is bundled (macOS)."""
+    try:
+        import native_player
+        import native_view
+        if native_player.libmpv_dir() is None:
+            return None
+
+        def window_and_webview():
+            import webview.platforms.cocoa as cocoa
+            window = desktop_window
+            browser = cocoa.BrowserView.instances.get(window.uid) if window is not None else None
+            return getattr(window, "native", None), getattr(browser, "webview", None)
+
+        return native_view.NativePlayerController(window_and_webview)
+    except Exception:
+        return None
+
+
+def main():
+    global desktop_window, window_api_instance
+    check_single_instance()
+    start_error_log()
+    app.WINDOW_ACTION_CALLBACK = handle_backend_window_action
+    app.GET_WINDOW_GEOMETRY = get_window_geometry
+    app.GET_FORM_HWND = get_form_hwnd
+    app.DOCK_MPV_WINDOW = dock_mpv_window
+    app.UNDOCK_MPV_WINDOW = undock_mpv_window
+    app.SET_FULLSCREEN = set_kino_fullscreen
+    app.SET_MAXIMIZED = set_kino_maximized
+    app.MINIMIZE_WINDOW = minimize_kino
+    if IS_MAC:
+        app.NATIVE_PLAYER = make_native_player()
+        app.NOTIFIER = make_notifier()
+
+    try:
+        import config
+        for _k in ["WINDOW_ACTION_CALLBACK", "GET_WINDOW_GEOMETRY", "GET_FORM_HWND", "DOCK_MPV_WINDOW", "UNDOCK_MPV_WINDOW", "SET_FULLSCREEN", "SET_MAXIMIZED", "MINIMIZE_WINDOW", "NATIVE_PLAYER", "NOTIFIER"]:
+            setattr(config, _k, getattr(app, _k))
+    except Exception:
+        pass
+
+    # The server starts first; the window opens as soon as it holds its port.
+    t = threading.Thread(target=run_server, daemon=True)
+    t.start()
+
+    if IS_MAC:
+        install_macos_hooks()
+
+    SERVER_READY.wait(2.0)
+
+    api = WindowApi(lambda: desktop_window)
+    window_api_instance = api
+
+    cfg = app.load_config()
+    bounds = cfg.get("window_bounds") if isinstance(cfg.get("window_bounds"), dict) else {}
+    init_w = max(640, int(bounds.get("width", 1280)))
+    init_h = max(420, int(bounds.get("height", 820)))
+    init_x = int(bounds["x"]) if "x" in bounds and bounds["x"] is not None else None
+    init_y = int(bounds["y"]) if "y" in bounds and bounds["y"] is not None else None
+
+    desktop_window = webview.create_window(
+        title="KINO",
+        url=f"http://127.0.0.1:{PORT}",
+        x=init_x,
+        y=init_y,
+        width=init_w,
+        height=init_h,
+        min_size=(640, 420),
+        frameless=True,
+        resizable=True,
+        easy_drag=False,
+        background_color="#09090b",
+        text_select=True,
+        js_api=api,
+    )
+    desktop_window.events.closing += save_current_window_bounds
+    desktop_window.events.closed += on_closed
+    desktop_window.events.loaded += kino_update.acknowledge_ready
+
+    icon_arg = str(ICON_PATH) if ICON_PATH.exists() else None
+    
+    if IS_WIN:
+        webview.start(configure_window_styles, desktop_window, gui="edgechromium", debug=False, icon=icon_arg)
+    elif IS_MAC:
+        # Sur macOS, pywebview utilise nativement WebKit / Cocoa avec Window Tiling et Traffic Lights
+        # Not private: pywebview's private mode erased all web data at each launch, so
+        # every poster was downloaded again and the page forgot its settings (volume,
+        # catalogue view). WebKit now keeps them, as the image sites ask.
+        webview.start(configure_macos_window, desktop_window, gui="cocoa", debug=False, icon=icon_arg, private_mode=False)
+    else:
+        # Linux (GTK / Qt)
+        webview.start(debug=False, icon=icon_arg)
+
+
+def self_check():
+    """Validate bundled dependencies in an isolated temporary data directory."""
+    import json
+    import subprocess
+    import imageio_ffmpeg
+    import webview.platforms.cocoa
+
+    ffmpeg = Path(imageio_ffmpeg.get_ffmpeg_exe()).resolve()
+    resource_dir = get_resource_dir().resolve()
+    if not ffmpeg.is_file() or not (resource_dir / "web" / "index.html").is_file() or not (resource_dir / "qrcode.min.js").is_file():
+        raise RuntimeError("Bundled player or interface is missing")
+    if not (resource_dir / "web" / "js" / "playback-help.js").is_file():
+        raise RuntimeError("Player troubleshooting interface is missing")
+    if not (resource_dir / "web" / "js" / "vendor" / "peerjs.min.js").is_file():
+        raise RuntimeError("Watch Party library is missing")
+    app.playback_support.excluded({"imdb_id": "self-check", "type": "movie"})
+    bundle_contents = Path(sys.executable).resolve().parent.parent
+    if getattr(sys, "frozen", False) and not ffmpeg.is_relative_to(bundle_contents):
+        raise RuntimeError("FFmpeg is outside the application bundle")
+    subprocess.run([str(ffmpeg), "-version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    result = {"ok": True, "frozen": bool(getattr(sys, "frozen", False)), "ffmpeg": str(ffmpeg)}
+    if IS_MAC:
+        import native_player
+        import native_view
+        native_view._make_view_class()  # the native player's OpenGL view can be defined
+        mpv = native_player.check()
+        if getattr(sys, "frozen", False) and not Path(mpv["path"]).resolve().is_relative_to(bundle_contents):
+            raise RuntimeError("libmpv is outside the application bundle")
+        result["libmpv"] = mpv
+        # « À l'écoute »: the system framework loads; nothing is registered here.
+        try:
+            import now_playing
+            now_playing.load_framework()
+            result["now_playing"] = "available"
+        except Exception as error:
+            result["now_playing"] = f"error: {type(error).__name__}"
+        # Notifications: the centre opens inside the bundle; reading the status asks nothing.
+        try:
+            import notifier
+            center = notifier.Notifier.create()
+            result["notifications"] = center.status() if center is not None else "unavailable"
+        except Exception as error:
+            result["notifications"] = f"error: {type(error).__name__}"
+    print(json.dumps(result))
+
+
+if __name__ == "__main__":
+    if _SELF_CHECK_HOME:
+        try:
+            self_check()
+        finally:
+            _SELF_CHECK_HOME.cleanup()
+    else:
+        main()

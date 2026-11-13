@@ -1,0 +1,17 @@
+# Données de l'utilisateur
+kino_sync.json
+*.db
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Constructions
+build/
+dist/
+*.kinoupdate
+vendor/libmpv/
+
+.DS_Store

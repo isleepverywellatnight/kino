@@ -1,0 +1,12 @@
+# Les fins de ligne restent celles du Mac (LF) partout, Windows compris : les
+# tests découpent le code sur « \n », et les fichiers tiers gardent leur empreinte.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.vbs text eol=crlf
+# Fichiers tiers et binaires : copiés tels quels, octet pour octet.
+web/js/vendor/** -text
+*.png binary
+*.ico binary
+*.icns binary
+*.ttf binary
+native/kino-update-helper binary

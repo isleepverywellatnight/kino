@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>KINO</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22100 100 824 824%22%3E%3Crect x=%22100%22 y=%22100%22 width=%22824%22 height=%22824%22 rx=%22185%22 fill=%22%23141417%22/%3E%3Crect x=%22176%22 y=%22176%22 width=%22672%22 height=%22672%22 rx=%22150%22 fill=%22none%22 stroke=%22%23fafafa%22 stroke-width=%2276%22/%3E%3CclipPath id=%22k%22%3E%3Crect x=%220%22 y=%22342.4%22 width=%221024%22 height=%22339.2%22/%3E%3C/clipPath%3E%3Cpath d=%22M398.4 310.4L398.4 713.6M398.4 590.4L683.2 264M497.6 481.6L692.8 758.4%22 clip-path=%22url(%23k)%22 fill=%22none%22 stroke=%22%23fafafa%22 stroke-width=%2283.2%22/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/redesign.css">
+  <link rel="stylesheet" href="/css/design.css">
+</head>
+<body>
+
+<!-- Overlay Glisser-Déposer (.torrent / Magnet) -->
+<div id="dropZoneOverlay" class="drop-zone-overlay">
+  <div class="drop-zone-box">
+    <div style="margin-bottom:12px;">
+      <svg class="ui-icon ui-icon-xl" aria-hidden="true"><use href="/icons.svg#upload"></use></svg>
+    </div>
+    <div style="font-size:1.1rem; font-weight:600; color:#fafafa;">Déposez votre fichier .torrent ou lien Magnet</div>
+    <div style="font-size:0.82rem; color:var(--muted); margin-top:6px;">Débridage et lecture instantanée via votre compte Cloud</div>
+  </div>
+</div>
+
+<div id="windowResizeHandles" class="win-resize-handles">
+  <div class="win-resize-handle rh-top" data-dir="top"></div>
+  <div class="win-resize-handle rh-bottom" data-dir="bottom"></div>
+  <div class="win-resize-handle rh-left" data-dir="left"></div>
+  <div class="win-resize-handle rh-right" data-dir="right"></div>
+  <div class="win-resize-handle rh-topleft" data-dir="topleft"></div>
+  <div class="win-resize-handle rh-topright" data-dir="topright"></div>
+  <div class="win-resize-handle rh-bottomleft" data-dir="bottomleft"></div>
+  <div class="win-resize-handle rh-bottomright" data-dir="bottomright"></div>
+</div>
+
+<header class="pywebview-drag-region" ondblclick="if (!event.target.closest('.no-drag')) windowAction('maximize')">
+  <div class="header-left">
+    <div class="mac-controls no-drag">
+      <button class="mac-btn mac-close" onclick="windowAction('close')" title="Fermer (Alt+F4)">
+        <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+          <path d="M2.2 2.2l7.6 7.6M9.8 2.2l-7.6 7.6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="mac-btn mac-min" onclick="windowAction('minimize')" title="Réduire (Ctrl+M)">
+        <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+          <line x1="2" y1="6" x2="10" y2="6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="mac-btn mac-max" onclick="windowAction('maximize')" title="Agrandir / Plein écran (F11)">
+        <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+          <polygon points="2.2,7.5 2.2,2.2 7.5,2.2" fill="rgba(0,0,0,0.65)"/>
+          <polygon points="9.8,4.5 9.8,9.8 4.5,9.8" fill="rgba(0,0,0,0.65)"/>
+        </svg>
+      </button>
+    </div>
+    <div class="logo no-drag" onclick="switchTab('movies')" aria-label="Accueil KINO">
+      <svg class="logo-mark" viewBox="130 130 764 764" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="176" y="176" width="672" height="672" rx="150" fill="none" stroke="#fafafa" stroke-width="76"/><clipPath id="kinoLogoClip"><rect x="0" y="342.4" width="1024" height="339.2"/></clipPath><path d="M398.4 310.4L398.4 713.6M398.4 590.4L683.2 264M497.6 481.6L692.8 758.4" clip-path="url(#kinoLogoClip)" fill="none" stroke="#fafafa" stroke-width="83.2"/></svg>
+      <span class="logo-wordmark">KINO</span>
+      <span class="logo-divider"></span>
+      <span class="logo-sub" id="logoProviderSub">Real-Debrid</span>
+    </div>
+  </div>
+  <!-- Recherche : un champ dans la barre du haut ; ⌘K ouvre ses suggestions. -->
+  <div class="header-center">
+    <div class="search-box no-drag" role="search">
+      <button type="button" id="navBackBtn" class="nav-back-btn" onclick="goBack()" hidden aria-label="Retour">
+        <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#chevron-left"></use></svg>
+        <span>Retour</span>
+      </button>
+      <div class="search-input-wrap">
+        <span class="search-icon-svg">
+          <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#search"></use></svg>
+        </span>
+        <input type="text" id="searchInput" placeholder="Rechercher un film, une série…" oninput="onSearchInput()" onkeydown="onSearchKeyDown(event)" onfocus="openSearchPanel()" onclick="openSearchPanel()" autocomplete="off" spellcheck="false" aria-label="Rechercher" aria-controls="searchDropdown" aria-autocomplete="list">
+        <div class="search-right-controls">
+          <button id="searchClearBtn" class="search-clear-btn" style="display:none;" onclick="clearSearchInput()" title="Effacer la recherche">
+            <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#close"></use></svg>
+          </button>
+          <select id="searchType" class="search-type-select" onchange="toggleSearchMode()" aria-label="Chercher dans">
+            <option value="all">Tout</option>
+            <option value="movie">Films</option>
+            <option value="series">Séries</option>
+            <option value="anime">Anime</option>
+            <option value="raw">Mots-clés</option>
+            <option value="magnet">Magnet</option>
+          </select>
+          <kbd id="searchKbdBadge" class="search-kbd-badge">Ctrl+K</kbd>
+        </div>
+        <div id="searchDropdown" class="search-dropdown" role="listbox" aria-label="Suggestions" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+  <div class="header-right no-drag">
+    <!-- Badge Utilisateur interactif / statut -->
+    <div id="userBadge" class="header-user-pill" onclick="openConfig()" title="Gérer le compte et la configuration">
+      <span class="user-status-dot"></span>
+      <span style="color:var(--muted); font-size:0.75rem;">Chargement...</span>
+    </div>
+
+    <input type="file" id="torrentFileInput" accept=".torrent" style="display:none;" onchange="handleTorrentFileSelect(this.files)">
+
+    <!-- Les outils secondaires restent accessibles sans encombrer la navigation principale. -->
+    <div class="header-menu-wrap">
+      <button id="headerSettingsBtn" class="header-tool-btn header-btn-settings" onclick="toggleHeaderMenu(event)" title="Plus d’outils" aria-label="Plus d’outils" aria-expanded="false">
+        <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#grid"></use></svg>
+        <span class="btn-text">Outils</span>
+        <svg class="ui-icon ui-icon-xs chevron-icon" aria-hidden="true"><use href="/icons.svg#chevron-down"></use></svg>
+      </button>
+
+      <div id="headerDropdownMenu" class="header-dropdown-menu">
+        <div class="header-dropdown-item" onclick="openTorrentFile(); closeHeaderMenu();">
+          <span class="hdi-icon"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#plus"></use></svg></span>
+          <div class="hdi-content"><span class="hdi-title">Ouvrir un fichier .torrent</span><span class="hdi-desc">Ou le glisser dans la fenêtre</span></div>
+        </div>
+        <div class="header-dropdown-divider"></div>
+        <div class="header-dropdown-item" onclick="openRemoteModal(); closeHeaderMenu();">
+          <span class="hdi-icon"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#remote"></use></svg></span>
+          <div class="hdi-content"><span class="hdi-title">Télécommande</span><span class="hdi-desc">Piloter KINO depuis un téléphone</span></div>
+        </div>
+        <div class="header-dropdown-item" onclick="openWatchPartyModal(); closeHeaderMenu();">
+          <span class="hdi-icon"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#users"></use></svg></span>
+          <div class="hdi-content"><span class="hdi-title">Watch Party</span><span class="hdi-desc">Regarder ensemble à distance</span></div>
+        </div>
+        <div class="header-dropdown-item" onclick="openAddonsModal(); closeHeaderMenu();">
+          <span class="hdi-icon"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#puzzle"></use></svg></span>
+          <div class="hdi-content"><span class="hdi-title">Extensions</span><span class="hdi-desc">Sources et modules de la communauté</span></div>
+        </div>
+        <div class="header-dropdown-item" onclick="openDiagnostic(); closeHeaderMenu();">
+          <span class="hdi-icon"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#pulse"></use></svg></span>
+          <div class="hdi-content"><span class="hdi-title">Diagnostic</span><span class="hdi-desc">Vérifier que tout fonctionne</span></div>
+        </div>
+        <div class="header-dropdown-divider"></div>
+        <div class="header-dropdown-item" onclick="openConfig(); closeHeaderMenu();">
+          <span class="hdi-icon">
+            <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#settings"></use></svg>
+          </span>
+          <div class="hdi-content">
+            <span class="hdi-title">Paramètres</span>
+            <span class="hdi-desc">Lecture, comptes, connexions</span>
+          </div>
+        </div>
+        <div class="header-dropdown-item" onclick="openFolder(); closeHeaderMenu();">
+          <span class="hdi-icon">
+            <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#folder"></use></svg>
+          </span>
+          <div class="hdi-content">
+            <span class="hdi-title">Dossier des téléchargements</span>
+            <span class="hdi-desc">Les vidéos gardées sur ce Mac</span>
+          </div>
+        </div>
+        <div class="header-dropdown-item" onclick="triggerGdriveSync(); closeHeaderMenu();">
+          <span class="hdi-icon">
+            <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#sync"></use></svg>
+          </span>
+          <div class="hdi-content">
+            <span class="hdi-title">Synchroniser maintenant</span>
+            <span class="hdi-desc">Avec Google Drive, entre vos appareils</span>
+          </div>
+        </div>
+        <div class="header-dropdown-divider"></div>
+        <div class="header-dropdown-item" onclick="toggleShortcutsModal(); closeHeaderMenu();">
+          <span class="hdi-icon">
+            <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#keyboard"></use></svg>
+          </span>
+          <div class="hdi-content">
+            <span class="hdi-title">Raccourcis clavier</span>
+            <span class="hdi-desc">Lecteur, recherche et navigation</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="nav-tabs" aria-label="Navigation principale">
+  <div class="nav-tabs-primary">
+    <span class="nav-section-label">Découvrir</span>
+    <button class="nav-tab active" id="tab-movies" onclick="switchTab('movies')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#film"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#film-fill"></use></svg></span>Films</button>
+    <button class="nav-tab" id="tab-series" onclick="switchTab('series')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#series"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#series-fill"></use></svg></span>Séries</button>
+    <button class="nav-tab" id="tab-anime" onclick="switchTab('anime')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#anime"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#anime-fill"></use></svg></span>Anime</button>
+    <button class="nav-tab" id="tonightOpenButton" type="button" onclick="openTonightModal()"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#tonight"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#tonight-fill"></use></svg></span>Ce soir</button>
+    <button class="nav-tab" id="tab-community" onclick="switchTab('community')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#explore"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#explore-fill"></use></svg></span>Explorer</button>
+    <span class="nav-section-label nav-section-library">Personnel</span>
+    <button class="nav-tab" id="tab-library" onclick="switchTab('library')">
+      <span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#library"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#library-fill"></use></svg></span><span>Bibliothèque</span><span id="libraryTotalBadge" class="nav-badge"></span>
+    </button>
+  </div>
+  <button class="nav-tab nav-settings" id="tab-settings" onclick="switchTab('settings')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#settings"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#settings-fill"></use></svg></span>Paramètres</button>
+</nav>
+
+<div class="container">
+  <!-- Sans internet : ce qui marche encore, ce qui attend la connexion -->
+  <div id="networkBanner" class="network-banner" role="status" hidden>
+    <div>
+      <strong id="networkBannerTitle">Sans internet</strong>
+      <span id="networkBannerText"></span>
+    </div>
+    <div class="network-banner-actions">
+      <button type="button" class="btn btn-secondary" onclick="switchTab('offline')">Mes fichiers hors ligne</button>
+      <button type="button" class="btn btn-secondary" id="networkRetryButton" onclick="retryNetwork()">Réessayer</button>
+    </div>
+  </div>
+
+  <!-- Bibliothèque : une ligne d'onglets, tous visibles ; l'onglet est le titre de la page. -->
+  <nav id="librarySubNav" class="library-subnav" aria-label="Bibliothèque" style="display:none;">
+    <button class="lib-subtab active" id="subtab-watchlist" onclick="switchTab('watchlist')">Ma Liste <span id="wlCount" class="lib-count"></span></button>
+    <button class="lib-subtab" id="subtab-history" onclick="switchTab('history')">En cours <span id="histCount" class="lib-count"></span></button>
+    <button class="lib-subtab" id="subtab-myseries" onclick="switchTab('myseries')">Mes séries</button>
+    <button class="lib-subtab" id="subtab-calendar" onclick="switchTab('calendar')">Calendrier</button>
+    <button class="lib-subtab" id="subtab-watched" onclick="switchTab('watched')">Déjà vus <span id="watchedCount" class="lib-count"></span></button>
+    <button class="lib-subtab" id="subtab-offline" onclick="switchTab('offline')">Hors ligne <span id="offlineCount" class="lib-count"></span></button>
+    <button class="lib-subtab" id="subtab-customlists" onclick="switchTab('customlists')">Listes <span id="customListsCount" class="lib-count"></span></button>
+    <button class="lib-subtab" id="subtab-rdcloud" onclick="switchTab('rdcloud')">Cloud</button>
+    <button class="lib-subtab" id="subtab-stats" onclick="switchTab('stats')">Statistiques</button>
+  </nav>
+
+  <!-- Téléchargements PC actifs -->
+  <div id="downloadsPanel" class="panel" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <h3>Téléchargements</h3>
+      <button class="btn btn-secondary" style="padding:5px 10px; font-size:0.78rem;" onclick="openFolder()">Ouvrir le dossier</button>
+    </div>
+    <div id="downloadsList"></div>
+  </div>
+
+  <!-- Résultat Débridage -->
+  <div id="debridResultPanel" class="panel" style="display:none;"></div>
+
+  <!-- Fiche Détail Média & Grille d'épisodes -->
+  <div id="detailPanel" class="panel" style="display:none;"></div>
+
+  <!-- Panneau des torrents -->
+  <div id="torrentsPanel" class="panel" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h3 id="torrentsHeading">Sources</h3>
+        <p id="torrentsSub" style="color:var(--dim); font-size:0.8rem; margin-top:3px;"></p>
+      </div>
+      <div id="seriesControls" style="display:none; gap:8px; align-items:center; flex-wrap:wrap;">
+        <label style="font-size:0.8rem; color:var(--muted);">Saison</label>
+        <select id="seasonSelect" onchange="onSeasonChange()" style="min-width:95px;"></select>
+        <button class="btn btn-secondary" id="markSeasonWatchedBtn" onclick="toggleWatchedWholeSeason()" title="Marquer ou démarquer tous les épisodes de cette saison comme vus" style="padding:6px 10px; font-size:0.76rem;">✓ Saison vue</button>
+        <label style="font-size:0.8rem; color:var(--muted);">Épisode</label>
+        <select id="episodeSelect" onchange="reloadSeriesEpisode()" style="min-width:190px;"></select>
+        <button class="btn btn-secondary" onclick="reloadSeriesEpisode()">Sources</button>
+        <button class="btn" onclick="oneClickSeriesEpisode(this)">Lancer</button>
+      </div>
+    </div>
+
+    <div class="filters" id="sourcesFilters" style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+      <span class="chip active" onclick="setFilter('', this)">Tous</span>
+      <span class="chip" onclick="setFilter('fr', this)">VF / MULTI / VOSTFR</span>
+      <span class="chip" onclick="setFilter('sdr', this)" title="Afficher uniquement les sources SDR">SDR</span>
+      <span class="chip" onclick="setFilter('4k', this)">4K</span>
+      <span class="chip" onclick="setFilter('1080p', this)">1080p</span>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <select id="torrentSortSelect" onchange="renderTorrents()" style="padding:5px 9px; font-size:0.78rem; width:auto; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--text); cursor:pointer;">
+          <option value="default">Tri : Recommandé</option>
+          <option value="seeds">Tri : Seeders (Max)</option>
+          <option value="size_desc">Tri : Taille (Plus grand)</option>
+          <option value="size_asc">Tri : Taille (Plus léger)</option>
+        </select>
+        <input type="text" id="customFilter" placeholder="Filtrer (ex: multi, hevc...)" oninput="renderTorrents()" style="padding:5px 10px; font-size:0.78rem; min-width:180px;">
+      </div>
+    </div>
+
+    <div id="torrentsList" class="torrent-list"></div>
+  </div>
+
+  <!-- « Lire sur la TV » : ce que joue la TV, et ses commandes. -->
+  <!-- « Vous avez aimé … ? » après un film ou une saison (ratings.js). -->
+  <div id="ratePrompt" class="rate-prompt" role="region" aria-labelledby="ratePromptTitle" hidden>
+    <img id="ratePromptPoster" class="rate-prompt-poster" alt="" onerror="this.hidden = true">
+    <div class="rate-prompt-body">
+      <p class="rate-prompt-kicker" id="ratePromptKicker"></p>
+      <p class="rate-prompt-title" id="ratePromptTitle"></p>
+      <div id="ratePromptGestures"></div>
+      <p class="rate-status" role="status"></p>
+    </div>
+    <button type="button" class="rate-prompt-close" onclick="closeRatePrompt()" title="Plus tard" aria-label="Plus tard">
+      <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#close"></use></svg>
+    </button>
+  </div>
+
+  <div id="tvBar" class="tv-bar" role="region" aria-label="Lecture sur la TV" hidden>
+    <svg class="ui-icon tv-bar-icon" aria-hidden="true"><use href="/icons.svg#cast"></use></svg>
+    <div class="tv-bar-text"><strong id="tvBarTitle"></strong><span id="tvBarSub"></span></div>
+    <div class="tv-bar-actions">
+      <button type="button" class="btn btn-secondary btn-small tv-seek" onclick="tvControl('seek_rel', -10)" aria-label="Reculer de 10 secondes">−10 s</button>
+      <button type="button" class="btn btn-icon" id="tvBarToggle" onclick="tvControl('toggle_play')" aria-label="Mettre en pause sur la TV"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#pause"></use></svg></button>
+      <button type="button" class="btn btn-secondary btn-small tv-seek" onclick="tvControl('seek_rel', 10)" aria-label="Avancer de 10 secondes">+10 s</button>
+      <button type="button" class="btn btn-secondary btn-small" id="tvBarStop" onclick="tvControl('stop')">Arrêter</button>
+    </div>
+  </div>
+
+  <!-- Bas de la fiche : distribution, titres proches, liens. -->
+  <div id="detailMore" class="panel detail-more" hidden></div>
+
+  <!-- Accueil : d'abord ce qui se regarde maintenant, puis la découverte. -->
+  <!-- Anime : trois pages sur une ligne d'onglets ; l'onglet est le titre. -->
+  <nav id="animeSubNav" class="library-subnav" aria-label="Anime" style="display:none;">
+    <button class="lib-subtab active" id="animeSubTabHome" onclick="switchAnimeSubTab('home')">À la une</button>
+    <button class="lib-subtab" id="animeSubTabSchedule" onclick="switchAnimeSubTab('schedule')">Planning</button>
+    <button class="lib-subtab" id="animeSubTabCatalog" onclick="switchAnimeSubTab('catalog')">Catalogue</button>
+  </nav>
+
+  <div id="homeResumeSection" style="display:none;">
+    <div class="section-header">
+      <span class="section-title" id="resumeSectionTitle">À continuer</span>
+      <div class="resume-section-actions">
+        <button id="homeResumeAll" class="btn btn-secondary" style="display:none;" onclick="switchTab('history')">Toutes mes lectures</button>
+        <button id="homeResumeClear" class="btn btn-secondary" style="display:none;" onclick="clearAllHistory()">Effacer l’historique</button>
+      </div>
+    </div>
+    <div id="homeResumeGrid" class="resume-grid"></div>
+  </div>
+
+  <!-- Épisodes sortis depuis le dernier visionnage des séries suivies. -->
+  <div id="homeNewSection" style="display:none;">
+    <div class="section-header">
+      <span class="section-title">Nouveaux épisodes</span>
+    </div>
+    <div id="homeNewGrid" class="resume-grid resume-row" role="list" aria-label="Nouveaux épisodes"></div>
+  </div>
+
+  <!-- Titres de Ma Liste pas encore vus, du type de l'onglet. -->
+  <section id="homeListSection" class="home-shelf" aria-labelledby="homeListTitle" hidden>
+    <div class="section-header">
+      <span class="section-title" id="homeListTitle">Dans Ma Liste <span id="homeListCount" class="list-count"></span></span>
+      <div class="resume-section-actions">
+        <button type="button" class="btn btn-secondary" onclick="openTonightModal()">Une idée pour ce soir</button>
+        <button type="button" class="btn btn-secondary" onclick="switchTab('watchlist')">Ma Liste</button>
+      </div>
+    </div>
+    <div id="homeListRow" class="list-shelf-row"></div>
+  </section>
+
+  <!-- Bannière Hero Spotlight Cinéma -->
+  <div id="heroSpotlight" class="hero-spotlight" style="display:none;"></div>
+
+  <!-- Anime, « À la une » : les rangées AniList (anime-home.js). -->
+  <div id="animeHomePanel" class="anime-home" style="display:none;"></div>
+
+  <!-- « Vos derniers vus, à noter » : un geste par titre, pour « Pour vous ». -->
+  <section id="homeRateSection" class="home-shelf" aria-labelledby="homeRateTitle" hidden>
+    <div class="section-header">
+      <span class="section-title" id="homeRateTitle">Vos derniers vus, à noter</span>
+      <span class="section-note" id="homeRateCount"></span>
+    </div>
+    <div id="homeRateRow" class="list-shelf-row foryou-row rate-row"></div>
+  </section>
+
+  <!-- « Pour vous » : calculé sur ce Mac à partir de ce que vous avez vu et noté (recommender.py). -->
+  <section id="homeForYouSection" class="home-shelf" aria-labelledby="homeForYouTitle" hidden>
+    <div class="section-header">
+      <span class="section-title" id="homeForYouTitle">Pour vous</span>
+      <span class="section-note">Calculé sur ce Mac, d’après ce que vous avez vu et noté</span>
+    </div>
+    <div id="homeForYouRow" class="list-shelf-row foryou-row"></div>
+  </section>
+
+  <!-- Titres proches du dernier titre vu. -->
+  <section id="homeBecauseSection" class="home-shelf" aria-labelledby="homeBecauseTitle" hidden>
+    <div class="section-header">
+      <span class="section-title" id="homeBecauseTitle">Si vous avez aimé</span>
+    </div>
+    <div id="homeBecauseRow" class="list-shelf-row"></div>
+  </section>
+
+  <!-- Section Catalogue / Grille principale -->
+  <div id="catalogHeader" class="section-header" style="flex-direction:column; align-items:stretch; gap:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span id="catalogTitle" class="section-title">Films populaires du moment</span>
+        <span id="listStatsBadge" class="lib-summary" style="display:none;"></span>
+      </div>
+      <div id="catalogSortWrap" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <button class="btn-surprise" onclick="surpriseMeMedia(activeTab === 'classics' ? 'classics' : 'catalog')" title="Lancer la roulette KINO et tirer un titre non encore vu">
+          <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#dice"></use></svg>
+          <span>Surprends-moi</span>
+        </button>
+        <button id="hideWatchedChip" type="button" class="chip" onclick="toggleHideWatchedCatalog()" title="Masquer du catalogue les films que vous avez déjà vus">Masquer déjà vus</button>
+        <select id="catalogSortSelect" class="catalog-sort" aria-label="Trier le catalogue" onchange="onChangeCatalogSort(this.value)">
+          <option value="top">Tendances</option>
+          <option value="imdbRating">Mieux notés</option>
+          <option value="recent">Plus récents</option>
+          <option value="oldest">Plus anciens</option>
+        </select>
+      </div>
+      <div id="watchlistActionsWrap" class="lib-tools" style="display:none;">
+        <input type="search" id="listFilterInput" placeholder="Filtrer par titre ou année…" aria-label="Filtrer la liste par titre ou année" oninput="renderActiveListTab()">
+        <select id="listSortSelect" class="catalog-sort" aria-label="Trier la liste" onchange="onChangeListSort(this.value)">
+          <option value="added">Ajout récent</option>
+          <option value="user_rating_desc">Ma note</option>
+          <option value="rating">Note IMDb</option>
+          <option value="year_desc">Plus récents</option>
+          <option value="year_asc">Plus anciens</option>
+          <option value="alpha">A → Z</option>
+        </select>
+        <button id="listSurpriseBtn" class="btn-surprise" onclick="surpriseMeFromCurrentList()" title="Lancer la roulette parmi les films de cette liste">
+          <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#dice"></use></svg>
+          <span id="listSurpriseBtnLabel">Tirage sur Ma Liste</span>
+        </button>
+        <button class="btn-surprise" onclick="openLetterboxdModal()" title="Importer vos films vus, vos notes ou une liste depuis Letterboxd">
+          <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#upload"></use></svg>
+          <span>Importer Letterboxd</span>
+        </button>
+      </div>
+    </div>
+    <div id="listFilters" class="list-filters" hidden></div>
+    <div class="genre-strip" id="genreStrip">
+      <button type="button" class="genre-scroll genre-scroll-prev" aria-label="Genres précédents" onclick="scrollGenres(-1)" hidden>‹</button>
+      <div id="genreFilters" class="genre-row" role="group" aria-label="Genres">
+      <span class="chip active" data-genre="" onclick="selectGenre('', this)">Tous</span>
+      <span class="chip" data-genre="Action" onclick="selectGenre('Action', this)">Action</span>
+      <span class="chip" data-genre="Sci-Fi" onclick="selectGenre('Sci-Fi', this)">Sci-Fi</span>
+      <span class="chip" data-genre="Thriller" onclick="selectGenre('Thriller', this)">Thriller</span>
+      <span class="chip" data-genre="Crime" onclick="selectGenre('Crime', this)">Policier</span>
+      <span class="chip" data-genre="Adventure" onclick="selectGenre('Adventure', this)">Aventure</span>
+      <span class="chip" data-genre="Animation" onclick="selectGenre('Animation', this)">Animation</span>
+      <span class="chip" data-genre="Comedy" onclick="selectGenre('Comedy', this)">Comédie</span>
+      <span class="chip" data-genre="Drama" onclick="selectGenre('Drama', this)">Drame</span>
+      <span class="chip" data-genre="Fantasy" onclick="selectGenre('Fantasy', this)">Fantastique</span>
+      <span class="chip" data-genre="Horror" onclick="selectGenre('Horror', this)">Horreur</span>
+      <span class="chip" data-genre="War" onclick="selectGenre('War', this)">Guerre</span>
+      <span class="chip" data-genre="Western" onclick="selectGenre('Western', this)">Western</span>
+      <span class="chip" data-genre="Documentary" onclick="selectGenre('Documentary', this)">Documentaire</span>
+    </div>
+      <button type="button" class="genre-scroll genre-scroll-next" aria-label="Genres suivants" onclick="scrollGenres(1)" hidden>›</button>
+    </div>
+  </div>
+  <div id="postersGrid" class="posters-grid"></div>
+  <div id="loadMoreWrap" style="display:none; justify-content:center; margin-top:22px;">
+    <button id="loadMoreBtn" class="btn btn-secondary" style="padding:9px 24px;" onclick="loadMoreCatalog()">Voir plus de titres</button>
+  </div>
+
+  <!-- Section Cloud Multi-Debrid -->
+  <div id="rdCloudPanel" class="panel lib-panel" style="display:none;">
+    <div class="lib-panel-head">
+      <div>
+        <h3 id="rdCloudHeading">Derniers fichiers débridés sur le Cloud</h3>
+        <div id="rdCloudStatusNote">Gérez ou nettoyez automatiquement les fichiers et torrents stockés sur votre débrideur.</div>
+      </div>
+      <div class="lib-tools">
+        <select id="rdCloudRetentionSelect" class="catalog-sort" onchange="onChangeRdRetention(this.value)" title="Suppression automatique des fichiers et torrents anciens">
+          <option value="0">Auto-suppression : Jamais</option>
+          <option value="1">Auto-suppression : &gt; 24h</option>
+          <option value="3">Auto-suppression : &gt; 3 jours</option>
+          <option value="7">Auto-suppression : &gt; 7 jours</option>
+          <option value="14">Auto-suppression : &gt; 14 jours</option>
+          <option value="30">Auto-suppression : &gt; 30 jours</option>
+        </select>
+        <button class="btn-surprise" onclick="loadRdCloud()">Actualiser</button>
+        <button class="btn-surprise" onclick="purgeRdCloud('all', this)">Tout vider</button>
+      </div>
+    </div>
+    <div id="rdCloudTools" class="cloud-tools" hidden></div>
+    <div id="rdCloudList" class="torrent-list cloud-list"></div>
+  </div>
+
+  <!-- Mes statistiques -->
+  <div id="viewingStatsPanel" class="panel lib-panel stats-panel" style="display:none;">
+    <div class="stats-head">
+      <h2 class="explore-title">Statistiques</h2>
+      <p class="lib-summary">Ce que votre historique dit de vos films et séries.</p>
+    </div>
+    <div id="viewingStatsBody"></div>
+  </div>
+
+  <!-- Panneau Communauté & Tendances Letterboxd -->
+  <div id="communityPanel" class="panel explore-panel" style="display:none;">
+    <div class="explore-head">
+      <div>
+        <h2 class="explore-title">Explorer</h2>
+        <p class="explore-sub">Collections cultes, palmarès Letterboxd et pépites choisies par des cinéphiles.</p>
+      </div>
+      <form class="explore-import" onsubmit="event.preventDefault(); importCustomLetterboxdFromInput();">
+        <input type="text" inputmode="url" id="communityLetterboxdInput" placeholder="Adresse d'une liste Letterboxd (letterboxd.com ou boxd.it)" aria-label="Adresse d'une liste Letterboxd à importer" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn">Importer</button>
+      </form>
+    </div>
+
+    <!-- Étagères : listes importées, puis sélections -->
+    <div id="communityListsGrid" class="explore-shelves"></div>
+
+    <!-- Une sélection en entier -->
+    <section id="communityActiveListSection" class="explore-open" hidden>
+      <div class="explore-open-head">
+        <button type="button" class="btn btn-secondary lists-back" onclick="closeCommunityActiveList()" aria-label="Revenir à Explorer">← Explorer</button>
+        <div class="explore-open-info">
+          <h3 id="communityActiveListTitle" class="list-shelf-title"></h3>
+          <div id="communityActiveListMeta" class="list-shelf-meta"></div>
+          <p id="communityActiveListDesc" class="list-shelf-desc"></p>
+        </div>
+        <button type="button" class="btn-surprise" onclick="surpriseMeFromOpenCommunityList()" title="Tirer un titre non vu de cette sélection">Roulette</button>
+      </div>
+      <div id="communityActiveListFilters" class="cloud-chips" role="group" aria-label="État des titres"></div>
+      <div id="communityActiveListGrid" class="posters-grid"></div>
+    </section>
+  </div>
+
+  <!-- Panneau Planning Simulcast Anime -->
+  <!-- La semaine, jour par jour, en lignes. -->
+  <div id="animeSchedulePanel" class="panel lib-panel" style="display:none;">
+    <div class="lib-panel-head">
+      <div>
+        <p id="animeScheduleSummary" class="lib-summary"></p>
+        <p class="week-note">Heures de diffusion au Japon, à l’heure de ce Mac.</p>
+      </div>
+      <div class="lib-tools">
+        <select id="animeScheduleFilter" class="catalog-sort" aria-label="Épisodes affichés" onchange="setAnimeWeekFilter(this.value)">
+          <option value="popular">Populaires</option>
+          <option value="mine">Mes animes</option>
+          <option value="all">Tout</option>
+        </select>
+        <button type="button" class="btn-surprise" onclick="loadAnimeWeek(true)">Actualiser</button>
+      </div>
+    </div>
+    <div id="animeScheduleDays" class="week-days" role="group" aria-label="Jours"></div>
+    <div id="animeScheduleGrid" class="week-list"></div>
+  </div>
+
+  <!-- Paramètres : quatre groupes, une ligne par réglage, enregistré tout de suite.
+       Les blocs gardent leurs identifiants (settings-sync, settings-storage…) : le Diagnostic y mène. -->
+  <div id="settingsPanel" class="settings-page" style="display:none;">
+    <div class="settings-header">
+      <div>
+        <h1 class="settings-header-title">Paramètres</h1>
+        <p class="settings-header-desc">Chaque changement s’applique tout de suite.</p>
+      </div>
+      <div class="settings-header-actions">
+        <span id="settingsSaveStatus" class="settings-save-status" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <div class="settings-workspace">
+    <nav class="settings-index" aria-label="Sections des paramètres">
+      <button type="button" class="settings-index-item active" data-settings-target="settings-player" aria-current="location"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#play"></use></svg><span>Lecture</span></button>
+      <button type="button" class="settings-index-item" data-settings-target="settings-account"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#cloud"></use></svg><span>Compte</span></button>
+      <button type="button" class="settings-index-item" data-settings-target="settings-connections"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#sync"></use></svg><span>Connexions</span></button>
+      <button type="button" class="settings-index-item" data-settings-target="settings-app"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#window"></use></svg><span>Application</span></button>
+    </nav>
+    <div class="settings-grid">
+      <div id="settingsSetupNotice" class="settings-setup" role="status" hidden>
+        <div><strong>Ajoutez votre clé Debrid</strong><span>Sans elle, KINO ne peut pas lancer de film ni de série.</span></div>
+        <button type="button" class="btn" onclick="focusDebridKey()">Ajouter ma clé</button>
+      </div>
+
+      <!-- 1. Lecture : ce qui se lance quand on appuie sur Lancer -->
+      <section class="settings-group" id="settings-player" aria-labelledby="settings-player-title">
+        <h2 class="settings-group-title" id="settings-player-title">Lecture</h2>
+        <p class="settings-group-desc">Ce que KINO choisit quand vous appuyez sur Lancer.</p>
+        <div class="set-list">
+          <div class="set-row">
+            <div class="set-text">
+              <label class="settings-label" for="cfgPrefLang">Langue</label>
+              <p class="settings-desc">KINO cherche d’abord des sources dans cette langue.</p>
+            </div>
+            <select id="cfgPrefLang">
+              <option value="vf">Français</option>
+              <option value="vostfr">Version originale sous-titrée</option>
+            </select>
+          </div>
+          <div class="set-row">
+            <div class="set-text">
+              <label class="settings-label" for="cfgPrefQuality">Qualité</label>
+              <p class="settings-desc">KINO cherche d’abord des sources de cette qualité.</p>
+            </div>
+            <select id="cfgPrefQuality">
+              <option value="4k">4K</option>
+              <option value="1080p">Full HD (1080p)</option>
+            </select>
+          </div>
+          <div class="set-row">
+            <div class="set-text">
+              <label class="settings-label" for="cfgPlayerMode">Lecteur</label>
+              <p class="settings-desc">Où les films et les épisodes se lisent.</p>
+            </div>
+            <select id="cfgPlayerMode">
+              <option value="integrated">Dans la fenêtre KINO</option>
+              <option value="external">Lecteur externe (IINA, mpv ou VLC)</option>
+            </select>
+          </div>
+          <div id="cfgNativePlayerField" style="display:none;" class="set-row">
+            <div class="set-text">
+              <label class="settings-label" for="cfgNativePlayer">Lecteur natif (recommandé)</label>
+              <p class="settings-desc">Lit les films hors ligne et les sources Debrid sans conversion : MKV, H.265 et 4K, avec toutes les pistes. Si une source ne démarre pas, le lecteur intégré prend le relais ; pour une Watch Party, Options → Ouvrir dans le lecteur intégré.</p>
+            </div>
+            <label class="k-switch"><input type="checkbox" id="cfgNativePlayer" role="switch"><span aria-hidden="true"></span></label>
+          </div>
+          <div class="set-row">
+            <div class="set-text">
+              <label class="settings-label" for="cfgAutoFrSubs">Sous-titres français automatiques</label>
+              <p class="settings-desc">Pour un film ou un épisode qui n’existe qu’en version originale.</p>
+            </div>
+            <label class="k-switch"><input type="checkbox" id="cfgAutoFrSubs" role="switch" checked><span aria-hidden="true"></span></label>
+          </div>
+          <div class="set-row" id="cfgEpisodeNotificationsField" style="display:none;">
+            <div class="set-text">
+              <label class="settings-label" for="cfgEpisodeNotifications">Notifications des nouveaux épisodes</label>
+              <p class="settings-desc">macOS vous prévient quand un épisode d’une série suivie sort, sans en dire le titre.</p>
+              <div class="settings-inline-actions">
+                <button type="button" class="btn btn-secondary btn-small" onclick="testEpisodeNotification(this)">Envoyer un essai</button>
+                <span id="cfgNotificationStatus" class="settings-desc" role="status" aria-live="polite"></span>
+              </div>
+            </div>
+            <label class="k-switch"><input type="checkbox" id="cfgEpisodeNotifications" role="switch" checked><span aria-hidden="true"></span></label>
+          </div>
+          <div class="set-row spoiler-setting">
+            <div class="set-text">
+              <label class="settings-label" for="cfgSpoilerProtection">Épisodes non vus</label>
+              <p class="settings-desc">Chaque série peut avoir son propre réglage, depuis sa fiche.</p>
+              <p id="spoilerSettingsStatus" class="settings-desc" role="status" aria-live="polite"></p>
+            </div>
+            <select id="cfgSpoilerProtection" onchange="setGlobalSpoilerProtection(this.value === 'on')">
+              <option value="off">Tout afficher</option>
+              <option value="on">Masquer leurs titres et images</option>
+            </select>
+          </div>
+        </div>
+        <details class="set-advanced">
+          <summary>Options avancées</summary>
+          <div class="set-list">
+            <div class="set-row">
+              <div class="set-text">
+                <label class="settings-label" for="cfgSourcePriority">Priorité</label>
+                <p class="settings-desc">« Lancer vite » prend une source prête tout de suite. « Qualité choisie d’abord » peut attendre que Debrid la prépare, avec un bouton pour lancer une source prête à la place.</p>
+              </div>
+              <select id="cfgSourcePriority">
+                <option value="speed">Lancer vite</option>
+                <option value="quality">Qualité choisie d’abord</option>
+              </select>
+            </div>
+            <div class="set-row">
+              <div class="set-text">
+                <label class="settings-label" for="cfgHdrMode">Image</label>
+                <p class="settings-desc">Choisissez HDR pour un écran compatible. Sur un écran standard, le lecteur convertit le HDR : le SDR ne sert qu’à départager deux sources égales.</p>
+              </div>
+              <select id="cfgHdrMode">
+                <option value="sdr_pref">Standard (SDR)</option>
+                <option value="hdr_native">HDR et Dolby Vision</option>
+              </select>
+            </div>
+            <div class="set-row">
+              <div class="set-text">
+                <label class="settings-label" for="cfgAudioMode">Son</label>
+                <p class="settings-desc">Volume égalisé, pour le lecteur externe. Dans KINO, il se change pendant la lecture : Options → Voix.</p>
+              </div>
+              <select id="cfgAudioMode">
+                <option value="voice_boost">Voix plus claires</option>
+                <option value="standard">Son d’origine</option>
+              </select>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <!-- 2. Compte : le service Debrid -->
+      <section class="settings-group" id="settings-account" aria-labelledby="settings-account-title">
+        <h2 class="settings-group-title" id="settings-account-title">Compte</h2>
+        <p class="settings-group-desc">Le service Debrid qui fournit les films et les séries.</p>
+        <div id="cfgAccountInfo" class="set-status">
+          <div>
+            <strong id="cfgAccountTitle">Statut du compte</strong>
+            <span id="cfgAccountSub">Vérification de la clé…</span>
+          </div>
+          <span id="cfgAccountBadge" class="settings-card-badge">En attente</span>
+        </div>
+        <div class="set-list">
+          <div class="set-row">
+            <div class="set-text">
+              <label class="settings-label" for="cfgProvider">Service</label>
+              <p id="cfgProviderHelp" class="settings-desc">Votre clé se trouve sur <a id="cfgProviderLink" href="https://real-debrid.com/apitoken" target="_blank" rel="noopener">real-debrid.com/apitoken</a>.</p>
+            </div>
+            <select id="cfgProvider" onchange="onConfigProviderChange()">
+              <option value="realdebrid">Real-Debrid</option>
+              <option value="alldebrid">AllDebrid</option>
+              <option value="torbox">TorBox</option>
+              <option value="debridlink">Debrid-Link</option>
+              <option value="premiumize">Premiumize</option>
+              <option value="megadebrid">Mega-Debrid</option>
+            </select>
+          </div>
+          <div class="set-row set-row-wide">
+            <div class="set-text">
+              <label class="settings-label" for="cfgToken" id="cfgTokenLabel">Clé API</label>
+              <p class="settings-desc">Elle reste sur ce Mac, dans un fichier réservé à votre session, sans chiffrement.</p>
+            </div>
+            <div class="set-key">
+              <div class="set-key-field">
+                <input type="password" id="cfgToken" placeholder="Laisser vide pour garder la clé actuelle" autocomplete="off" spellcheck="false">
+                <button type="button" class="set-key-eye" onclick="togglePasswordVisibility('cfgToken', this)" title="Afficher ou masquer la clé" aria-label="Afficher ou masquer la clé">
+                  <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#eye"></use></svg>
+                </button>
+              </div>
+              <button type="button" class="btn" id="cfgTokenVerifyBtn" onclick="verifyDebridKey(this)">Vérifier</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-text">
+              <label class="settings-label" for="cfgRdRetention">Nettoyage du Cloud</label>
+              <p class="settings-desc">Retire du Cloud les fichiers plus anciens que ce délai.</p>
+            </div>
+            <div class="set-control-pair">
+              <select id="cfgRdRetention">
+                <option value="0">Jamais</option>
+                <option value="1">Après 24 heures</option>
+                <option value="3">Après 3 jours</option>
+                <option value="7">Après 7 jours</option>
+                <option value="14">Après 14 jours</option>
+                <option value="30">Après 30 jours</option>
+              </select>
+              <button type="button" class="btn btn-secondary btn-small" onclick="purgeRdCloud('all', this)" title="Supprimer tout le contenu du Cloud, après confirmation">Vider le Cloud</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Connexions : synchronisation et Discord -->
+      <section class="settings-group" id="settings-connections" aria-labelledby="settings-connections-title">
+        <h2 class="settings-group-title" id="settings-connections-title">Connexions</h2>
+        <p class="settings-group-desc">Vos listes sur vos autres appareils, et votre lecture sur Discord.</p>
+
+        <div class="set-block" id="settings-sync" aria-labelledby="settings-sync-title">
+          <h3 class="set-block-title" id="settings-sync-title">Synchronisation</h3>
+          <div class="set-list">
+            <div class="set-row">
+              <div class="set-text">
+                <span class="settings-label">Google Drive</span>
+                <p class="settings-desc">Votre historique et Ma Liste, entre ce Mac et votre PC.</p>
+                <p id="gdriveSyncStatus" class="settings-desc set-live">Se synchronise à chaque ouverture de KINO.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-small" onclick="triggerGdriveSync(this)">Synchroniser</button>
+            </div>
+            <div class="set-row">
+              <div class="set-text">
+                <span class="settings-label">Trakt</span>
+                <p class="settings-desc">Marque vos épisodes vus et synchronise votre liste Trakt.</p>
+                <p id="traktSyncStatus" class="settings-desc set-live">Non connecté</p>
+              </div>
+              <div class="set-control-pair">
+                <button type="button" id="traktConnectBtn" class="btn btn-secondary btn-small" onclick="toggleTraktAuth(this)">Connecter</button>
+                <button type="button" id="traktSyncBtn" class="btn btn-secondary btn-small" style="display:none;" onclick="triggerTraktSync(this)">Synchroniser</button>
+              </div>
+            </div>
+            <div id="traktAuthBox" class="set-steps" style="display:none;">
+              <p>1. Ouvrez <a id="traktAuthUrl" href="https://trakt.tv/activate" target="_blank" rel="noopener">trakt.tv/activate</a></p>
+              <p>2. Entrez ce code : <b id="traktUserCode" class="set-code">------</b></p>
+              <p id="traktAuthCountdown" class="settings-desc">En attente de votre validation sur Trakt…</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="set-block" id="settings-tv" aria-labelledby="settings-tv-title">
+          <h3 class="set-block-title" id="settings-tv-title">Téléviseur</h3>
+          <div class="set-list">
+            <div class="set-row">
+              <div class="set-text">
+                <label class="settings-label" for="cfgTvDevice">TV pour « Sur la TV »</label>
+                <p id="cfgTvStatus" class="settings-desc">Une TV du même réseau que ce Mac (DLNA). Le Mac lui envoie la vidéo : il doit rester allumé.</p>
+              </div>
+              <div class="set-control-pair">
+                <select id="cfgTvDevice" onchange="chooseTvDevice(this.value)"><option value="">Aucune TV trouvée</option></select>
+                <button type="button" class="btn btn-secondary btn-small" onclick="loadTvDevices(true, this)">Rechercher</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="set-block" id="settings-tmdb" aria-labelledby="settings-tmdb-title">
+          <h3 class="set-block-title" id="settings-tmdb-title">TMDB</h3>
+          <div class="set-list">
+            <div class="set-row set-row-wide">
+              <div class="set-text">
+                <label class="settings-label" for="cfgTmdbKey">Clé TMDB</label>
+                <p class="settings-desc">Pour « Si vous avez aimé » et « Vous aimerez aussi ». Gratuite : <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org → Paramètres → API</a>.</p>
+                <p id="cfgTmdbStatus" class="settings-desc set-live">Pas de clé : KINO propose des titres du même genre.</p>
+              </div>
+              <div class="set-key">
+                <div class="set-key-field">
+                  <input type="password" id="cfgTmdbKey" placeholder="Collez votre clé d’API TMDB" autocomplete="off" spellcheck="false">
+                  <button type="button" class="set-key-eye" onclick="togglePasswordVisibility('cfgTmdbKey', this)" title="Afficher ou masquer la clé" aria-label="Afficher ou masquer la clé">
+                    <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#eye"></use></svg>
+                  </button>
+                </div>
+                <button type="button" class="btn" id="cfgTmdbVerifyBtn" onclick="verifyTmdbKey(this)">Vérifier</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="set-block" id="settings-discord" aria-labelledby="settings-discord-title">
+          <h3 class="set-block-title" id="settings-discord-title">Discord</h3>
+          <div class="set-list">
+            <div class="set-row">
+              <div class="set-text">
+                <label class="settings-label" for="cfgDiscordRpc">Afficher ma lecture sur Discord</label>
+                <p id="discordRpcStatus" class="settings-desc">Le film ou l’épisode en cours apparaît sur votre profil, avec son affiche et le temps restant.</p>
+              </div>
+              <label class="k-switch"><input type="checkbox" id="cfgDiscordRpc" role="switch" checked onchange="toggleDiscordRpcFields()"><span aria-hidden="true"></span></label>
+            </div>
+          </div>
+          <details class="set-advanced" id="discordRpcOptions">
+            <summary>Options avancées</summary>
+            <div class="set-list">
+              <div class="set-row">
+                <div class="set-text">
+                  <label class="settings-label" for="cfgDiscordPreset">Nom affiché sur Discord</label>
+                  <p class="settings-desc">Aucune application Discord personnelle à créer : KINO est préconfiguré pour tous.</p>
+                </div>
+                <select id="cfgDiscordPreset" onchange="onDiscordPresetChange()">
+                  <option value="1556492442415398973">KINO (préconfiguré)</option>
+                  <option value="custom">Autre application</option>
+                </select>
+              </div>
+              <div id="cfgDiscordCustomBox" class="set-row" style="display:none;">
+                <div class="set-text">
+                  <label class="settings-label" for="cfgDiscordClientId">Identifiant de l’application</label>
+                  <p class="settings-desc">Seulement pour afficher une autre application que KINO.</p>
+                </div>
+                <input type="text" id="cfgDiscordClientId" placeholder="Ex. 123456789012345678" inputmode="numeric" spellcheck="false">
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- 4. Application : fichiers, mises à jour, aide -->
+      <section class="settings-group" id="settings-app" aria-labelledby="settings-app-title">
+        <h2 class="settings-group-title" id="settings-app-title">Application</h2>
+        <p class="settings-group-desc">Les fichiers, les versions de KINO et l’aide.</p>
+
+        <div class="set-block" id="settings-storage" aria-labelledby="settings-storage-title">
+          <h3 class="set-block-title" id="settings-storage-title">Stockage</h3>
+          <div class="set-list">
+            <div class="set-row set-row-wide">
+              <div class="set-text">
+                <label class="settings-label" for="cfgDir">Dossier des téléchargements</label>
+                <p class="settings-desc">Les films gardés hors ligne y sont enregistrés.</p>
+              </div>
+              <div class="set-key">
+                <input type="text" id="cfgDir" placeholder="Ex. /Users/vous/Movies/kino" spellcheck="false">
+                <button type="button" class="btn btn-secondary" onclick="openFolder()">Ouvrir</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="set-block" id="settings-suggestions" aria-labelledby="settings-suggestions-title">
+          <h3 class="set-block-title" id="settings-suggestions-title">Suggestions</h3>
+          <div class="set-list">
+            <div class="set-row">
+              <div class="set-text">
+                <span class="settings-label">Calculées sur ce Mac</span>
+                <p class="settings-desc">« Pour vous » et les titres proches viennent de ce que vous avez vu, noté et mis de côté. Rien de vous ne quitte ce Mac.</p>
+                <p id="suggestionsStatus" class="settings-desc set-live">…</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-small" id="suggestionsResetBtn" onclick="resetNotForMe(this)">Oublier mes « Pas pour moi »</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="set-block" id="settings-updates" aria-labelledby="settings-updates-title">
+          <h3 class="set-block-title" id="settings-updates-title">Mises à jour</h3>
+          <div class="set-list">
+            <div class="set-row">
+              <div class="set-text">
+                <span class="settings-label">Version installée <strong id="kinoUpdateVersion">—</strong></span>
+                <p class="settings-desc" id="kinoUpdateChannel">Recherche locale dans Téléchargements et le dossier KINO, sans connexion Internet.</p>
+              </div>
+              <div class="set-control-pair kino-update-actions">
+                <button type="button" class="btn btn-secondary btn-small" onclick="checkKinoUpdates()">Rechercher sur ce Mac</button>
+                <button type="button" class="btn btn-secondary btn-small" onclick="chooseKinoUpdate()">Choisir un paquet</button>
+              </div>
+            </div>
+            <div class="kino-update-progress" id="kinoUpdateProgressBox" hidden>
+              <div class="kino-update-progress-track"><span id="kinoUpdateProgressBar"></span></div>
+              <span id="kinoUpdateProgressLabel">Vérification…</span>
+            </div>
+            <div id="kinoUpdateCandidate" class="kino-update-candidate" hidden>
+              <strong id="kinoUpdateCandidateTitle"></strong>
+              <p id="kinoUpdateNotes"></p>
+              <button type="button" class="btn" id="kinoUpdateInstallBtn" onclick="installKinoUpdate()">Installer et redémarrer KINO</button>
+            </div>
+            <div class="set-row kino-update-rollback">
+              <div class="set-text">
+                <span class="settings-label">Version précédente</span>
+                <p class="settings-desc" id="kinoUpdateRollbackDescription">Aucune sauvegarde disponible.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-small" id="kinoUpdateRollbackBtn" onclick="rollbackKinoUpdate()" disabled>Revenir à cette version</button>
+            </div>
+            <p id="kinoUpdateMessage" class="settings-desc" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <div class="set-block" id="settings-backups" aria-labelledby="settings-backups-title">
+          <h3 class="set-block-title" id="settings-backups-title">Sauvegardes</h3>
+          <div class="set-list">
+            <div class="set-row">
+              <div class="set-text">
+                <span class="settings-label">Une copie par jour</span>
+                <p class="settings-desc">Ma Liste, l’historique, vos notes et vos réglages, gardés 7 jours sur ce Mac. Vos clés n’y sont pas.</p>
+                <p id="backupsStatus" class="settings-desc set-live" role="status" aria-live="polite"></p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-small" id="backupNowBtn" onclick="backupNow(this)">Sauvegarder maintenant</button>
+            </div>
+            <div id="backupsList" class="backups-list"></div>
+          </div>
+        </div>
+
+        <div class="set-block" id="settings-diagnostic" aria-labelledby="settings-diagnostic-title">
+          <h3 class="set-block-title" id="settings-diagnostic-title">Diagnostic</h3>
+          <div class="set-list">
+            <div class="set-row">
+              <div class="set-text">
+                <span class="settings-label">Vérifier que tout fonctionne</span>
+                <p class="settings-desc">La connexion, le compte, la synchronisation, le lecteur, l’espace disque et vos données. Rien n’est modifié.</p>
+              </div>
+              <div class="set-control-pair diagnostic-actions">
+                <button type="button" class="btn btn-secondary btn-small" id="diagnosticRunBtn" onclick="runDiagnostic()">Lancer le diagnostic</button>
+                <button type="button" class="btn btn-secondary btn-small" id="diagnosticCopyBtn" onclick="copyDiagnosticReport()" disabled>Copier le rapport</button>
+              </div>
+            </div>
+            <span id="diagnosticCopyStatus" class="settings-desc" role="status" aria-live="polite"></span>
+            <p id="diagnosticSummary" class="diagnostic-summary" role="status" aria-live="polite"></p>
+            <ul id="diagnosticList" class="diagnostic-list" hidden></ul>
+            <textarea id="diagnosticReport" class="diagnostic-report" rows="10" readonly aria-label="Rapport du diagnostic" hidden></textarea>
+          </div>
+        </div>
+
+        <div class="set-block" id="settings-shortcuts" aria-labelledby="settings-shortcuts-title">
+          <h3 class="set-block-title" id="settings-shortcuts-title">Raccourcis</h3>
+          <ul class="set-keys">
+            <li><span>Lecture ou pause</span><kbd>Espace</kbd></li>
+            <li><span>Plein écran</span><kbd>F</kbd></li>
+            <li><span>Reculer ou avancer</span><kbd>← →</kbd></li>
+            <li><span>Sous-titres</span><kbd>C</kbd></li>
+            <li><span>Passer l’intro</span><kbd>S</kbd></li>
+            <li><span>Rechercher</span><kbd>⌘K</kbd></li>
+            <li><span>Écran précédent</span><kbd>Échap</kbd></li>
+          </ul>
+          <button type="button" class="btn btn-secondary btn-small" onclick="toggleShortcutsModal()">Tous les raccourcis</button>
+        </div>
+      </section>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtres SVG Gamma pour déboucher les ombres / scènes sombres sans brûler les blancs -->
+<svg width="0" height="0" style="position:absolute; pointer-events:none;">
+  <defs>
+    <filter id="kinoShadowBoost1" color-interpolation-filters="sRGB">
+      <feComponentTransfer>
+        <feFuncR type="gamma" amplitude="1" exponent="0.76" offset="0.015"/>
+        <feFuncG type="gamma" amplitude="1" exponent="0.76" offset="0.015"/>
+        <feFuncB type="gamma" amplitude="1" exponent="0.76" offset="0.015"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="kinoShadowBoost2" color-interpolation-filters="sRGB">
+      <feComponentTransfer>
+        <feFuncR type="gamma" amplitude="1" exponent="0.62" offset="0.025"/>
+        <feFuncG type="gamma" amplitude="1" exponent="0.62" offset="0.025"/>
+        <feFuncB type="gamma" amplitude="1" exponent="0.62" offset="0.025"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="kinoShadowBoost3" color-interpolation-filters="sRGB">
+      <feComponentTransfer>
+        <feFuncR type="gamma" amplitude="1" exponent="0.50" offset="0.038"/>
+        <feFuncG type="gamma" amplitude="1" exponent="0.50" offset="0.038"/>
+        <feFuncB type="gamma" amplitude="1" exponent="0.50" offset="0.038"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+</svg>
+
+<!-- Lecteur Intégré KINO (Plein écran dans l'app) -->
+<div id="inAppPlayerOverlay" class="inapp-player-overlay">
+  <video id="inAppVideo" playsinline></video>
+  <div id="inAppSubOverlay" style="position:absolute; left:50%; bottom:86px; transform:translateX(-50%); z-index:12; max-width:82%; text-align:center; pointer-events:none; font-size:1.32rem; font-weight:600; color:#fafafa; text-shadow:0 2px 6px rgba(0,0,0,0.95), 0 0 12px rgba(0,0,0,0.85); background:rgba(9,9,11,0.68); padding:5px 14px; border-radius:6px; display:none; line-height:1.38;"></div>
+  <div id="inAppStatusToast" class="inapp-toast"></div>
+  <!-- Bouton Skip Intro Intelligent -->
+  <div id="inAppSkipIntroCard" class="inapp-floating-card">
+    <button class="btn" id="inAppSkipIntroBtn" style="padding:7px 14px; font-size:0.82rem;" onclick="skipInAppIntro()">Passer l'intro</button>
+    <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="dismissSkipIntro()" title="Masquer">✕</button>
+  </div>
+  <!-- Bouton Annuler le saut (Undo) -->
+  <div id="inAppUndoSkipCard" class="inapp-floating-card" style="display:none; bottom:86px;">
+    <button class="btn btn-secondary" id="inAppUndoSkipBtn" style="padding:6px 12px; font-size:0.80rem;" onclick="undoInAppSkip()">Annuler le saut</button>
+  </div>
+  <!-- Carte Prochain épisode dans 10s -->
+  <div id="inAppNextEpCard" class="inapp-floating-card">
+    <div>
+      <div style="font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">À suivre dans <span id="inAppNextEpCountdown">10</span>s</div>
+      <div id="inAppNextEpTitle" style="font-size:0.86rem; font-weight:600; margin-top:2px; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Épisode suivant</div>
+    </div>
+    <button class="btn" style="padding:6px 12px; font-size:0.78rem;" onclick="inAppNextTrack()">Lancer</button>
+    <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="cancelNextEpAuto()">Annuler</button>
+  </div>
+  <div class="inapp-hud-top pywebview-drag-region" ondblclick="if(document.body.classList.contains('is-fullscreen')||Boolean(document.fullscreenElement||document.webkitFullscreenElement)){toggleInAppFullscreen();}else{windowAction('maximize');}">
+    <div style="display:flex; align-items:center; gap:14px;" class="no-drag">
+      <div class="mac-controls">
+        <button class="mac-btn mac-close" onclick="windowAction('close')" title="Fermer (Alt+F4)">
+          <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+            <path d="M2.2 2.2l7.6 7.6M9.8 2.2l-7.6 7.6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="mac-btn mac-min" onclick="windowAction('minimize')" title="Réduire (Ctrl+M)">
+          <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+            <line x1="2" y1="6" x2="10" y2="6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="mac-btn mac-max" onclick="windowAction('maximize')" title="Agrandir / Plein écran (F11)">
+          <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
+            <polygon points="2.2,7.5 2.2,2.2 7.5,2.2" fill="rgba(0,0,0,0.65)"/>
+            <polygon points="9.8,4.5 9.8,9.8 4.5,9.8" fill="rgba(0,0,0,0.65)"/>
+          </svg>
+        </button>
+      </div>
+      <button class="inapp-btn kp-pill kp-back" onclick="closeInAppPlayer()">← Retour</button>
+    </div>
+    <div id="inAppTitle" class="kp-title"></div>
+    <div class="kp-top-actions no-drag">
+      <button class="inapp-btn kp-pill kp-accent" id="inAppMpvSuggestBtn" onclick="switchToExternalPlayer()" style="display:none;" title="Optimisé pour 4K HDR & DTS sans saccades"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Basculer MPV</button>
+      <button class="inapp-btn kp-pill kp-accent" id="inAppAudioFixBtn" onclick="fixInAppAudio()" style="display:none;" title="Convertir l'audio multi-canal (DTS/TrueHD/E-AC3) en flux stéréo AAC compatible avec le navigateur"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>Réparer le son</button>
+      <select class="inapp-btn kp-pill kp-select" id="inAppAudioTrack" aria-label="Piste audio" title="Choisir la piste audio" onchange="changeInAppAudioTrack(this.value)" style="display:none;"></select>
+      <button class="inapp-btn kp-pill" id="inAppSubsBtn" onclick="cycleInAppSubtitles()" title="Sous-titres OpenSubtitles FR / EN (Touche C)">CC : Off</button>
+      <div class="kp-more">
+        <button class="inapp-btn kp-pill" id="inAppMoreBtn" onclick="toggleInAppMoreMenu(event)" aria-expanded="false" aria-controls="inAppMoreMenu" title="Réglages de l'image et du son, partage, aide"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>Options</button>
+        <div id="inAppMoreMenu" class="kp-menu" role="group" aria-label="Options de lecture" hidden>
+          <div class="kp-menu-heading">Image et son</div>
+          <button class="inapp-btn kp-menu-item" id="inAppSubSizeBtn" data-name="Taille des sous-titres" onclick="cycleInAppSubSize()" title="Taille des sous-titres (S / M / L / XL)">A</button>
+          <button class="inapp-btn kp-menu-item" id="inAppAudioBtn" data-name="Voix" onclick="cycleInAppAudioBoost()" title="Boost des dialogues / Mode Audio Nuit (Touche V)">Normal</button>
+          <button class="inapp-btn kp-menu-item" id="inAppClarityBtn" data-name="Clarté" onclick="cycleInAppClarity()" title="Déboucher les noirs / Éclaircir les scènes sombres (Touche B)">Normal</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSpeedBtn" data-name="Vitesse" onclick="cycleInAppSpeed()" title="Vitesse de lecture (Touches [ et ])">1.0x</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSeriesPreferenceBtn" onclick="openInAppSeriesPreference()" style="display:none;" title="Mémoriser les langues pour les prochains épisodes">Langues de la série</button>
+          <div class="kp-menu-heading">Partager et garder</div>
+          <button class="inapp-btn kp-menu-item" id="inAppTvBtn" onclick="sendInAppPlaybackToTv()" title="Continuer sur la TV, au même moment">Sur la TV</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSaveOfflineBtn" onclick="saveCurrentPlaybackOffline()" title="Garder ce fichier et la piste de sous-titres choisie pour une lecture sans connexion">Garder hors ligne</button>
+          <button class="inapp-btn kp-menu-item" id="inAppShotBtn" onclick="captureInAppScreenshot()" title="Capturer une image du film dans Téléchargements">Capturer l'image</button>
+          <button class="inapp-btn kp-menu-item" id="inAppRemoteBtn" onclick="openRemoteModal()" title="Télécommande smartphone tactile via QR Code">Télécommande</button>
+          <button class="inapp-btn kp-menu-item" id="inAppWpBtn" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P (Code à 6 lettres)">Watch Party</button>
+          <div class="kp-menu-heading">Aide</div>
+          <button class="inapp-btn kp-menu-item" onclick="openPlaybackHelp()" aria-haspopup="dialog">Problème de lecture</button>
+          <button class="inapp-btn kp-menu-item" id="inAppExternalBtn" onclick="switchToExternalPlayer()">Lecteur externe</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Volet Chat Watch Party dans le lecteur -->
+  <div id="inAppWpChatBox" style="position:absolute; right:20px; bottom:90px; width:280px; max-height:260px; background:rgba(18,18,21,0.92); backdrop-filter:blur(10px); border:1px solid var(--border); border-radius:12px; display:none; flex-direction:column; z-index:25; box-shadow:0 8px 30px rgba(0,0,0,0.8);">
+    <div style="padding:10px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.8rem; font-weight:600; color:#fafafa;">Watch Party Chat</span>
+      <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.7rem;" onclick="toggleWpChat()">✕</button>
+    </div>
+    <div id="inAppWpMessages" style="flex:1; overflow-y:auto; padding:10px; font-size:0.78rem; display:flex; flex-direction:column; gap:6px; max-height:160px;"></div>
+    <div style="padding:8px 10px; border-top:1px solid var(--border); display:flex; gap:6px;">
+      <input type="text" id="inAppWpInput" placeholder="Message..." onkeydown="if(event.key==='Enter') sendWpMessage()" style="flex:1; padding:4px 8px; font-size:0.78rem; border-radius:6px; background:var(--surface-2); border:1px solid var(--border); color:#fafafa;">
+      <button class="btn" style="padding:4px 9px; font-size:0.75rem;" onclick="sendWpMessage()">Envoyer</button>
+    </div>
+  </div>
+  <div class="inapp-hud-bottom">
+    <div class="inapp-seekbar-container" id="inAppSeekbar" onclick="seekInApp(event)">
+      <div class="inapp-seekbar-bg">
+        <div id="inAppSeekFill" class="inapp-seekbar-fill"></div>
+      </div>
+    </div>
+    <div class="inapp-controls-row">
+      <div class="inapp-controls-group">
+        <button class="inapp-btn inapp-btn-icon" onclick="inAppPrevTrack()" title="Épisode précédent (<)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </button>
+        <button class="inapp-btn inapp-btn-icon" onclick="inAppSeekRel(-10)" title="Reculer 10s (Flèche Gauche)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+            <text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text>
+          </svg>
+        </button>
+        <button class="inapp-btn inapp-btn-icon" id="inAppPlayPauseBtn" onclick="toggleInAppPlay()" title="Lecture / Pause (Espace)" style="min-width:36px;">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+        </button>
+        <button class="inapp-btn inapp-btn-icon" onclick="inAppSeekRel(10)" title="Avancer 10s (Flèche Droite)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            <text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text>
+          </svg>
+        </button>
+        <button class="inapp-btn inapp-btn-icon" onclick="inAppNextTrack()" title="Épisode suivant (>)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </button>
+        <span id="inAppTimeText" style="color:var(--muted); font-size:0.82rem; margin-left:8px; font-variant-numeric:tabular-nums;">00:00 / 00:00</span>
+      </div>
+      <div class="inapp-controls-group">
+        <div class="inapp-vol-group" id="inAppVolGroup">
+          <button class="inapp-btn inapp-btn-icon" id="inAppMuteBtn" onclick="toggleInAppMute()" title="Muet (M)">
+            <span id="inAppVolIcon">
+              <svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              </svg>
+            </span>
+          </button>
+          <div class="inapp-vol-slider-wrap" id="inAppVolSliderWrap" onmousedown="onVolMouseDown(event)" onclick="handleVolScrub(event)">
+            <div class="inapp-vol-slider-bg">
+              <div id="inAppVolFill" class="inapp-vol-slider-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+          <span id="inAppVolText" class="inapp-vol-text">100%</span>
+        </div>
+        <button class="inapp-btn inapp-btn-icon" id="inAppPipBtn" onclick="toggleInAppPiP()" title="Image dans l'image (I)" aria-label="Image dans l'image">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><rect x="12" y="9" width="8" height="6" rx="1" fill="currentColor"/>
+          </svg>
+        </button>
+        <button class="inapp-btn inapp-btn-icon" id="inAppFsBtn" onclick="toggleInAppFullscreen()" title="Plein écran (F)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sélection locale dans Ma Liste selon le temps, l'ambiance et les retours explicites. -->
+<div id="tonightModal" class="modal-bg" onclick="if(event.target===this) closeTonightModal()">
+  <div class="modal tonight-modal" role="dialog" aria-modal="true" aria-labelledby="tonightTitle" aria-describedby="tonightDescription">
+    <div class="tonight-header">
+      <div><span class="settings-eyebrow">MA LISTE</span><h2 id="tonightTitle">Ce soir</h2><p id="tonightDescription">Jusqu’à trois idées selon votre temps, votre envie et vos choix précédents.</p></div>
+      <button type="button" class="btn btn-secondary" onclick="closeTonightModal()" aria-label="Fermer Ce soir">Fermer</button>
+    </div>
+    <div class="tonight-form">
+      <label>Temps disponible<select id="tonightMinutes" onchange="findTonightChoices()"><option value="45">45 min</option><option value="90">1 h 30</option><option value="120" selected>2 h</option><option value="150">2 h 30</option><option value="180">3 h</option></select></label>
+      <label>Envie<select id="tonightMood" onchange="findTonightChoices()"><option value="discovery">Découverte</option><option value="light">Léger</option><option value="intense">Intense</option></select></label>
+      <label class="tonight-offline-toggle"><input type="checkbox" id="tonightOfflineOnly" onchange="findTonightChoices()"><span>Sans connexion <small>Fichiers prêts sur ce Mac</small></span></label>
+      <button type="button" class="btn" id="tonightSearchButton" onclick="findTonightChoices()">D’autres idées</button>
+    </div>
+    <p id="tonightStatus" class="tonight-status" role="status" aria-live="polite">Les suggestions viennent de Ma Liste.</p>
+    <div id="tonightUndo" class="tonight-undo" role="status" aria-live="polite" style="display:none"></div>
+    <div id="tonightChoices" class="tonight-choices"></div>
+    <details class="tonight-preferences" id="tonightPreferences">
+      <summary id="tonightReviewSummary">Mes choix</summary>
+      <p class="tonight-preferences-note">Les reports durent 24 h. Les exclusions restent jusqu’à leur réintégration. Vos choix restent sur ce Mac.</p>
+      <div id="tonightReview"></div>
+      <button type="button" class="btn btn-secondary tonight-reset" onclick="resetTonightPreferences()">Réinitialiser les choix de Ce soir</button>
+    </details>
+  </div>
+</div>
+
+<!-- Modal Roulette KINO (Mode Surprends-moi) -->
+<div id="caseModal" class="modal-bg" onclick="if(event.target===this) closeCaseModal()">
+  <div class="case-modal-box">
+    <div class="case-header">
+      <div class="case-title-wrap">
+        <span class="case-kicker" id="caseModalKicker">ROULETTE KINO</span>
+        <h3 id="caseModalTitle" style="font-size:1.0rem; font-weight:700; color:#fafafa;">Tirage en cours...</h3>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <div id="casePoolChips" style="display:flex; gap:5px; align-items:center; margin-right:6px;">
+          <button type="button" class="chip active" data-pool="catalog" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('catalog')">Catalogue</button>
+          <button type="button" class="chip" data-pool="classics" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('classics')">Classiques</button>
+          <button type="button" class="chip" data-pool="watchlist" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('watchlist')">Ma Liste</button>
+          <button type="button" class="chip" data-pool="watched" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('watched')">Rewatch (Déjà vus)</button>
+        </div>
+        <button id="caseSoundBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" onclick="toggleCaseSound()">Son : Activé</button>
+        <button id="caseSkipBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" onclick="skipCaseSpin()">Passer l'animation</button>
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" onclick="closeCaseModal()">Fermer (Échap)</button>
+      </div>
+    </div>
+
+    <div id="caseRollerViewport" class="case-roller-viewport">
+      <div class="case-center-laser"></div>
+      <div id="caseRollerStrip" class="case-roller-strip"></div>
+    </div>
+
+    <div id="caseWinnerPanel" class="case-winner-panel"></div>
+  </div>
+</div>
+
+<!-- Modal Importation Watchlist & Films Déjà Vus Letterboxd -->
+<div id="letterboxdModal" class="modal-bg" onclick="if(event.target===this) closeLetterboxdModal()">
+  <div class="modal" style="max-width:480px; width:92%; padding:20px 22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <svg width="22" height="11" viewBox="0 0 30 12" fill="none">
+          <circle cx="6" cy="6" r="5" fill="#ff8000"/>
+          <circle cx="15" cy="6" r="5" fill="#00e054"/>
+          <circle cx="24" cy="6" r="5" fill="#40bcf4"/>
+        </svg>
+        <h3 style="font-size:0.96rem; font-weight:600; margin:0;">Letterboxd</h3>
+      </div>
+      <button onclick="closeLetterboxdModal()" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem; line-height:1; padding:2px 6px;" title="Fermer">✕</button>
+    </div>
+
+    <!-- Onglets du modal -->
+    <div style="display:flex; gap:6px; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:14px;">
+      <button type="button" id="lbxTabBtnProfile" class="chip active" onclick="switchLbxModalTab('profile')" style="padding:4px 11px; font-size:0.76rem;">Profil &amp; Watchlist</button>
+      <button type="button" id="lbxTabBtnList" class="chip" onclick="switchLbxModalTab('list')" style="padding:4px 11px; font-size:0.76rem;">Importer une Liste publique</button>
+    </div>
+
+    <!-- Section 1 : Profil & Watchlist -->
+    <div id="lbxSectionProfile">
+      <p style="color:var(--muted); font-size:0.78rem; line-height:1.45; margin:0 0 14px 0;">
+        Importe automatiquement votre <strong>Watchlist</strong>, vos <strong>Films visionnés</strong> et vos <strong>Notes personnelles</strong> (exports <em>ratings.csv</em>, <em>diary.csv</em> ou profil public).
+      </p>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div>
+          <label for="lbxUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;">Pseudo Letterboxd</label>
+          <input type="text" id="lbxUrlInput" placeholder="Ex: passionia ou lien public" style="width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter') submitLetterboxdImport()">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px; padding-top:2px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.74rem;">
+            <input type="file" id="lbxCsvFileInput" accept=".csv,.txt" style="display:none;" onchange="handleLetterboxdCsvFile(this.files)">
+            <button type="button" onclick="document.getElementById('lbxCsvFileInput').click()" style="background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:0; font-size:0.74rem; display:inline-flex; align-items:center; gap:5px;">
+              <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#file"></use></svg>
+              <span>Importer un export .csv (ratings.csv, diary.csv, etc.)</span>
+            </button>
+            <div style="display:inline-flex; align-items:center; gap:4px; max-width:210px; overflow:hidden;">
+              <span id="lbxCsvFileName" style="font-size:0.74rem; color:#00e054; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"></span>
+              <button type="button" id="lbxCsvClearBtn" onclick="clearLetterboxdCsv(event)" style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:0.75rem;" title="Retirer">✕</button>
+            </div>
+          </div>
+          <div style="font-size:0.69rem; color:var(--dim); line-height:1.3;">
+            Vos notes Letterboxd (ex: 4.5/5) s'affichent en badge doré sur les fiches et permettent le tri par note personnelle.
+          </div>
+        </div>
+        <div id="lbxImportStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
+        <button type="button" id="lbxRestoreRemovedBtn" class="btn btn-secondary btn-small" hidden onclick="submitLetterboxdImport({ restoreRemoved: true })">Les réimporter aussi</button>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+          <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" onclick="closeLetterboxdModal()">Annuler</button>
+          <button id="lbxSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" onclick="submitLetterboxdImport()">Synchroniser</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2 : Liste publique Letterboxd -->
+    <div id="lbxSectionList" style="display:none;">
+      <p style="color:var(--muted); font-size:0.78rem; line-height:1.45; margin:0 0 14px 0;">
+        Collez l'URL de n'importe quelle liste Letterboxd (ex: <em>Top 250</em>, <em>A24</em>, <em>Films cultes</em>). Elle sera consultable et disponible pour la Roulette !
+      </p>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div>
+          <label for="lbxCustomListUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;">URL de la liste Letterboxd</label>
+          <input type="text" id="lbxCustomListUrlInput" placeholder="https://letterboxd.com/username/list/nom-de-la-liste/" style="width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter') submitLetterboxdCustomListImport()">
+        </div>
+        <div id="lbxCustomListStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+          <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" onclick="closeLetterboxdModal()">Fermer</button>
+          <button id="lbxCustomListSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" onclick="submitLetterboxdCustomListImport()">Importer cette liste</button>
+        </div>
+
+        <div id="lbxSavedListsWrap" style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px; display:none;">
+          <div style="font-size:0.74rem; font-weight:600; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.04em;">Listes enregistrées</div>
+          <div id="lbxSavedListsContainer" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Bande-Annonce Intégré -->
+<div id="trailerModal" class="modal-bg" onclick="if(event.target===this) closeTrailerModal()">
+  <div class="modal" style="max-width:860px; width:94%; padding:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+      <h3 id="trailerModalTitle" style="font-size:0.95rem;">Bande-annonce</h3>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button id="trailerBtnVf" class="chip active" style="padding:4px 10px; font-size:0.75rem;" onclick="switchTrailerLang('vf')">VF</button>
+        <button id="trailerBtnVo" class="chip" style="padding:4px 10px; font-size:0.75rem;" onclick="switchTrailerLang('vo')">VO</button>
+        <a id="trailerExternalLink" href="#" target="_blank" class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;">YouTube ↗</a>
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" onclick="closeTrailerModal()">Fermer (Échap)</button>
+      </div>
+    </div>
+    <div style="position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:6px; overflow:hidden; border:1px solid var(--border);">
+      <div id="trailerLoading" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; color:var(--muted); font-size:0.85rem; background:#09090b; z-index:2;">Chargement de la bande-annonce...</div>
+      <video id="trailerVideo" controls playsinline style="width:100%; height:100%; display:none; background:#000;"></video>
+      <iframe id="trailerIframe" src="" style="width:100%; height:100%; border:none; display:none;" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- Ancien modal config remplace par la page dediee de parametres (#settingsPanel) -->
+<div id="configModal" style="display:none;"></div>
+
+<!-- Modal Raccourcis Clavier -->
+<div id="shortcutsModal" class="shortcuts-modal" onclick="if(event.target===this) toggleShortcutsModal()">
+  <div class="shortcuts-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <h3 style="font-size:1rem; font-weight:600;">Raccourcis Clavier KINO</h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="toggleShortcutsModal()">Fermer (Échap)</button>
+    </div>
+    <div class="shortcuts-grid">
+      <div class="shortcut-row"><span>Lecture / Pause</span><kbd>Espace</kbd></div>
+      <div class="shortcut-row"><span>Plein écran</span><kbd>F</kbd></div>
+      <div class="shortcut-row"><span>Reculer / Avancer 10s</span><div><kbd>←</kbd> <kbd>→</kbd></div></div>
+      <div class="shortcut-row"><span>Volume +/-</span><div><kbd>↑</kbd> <kbd>↓</kbd></div></div>
+      <div class="shortcut-row"><span>Activer / Couper son</span><kbd>M</kbd></div>
+      <div class="shortcut-row"><span>Sous-titres On / Off</span><kbd>C</kbd></div>
+      <div class="shortcut-row"><span>Synchro sous-titres (±250ms)</span><div><kbd>Z</kbd> <kbd>X</kbd></div></div>
+      <div class="shortcut-row"><span>Vitesse de lecture</span><div><kbd>[</kbd> <kbd>]</kbd></div></div>
+      <div class="shortcut-row"><span>Bascule MPV (Flux 4K HDR)</span><kbd>E</kbd></div>
+      <div class="shortcut-row"><span>Épisode suivant</span><kbd>N</kbd></div>
+      <div class="shortcut-row"><span>Passer l'intro (+85s)</span><kbd>S</kbd></div>
+      <div class="shortcut-row"><span>Picture-in-Picture</span><kbd>I</kbd></div>
+      <div class="shortcut-row"><span>Focus recherche</span><div><kbd>Ctrl+K</kbd> / <kbd>Cmd+K</kbd> / <kbd>/</kbd></div></div>
+      <div class="shortcut-row"><span>Écran précédent</span><div><kbd>Échap</kbd> / <kbd>Cmd+[</kbd> / <kbd>Alt+←</kbd></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Télécommande Smartphone -->
+<div id="remoteModal" class="modal-bg" onclick="if(event.target===this) closeRemoteModal()">
+  <div class="modal" style="max-width:440px; text-align:center; padding:22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+        <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#remote"></use></svg>
+        <span>Télécommande KINO</span>
+      </h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeRemoteModal()">✕</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;">
+      Scannez ce QR Code avec votre smartphone connecté au même Wi-Fi pour contrôler la lecture, le volume et naviguer depuis votre canapé.
+    </p>
+    <div id="remoteQrContainer" style="display:flex; justify-content:center; align-items:center; margin:0 auto 14px; background:#fff; padding:12px; border-radius:12px; width:220px; height:220px; box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+      <div style="color:#666; font-size:0.8rem;">Génération du QR Code...</div>
+    </div>
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+      <span id="remoteDirectUrl" style="font-size:0.78rem; color:var(--dim); word-break:break-all; text-align:left; font-family:monospace;">http://...</span>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem; white-space:nowrap;" onclick="copyRemoteUrl()">Copier</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Watch Party P2P -->
+<div id="watchPartyModal" class="modal-bg" onclick="if(event.target===this) closeWatchPartyModal()">
+  <div class="modal" style="max-width:480px; padding:20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+        <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#users"></use></svg>
+        <span>Mode Watch Party P2P</span>
+      </h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeWatchPartyModal()">✕</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 16px;">
+      Regardez vos films et séries en parfaite synchronisation avec vos amis. Play, pause et temps de lecture calés à la seconde près sans serveur tiers (P2P direct).
+    </p>
+
+    <!-- Zone Non Connecté -->
+    <div id="wpSetupView">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+        <button class="btn" style="padding:10px 14px; font-size:0.82rem; font-weight:600;" onclick="createWatchPartyRoom()">
+          Créer une Salle
+        </button>
+        <button class="btn btn-secondary" style="padding:10px 14px; font-size:0.82rem;" onclick="showJoinWatchParty()">
+          Rejoindre une Salle
+        </button>
+      </div>
+      <div id="wpJoinBox" style="display:none; padding:12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
+        <label style="font-size:0.76rem; color:var(--muted); display:block; margin-bottom:6px;">Entrez le code de salle :</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="wpJoinCodeInput" placeholder="Ex: KINO9X" maxlength="12" style="text-transform:uppercase; font-weight:bold; letter-spacing:2px; font-size:0.95rem; text-align:center;">
+          <button class="btn" style="padding:6px 14px; font-size:0.8rem;" onclick="joinWatchPartyRoom()">Rejoindre</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zone Connecté / Salle Active -->
+    <div id="wpActiveView" style="display:none;">
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:14px; text-align:center;">
+        <span style="font-size:0.72rem; color:var(--dim); text-transform:uppercase; letter-spacing:1px;">Code de votre Salle</span>
+        <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin:6px 0;">
+          <span id="wpRoomCodeDisplay" style="font-size:1.6rem; font-weight:800; letter-spacing:4px; color:#4ade80; font-family:monospace;">------</span>
+          <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem;" onclick="copyWpRoomCode()">Copier</button>
+        </div>
+        <p style="font-size:0.72rem; color:var(--muted); margin:0;">Partagez ce code à vos amis pour synchroniser vos lecteurs instantanément.</p>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:0.8rem;">
+        <span style="color:var(--muted);">Statut : <b id="wpConnectionStatus" style="color:#4ade80;">Connecté</b></span>
+        <span style="color:var(--muted);">Pairs connectés : <b id="wpPeersCount" style="color:var(--text);">1</b></span>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem; color:#ef4444;" onclick="leaveWatchPartyRoom()">Quitter la salle</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Gestionnaire d'Add-ons -->
+<div id="addonsModal" class="modal-bg" onclick="if(event.target===this) closeAddonsModal()">
+  <div class="modal" style="max-width:640px; padding:20px; max-height:85vh; display:flex; flex-direction:column;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+        <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#puzzle"></use></svg>
+        <span>Add-ons &amp; Scrapers Communautaires</span>
+      </h3>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeAddonsModal()">✕</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;">
+      Activez ou ajoutez des indexeurs et scrapers communautaires pour démultiplier les sources de recherche (Nyaa Anime VOSTFR, YggTorrent, Sharewood, etc.).
+    </p>
+
+    <!-- Bouton d'importation d'add-on -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
+      <span style="font-size:0.78rem; color:var(--dim);">Installer un add-on externe (.kino / .json)</span>
+      <div>
+        <input type="file" id="addonFileInput" accept=".kino,.json,.zip" style="display:none;" onchange="uploadAddonFile(this)">
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" onclick="document.getElementById('addonFileInput').click()">+ Installer un Add-on</button>
+      </div>
+    </div>
+
+    <!-- Liste des addons avec scroll -->
+    <div id="addonsListContainer" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
+      <div style="color:var(--dim); font-size:0.8rem; text-align:center; padding:20px;">Chargement des add-ons...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* QRCode.js local embed */
+var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this.parsedData=[];for(var b=[],d=0,e=this.data.length;e>d;d++){var f=this.data.charCodeAt(d);f>65536?(b[0]=240|(1835008&f)>>>18,b[1]=128|(258048&f)>>>12,b[2]=128|(4032&f)>>>6,b[3]=128|63&f):f>2048?(b[0]=224|(61440&f)>>>12,b[1]=128|(4032&f)>>>6,b[2]=128|63&f):f>128?(b[0]=192|(1984&f)>>>6,b[1]=128|63&f):b[0]=f,this.parsedData=this.parsedData.concat(b)}this.parsedData.length!=this.data.length&&(this.parsedData.unshift(191),this.parsedData.unshift(187),this.parsedData.unshift(239))}function b(a,b){this.typeNumber=a,this.errorCorrectLevel=b,this.modules=null,this.moduleCount=0,this.dataCache=null,this.dataList=[]}function i(a,b){if(void 0==a.length)throw new Error(a.length+"/"+b);for(var c=0;c<a.length&&0==a[c];)c++;this.num=new Array(a.length-c+b);for(var d=0;d<a.length-c;d++)this.num[d]=a[d+c]}function j(a,b){this.totalCount=a,this.dataCount=b}function k(){this.buffer=[],this.length=0}function m(){return"undefined"!=typeof CanvasRenderingContext2D}function n(){var a=!1,b=navigator.userAgent;return/android/i.test(b)&&(a=!0,aMat=b.toString().match(/android ([0-9]\.[0-9])/i),aMat&&aMat[1]&&(a=parseFloat(aMat[1]))),a}function r(a,b){for(var c=1,e=s(a),f=0,g=l.length;g>=f;f++){var h=0;switch(b){case d.L:h=l[f][0];break;case d.M:h=l[f][1];break;case d.Q:h=l[f][2];break;case d.H:h=l[f][3]}if(h>=e)break;c++}if(c>l.length)throw new Error("Too long data");return c}function s(a){var b=encodeURI(a).toString().replace(/\%[0-9a-fA-F]{2}/g,"a");return b.length+(b.length!=a?3:0)}a.prototype={getLength:function(){return this.parsedData.length},write:function(a){for(var b=0,c=this.parsedData.length;c>b;b++)a.put(this.parsedData[b],8)}},b.prototype={addData:function(b){var c=new a(b);this.dataList.push(c),this.dataCache=null},isDark:function(a,b){if(0>a||this.moduleCount<=a||0>b||this.moduleCount<=b)throw new Error(a+","+b);return this.modules[a][b]},getModuleCount:function(){return this.moduleCount},make:function(){this.makeImpl(!1,this.getBestMaskPattern())},makeImpl:function(a,c){this.moduleCount=4*this.typeNumber+17,this.modules=new Array(this.moduleCount);for(var d=0;d<this.moduleCount;d++){this.modules[d]=new Array(this.moduleCount);for(var e=0;e<this.moduleCount;e++)this.modules[d][e]=null}this.setupPositionProbePattern(0,0),this.setupPositionProbePattern(this.moduleCount-7,0),this.setupPositionProbePattern(0,this.moduleCount-7),this.setupPositionAdjustPattern(),this.setupTimingPattern(),this.setupTypeInfo(a,c),this.typeNumber>=7&&this.setupTypeNumber(a),null==this.dataCache&&(this.dataCache=b.createData(this.typeNumber,this.errorCorrectLevel,this.dataList)),this.mapData(this.dataCache,c)},setupPositionProbePattern:function(a,b){for(var c=-1;7>=c;c++)if(!(-1>=a+c||this.moduleCount<=a+c))for(var d=-1;7>=d;d++)-1>=b+d||this.moduleCount<=b+d||(this.modules[a+c][b+d]=c>=0&&6>=c&&(0==d||6==d)||d>=0&&6>=d&&(0==c||6==c)||c>=2&&4>=c&&d>=2&&4>=d?!0:!1)},getBestMaskPattern:function(){for(var a=0,b=0,c=0;8>c;c++){this.makeImpl(!0,c);var d=f.getLostPoint(this);(0==c||a>d)&&(a=d,b=c)}return b},createMovieClip:function(a,b,c){var d=a.createEmptyMovieClip(b,c),e=1;this.make();for(var f=0;f<this.modules.length;f++)for(var g=f*e,h=0;h<this.modules[f].length;h++){var i=h*e,j=this.modules[f][h];j&&(d.beginFill(0,100),d.moveTo(i,g),d.lineTo(i+e,g),d.lineTo(i+e,g+e),d.lineTo(i,g+e),d.endFill())}return d},setupTimingPattern:function(){for(var a=8;a<this.moduleCount-8;a++)null==this.modules[a][6]&&(this.modules[a][6]=0==a%2);for(var b=8;b<this.moduleCount-8;b++)null==this.modules[6][b]&&(this.modules[6][b]=0==b%2)},setupPositionAdjustPattern:function(){for(var a=f.getPatternPosition(this.typeNumber),b=0;b<a.length;b++)for(var c=0;c<a.length;c++){var d=a[b],e=a[c];if(null==this.modules[d][e])for(var g=-2;2>=g;g++)for(var h=-2;2>=h;h++)this.modules[d+g][e+h]=-2==g||2==g||-2==h||2==h||0==g&&0==h?!0:!1}},setupTypeNumber:function(a){for(var b=f.getBCHTypeNumber(this.typeNumber),c=0;18>c;c++){var d=!a&&1==(1&b>>c);this.modules[Math.floor(c/3)][c%3+this.moduleCount-8-3]=d}for(var c=0;18>c;c++){var d=!a&&1==(1&b>>c);this.modules[c%3+this.moduleCount-8-3][Math.floor(c/3)]=d}},setupTypeInfo:function(a,b){for(var c=this.errorCorrectLevel<<3|b,d=f.getBCHTypeInfo(c),e=0;15>e;e++){var g=!a&&1==(1&d>>e);6>e?this.modules[e][8]=g:8>e?this.modules[e+1][8]=g:this.modules[this.moduleCount-15+e][8]=g}for(var e=0;15>e;e++){var g=!a&&1==(1&d>>e);8>e?this.modules[8][this.moduleCount-e-1]=g:9>e?this.modules[8][15-e-1+1]=g:this.modules[8][15-e-1]=g}this.modules[this.moduleCount-8][8]=!a},mapData:function(a,b){for(var c=-1,d=this.moduleCount-1,e=7,g=0,h=this.moduleCount-1;h>0;h-=2)for(6==h&&h--;;){for(var i=0;2>i;i++)if(null==this.modules[d][h-i]){var j=!1;g<a.length&&(j=1==(1&a[g]>>>e));var k=f.getMask(b,d,h-i);k&&(j=!j),this.modules[d][h-i]=j,e--,-1==e&&(g++,e=7)}if(d+=c,0>d||this.moduleCount<=d){d-=c,c=-c;break}}}},b.PAD0=236,b.PAD1=17,b.createData=function(a,c,d){for(var e=j.getRSBlocks(a,c),g=new k,h=0;h<d.length;h++){var i=d[h];g.put(i.mode,4),g.put(i.getLength(),f.getLengthInBits(i.mode,a)),i.write(g)}for(var l=0,h=0;h<e.length;h++)l+=e[h].dataCount;if(g.getLengthInBits()>8*l)throw new Error("code length overflow. ("+g.getLengthInBits()+">"+8*l+")");for(g.getLengthInBits()+4<=8*l&&g.put(0,4);0!=g.getLengthInBits()%8;)g.putBit(!1);for(;;){if(g.getLengthInBits()>=8*l)break;if(g.put(b.PAD0,8),g.getLengthInBits()>=8*l)break;g.put(b.PAD1,8)}return b.createBytes(g,e)},b.createBytes=function(a,b){for(var c=0,d=0,e=0,g=new Array(b.length),h=new Array(b.length),j=0;j<b.length;j++){var k=b[j].dataCount,l=b[j].totalCount-k;d=Math.max(d,k),e=Math.max(e,l),g[j]=new Array(k);for(var m=0;m<g[j].length;m++)g[j][m]=255&a.buffer[m+c];c+=k;var n=f.getErrorCorrectPolynomial(l),o=new i(g[j],n.getLength()-1),p=o.mod(n);h[j]=new Array(n.getLength()-1);for(var m=0;m<h[j].length;m++){var q=m+p.getLength()-h[j].length;h[j][m]=q>=0?p.get(q):0}}for(var r=0,m=0;m<b.length;m++)r+=b[m].totalCount;for(var s=new Array(r),t=0,m=0;d>m;m++)for(var j=0;j<b.length;j++)m<g[j].length&&(s[t++]=g[j][m]);for(var m=0;e>m;m++)for(var j=0;j<b.length;j++)m<h[j].length&&(s[t++]=h[j][m]);return s};for(var c={MODE_NUMBER:1,MODE_ALPHA_NUM:2,MODE_8BIT_BYTE:4,MODE_KANJI:8},d={L:1,M:0,Q:3,H:2},e={PATTERN000:0,PATTERN001:1,PATTERN010:2,PATTERN011:3,PATTERN100:4,PATTERN101:5,PATTERN110:6,PATTERN111:7},f={PATTERN_POSITION_TABLE:[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],G15:1335,G18:7973,G15_MASK:21522,getBCHTypeInfo:function(a){for(var b=a<<10;f.getBCHDigit(b)-f.getBCHDigit(f.G15)>=0;)b^=f.G15<<f.getBCHDigit(b)-f.getBCHDigit(f.G15);return(a<<10|b)^f.G15_MASK},getBCHTypeNumber:function(a){for(var b=a<<12;f.getBCHDigit(b)-f.getBCHDigit(f.G18)>=0;)b^=f.G18<<f.getBCHDigit(b)-f.getBCHDigit(f.G18);return a<<12|b},getBCHDigit:function(a){for(var b=0;0!=a;)b++,a>>>=1;return b},getPatternPosition:function(a){return f.PATTERN_POSITION_TABLE[a-1]},getMask:function(a,b,c){switch(a){case e.PATTERN000:return 0==(b+c)%2;case e.PATTERN001:return 0==b%2;case e.PATTERN010:return 0==c%3;case e.PATTERN011:return 0==(b+c)%3;case e.PATTERN100:return 0==(Math.floor(b/2)+Math.floor(c/3))%2;case e.PATTERN101:return 0==b*c%2+b*c%3;case e.PATTERN110:return 0==(b*c%2+b*c%3)%2;case e.PATTERN111:return 0==(b*c%3+(b+c)%2)%2;default:throw new Error("bad maskPattern:"+a)}},getErrorCorrectPolynomial:function(a){for(var b=new i([1],0),c=0;a>c;c++)b=b.multiply(new i([1,g.gexp(c)],0));return b},getLengthInBits:function(a,b){if(b>=1&&10>b)switch(a){case c.MODE_NUMBER:return 10;case c.MODE_ALPHA_NUM:return 9;case c.MODE_8BIT_BYTE:return 8;case c.MODE_KANJI:return 8;default:throw new Error("mode:"+a)}else if(27>b)switch(a){case c.MODE_NUMBER:return 12;case c.MODE_ALPHA_NUM:return 11;case c.MODE_8BIT_BYTE:return 16;case c.MODE_KANJI:return 10;default:throw new Error("mode:"+a)}else{if(!(41>b))throw new Error("type:"+b);switch(a){case c.MODE_NUMBER:return 14;case c.MODE_ALPHA_NUM:return 13;case c.MODE_8BIT_BYTE:return 16;case c.MODE_KANJI:return 12;default:throw new Error("mode:"+a)}}},getLostPoint:function(a){for(var b=a.getModuleCount(),c=0,d=0;b>d;d++)for(var e=0;b>e;e++){for(var f=0,g=a.isDark(d,e),h=-1;1>=h;h++)if(!(0>d+h||d+h>=b))for(var i=-1;1>=i;i++)0>e+i||e+i>=b||(0!=h||0!=i)&&g==a.isDark(d+h,e+i)&&f++;f>5&&(c+=3+f-5)}for(var d=0;b-1>d;d++)for(var e=0;b-1>e;e++){var j=0;a.isDark(d,e)&&j++,a.isDark(d+1,e)&&j++,a.isDark(d,e+1)&&j++,a.isDark(d+1,e+1)&&j++,(0==j||4==j)&&(c+=3)}for(var d=0;b>d;d++)for(var e=0;b-6>e;e++)a.isDark(d,e)&&!a.isDark(d,e+1)&&a.isDark(d,e+2)&&a.isDark(d,e+3)&&a.isDark(d,e+4)&&!a.isDark(d,e+5)&&a.isDark(d,e+6)&&(c+=40);for(var e=0;b>e;e++)for(var d=0;b-6>d;d++)a.isDark(d,e)&&!a.isDark(d+1,e)&&a.isDark(d+2,e)&&a.isDark(d+3,e)&&a.isDark(d+4,e)&&!a.isDark(d+5,e)&&a.isDark(d+6,e)&&(c+=40);for(var k=0,e=0;b>e;e++)for(var d=0;b>d;d++)a.isDark(d,e)&&k++;var l=Math.abs(100*k/b/b-50)/5;return c+=10*l}},g={glog:function(a){if(1>a)throw new Error("glog("+a+")");return g.LOG_TABLE[a]},gexp:function(a){for(;0>a;)a+=255;for(;a>=256;)a-=255;return g.EXP_TABLE[a]},EXP_TABLE:new Array(256),LOG_TABLE:new Array(256)},h=0;8>h;h++)g.EXP_TABLE[h]=1<<h;for(var h=8;256>h;h++)g.EXP_TABLE[h]=g.EXP_TABLE[h-4]^g.EXP_TABLE[h-5]^g.EXP_TABLE[h-6]^g.EXP_TABLE[h-8];for(var h=0;255>h;h++)g.LOG_TABLE[g.EXP_TABLE[h]]=h;i.prototype={get:function(a){return this.num[a]},getLength:function(){return this.num.length},multiply:function(a){for(var b=new Array(this.getLength()+a.getLength()-1),c=0;c<this.getLength();c++)for(var d=0;d<a.getLength();d++)b[c+d]^=g.gexp(g.glog(this.get(c))+g.glog(a.get(d)));return new i(b,0)},mod:function(a){if(this.getLength()-a.getLength()<0)return this;for(var b=g.glog(this.get(0))-g.glog(a.get(0)),c=new Array(this.getLength()),d=0;d<this.getLength();d++)c[d]=this.get(d);for(var d=0;d<a.getLength();d++)c[d]^=g.gexp(g.glog(a.get(d))+b);return new i(c,0).mod(a)}},j.RS_BLOCK_TABLE=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],j.getRSBlocks=function(a,b){var c=j.getRsBlockTable(a,b);if(void 0==c)throw new Error("bad rs block @ typeNumber:"+a+"/errorCorrectLevel:"+b);for(var d=c.length/3,e=[],f=0;d>f;f++)for(var g=c[3*f+0],h=c[3*f+1],i=c[3*f+2],k=0;g>k;k++)e.push(new j(h,i));return e},j.getRsBlockTable=function(a,b){switch(b){case d.L:return j.RS_BLOCK_TABLE[4*(a-1)+0];case d.M:return j.RS_BLOCK_TABLE[4*(a-1)+1];case d.Q:return j.RS_BLOCK_TABLE[4*(a-1)+2];case d.H:return j.RS_BLOCK_TABLE[4*(a-1)+3];default:return void 0}},k.prototype={get:function(a){var b=Math.floor(a/8);return 1==(1&this.buffer[b]>>>7-a%8)},put:function(a,b){for(var c=0;b>c;c++)this.putBit(1==(1&a>>>b-c-1))},getLengthInBits:function(){return this.length},putBit:function(a){var b=Math.floor(this.length/8);this.buffer.length<=b&&this.buffer.push(0),a&&(this.buffer[b]|=128>>>this.length%8),this.length++}};var l=[[17,14,11,7],[32,26,20,14],[53,42,32,24],[78,62,46,34],[106,84,60,44],[134,106,74,58],[154,122,86,64],[192,152,108,84],[230,180,130,98],[271,213,151,119],[321,251,177,137],[367,287,203,155],[425,331,241,177],[458,362,258,194],[520,412,292,220],[586,450,322,250],[644,504,364,280],[718,560,394,310],[792,624,442,338],[858,666,482,382],[929,711,509,403],[1003,779,565,439],[1091,857,611,461],[1171,911,661,511],[1273,997,715,535],[1367,1059,751,593],[1465,1125,805,625],[1528,1190,868,658],[1628,1264,908,698],[1732,1370,982,742],[1840,1452,1030,790],[1952,1538,1112,842],[2068,1628,1168,898],[2188,1722,1228,958],[2303,1809,1283,983],[2431,1911,1351,1051],[2563,1989,1423,1093],[2699,2099,1499,1139],[2809,2213,1579,1219],[2953,2331,1663,1273]],o=function(){var a=function(a,b){this._el=a,this._htOption=b};return a.prototype.draw=function(a){function g(a,b){var c=document.createElementNS("http://www.w3.org/2000/svg",a);for(var d in b)b.hasOwnProperty(d)&&c.setAttribute(d,b[d]);return c}var b=this._htOption,c=this._el,d=a.getModuleCount();Math.floor(b.width/d),Math.floor(b.height/d),this.clear();var h=g("svg",{viewBox:"0 0 "+String(d)+" "+String(d),width:"100%",height:"100%",fill:b.colorLight});h.setAttributeNS("http://www.w3.org/2000/xmlns/","xmlns:xlink","http://www.w3.org/1999/xlink"),c.appendChild(h),h.appendChild(g("rect",{fill:b.colorDark,width:"1",height:"1",id:"template"}));for(var i=0;d>i;i++)for(var j=0;d>j;j++)if(a.isDark(i,j)){var k=g("use",{x:String(i),y:String(j)});k.setAttributeNS("http://www.w3.org/1999/xlink","href","#template"),h.appendChild(k)}},a.prototype.clear=function(){for(;this._el.hasChildNodes();)this._el.removeChild(this._el.lastChild)},a}(),p="svg"===document.documentElement.tagName.toLowerCase(),q=p?o:m()?function(){function a(){this._elImage.src=this._elCanvas.toDataURL("image/png"),this._elImage.style.display="block",this._elCanvas.style.display="none"}function d(a,b){var c=this;if(c._fFail=b,c._fSuccess=a,null===c._bSupportDataURI){var d=document.createElement("img"),e=function(){c._bSupportDataURI=!1,c._fFail&&_fFail.call(c)},f=function(){c._bSupportDataURI=!0,c._fSuccess&&c._fSuccess.call(c)};return d.onabort=e,d.onerror=e,d.onload=f,d.src="data:image/gif;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==",void 0}c._bSupportDataURI===!0&&c._fSuccess?c._fSuccess.call(c):c._bSupportDataURI===!1&&c._fFail&&c._fFail.call(c)}if(this._android&&this._android<=2.1){var b=1/window.devicePixelRatio,c=CanvasRenderingContext2D.prototype.drawImage;CanvasRenderingContext2D.prototype.drawImage=function(a,d,e,f,g,h,i,j){if("nodeName"in a&&/img/i.test(a.nodeName))for(var l=arguments.length-1;l>=1;l--)arguments[l]=arguments[l]*b;else"undefined"==typeof j&&(arguments[1]*=b,arguments[2]*=b,arguments[3]*=b,arguments[4]*=b);c.apply(this,arguments)}}var e=function(a,b){this._bIsPainted=!1,this._android=n(),this._htOption=b,this._elCanvas=document.createElement("canvas"),this._elCanvas.width=b.width,this._elCanvas.height=b.height,a.appendChild(this._elCanvas),this._el=a,this._oContext=this._elCanvas.getContext("2d"),this._bIsPainted=!1,this._elImage=document.createElement("img"),this._elImage.style.display="none",this._el.appendChild(this._elImage),this._bSupportDataURI=null};return e.prototype.draw=function(a){var b=this._elImage,c=this._oContext,d=this._htOption,e=a.getModuleCount(),f=d.width/e,g=d.height/e,h=Math.round(f),i=Math.round(g);b.style.display="none",this.clear();for(var j=0;e>j;j++)for(var k=0;e>k;k++){var l=a.isDark(j,k),m=k*f,n=j*g;c.strokeStyle=l?d.colorDark:d.colorLight,c.lineWidth=1,c.fillStyle=l?d.colorDark:d.colorLight,c.fillRect(m,n,f,g),c.strokeRect(Math.floor(m)+.5,Math.floor(n)+.5,h,i),c.strokeRect(Math.ceil(m)-.5,Math.ceil(n)-.5,h,i)}this._bIsPainted=!0},e.prototype.makeImage=function(){this._bIsPainted&&d.call(this,a)},e.prototype.isPainted=function(){return this._bIsPainted},e.prototype.clear=function(){this._oContext.clearRect(0,0,this._elCanvas.width,this._elCanvas.height),this._bIsPainted=!1},e.prototype.round=function(a){return a?Math.floor(1e3*a)/1e3:a},e}():function(){var a=function(a,b){this._el=a,this._htOption=b};return a.prototype.draw=function(a){for(var b=this._htOption,c=this._el,d=a.getModuleCount(),e=Math.floor(b.width/d),f=Math.floor(b.height/d),g=['<table style="border:0;border-collapse:collapse;">'],h=0;d>h;h++){g.push("<tr>");for(var i=0;d>i;i++)g.push('<td style="border:0;border-collapse:collapse;padding:0;margin:0;width:'+e+"px;height:"+f+"px;background-color:"+(a.isDark(h,i)?b.colorDark:b.colorLight)+';"></td>');g.push("</tr>")}g.push("</table>"),c.innerHTML=g.join("");var j=c.childNodes[0],k=(b.width-j.offsetWidth)/2,l=(b.height-j.offsetHeight)/2;k>0&&l>0&&(j.style.margin=l+"px "+k+"px")},a.prototype.clear=function(){this._el.innerHTML=""},a}();QRCode=function(a,b){if(this._htOption={width:256,height:256,typeNumber:4,colorDark:"#000000",colorLight:"#ffffff",correctLevel:d.H},"string"==typeof b&&(b={text:b}),b)for(var c in b)this._htOption[c]=b[c];"string"==typeof a&&(a=document.getElementById(a)),this._android=n(),this._el=a,this._oQRCode=null,this._oDrawing=new q(this._el,this._htOption),this._htOption.text&&this.makeCode(this._htOption.text)},QRCode.prototype.makeCode=function(a){this._oQRCode=new b(r(a,this._htOption.correctLevel),this._htOption.correctLevel),this._oQRCode.addData(a),this._oQRCode.make(),this._el.title=a,this._oDrawing.draw(this._oQRCode),this.makeImage()},QRCode.prototype.makeImage=function(){"function"==typeof this._oDrawing.makeImage&&(!this._android||this._android>=3)&&this._oDrawing.makeImage()},QRCode.prototype.clear=function(){this._oDrawing.clear()},QRCode.CorrectLevel=d}();
+</script>
+<!-- PeerJS 1.5.4 (Watch Party), embarqué : la page ne charge aucun code depuis internet. -->
+<script src="/js/vendor/peerjs.min.js"></script>
+  <script src="/qrcode.min.js"></script>
+  <script src="/js/series-playback.js"></script>
+  <script src="/js/spoilers.js"></script>
+  <script src="/js/anime-journey.js"></script>
+  <script src="/js/app-core.js"></script>
+  <script src="/js/app-home.js"></script>
+  <script src="/js/app-lists.js"></script>
+  <script src="/js/app-letterboxd.js"></script>
+  <script src="/js/app-tabs.js"></script>
+  <script src="/js/app-cloud-settings.js"></script>
+  <script src="/js/app-social.js"></script>
+  <script src="/js/app-fiche.js"></script>
+  <script src="/js/app-sources.js"></script>
+  <script src="/js/app-player.js"></script>
+  <script src="/js/ratings.js"></script>
+  <script src="/js/anime-home.js"></script>
+  <script src="/js/app-start.js"></script>
+  <script src="/js/stats.js"></script>
+  <script src="/js/playback-help.js"></script>
+  <script src="/js/native-player.js"></script>
+<dialog id="playbackHelp" class="playback-help" aria-labelledby="playbackHelpTitle">
+  <div class="playback-help-header"><h2 id="playbackHelpTitle">Problème de lecture</h2><button class="inapp-btn" onclick="closePlaybackHelp()" aria-label="Fermer le dépannage">Fermer</button></div>
+  <p>Choisissez le problème rencontré. La vidéo reste ouverte.</p>
+  <div class="playback-help-choices" aria-label="Problème rencontré">
+    <button class="inapp-btn" data-help-kind="no_audio" onclick="showPlaybackHelp('no_audio')">Pas de son</button>
+    <button class="inapp-btn" data-help-kind="wrong_content" onclick="showPlaybackHelp('wrong_content')">Mauvais film / épisode</button>
+    <button class="inapp-btn" data-help-kind="stalled" onclick="showPlaybackHelp('stalled')">Lecture bloquée</button>
+    <button class="inapp-btn" data-help-kind="subtitles" onclick="showPlaybackHelp('subtitles')">Sous-titres décalés</button>
+  </div>
+  <section id="playbackHelpActions" aria-label="Actions disponibles"></section>
+  <p id="playbackHelpStatus" role="status" aria-live="polite"></p>
+  <footer><button class="inapp-btn" id="playbackHelpRetry" onclick="retryPlaybackSources()">Réessayer les sources écartées</button>
+  <button class="inapp-btn" onclick="exportPlaybackDiagnostic()">Exporter le diagnostic</button></footer>
+  <small>Diagnostic local : état du lecteur uniquement, sans titre, lien de lecture ni identifiants de compte.</small>
+</dialog>
+<dialog id="inAppSeriesPreferenceDialog" class="playback-help" aria-labelledby="inAppSeriesPreferenceTitle">
+  <div class="playback-help-header"><h2 id="inAppSeriesPreferenceTitle">Langues de la série</h2><button class="inapp-btn" onclick="closeInAppSeriesPreference()" aria-label="Fermer les préférences de la série">Fermer</button></div>
+  <p>Choisissez la piste audio et les sous-titres dans le lecteur, puis mémorisez ces choix pour les prochains épisodes.</p>
+  <p id="inAppSeriesPreferenceSummary"></p>
+  <p id="inAppSeriesPreferenceStatus" role="status" aria-live="polite"></p>
+  <footer><button class="inapp-btn" onclick="saveInAppSeriesPreference()">Mémoriser pour cette série</button>
+  <button class="inapp-btn" id="inAppSeriesPreferenceReset" onclick="resetInAppSeriesPreference()">Utiliser les réglages généraux</button></footer>
+  <small>La langue et le rôle de l’audio sont mémorisés, pas le numéro de piste. Si une langue manque, KINO utilise le réglage général et vous avertit.</small>
+</dialog>
+</body>
+</html>
