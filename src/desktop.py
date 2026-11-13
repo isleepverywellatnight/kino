@@ -30,7 +30,7 @@ if IS_WIN:
     os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
         "--hide-scrollbars "
         "--autoplay-policy=no-user-gesture-required "
-        "--enable-features=PlatformAudioDecoder,MediaFoundationClearPlay,MediaFoundationAudioDecoder "
+        "--enable-features=PlatformAudioDecoder,MediaFoundationAudioDecoder "
         "--disable-features=AudioServiceSandbox"
     )
     try:
