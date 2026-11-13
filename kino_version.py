@@ -4,3 +4,5 @@ APP_VERSION = "1.1.109"
 BUNDLE_ID = "com.kino.desktop"
 DATA_SCHEMA = 1
 UPDATE_FORMAT = 1
+# Public releases: GitHub Releases of this repository (see .github/workflows/build.yml).
+UPDATE_REPO = "isleepverywellatnight/kino"

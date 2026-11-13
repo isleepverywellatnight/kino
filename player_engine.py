@@ -52,10 +52,25 @@ def _get_window_cb(name):
     return globals().get(name)
 
 
+def bundled_mpv():
+    """mpv.exe shipped inside KINO for Windows (see tools/fetch_mpv_windows.py), if present."""
+    if sys.platform != "win32":
+        return None
+    folders = []
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        folders.append(Path(sys._MEIPASS) / "mpv")
+    folders.append(Path(__file__).resolve().parent / "vendor" / "mpv-windows")
+    for folder in folders:
+        if (folder / "mpv.exe").is_file():
+            return str(folder / "mpv.exe")
+    return None
+
+
 def find_mpv():
     cfg = load_config()
     candidates = [
         cfg.get("mpv_path"),
+        bundled_mpv(),
         shutil.which("mpv"),
         shutil.which("iina-cli"),
         shutil.which("iina"),

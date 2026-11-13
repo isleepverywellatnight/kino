@@ -499,6 +499,9 @@ function renderKinoUpdate(state) {
     document.getElementById('kinoUpdateCandidateTitle').textContent = `KINO ${state.candidate.version} prêt à installer`;
     document.getElementById('kinoUpdateNotes').textContent = state.candidate.notes || 'Aucune note de version.';
   }
+  document.getElementById('kinoUpdateChooseBtn').hidden = !state.local_packages;
+  document.getElementById('kinoUpdatePageBtn').hidden = !state.latest;
+  document.getElementById('kinoUpdateRollbackRow').hidden = !state.rollback_supported;
   const rollback = document.getElementById('kinoUpdateRollbackBtn');
   rollback.disabled = !state.rollback_available;
   document.getElementById('kinoUpdateRollbackDescription').textContent = state.rollback_available
@@ -507,14 +510,15 @@ function renderKinoUpdate(state) {
   const progress = Math.max(0, Math.min(100, Number(state.progress) || 0));
   document.getElementById('kinoUpdateProgressBox').hidden = progress === 0 || progress === 100;
   document.getElementById('kinoUpdateProgressBar').style.width = `${progress}%`;
-  document.getElementById('kinoUpdateProgressLabel').textContent = `Vérification du paquet : ${progress}%`;
-  kinoUpdateMessage(state.message);
+  document.getElementById('kinoUpdateProgressLabel').textContent = `${state.progress_label || 'Vérification du paquet'} : ${progress}%`;
+  kinoUpdateMessage(state.message || (state.latest && !state.candidate
+    ? `KINO ${state.latest.version} est disponible : cliquez sur « Rechercher une mise à jour ».` : ''));
 }
 
 async function refreshKinoUpdate() {
   const bridge = kinoUpdateBridge();
   if (!bridge) {
-    kinoUpdateMessage('Les mises à jour locales sont disponibles dans l’application macOS.');
+    kinoUpdateMessage('Les mises à jour se font depuis l’application KINO.');
     return;
   }
   try { renderKinoUpdate(await bridge.update_status()); }
@@ -524,10 +528,10 @@ async function refreshKinoUpdate() {
 async function checkKinoUpdates() {
   const bridge = kinoUpdateBridge();
   if (!bridge) {
-    kinoUpdateMessage('La recherche est disponible dans l’application macOS.');
+    kinoUpdateMessage('La recherche est disponible dans l’application KINO.');
     return;
   }
-  kinoUpdateMessage('Recherche des paquets signés sur ce Mac…');
+  kinoUpdateMessage('Recherche d’une nouvelle version…');
   clearInterval(kinoUpdatePollTimer);
   kinoUpdatePollTimer = setInterval(refreshKinoUpdate, 400);
   try {
@@ -595,6 +599,12 @@ async function requestKinoUpdateAction(action) {
 }
 
 function installKinoUpdate() { return requestKinoUpdateAction('install'); }
+async function openKinoReleasePage() {
+  const bridge = kinoUpdateBridge();
+  if (bridge?.open_release_page) {
+    try { await bridge.open_release_page(); } catch (error) { kinoUpdateMessage(error.message || String(error)); }
+  }
+}
 function rollbackKinoUpdate() { return requestKinoUpdateAction('rollback'); }
 
 function initHeaderMenuKeyboard() {
@@ -620,6 +630,8 @@ initSettingsSectionNavigation();
 initSettingsAutosave();
 window.addEventListener('pywebviewready', refreshKinoUpdate);
 setTimeout(refreshKinoUpdate, 800);
+// KINO asks GitHub for a new version 20 s after start: show the answer in Settings.
+setTimeout(refreshKinoUpdate, 30000);
 // Clickable cards are <div onclick> in many templates: reach them with Tab and open
 // them with Enter or Space, including cards rendered later.
 const KEYBOARD_CARD_SELECTOR = '.poster-card, .card, .search-suggest-item';
