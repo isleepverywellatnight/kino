@@ -145,7 +145,6 @@ async function fetchSearchSuggestions(q, mode) {
   try {
     const res = await api(`/api/search-suggest?q=${encodeURIComponent(q)}&type=${encodeURIComponent(mode)}`);
     const results = (res && res.results) || [];
-    rememberFrenchTitles(results);
     searchSuggestCache = { query: q, titles: results };
     // Only for what is still typed, and while the panel is wanted (not after Entrée).
     if (!searchPanelWanted || document.getElementById('searchInput').value.trim() !== q) return;
@@ -478,7 +477,6 @@ async function runSearch() {
 
   try {
     const data = await api(`/api/search?type=${mode}&q=${encodeURIComponent(q)}`);
-    rememberFrenchTitles(data.metas);
     if (!data.metas || !data.metas.length) {
       grid.innerHTML = '';
       loadTorrents({q, title: q});
@@ -878,22 +876,24 @@ function stopWaitingPreparation() {
   stopPreparation();
 }
 
-// --- French display titles --------------------------------------------------
-// Catalogue names are English (and stay so for source searches). Elements that
-// show a title carry data-title-*; the French title replaces the text as soon
-// as it is known: at once from this cache, otherwise after one server request.
-const FRENCH_TITLES = new Map();
-// v2: v1 could hold a famous film's French title on a homonym listing.
-const FRENCH_TITLES_KEY = 'kino_french_titles_v2';
-const FRENCH_TITLES_MAX = 3000;
-try { localStorage.removeItem('kino_french_titles_v1'); } catch (error) {}
+// --- Original titles ------------------------------------------------------------
+// Every work shows under its original title, never a translation (« The Shawshank
+// Redemption », « Der Untergang »), whatever the interface language. Elements that
+// show a title carry data-title-*; the original title replaces the catalogue's name
+// as soon as it is known: at once from this cache, otherwise after one server
+// request (Wikidata, see meta_engine.original_titles). '' keeps the catalogue's name.
+const ORIGINAL_TITLES = new Map();
+const ORIGINAL_TITLES_KEY = 'kino_original_titles_v1';
+const ORIGINAL_TITLES_MAX = 3000;
+// Earlier versions kept French titles here.
+try { localStorage.removeItem('kino_french_titles_v1'); localStorage.removeItem('kino_french_titles_v2'); } catch (error) {}
 try {
-  for (const [id, title] of Object.entries(JSON.parse(localStorage.getItem(FRENCH_TITLES_KEY) || '{}'))) {
-    if (typeof title === 'string') FRENCH_TITLES.set(id, title);
+  for (const [id, title] of Object.entries(JSON.parse(localStorage.getItem(ORIGINAL_TITLES_KEY) || '{}'))) {
+    if (typeof title === 'string') ORIGINAL_TITLES.set(id, title);
   }
 } catch (error) {}
-const frenchTitleQueue = new Map();
-let frenchTitleTimer = null;
+const originalTitleQueue = new Map();
+let originalTitleTimer = null;
 
 function titleAttrs(m, type) {
   const id = String(m?.id || '');
@@ -904,80 +904,65 @@ function titleAttrs(m, type) {
 }
 
 function displayTitle(m) {
-  return FRENCH_TITLES.get(String(m?.id || '')) || m?.name_fr || m?.name || '';
+  return ORIGINAL_TITLES.get(String(m?.id || '')) || m?.name || '';
 }
 
-// Search results found by their French title carry it (name_fr): remember it.
-function rememberFrenchTitles(items) {
-  let added = false;
-  for (const item of items || []) {
-    if (item?.id && item.name_fr && FRENCH_TITLES.get(item.id) !== item.name_fr) {
-      FRENCH_TITLES.set(item.id, item.name_fr);
-      added = true;
-    }
-  }
-  if (added) {
-    try { localStorage.setItem(FRENCH_TITLES_KEY, JSON.stringify(Object.fromEntries(FRENCH_TITLES))); } catch (error) {}
-  }
-}
-
-function applyFrenchTitle(el) {
-  const french = FRENCH_TITLES.get(el.dataset.titleId);
-  if (french === undefined) return false;
-  if (french && el.textContent !== french) {
-    const original = el.dataset.titleName || el.textContent;
-    el.textContent = french;
-    if (el.hasAttribute('title')) el.title = french;
+function applyOriginalTitle(el) {
+  const original = ORIGINAL_TITLES.get(el.dataset.titleId);
+  if (original === undefined) return false;
+  const catalogue = el.dataset.titleName || '';
+  const shown = original || catalogue;
+  if (shown && el.textContent !== shown) {
+    const before = el.textContent;
+    el.textContent = shown;
+    if (el.hasAttribute('title')) el.title = shown;
     const card = el.closest('[aria-label]');
-    if (card && card.getAttribute('aria-label') === original) card.setAttribute('aria-label', french);
+    if (card && card.getAttribute('aria-label') === before) card.setAttribute('aria-label', shown);
   }
+  // Under an original title, the details page also shows the international name.
   const hero = el.closest('.detail-hero');
-  if (hero && french && french.toLowerCase() !== String(el.dataset.titleName || '').toLowerCase()) {
-    hero.classList.add('has-french-title');
+  if (hero && original && original.toLowerCase() !== catalogue.toLowerCase()) {
+    hero.classList.add('has-original-title');
   }
   return true;
 }
 
-function scanFrenchTitles(root) {
+function scanOriginalTitles(root) {
   if (!root || typeof root.querySelectorAll !== 'function') return;
   const elements = [...root.querySelectorAll('[data-title-id]')];
   if (typeof root.matches === 'function' && root.matches('[data-title-id]')) elements.unshift(root);
   for (const el of elements) {
-    if (applyFrenchTitle(el)) continue;
+    if (applyOriginalTitle(el)) continue;
     const id = el.dataset.titleId;
-    if (!frenchTitleQueue.has(id)) {
-      frenchTitleQueue.set(id, {id, name: el.dataset.titleName, year: el.dataset.titleYear, type: el.dataset.titleType});
-    }
+    if (!originalTitleQueue.has(id)) originalTitleQueue.set(id, {id});
   }
-  if (frenchTitleQueue.size) {
-    clearTimeout(frenchTitleTimer);
-    frenchTitleTimer = setTimeout(fetchFrenchTitles, 120);
+  if (originalTitleQueue.size) {
+    clearTimeout(originalTitleTimer);
+    originalTitleTimer = setTimeout(fetchOriginalTitles, 120);
   }
 }
 
-async function fetchFrenchTitles() {
-  const items = [...frenchTitleQueue.values()].slice(0, 60);
-  items.forEach(item => frenchTitleQueue.delete(item.id));
+async function fetchOriginalTitles() {
+  const items = [...originalTitleQueue.values()].slice(0, 60);
+  items.forEach(item => originalTitleQueue.delete(item.id));
   if (!items.length) return;
   try {
-    const result = await api('/api/french-titles', {
+    const result = await api('/api/original-titles', {
       method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({items}),
     });
-    for (const [id, title] of Object.entries(result.titles || {})) FRENCH_TITLES.set(id, String(title || ''));
-    while (FRENCH_TITLES.size > FRENCH_TITLES_MAX) FRENCH_TITLES.delete(FRENCH_TITLES.keys().next().value);
-    try { localStorage.setItem(FRENCH_TITLES_KEY, JSON.stringify(Object.fromEntries(FRENCH_TITLES))); } catch (error) {}
-    document.querySelectorAll('[data-title-id]').forEach(applyFrenchTitle);
+    for (const [id, title] of Object.entries(result.titles || {})) ORIGINAL_TITLES.set(id, String(title || ''));
+    while (ORIGINAL_TITLES.size > ORIGINAL_TITLES_MAX) ORIGINAL_TITLES.delete(ORIGINAL_TITLES.keys().next().value);
+    try { localStorage.setItem(ORIGINAL_TITLES_KEY, JSON.stringify(Object.fromEntries(ORIGINAL_TITLES))); } catch (error) {}
+    document.querySelectorAll('[data-title-id]').forEach(applyOriginalTitle);
   } catch (error) {}
-  if (frenchTitleQueue.size) frenchTitleTimer = setTimeout(fetchFrenchTitles, 120);
+  if (originalTitleQueue.size) originalTitleTimer = setTimeout(fetchOriginalTitles, 120);
 }
 
-function initFrenchTitles() {
-  // French titles come from French Wikipedia: other languages keep the catalogue's (English) titles.
-  if ((window.KINO_LANG || 'fr') !== 'fr') return;
-  scanFrenchTitles(document.body);
+function initOriginalTitles() {
+  scanOriginalTitles(document.body);
   new MutationObserver(records => {
     for (const record of records) {
-      for (const node of record.addedNodes) if (node.nodeType === 1) scanFrenchTitles(node);
+      for (const node of record.addedNodes) if (node.nodeType === 1) scanOriginalTitles(node);
     }
   }).observe(document.body, { childList: true, subtree: true });
 }
@@ -1227,7 +1212,7 @@ function buildDetailHtml(media, meta, isPreview) {
             ${logoUrl ? `<img class="detail-hero-logo" src="${escapeHtml(logoUrl)}" alt="" onload="this.closest('.detail-hero')?.classList.add('has-logo')" onerror="this.remove()">` : ''}
             <span class="detail-hero-name"${titleAttrs({...media, name: meta.name || media.name, year: String(year)}, isSeries ? 'series' : 'movie')}>${escapeHtml(displayTitle({id: media.id, name: meta.name || media.name}))}</span>
           </h2>
-          <div class="detail-hero-original">Titre original : ${escapeHtml(meta.name || media.name)}</div>
+          <div class="detail-hero-original">${escapeHtml(meta.name || media.name)}</div>
           <div class="detail-meta-row">
             ${ficheRatingHtml(media.id, histItem, userRating)}
             ${rating ? `<span class="detail-chip detail-chip-strong">★ ${escapeHtml(rating)} IMDb</span>` : ''}
@@ -1387,7 +1372,6 @@ async function openPerson(name) {
     const data = await api(`/api/person?name=${encodeURIComponent(name)}`);
     if (personView !== view || !searchResultsShown) return;  // another page was opened meanwhile
     view.data = data;
-    rememberFrenchTitles([...(data.movies || []), ...(data.series || []), ...(data.others || [])]);
     renderPersonPage();
   } catch (error) {
     if (personView !== view || !searchResultsShown) return;

@@ -900,3 +900,48 @@ async function openMpv(btn, url, filename, options = null) {
   });
 })();
 
+
+
+// Windows: no native title bar. A press on KINO's bar (outside its buttons) lets
+// Windows move the window, exactly, at any display scale; a double press maximizes.
+// pywebview's own dragging is off there (src/desktop.py).
+(function initWinNativeWindow() {
+  const isWin = /Windows/i.test(navigator.userAgent);
+  const mark = () => {
+    if (isWin && (window.pywebview || (window.chrome && window.chrome.webview))) {
+      document.body.classList.add('is-win-native');
+    }
+  };
+  mark();
+  window.addEventListener('pywebviewready', mark);
+
+  const INTERACTIVE = '.no-drag, button, input, select, textarea, a, label, [role="button"], .win-resize-handle';
+  let last = { time: 0, x: 0, y: 0 };
+  document.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || !document.body.classList.contains('is-win-native')) return;
+    const region = e.target.closest('.pywebview-drag-region');
+    if (!region || e.target.closest(INTERACTIVE)) return;
+    const now = Date.now();
+    const isDouble = now - last.time < 450 && Math.abs(e.screenX - last.x) < 6 && Math.abs(e.screenY - last.y) < 6;
+    last = { time: isDouble ? 0 : now, x: e.screenX, y: e.screenY };
+    e.preventDefault();
+    if (isDouble) {
+      // The first press went to Windows' move loop, so the page never sees a dblclick.
+      region.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      return;
+    }
+    const api = window.pywebview && window.pywebview.api;
+    if (api && api.start_window_drag) {
+      Promise.resolve(api.start_window_drag()).then(() => {
+        if (typeof syncWindowState === 'function') syncWindowState();
+      }).catch(() => {});
+    }
+  }, true);
+  // A real dblclick on the bar would toggle a second time.
+  document.addEventListener('dblclick', (e) => {
+    if (e.isTrusted && document.body.classList.contains('is-win-native')
+        && e.target.closest('.pywebview-drag-region') && !e.target.closest(INTERACTIVE)) {
+      e.stopPropagation();
+    }
+  }, true);
+})();

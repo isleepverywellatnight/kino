@@ -171,6 +171,11 @@
         </div>
       </div>
     </div>
+    <div class="win-controls no-drag" role="group" aria-label="Fenêtre">
+      <button type="button" class="win-btn" onclick="windowAction('minimize')" title="Réduire" aria-label="Réduire"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
+      <button type="button" class="win-btn win-max" onclick="windowAction('maximize')" title="Agrandir" aria-label="Agrandir"><svg class="win-icon-max" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg><svg class="win-icon-restore" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="2.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><path d="M2.5 2.5V1.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
+      <button type="button" class="win-btn win-close" onclick="windowAction('close')" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
+    </div>
   </div>
 </header>
 
@@ -1060,6 +1065,11 @@
           <button class="inapp-btn kp-menu-item" onclick="openPlaybackHelp()" aria-haspopup="dialog">Problème de lecture</button>
           <button class="inapp-btn kp-menu-item" id="inAppExternalBtn" onclick="switchToExternalPlayer()">Lecteur externe</button>
         </div>
+      </div>
+      <div class="win-controls no-drag" role="group" aria-label="Fenêtre">
+        <button type="button" class="win-btn" onclick="windowAction('minimize')" title="Réduire" aria-label="Réduire"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
+        <button type="button" class="win-btn win-max" onclick="windowAction('maximize')" title="Agrandir" aria-label="Agrandir"><svg class="win-icon-max" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg><svg class="win-icon-restore" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="2.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><path d="M2.5 2.5V1.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
+        <button type="button" class="win-btn win-close" onclick="windowAction('close')" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
       </div>
     </div>
   </div>

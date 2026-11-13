@@ -927,7 +927,6 @@ async function loadMySeries() {
     const data = await api('/api/my-series');
     if (request !== mySeriesRequest) return;
     mySeriesData = Array.isArray(data.series) ? data.series : [];
-    rememberFrenchTitles(mySeriesData);
     renderMySeries();
   } catch (error) {
     if (request !== mySeriesRequest || !grid || activeTab !== 'myseries') return;
@@ -1070,7 +1069,6 @@ async function loadReleaseCalendar() {
     const data = await api('/api/calendar');
     if (request !== releaseCalendarRequest) return;
     releaseCalendarData = data && typeof data === 'object' ? data : null;
-    rememberFrenchTitles([...(data?.days || []).flatMap(day => day.items || []), ...(data?.later || [])]);
     renderReleaseCalendar();
   } catch (error) {
     if (request !== releaseCalendarRequest || !grid || activeTab !== 'calendar') return;

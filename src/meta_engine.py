@@ -827,6 +827,66 @@ def french_titles(items):
     return result
 
 
+# --- Original titles ---------------------------------------------------------
+# KINO shows each work under its original title, never a translation: « The
+# Shawshank Redemption », « Der Untergang », « La haine ». Wikidata gives it by IMDb
+# id (property P1476), free and without a key. A title in another alphabet
+# (Japanese, Korean…) is not shown: the catalogue's international name stays.
+ORIGINAL_TITLE_TTL = 180 * 86400
+WIKIDATA_SPARQL = "https://query.wikidata.org/sparql"
+_WIKIDATA_AGENT = "KINO (https://github.com/isleepverywellatnight/kino)"
+
+
+def is_latin_title(title):
+    return all(not ch.isalpha() or ch <= "\u024f" or "\u1e00" <= ch <= "\u1eff" for ch in title)
+
+
+def _wikidata_original_titles(ids):
+    """{imdb id: original title} for these ids, or None when Wikidata cannot be asked."""
+    values = " ".join(f'"{media_id}"' for media_id in ids)
+    query = f"SELECT ?imdb ?title WHERE {{ VALUES ?imdb {{ {values} }} ?work wdt:P345 ?imdb; wdt:P1476 ?title. }}"
+    url = f"{WIKIDATA_SPARQL}?{urllib.parse.urlencode({'query': query, 'format': 'json'})}"
+    try:
+        data = http_json(url, headers={"Accept": "application/sparql-results+json", "User-Agent": _WIKIDATA_AGENT},
+                         timeout=12, retries=1)
+    except Exception:
+        return None
+    found = {}
+    for row in (data or {}).get("results", {}).get("bindings", []):
+        media_id = row.get("imdb", {}).get("value", "")
+        title = re.sub(r"\s+", " ", row.get("title", {}).get("value", "")).strip()
+        if media_id and title and media_id not in found:
+            found[media_id] = title
+    return found
+
+
+def original_titles(items):
+    """Original titles of works identified by IMDb id: {id: title, or '' to keep the catalogue's name}."""
+    ids = []
+    for item in (items or [])[:60]:
+        media_id = str((item or {}).get("id") or "") if isinstance(item, dict) else ""
+        if re.fullmatch(r"tt\d{1,12}", media_id) and media_id not in ids:
+            ids.append(media_id)
+    result, missing = {}, []
+    for media_id in ids:
+        cached = kino_db.db_cache_get(f"title_orig_v1:{media_id}")
+        if cached is not None:
+            result[media_id] = cached
+        else:
+            missing.append(media_id)
+    for start in range(0, len(missing), 60):
+        batch = missing[start:start + 60]
+        found = _wikidata_original_titles(batch)
+        if found is None:
+            continue  # not cached: asked again next time
+        for media_id in batch:
+            title = found.get(media_id, "")
+            title = title if title and is_latin_title(title) else ""
+            kino_db.db_cache_set(f"title_orig_v1:{media_id}", title, ttl_sec=ORIGINAL_TITLE_TTL)
+            result[media_id] = title
+    return result
+
+
 _FR_WORK_DESCRIPTION = re.compile(r"\bfilm\b|série télévisée|série d'animation|téléfilm|anime|mini-série", re.IGNORECASE)
 _FRANCHISE = re.compile(r"série de films|série cinématographique|franchise|saga", re.IGNORECASE)
 _EN_TITLE_SUFFIX = re.compile(r"\s*\((?:\d{4} )?(?:film|TV series|American TV series|miniseries|franchise|film series)\)$", re.IGNORECASE)

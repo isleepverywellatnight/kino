@@ -224,7 +224,6 @@ async function requestCloudMatches() {
   const found = Object.entries(result.matches || {}).filter(([, media]) => media && media.id);
   if (found.length) {
     found.forEach(([key, media]) => CLOUD_MATCHES.set(key, media));
-    rememberFrenchTitles(found.map(([, media]) => media));
     if (activeTab === 'rdcloud') renderCloudList();
   }
   requestCloudMatches();

@@ -196,10 +196,6 @@ def on_closed():
             pass
 
 
-WIN32_ORIG_WNDPROC = None
-WIN32_SUBCLASS_PROC = None
-
-
 def run_on_ui(form, fn):
     """Run fn on the window's own thread and return its result.
 
@@ -220,75 +216,13 @@ def run_on_ui(form, fn):
     return result[0] if result else None
 
 
-def win32_custom_wndproc(hwnd, msg, wparam, lparam):
-    global WIN32_ORIG_WNDPROC
-    if msg == 0x0083:  # WM_NCCALCSIZE
-        if wparam != 0:
-            return 0
-    elif msg == 0x0112:  # WM_SYSCOMMAND
-        cmd = wparam & 0xFFF0
-        if cmd == 0xF020:  # SC_MINIMIZE
-            if user32:
-                user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE
-            return 0
-        elif cmd == 0xF120:  # SC_RESTORE
-            if user32:
-                user32.ShowWindow(hwnd, 9)  # SW_RESTORE
-            return 0
-    if WIN32_ORIG_WNDPROC and user32:
-        return user32.CallWindowProcW(WIN32_ORIG_WNDPROC, hwnd, msg, wparam, lparam)
-    return 0
-
-
 def apply_win32_window_styles(hwnd):
-    global WIN32_ORIG_WNDPROC, WIN32_SUBCLASS_PROC
+    """No native title bar: KINO draws its own (see win_window)."""
     if not IS_WIN or not user32 or not hwnd:
         return
     try:
-        if WIN32_ORIG_WNDPROC is None:
-            LRESULT = ctypes.c_int64
-            HWND_T = wintypes.HWND
-            UINT = wintypes.UINT
-            WPARAM = wintypes.WPARAM
-            LPARAM = wintypes.LPARAM
-            WNDPROC_T = ctypes.WINFUNCTYPE(LRESULT, HWND_T, UINT, WPARAM, LPARAM)
-            user32.SetWindowLongPtrW.restype = ctypes.c_void_p
-            user32.SetWindowLongPtrW.argtypes = [HWND_T, ctypes.c_int, ctypes.c_void_p]
-            user32.CallWindowProcW.restype = LRESULT
-            user32.CallWindowProcW.argtypes = [ctypes.c_void_p, HWND_T, UINT, WPARAM, LPARAM]
-
-            WIN32_SUBCLASS_PROC = WNDPROC_T(win32_custom_wndproc)
-            WIN32_ORIG_WNDPROC = user32.SetWindowLongPtrW(hwnd, -4, ctypes.cast(WIN32_SUBCLASS_PROC, ctypes.c_void_p))
-    except Exception:
-        pass
-    try:
-        GWL_STYLE = -16
-        GWL_EXSTYLE = -20
-        WS_CAPTION = 0x00C00000
-        WS_THICKFRAME = 0x00040000
-        WS_MINIMIZEBOX = 0x00020000
-        WS_MAXIMIZEBOX = 0x00010000
-        WS_SYSMENU = 0x00080000
-        WS_EX_APPWINDOW = 0x00040000
-
-        style = user32.GetWindowLongW(hwnd, GWL_STYLE)
-        user32.SetWindowLongW(hwnd, GWL_STYLE, style | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU)
-        exstyle = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-        user32.SetWindowLongW(hwnd, GWL_EXSTYLE, exstyle | WS_EX_APPWINDOW)
-        user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0037)  # SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
-    except Exception:
-        pass
-    try:
-        import ctypes
-        dwmapi = ctypes.windll.dwmapi
-        c_int = ctypes.c_int
-        byref = ctypes.byref
-        # DWMWA_BORDER_COLOR = 34 (0xFFFFFFFE = DWMWA_COLOR_NONE)
-        dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(0xFFFFFFFE)), 4)
-        # DWMWA_WINDOW_CORNER_PREFERENCE = 33 (2 = DWMWCP_ROUND)
-        dwmapi.DwmSetWindowAttribute(hwnd, 33, byref(c_int(2)), 4)
-        # DWMWA_CAPTION_COLOR = 35 (0x000B0909 = #09090b)
-        dwmapi.DwmSetWindowAttribute(hwnd, 35, byref(c_int(0x000B0909)), 4)
+        import win_window
+        win_window.frameless_styles(hwnd)
     except Exception:
         pass
 
@@ -400,16 +334,12 @@ class WindowApi:
                 pass
         if IS_WIN:
             try:
-                import System.Windows.Forms as s_wf
+                import win_window
                 form = w.gui.BrowserView.instances.get(w.uid)
-                if form and hasattr(form, "WindowState"):
-                    if run_on_ui(form, lambda: form.WindowState == s_wf.FormWindowState.Maximized):
-                        w.restore()
-                        w.maximized = False
-                    else:
-                        w.maximize()
-                        w.maximized = True
-                    return bool(w.maximized)
+                if form is not None:
+                    hwnd = form.Handle.ToInt64()
+                    w.maximized = bool(run_on_ui(form, lambda: win_window.toggle_maximize(hwnd)))
+                    return w.maximized
             except Exception:
                 pass
         if getattr(w, "maximized", False):
@@ -421,6 +351,8 @@ class WindowApi:
         return bool(w.maximized)
 
     def start_window_drag(self):
+        if IS_WIN:
+            return self._win32_start_drag()
         if not IS_MAC:
             return
         w = self._get_window()
@@ -445,6 +377,22 @@ class WindowApi:
                         ns_win.performWindowDragWithEvent_(ev)
 
             AppHelper.callAfter(_do_drag)
+        except Exception:
+            pass
+
+    def _win32_start_drag(self):
+        """Windows moves the window while the button is held (called on mousedown in
+        KINO's title bar). Returns when the button is released."""
+        w = self._get_window()
+        if not w or self._is_fullscreen:
+            return
+        try:
+            import win_window
+            form = w.gui.BrowserView.instances.get(w.uid)
+            if form is not None:
+                hwnd = form.Handle.ToInt64()
+                run_on_ui(form, lambda: win_window.start_drag(hwnd))
+                w.maximized = win_window.is_maximized(hwnd)
         except Exception:
             pass
 
@@ -481,7 +429,6 @@ class WindowApi:
                 self._win32_saved_rect = (rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top)
                 self._win32_saved_style = user32.GetWindowLongW(hwnd, -16)
                 self._win32_saved_exstyle = user32.GetWindowLongW(hwnd, -20)
-                self._win32_was_maximized = bool(form.WindowState == s_wf.FormWindowState.Maximized)
 
                 class MONITORINFO(ctypes.Structure):
                     _fields_ = [
@@ -507,12 +454,6 @@ class WindowApi:
                 WS_POPUP = 0x80000000
                 fs_style = (self._win32_saved_style & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU)) | WS_POPUP
                 user32.SetWindowLongW(hwnd, -16, fs_style)
-
-                try:
-                    form.FormBorderStyle = getattr(s_wf.FormBorderStyle, "None")
-                    form.WindowState = s_wf.FormWindowState.Normal
-                except Exception:
-                    pass
 
                 SWP_FRAMECHANGED = 0x0020
                 SWP_SHOWWINDOW = 0x0040
@@ -556,19 +497,8 @@ class WindowApi:
                 else:
                     rx, ry, rw, rh = 100, 100, 1280, 820
 
-                if getattr(self, "_win32_was_maximized", False):
-                    try:
-                        form.WindowState = s_wf.FormWindowState.Maximized
-                        w.maximized = True
-                    except Exception:
-                        pass
-                else:
-                    try:
-                        form.WindowState = s_wf.FormWindowState.Normal
-                        w.maximized = False
-                    except Exception:
-                        pass
-                    user32.SetWindowPos(hwnd, 0, rx, ry, rw, rh, 0x0020 | 0x0040)
+                # Back to the place it had (maximized or not: the rect says it).
+                user32.SetWindowPos(hwnd, 0, rx, ry, rw, rh, 0x0020 | 0x0040)
 
                 apply_win32_window_styles(hwnd)
 
@@ -739,10 +669,10 @@ class WindowApi:
             is_max = bool(getattr(w, "maximized", False))
             if IS_WIN:
                 try:
-                    import System.Windows.Forms as s_wf
+                    import win_window
                     form = w.gui.BrowserView.instances.get(w.uid)
-                    if form and hasattr(form, "WindowState"):
-                        is_max = bool(run_on_ui(form, lambda: form.WindowState == s_wf.FormWindowState.Maximized))
+                    if form is not None:
+                        is_max = win_window.is_maximized(form.Handle.ToInt64())
                 except Exception:
                     pass
             return {
@@ -1008,7 +938,7 @@ def _setup_form(form):
     hwnd = form.Handle.ToInt64()
     try:
         form.MinimizeBox = True
-        form.MaximizeBox = True
+        form.MaximizeBox = False
     except Exception:
         pass
     apply_win32_window_styles(hwnd)
@@ -1365,6 +1295,12 @@ def main():
 
     if IS_MAC:
         install_macos_hooks()
+    if IS_WIN:
+        # KINO's title bar asks Windows to drag instead (start_window_drag).
+        webview.settings["DRAG_REGION_SELECTOR"] = ".__pywebview_disabled_drag__"
+        if os.environ.get("KINO_DEVTOOLS_PORT", "").isdigit():
+            # tests/windows_ui.py drives the real window through this port.
+            webview.settings["REMOTE_DEBUGGING_PORT"] = int(os.environ["KINO_DEVTOOLS_PORT"])
 
     SERVER_READY.wait(2.0)
 
