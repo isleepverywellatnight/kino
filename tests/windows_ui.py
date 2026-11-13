@@ -193,7 +193,12 @@ def main():
 
         with sync_playwright() as p:
             browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{PORT}")
-            page = next(pg for ctx in browser.contexts for pg in ctx.pages if "127.0.0.1" in pg.url)
+            page = None
+            for _ in range(60):  # the page may still be about:blank
+                page = next((pg for ctx in browser.contexts for pg in ctx.pages if "127.0.0.1" in pg.url), None)
+                if page:
+                    break
+                time.sleep(0.5)
             page.wait_for_function("document.body.classList.contains('is-win-native')", timeout=30000)
             page.wait_for_timeout(1500)
             # The test machine's screen is small: the whole window on it.
@@ -216,6 +221,13 @@ def main():
             inner = page.evaluate("window.innerWidth")
             check("Windows buttons at the right edge", box and abs(box["x"] + box["width"] - inner) <= 1,
                   f"right={box and box['x'] + box['width']} inner={inner}")
+
+            # Titles: the original one, never a translation (Wikidata).
+            titles = page.evaluate("""() => fetch('/api/original-titles', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({items: [{id: 'tt0111161'}, {id: 'tt0363163'}, {id: 'tt0113247'}, {id: 'tt0245429'}]})}).then(r => r.json())""")
+            got = titles.get("titles", {})
+            check("original titles", got.get("tt0111161") == "The Shawshank Redemption" and got.get("tt0363163") == "Der Untergang"
+                  and got.get("tt0113247") == "La Haine" and got.get("tt0245429") == "", json.dumps(got, ensure_ascii=False))
 
             # A click on a control inside the bar never moves the window.
             before = window_rect(hwnd)

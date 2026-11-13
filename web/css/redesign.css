@@ -696,11 +696,11 @@ select.inapp-btn.kp-select option { background: #1b1b1b; color: #fafafa; }
 }
 .detail-trailer-bar [hidden] { display: none !important; }
 
-/* French titles: under the (often English) logo, the French title; without a logo,
-   the original title in small type. */
+/* Original titles: under the (often English) logo, the original title; without a
+   logo, the international name in small type under it. */
 .detail-hero-original { display: none; color: #b5b5b5; font-size: .82rem; margin-top: -6px; }
-.detail-hero.has-french-title:not(.has-logo) .detail-hero-original { display: block; }
-.detail-hero.has-logo.has-french-title .detail-hero-name { position: static; width: auto; height: auto; clip: auto; overflow: visible;
+.detail-hero.has-original-title:not(.has-logo) .detail-hero-original { display: block; }
+.detail-hero.has-logo.has-original-title .detail-hero-name { position: static; width: auto; height: auto; clip: auto; overflow: visible;
   white-space: normal; display: block; margin-top: 10px; font-size: 1.05rem; font-weight: 600; letter-spacing: 0; color: #e5e5e5; }
 
 /* Livelier catalogue cards: grey placeholder until the poster arrives, a preview

@@ -1080,6 +1080,12 @@ class CatalogueRoutes:
             self.send_json({"error": "Ordre du parcours invalide."}, status=400)
         return
 
+    def post_original_titles(self, parsed, params, body):
+        """POST /api/original-titles"""
+        items = body.get("items")
+        self.send_json({"titles": meta_engine.original_titles(items if isinstance(items, list) else [])})
+        return
+
     def post_french_titles(self, parsed, params, body):
         """POST /api/french-titles"""
         items = body.get("items")
@@ -1827,6 +1833,7 @@ class RequestHandler(PlaybackRoutes, CatalogueRoutes, LibraryRoutes, DebridRoute
         "/api/anime/journey/resolve": "post_anime_journey_resolve",
         "/api/anime/journey/order": "post_anime_journey_order",
         "/api/french-titles": "post_french_titles",
+        "/api/original-titles": "post_original_titles",
         # LibraryRoutes
         "/api/spoiler-protection": "post_spoiler_protection",
         "/api/tonight": "post_tonight",
