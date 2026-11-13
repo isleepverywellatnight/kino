@@ -195,8 +195,16 @@ def main():
             browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{PORT}")
             page = next(pg for ctx in browser.contexts for pg in ctx.pages if "127.0.0.1" in pg.url)
             page.wait_for_function("document.body.classList.contains('is-win-native')", timeout=30000)
-            page.wait_for_timeout(2500)
+            page.wait_for_timeout(1500)
+            # The test machine's screen is small: the whole window on it.
+            page.evaluate("pywebview.api.set_bounds(20, 20, 900, 620)")
+            page.wait_for_timeout(1000)
             screenshot("start", hwnd)
+            move(*center_of(page, hwnd, "header .logo"))
+            for i in range(5):
+                move(*[v + i for v in center_of(page, hwnd, "header .logo")])
+            baseline_cursor = cursor_showing()
+            print(f"cursor shown by Windows in a normal window: {baseline_cursor}", flush=True)
 
             style = user32.GetWindowLongW(hwnd, -16) & 0xFFFFFFFF
             cw, ch = client_size(hwnd)
@@ -285,7 +293,9 @@ def main():
             state = page.evaluate("""() => { const o = document.getElementById('inAppPlayerOverlay');
                 return { idle: o.classList.contains('idle'), cursor: getComputedStyle(o).cursor }; }""")
             check("mouse move shows the controls in fullscreen", not state["idle"], json.dumps(state))
-            check("cursor visible in fullscreen", cursor_showing() and state["cursor"] != "none", json.dumps(state))
+            shown = cursor_showing()
+            check("cursor visible in fullscreen", shown == baseline_cursor and state["cursor"] != "none",
+                  json.dumps({**state, "windows_shows_cursor": shown, "baseline": baseline_cursor}))
             screenshot("fullscreen-after-move", hwnd)
             page.evaluate("toggleInAppFullscreen()")
             page.wait_for_timeout(800)
