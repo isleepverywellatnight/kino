@@ -33,9 +33,6 @@ if IS_WIN:
         "--enable-features=PlatformAudioDecoder,MediaFoundationClearPlay,MediaFoundationAudioDecoder "
         "--disable-features=AudioServiceSandbox"
     )
-    if os.environ.get("KINO_DEVTOOLS_PORT", "").isdigit():
-        # tests/windows_ui.py drives the real window through this port.
-        os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] += f" --remote-debugging-port={os.environ['KINO_DEVTOOLS_PORT']}"
     try:
         import webview.platforms.winforms as wf
         def safe_wf_toggle(uid):
@@ -1301,6 +1298,9 @@ def main():
     if IS_WIN:
         # KINO's title bar asks Windows to drag instead (start_window_drag).
         webview.settings["DRAG_REGION_SELECTOR"] = ".__pywebview_disabled_drag__"
+        if os.environ.get("KINO_DEVTOOLS_PORT", "").isdigit():
+            # tests/windows_ui.py drives the real window through this port.
+            webview.settings["REMOTE_DEBUGGING_PORT"] = int(os.environ["KINO_DEVTOOLS_PORT"])
 
     SERVER_READY.wait(2.0)
 
