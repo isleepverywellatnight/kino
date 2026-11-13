@@ -54,6 +54,23 @@ iscc /DAppVersion=1.2.0 packaging\kino.iss         # dist\KINO-Windows.exe
 
 Une application construite vérifie ce qu'elle contient avec `--self-check`.
 
+## Traductions
+
+L'interface est écrite en français. `web/js/i18n.js` la traduit à l'affichage
+avec un dictionnaire par langue, `web/js/i18n/<langue>.js`, qui associe chaque
+texte français à sa traduction (`{}` marque une partie variable). Un texte absent
+s'affiche en anglais, ou en français pour l'anglais.
+
+```bash
+python3 tools/i18n.py extract       # liste les textes de web/ dans web/js/i18n/strings.json
+python3 tools/i18n.py status        # textes traduits, par langue
+python3 tools/i18n.py missing de    # textes que l'allemand n'a pas encore
+```
+
+Pour ajouter une langue : créer `web/js/i18n/<code>.js` sur le modèle des autres,
+puis ajouter le code dans `LANGUAGES` (`web/js/i18n.js`) et `UI_LANGUAGES`
+(`src/config.py`).
+
 ## Contenu de ce dossier
 
 | Fichier | Rôle |

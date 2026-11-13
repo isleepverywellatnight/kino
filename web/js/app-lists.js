@@ -442,7 +442,7 @@ function renderActiveListTab() {
     filtered = [...filtered].sort((a, b) => (parseInt(a.year || a.releaseInfo || '9999', 10) || 9999) - (parseInt(b.year || b.releaseInfo || '9999', 10) || 9999));
   } else if (sortMode === 'alpha') {
     filtered = [...filtered].sort((a, b) => String(typeof displayTitle === 'function' ? displayTitle(a) : a.name || '')
-      .localeCompare(String(typeof displayTitle === 'function' ? displayTitle(b) : b.name || ''), 'fr'));
+      .localeCompare(String(typeof displayTitle === 'function' ? displayTitle(b) : b.name || ''), window.KINO_LANG || 'fr'));
   }
 
   if (rawList.length && !filtered.length) {

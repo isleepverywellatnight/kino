@@ -1377,6 +1377,8 @@ def self_check():
         raise RuntimeError("Player troubleshooting interface is missing")
     if not (resource_dir / "web" / "js" / "vendor" / "peerjs.min.js").is_file():
         raise RuntimeError("Watch Party library is missing")
+    if not (resource_dir / "web" / "js" / "i18n.js").is_file() or not (resource_dir / "web" / "js" / "i18n" / "en.js").is_file():
+        raise RuntimeError("Interface translations are missing")
     app.playback_support.excluded({"imdb_id": "self-check", "type": "movie"})
     # KINO.app/Contents on macOS, the installation folder on Windows.
     bundle_contents = Path(sys.executable).resolve().parent if IS_WIN else Path(sys.executable).resolve().parent.parent

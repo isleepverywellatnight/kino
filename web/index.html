@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="dark">
 <title>KINO</title>
+<script src="/js/i18n.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22100 100 824 824%22%3E%3Crect x=%22100%22 y=%22100%22 width=%22824%22 height=%22824%22 rx=%22185%22 fill=%22%23141417%22/%3E%3Crect x=%22176%22 y=%22176%22 width=%22672%22 height=%22672%22 rx=%22150%22 fill=%22none%22 stroke=%22%23fafafa%22 stroke-width=%2276%22/%3E%3CclipPath id=%22k%22%3E%3Crect x=%220%22 y=%22342.4%22 width=%221024%22 height=%22339.2%22/%3E%3C/clipPath%3E%3Cpath d=%22M398.4 310.4L398.4 713.6M398.4 590.4L683.2 264M497.6 481.6L692.8 758.4%22 clip-path=%22url(%23k)%22 fill=%22none%22 stroke=%22%23fafafa%22 stroke-width=%2283.2%22/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/redesign.css">
@@ -830,6 +831,19 @@
       <section class="settings-group" id="settings-app" aria-labelledby="settings-app-title">
         <h2 class="settings-group-title" id="settings-app-title">Application</h2>
         <p class="settings-group-desc">Les fichiers, les versions de KINO et l’aide.</p>
+
+        <div class="set-block" id="settings-language" aria-labelledby="settings-language-title">
+          <h3 class="set-block-title" id="settings-language-title">Langue de l’interface</h3>
+          <div class="set-list">
+            <div class="set-row">
+              <div class="set-text">
+                <label class="settings-label" for="cfgUiLanguage">Langue</label>
+                <p class="settings-desc">KINO s’affiche dans cette langue. Par défaut, celle de votre ordinateur.</p>
+              </div>
+              <select id="cfgUiLanguage" translate="no" onchange="KINO_I18N.choose(this.value)"></select>
+            </div>
+          </div>
+        </div>
 
         <div class="set-block" id="settings-storage" aria-labelledby="settings-storage-title">
           <h3 class="set-block-title" id="settings-storage-title">Stockage</h3>
