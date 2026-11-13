@@ -200,6 +200,26 @@ WIN32_ORIG_WNDPROC = None
 WIN32_SUBCLASS_PROC = None
 
 
+def run_on_ui(form, fn):
+    """Run fn on the window's own thread and return its result.
+
+    WinForms objects belong to that thread. Setting one of their properties from
+    another thread keeps Python's lock while WinForms sends messages to the window,
+    whose pywebview handlers need that lock: KINO froze at its first start
+    (« ne répond pas »). form.Invoke lets the lock go while it waits.
+    """
+    if form is None or not getattr(form, "InvokeRequired", False):
+        return fn()
+    from System import Func, Type
+    result = []
+
+    def call():
+        result.append(fn())
+
+    form.Invoke(Func[Type](call))
+    return result[0] if result else None
+
+
 def win32_custom_wndproc(hwnd, msg, wparam, lparam):
     global WIN32_ORIG_WNDPROC
     if msg == 0x0083:  # WM_NCCALCSIZE
@@ -383,7 +403,7 @@ class WindowApi:
                 import System.Windows.Forms as s_wf
                 form = w.gui.BrowserView.instances.get(w.uid)
                 if form and hasattr(form, "WindowState"):
-                    if form.WindowState == s_wf.FormWindowState.Maximized:
+                    if run_on_ui(form, lambda: form.WindowState == s_wf.FormWindowState.Maximized):
                         w.restore()
                         w.maximized = False
                     else:
@@ -435,7 +455,19 @@ class WindowApi:
             return self._is_fullscreen
         try:
             form = w.gui.BrowserView.instances.get(w.uid)
-            if not form or not form.Handle:
+        except Exception:
+            form = None
+        if form is None:
+            self._is_fullscreen = bool(enable)
+            return self._is_fullscreen
+        try:
+            return run_on_ui(form, lambda: self._win32_set_fullscreen_now(w, form, enable))
+        except Exception:
+            return bool(self._is_fullscreen)
+
+    def _win32_set_fullscreen_now(self, w, form, enable: bool):
+        try:
+            if not form.IsHandleCreated:
                 self._is_fullscreen = bool(enable)
                 return self._is_fullscreen
             hwnd = form.Handle.ToInt64()
@@ -710,7 +742,7 @@ class WindowApi:
                     import System.Windows.Forms as s_wf
                     form = w.gui.BrowserView.instances.get(w.uid)
                     if form and hasattr(form, "WindowState"):
-                        is_max = bool(form.WindowState == s_wf.FormWindowState.Maximized)
+                        is_max = bool(run_on_ui(form, lambda: form.WindowState == s_wf.FormWindowState.Maximized))
                 except Exception:
                     pass
             return {
@@ -959,45 +991,51 @@ def undock_mpv_window():
 def configure_window_styles(w):
     if not IS_WIN:
         return
-    for _ in range(40):
+    for _ in range(200):
         time.sleep(0.05)
         try:
             form = w.gui.BrowserView.instances.get(w.uid)
-            if form and form.Handle:
-                hwnd = form.Handle.ToInt64()
-                try:
-                    form.MinimizeBox = True
-                    form.MaximizeBox = True
-                except Exception:
-                    pass
-                apply_win32_window_styles(hwnd)
-                try:
-                    def hooked_form_toggle():
-                        if window_api_instance:
-                            window_api_instance.toggle_fullscreen()
-                    form.toggle_fullscreen = hooked_form_toggle
-                except Exception:
-                    pass
-
-                # Auto-redimensionnement du lecteur MPV intégré lors du redimensionnement de KINO
-                try:
-                    import ctypes.wintypes as wintypes
-                    def on_form_resize(sender, e):
-                        global CURRENT_DOCKED_MPV_HWND
-                        if CURRENT_DOCKED_MPV_HWND and user32.IsWindow(CURRENT_DOCKED_MPV_HWND):
-                            rect = wintypes.RECT()
-                            user32.GetClientRect(hwnd, ctypes.byref(rect))
-                            user32.SetWindowPos(
-                                CURRENT_DOCKED_MPV_HWND, 0, 0, 0,
-                                rect.right, rect.bottom,
-                                0x0014 # SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE
-                            )
-                    form.Resize += on_form_resize
-                except Exception:
-                    pass
+            # IsHandleCreated never creates the handle (Handle would, from this thread).
+            if form and form.IsHandleCreated:
+                run_on_ui(form, lambda: _setup_form(form))
                 break
         except Exception:
             pass
+
+
+def _setup_form(form):
+    """On the window's thread: system buttons, frame, fullscreen hook, docked mpv size."""
+    hwnd = form.Handle.ToInt64()
+    try:
+        form.MinimizeBox = True
+        form.MaximizeBox = True
+    except Exception:
+        pass
+    apply_win32_window_styles(hwnd)
+    try:
+        def hooked_form_toggle():
+            if window_api_instance:
+                window_api_instance.toggle_fullscreen()
+        form.toggle_fullscreen = hooked_form_toggle
+    except Exception:
+        pass
+
+    # Auto-redimensionnement du lecteur MPV intégré lors du redimensionnement de KINO
+    try:
+        import ctypes.wintypes as wintypes
+
+        def on_form_resize(sender, e):
+            if CURRENT_DOCKED_MPV_HWND and user32.IsWindow(CURRENT_DOCKED_MPV_HWND):
+                rect = wintypes.RECT()
+                user32.GetClientRect(hwnd, ctypes.byref(rect))
+                user32.SetWindowPos(
+                    CURRENT_DOCKED_MPV_HWND, 0, 0, 0,
+                    rect.right, rect.bottom,
+                    0x0014  # SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE
+                )
+        form.Resize += on_form_resize
+    except Exception:
+        pass
 
 
 def install_macos_hooks():
