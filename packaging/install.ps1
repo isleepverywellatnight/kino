@@ -5,6 +5,8 @@
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"   # Invoke-WebRequest is much faster without its progress bar
 
+# GitHub needs TLS 1.2, which older Windows PowerShell 5.1 does not always enable.
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 $base = "https://github.com/isleepverywellatnight/kino/releases/latest/download"
 if (-not [Environment]::Is64BitOperatingSystem) { throw "KINO demande Windows 64 bits." }
 
@@ -14,8 +16,10 @@ try {
     Write-Host "Téléchargement de KINO…"
     $setup = Join-Path $work "KINO-Windows.exe"
     Invoke-WebRequest -UseBasicParsing -Uri "$base/KINO-Windows.exe" -OutFile $setup
-    $sums = (Invoke-WebRequest -UseBasicParsing -Uri "$base/SHA256SUMS.txt").Content
-    $line = ($sums -split "`n") | Where-Object { $_ -match '\s\*?KINO-Windows\.exe\s*$' } | Select-Object -First 1
+    # Saved to a file: GitHub serves it as binary data, which .Content would return as bytes.
+    $sums = Join-Path $work "SHA256SUMS.txt"
+    Invoke-WebRequest -UseBasicParsing -Uri "$base/SHA256SUMS.txt" -OutFile $sums
+    $line = Get-Content $sums | Where-Object { $_ -match '\s\*?KINO-Windows\.exe\s*$' } | Select-Object -First 1
     if (-not $line) { throw "Empreinte de KINO-Windows.exe introuvable." }
     $expected = ($line -split '\s+')[0].ToLower()
     $actual = (Get-FileHash -Algorithm SHA256 $setup).Hash.ToLower()
