@@ -136,6 +136,7 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "Self-check failed ($($p.ExitCode))" }
       - name: Start-up test
         run: |
+          $env:KINO_TRACE_FILE = Join-Path $env:RUNNER_TEMP "kino-trace.txt"
           $p = Start-Process -FilePath dist\KINO\KINO.exe -PassThru
           $ok = $false
           for ($i = 0; $i -lt 60 -and -not $ok; $i++) {
@@ -147,18 +148,31 @@ jobs:
               } catch {}
             }
           }
-          Start-Sleep -Seconds 10
+          Start-Sleep -Seconds 20
           $alive = -not $p.HasExited
+          # Responding is false when the window has not processed messages for 5 s (« ne répond pas »).
+          $kino = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
+          $responding = $kino -and $kino.Responding
+          Write-Output "Window responding: $responding (handle $($kino.MainWindowHandle))"
           try {
             Add-Type -AssemblyName System.Windows.Forms, System.Drawing
             $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
             $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
             [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
             $bmp.Save("dist\startup-windows.png")
+            $small = New-Object System.Drawing.Bitmap $bmp, 640, ([int]($b.Height * 640 / $b.Width))
+            $jpg = Join-Path $env:RUNNER_TEMP "startup.jpg"
+            $small.Save($jpg, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+            Write-Output "SCREENSHOT-BASE64-BEGIN"
+            Write-Output ([Convert]::ToBase64String([IO.File]::ReadAllBytes($jpg)))
+            Write-Output "SCREENSHOT-BASE64-END"
           } catch { Write-Warning "Capture d'écran impossible : $_" }
           Stop-Process -Name KINO -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 1
+          if (Test-Path $env:KINO_TRACE_FILE) { Write-Output "--- Python threads ---"; Get-Content $env:KINO_TRACE_FILE -Tail 120 }
           if (-not $ok) { throw "Le serveur de KINO n'a pas répondu" }
           if (-not $alive) { throw "KINO s'est fermé au démarrage" }
+          if (-not $responding) { throw "La fenêtre de KINO ne répond pas" }
       - name: Installer
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
