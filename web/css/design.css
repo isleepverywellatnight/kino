@@ -1601,3 +1601,45 @@ div.cloud-poster { cursor: default; }
 @media (max-width: 760px) {
   .week-row .offline-actions { padding-left: 132px; }
 }
+
+
+/* Windows: KINO's own title bar, no native one (src/win_window.py). The window
+   buttons sit at the right edge, Windows 11 style; the macOS dots are not shown. */
+.win-controls { display: none; }
+body.is-win-native .mac-controls { display: none !important; }
+body.is-win-native .win-controls {
+  display: flex;
+  align-self: stretch;
+  flex: none;
+  -webkit-app-region: no-drag;
+  user-select: none;
+}
+body.is-win-native header .header-right { align-self: stretch; padding-right: 0; }
+body.is-win-native header .win-controls { margin-left: var(--k-space-2, 8px); }
+.win-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--k-text, #fafafa);
+  cursor: default;
+  transition: background-color .1s ease;
+}
+.win-btn:hover { background: rgba(255, 255, 255, .08); }
+.win-btn:active { background: rgba(255, 255, 255, .04); }
+.win-btn.win-close:hover { background: #c42b1c; color: #fff; }
+.win-btn.win-close:active { background: #b22a1d; color: rgba(255, 255, 255, .8); }
+.win-btn svg { display: block; pointer-events: none; }
+.win-icon-restore { display: none !important; }
+body.is-maximized .win-icon-max { display: none !important; }
+body.is-maximized .win-icon-restore { display: block !important; }
+/* In the player, the buttons stay in the top right corner, above the bar. */
+body.is-win-native .inapp-hud-top .win-controls { position: absolute; top: 0; right: 0; height: 32px; z-index: 5; }
+body.is-win-native .inapp-hud-top { padding-right: 160px; }
+body.is-win-native.is-fullscreen .inapp-hud-top { padding-right: 44px; }
