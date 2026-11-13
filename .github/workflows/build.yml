@@ -50,7 +50,7 @@ jobs:
 
   macos:
     needs: checks
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       VERSION: ${{ needs.checks.outputs.version }}
     steps:
