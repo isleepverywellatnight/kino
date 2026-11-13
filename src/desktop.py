@@ -48,6 +48,7 @@ else:
 
 import app
 import kino_update
+import paths
 
 _single_instance_mutex = None
 _single_instance_fd = None
@@ -121,14 +122,12 @@ PORT = find_available_port(app.PORT)
 app.PORT = PORT
 
 def get_resource_dir():
-    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        return Path(sys._MEIPASS)
-    return Path(__file__).resolve().parent
+    return paths.RESOURCE_DIR
 
 RESOURCE_DIR = get_resource_dir()
-ICON_PATH = RESOURCE_DIR / ("kino.png" if IS_MAC else "kino.ico")
+ICON_PATH = paths.resource("assets", "kino.png" if IS_MAC else "kino.ico")
 if not ICON_PATH.exists():
-    ICON_PATH = RESOURCE_DIR / "kino.ico"
+    ICON_PATH = paths.resource("assets", "kino.ico")
 
 server_instance = None
 desktop_window = None
@@ -1372,7 +1371,7 @@ def self_check():
 
     ffmpeg = Path(imageio_ffmpeg.get_ffmpeg_exe()).resolve()
     resource_dir = get_resource_dir().resolve()
-    if not ffmpeg.is_file() or not (resource_dir / "web" / "index.html").is_file() or not (resource_dir / "qrcode.min.js").is_file():
+    if not ffmpeg.is_file() or not (resource_dir / "web" / "index.html").is_file() or not (resource_dir / "web" / "js" / "vendor" / "qrcode.min.js").is_file():
         raise RuntimeError("Bundled player or interface is missing")
     if not (resource_dir / "web" / "js" / "playback-help.js").is_file():
         raise RuntimeError("Player troubleshooting interface is missing")

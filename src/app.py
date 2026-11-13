@@ -35,6 +35,7 @@ from pathlib import Path
 
 # Sous-systemes et moteurs modulaires KINO
 import kino_db
+import paths
 import config
 from config import *
 
@@ -502,7 +503,7 @@ def fetch_tonight_metadata(item):
 
 def get_web_root() -> Path:
     """Trouve l'emplacement du dossier web/ sur disque ou dans le bundle distribuable."""
-    base = Path(__file__).resolve().parent
+    base = paths.RESOURCE_DIR
     for cand in (base / "web", base / "_internal" / "web"):
         if cand.is_dir():
             return cand
@@ -2171,8 +2172,7 @@ class RequestHandler(PlaybackRoutes, CatalogueRoutes, LibraryRoutes, DebridRoute
                     return
 
             if parsed.path == "/qrcode.min.js":
-                resource_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-                qr_path = resource_dir / "qrcode.min.js"
+                qr_path = get_web_root() / "js" / "vendor" / "qrcode.min.js"
                 if qr_path.is_file():
                     with qr_path.open("rb") as qrf:
                         raw = qrf.read()

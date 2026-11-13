@@ -4,17 +4,18 @@ import runpy
 
 import imageio_ffmpeg
 
-project = Path(SPECPATH)
-APP_VERSION = runpy.run_path(str(project / "kino_version.py"))["APP_VERSION"]
+project = Path(SPECPATH).parent
+source = project / "src"
+APP_VERSION = runpy.run_path(str(source / "kino_version.py"))["APP_VERSION"]
+# Same layout as the repository: src/paths.py finds them in both places.
 datas = [
     (str(project / "web"), "web"),
     (str(project / "addons"), "addons"),
-    (str(project / "kino.png"), "."),
-    (str(project / "kino.ico"), "."),
-    (str(project / "qrcode.min.js"), "."),
-    (str(project / "kino_bridge.lua"), "."),
-    (str(project / "update_public_key.hex"), "."),
-    (str(project / "native" / "kino-update-helper"), "."),
+    (str(project / "assets" / "kino.png"), "assets"),
+    (str(project / "assets" / "kino.ico"), "assets"),
+    (str(project / "assets" / "kino_bridge.lua"), "assets"),
+    (str(project / "assets" / "update_public_key.hex"), "assets"),
+    (str(project / "packaging" / "update-helper" / "kino-update-helper"), "."),
 ]
 binaries = [(imageio_ffmpeg.get_ffmpeg_exe(), "imageio_ffmpeg/binaries")]
 # Native player: libmpv and its dependencies, vendored by tools/vendor_libmpv.py.
@@ -26,8 +27,8 @@ if not any(path.name == "libmpv.2.dylib" for path in libmpv_files):
 binaries += [(str(path), ".") for path in libmpv_files]
 
 a = Analysis(
-    [str(project / "desktop.py")],
-    pathex=[str(project)],
+    [str(source / "desktop.py")],
+    pathex=[str(source)],
     binaries=binaries,
     datas=datas,
     hiddenimports=["webview.platforms.cocoa", "Foundation", "AppKit", "WebKit", "objc", "imageio_ffmpeg", "media_probe", "tonight_mode", "kino_update", "native_player", "native_view", "notifier", "UserNotifications", "PyObjCTools.AppHelper", "cryptography.hazmat.primitives.asymmetric.ed25519"],
@@ -36,9 +37,9 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="KINO", console=False,
-          icon=str(project / "AppIcon.icns"), argv_emulation=False)
+          icon=str(project / "assets" / "AppIcon.icns"), argv_emulation=False)
 collection = COLLECT(exe, a.binaries, a.datas, name="KINO", strip=False, upx=False)
-app = BUNDLE(collection, name="KINO.app", icon=str(project / "AppIcon.icns"),
+app = BUNDLE(collection, name="KINO.app", icon=str(project / "assets" / "AppIcon.icns"),
              bundle_identifier="com.kino.desktop", info_plist={
                  "CFBundleShortVersionString": APP_VERSION,
                  "CFBundleVersion": APP_VERSION,

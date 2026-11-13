@@ -18,8 +18,8 @@ regarde et du respect du droit d'auteur dans son pays.
 
 - **Catalogue** : films, séries et animes, avec fiches, distribution,
   bandes-annonces et titres en français.
-- **Lecture** : lecteur intégré basé sur mpv (HDR, sous-titres, pistes audio,
-  saut du générique), ou mpv, IINA et VLC en lecteur externe.
+- **Lecture** : lecteur vidéo inclus, basé sur mpv (HDR, sous-titres, pistes
+  audio, saut du générique).
 - **Suivi** : Ma Liste, lectures en cours, Déjà vus, Mes séries, calendrier
   des sorties, notes en un geste.
 - **Suggestions** : « Pour vous » et « Si vous avez aimé », calculées sur cet
@@ -35,88 +35,51 @@ regarde et du respect du droit d'auteur dans son pays.
 - **Vos données** : rangées sur cet ordinateur, avec une copie de sauvegarde par jour
   et une synchronisation possible par Google Drive.
 
-## Installer KINO
+## Télécharger KINO
 
-Téléchargez la dernière version sur la page
-[Releases](https://github.com/isleepverywellatnight/kino/releases/latest) :
+| Système | Télécharger |
+|---|---|
+| **macOS** — Mac Apple Silicon (M1 ou plus récent), macOS 14 ou plus récent | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
+| **Windows** — Windows 10 ou 11, 64 bits | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
 
-- **macOS** (Apple Silicon, macOS 14 ou plus récent) : `KINO-x.y.z-arm64.dmg`.
-  Ouvrez-le et glissez KINO dans Applications. KINO n'est pas encore signé par
-  Apple : au premier lancement, allez dans Réglages Système → Confidentialité
-  et sécurité, puis cliquez sur « Ouvrir quand même ».
-- **Windows** (10 ou 11, 64 bits) : `KINO-Setup-x.y.z-x64.exe`. L'installation
-  se fait pour l'utilisateur courant, sans droits administrateur. Si Windows
-  affiche « Windows a protégé votre ordinateur », cliquez sur « Informations
-  complémentaires » puis « Exécuter quand même ».
+KINO contient tout ce qu'il lui faut : lecteur vidéo, FFmpeg, interface. Il
+n'y a rien d'autre à installer. Il suffit ensuite de coller la clé de votre
+service de débridage dans Paramètres.
 
-Le lecteur vidéo et FFmpeg sont inclus : rien d'autre à installer. Il faut
-ensuite un compte chez un service de débridage pris en charge, dont la clé se
-colle dans Paramètres. Les versions suivantes s'installent depuis KINO :
-Paramètres → Mises à jour.
+- **macOS** : ouvrez le fichier `.dmg` et glissez KINO dans Applications.
+- **Windows** : lancez `KINO-Windows.exe`. KINO s'installe en un clic, sans
+  droits administrateur, puis s'ouvre.
 
-## Lancer KINO depuis le code
+Les versions suivantes s'installent depuis KINO : **Paramètres → Mises à jour**.
 
-Python 3.12 est nécessaire.
+### Installer avec une seule commande
 
-macOS (Apple Silicon) : [IINA](https://iina.io), installé dans
-`/Applications`, fournit la bibliothèque libmpv du lecteur intégré.
+Cette commande télécharge la dernière version, vérifie le fichier, installe
+KINO et l'ouvre. Elle sert aussi à le mettre à jour.
+
+macOS (app Terminal) :
 
 ```bash
-python3.12 -m venv .venv
-.venv/bin/pip install -r requirements-build.txt
-.venv/bin/python tools/vendor_libmpv.py
-.venv/bin/python desktop.py
+curl -fsSL https://raw.githubusercontent.com/isleepverywellatnight/kino/main/packaging/install.sh | bash
 ```
 
-`tools/vendor_libmpv.py` copie libmpv et ses dépendances depuis IINA dans
-`vendor/libmpv`. Sans cette étape, KINO fonctionne avec un lecteur externe.
-
-Windows : [7-Zip](https://7-zip.org) est nécessaire pour extraire mpv.
+Windows (PowerShell) :
 
 ```powershell
-py -3.12 -m venv .venv
-.venv\Scripts\pip install -r requirements-build.txt
-.venv\Scripts\python tools\fetch_mpv_windows.py
-.venv\Scripts\python desktop.py
+irm https://raw.githubusercontent.com/isleepverywellatnight/kino/main/packaging/install.ps1 | iex
 ```
 
-`tools/fetch_mpv_windows.py` télécharge une version précise de mpv, vérifie
-son empreinte et la place dans `vendor/mpv-windows`.
+### Si le système bloque le premier lancement
 
-## Construire l'application
+KINO n'est pas encore signé par Apple ni par Microsoft. Après un
+téléchargement depuis le navigateur :
 
-La CI (`.github/workflows/build.yml`) construit les deux versions à chaque
-push. À la main :
+- **macOS** : si KINO refuse de s'ouvrir, allez dans Réglages Système →
+  Confidentialité et sécurité, puis cliquez sur **Ouvrir quand même**.
+- **Windows** : si « Windows a protégé votre ordinateur » s'affiche, cliquez
+  sur **Informations complémentaires**, puis **Exécuter quand même**.
 
-```bash
-# macOS : dist/KINO.app puis dist/KINO-x.y.z-arm64.dmg
-.venv/bin/pyinstaller --noconfirm kino_macos.spec
-tools/make_dmg.sh
-```
-
-```powershell
-# Windows : dist\KINO\KINO.exe puis dist\KINO-Setup-x.y.z-x64.exe (Inno Setup 6)
-.venv\Scripts\pyinstaller --noconfirm kino_windows.spec
-iscc /DAppVersion=x.y.z installer\kino.iss
-```
-
-L'application vérifie ses propres dépendances avec `--self-check`.
-
-## Publier une version
-
-1. Mettez `APP_VERSION` à jour dans `kino_version.py`, puis committez.
-2. Créez le tag correspondant et poussez-le :
-   `git tag v1.2.0 && git push origin v1.2.0`.
-3. La CI construit, teste puis publie la release avec le `.dmg`, l'installateur
-   Windows et `SHA256SUMS.txt`.
-
-Pour que KINO puisse installer cette version tout seul, la CI doit signer les
-mises à jour. Ajoutez une fois le secret `KINO_UPDATE_SIGNING_KEY` au dépôt
-(Settings → Secrets and variables → Actions) avec le contenu de la clé privée
-créée par `build_update_package.py --init-key`
-(`~/Library/Application Support/KINO/UpdateSigning/private-key.pem`). Sa partie
-publique est `update_public_key.hex`. Sans ce secret, la release est publiée
-quand même, mais KINO se contente d'annoncer la nouvelle version.
+Les commandes ci-dessus évitent ces deux messages.
 
 ## Où sont les données
 
@@ -129,29 +92,24 @@ quand même, mais KINO se contente d'annoncer la nouvelle version.
 Les clés restent sur cet ordinateur : elles ne sont ni sauvegardées ni
 synchronisées. Désinstaller KINO ne supprime pas ces données.
 
-## Organisation du code
+## Organisation du dépôt
 
-| Emplacement | Rôle |
+| Dossier | Contenu |
 |---|---|
-| `desktop.py` | Fenêtre de l'application (pywebview), démarrage |
-| `app.py` | Serveur local qui sert l'interface et répond à ses requêtes |
-| `kino_db.py`, `config.py` | Base de données et réglages |
-| `meta_engine.py`, `tmdb.py`, `anime_*.py` | Fiches, titres en français, animes |
-| `debrid_engine.py`, `torrent_engine.py`, `stream_engine.py` | Sources et services de débridage |
-| `native_player.py`, `native_view.py`, `player_engine.py` | Lecteur intégré et lecteurs externes |
-| `recommender.py`, `ratings.py` | Suggestions et notes |
-| `addons/` | Sources supplémentaires, activables dans Paramètres |
+| `src/` | Code Python de KINO ; `desktop.py` le démarre |
 | `web/` | Interface (HTML, CSS, JavaScript) |
+| `addons/` | Sources supplémentaires, activables dans Paramètres |
+| `assets/` | Icônes et fichiers fournis avec l'application |
+| `packaging/` | Construction des applications, installateurs, scripts d'installation |
+| `tools/` | Outils de construction et de publication |
+| `tests/` | Tests |
 
-## Windows
-
-La fenêtre utilise Edge WebView2 (l'installateur l'ajoute s'il manque). Le
-lecteur est mpv, inclus dans KINO et ancré dans sa fenêtre. Sont encore propres à
-macOS : le lecteur intégré sous l'interface (libmpv), les notifications et le
-retour à la version précédente.
+Construire KINO ou publier une version : voir
+[packaging/README.md](packaging/README.md).
 
 ## Licence
 
 KINO est publié sous licence MIT (voir [LICENSE](LICENSE)). Le dossier
-`web/js/vendor` contient PeerJS, sous sa propre licence MIT. libmpv et FFmpeg,
-copiés au moment de la construction, sont sous licence GPL ou LGPL.
+`web/js/vendor` contient PeerJS et QRCode.js, chacun sous sa propre licence MIT.
+mpv, libmpv et FFmpeg, inclus dans les applications, sont sous licence GPL ou
+LGPL.

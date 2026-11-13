@@ -6,7 +6,7 @@ the release workflow reads it from the KINO_UPDATE_SIGNING_KEY secret.
 
   --init-key                          create the key pair (once)
   --app dist/KINO.app --output X      macOS: signed package for the in-app updater
-  --installer dist/KINO-Setup-...exe  Windows: writes <installer>.sig next to it
+  --installer dist/KINO-Windows.exe   Windows: writes KINO-Windows.exe.sig next to it
 """
 
 import argparse
@@ -16,7 +16,7 @@ import json
 import os
 import platform
 import plistlib
-import re
+import sys
 import tarfile
 import tempfile
 import zipfile
@@ -25,7 +25,11 @@ from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from kino_update import canonical_json, version_tuple
+PROJECT = Path(__file__).resolve().parent.parent
+PUBLIC_KEY = PROJECT / "assets" / "update_public_key.hex"
+sys.path.insert(0, str(PROJECT / "src"))
+
+from kino_update import WINDOWS_INSTALLER, canonical_json, version_tuple
 from kino_version import APP_VERSION, BUNDLE_ID, DATA_SCHEMA, UPDATE_FORMAT
 
 
@@ -45,7 +49,7 @@ def initialize_key(path: Path) -> None:
     with os.fdopen(descriptor, "wb") as fh:
         fh.write(raw)
     public = key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
-    Path(__file__).with_name("update_public_key.hex").write_text(public.hex() + "\n", encoding="ascii")
+    PUBLIC_KEY.write_text(public.hex() + "\n", encoding="ascii")
     print("Clé locale créée. Seule sa partie publique est incluse dans KINO.")
 
 
@@ -55,20 +59,17 @@ def load_signing_key(key_path: Path) -> Ed25519PrivateKey:
     if not isinstance(key, Ed25519PrivateKey):
         raise SystemExit("La clé de signature doit être Ed25519.")
     public = key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
-    pinned = Path(__file__).with_name("update_public_key.hex").read_text(encoding="ascii").strip()
+    pinned = PUBLIC_KEY.read_text(encoding="ascii").strip()
     if public.hex() != pinned:
         raise SystemExit("La clé privée ne correspond pas à la clé publique de l'app.")
     return key
 
 
 def sign_installer(installer: Path, key_path: Path, notes: str) -> Path:
-    match = re.fullmatch(r"KINO-Setup-(\d+\.\d+\.\d+)-x64\.exe", installer.name)
-    if not match:
-        raise SystemExit("Nom d'installateur attendu : KINO-Setup-x.y.z-x64.exe")
-    version = match.group(1)
+    if installer.name != WINDOWS_INSTALLER:
+        raise SystemExit(f"Nom d'installateur attendu : {WINDOWS_INSTALLER}")
+    version = APP_VERSION  # built by the same CI job, from the same kino_version.py
     version_tuple(version)
-    if version != APP_VERSION:
-        raise SystemExit(f"L'installateur est en {version}, kino_version.py en {APP_VERSION}.")
     key = load_signing_key(key_path)
     digest = hashlib.sha256()
     with installer.open("rb") as fh:

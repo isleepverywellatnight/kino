@@ -11,7 +11,9 @@ from pathlib import Path
 
 import sys
 
-PROJECT_DIR = Path(__file__).resolve().parent
+import paths
+
+PROJECT_DIR = paths.PROJECT_DIR
 
 MPV_FORMAT_FLAG = 3
 MPV_FORMAT_INT64 = 4
@@ -53,7 +55,7 @@ def libmpv_dir():
         if hasattr(sys, "_MEIPASS"):
             candidates.append(Path(sys._MEIPASS))
         candidates.append(Path(sys.executable).resolve().parent.parent / "Frameworks")
-    candidates.append(PROJECT_DIR / "vendor" / "libmpv")
+    candidates.append(paths.VENDOR_DIR / "libmpv")
     for folder in candidates:
         if (folder / "libmpv.2.dylib").is_file():
             return folder

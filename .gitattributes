@@ -9,4 +9,4 @@ web/js/vendor/** -text
 *.ico binary
 *.icns binary
 *.ttf binary
-native/kino-update-helper binary
+packaging/update-helper/kino-update-helper binary

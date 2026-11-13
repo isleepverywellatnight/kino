@@ -23,7 +23,9 @@ import kino_db
 
 logger = logging.getLogger("kino.addons")
 
-APP_DIR = Path(__file__).resolve().parent
+import paths
+
+APP_DIR = paths.RESOURCE_DIR
 LOCAL_ADDONS_DIR = APP_DIR / "addons"
 USER_ADDONS_DIR = Path.home() / ".kino" / "addons"
 

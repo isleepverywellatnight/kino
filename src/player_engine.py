@@ -16,6 +16,8 @@ import threading
 import time
 import urllib.parse
 from pathlib import Path
+
+import paths
 from types import SimpleNamespace
 
 import discord_rpc
@@ -59,7 +61,7 @@ def bundled_mpv():
     folders = []
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         folders.append(Path(sys._MEIPASS) / "mpv")
-    folders.append(Path(__file__).resolve().parent / "vendor" / "mpv-windows")
+    folders.append(paths.VENDOR_DIR / "mpv-windows")
     for folder in folders:
         if (folder / "mpv.exe").is_file():
             return str(folder / "mpv.exe")
@@ -797,7 +799,7 @@ def _mpv_window_options():
     args = []
     if is_docked:
         args.append(f"--title={dock_title}")
-        bridge_script = Path(__file__).resolve().parent / "kino_bridge.lua"
+        bridge_script = paths.resource("assets", "kino_bridge.lua")
         if bridge_script.exists():
             args.append(f"--scripts={bridge_script}")
     else:

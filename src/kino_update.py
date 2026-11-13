@@ -48,6 +48,9 @@ RELEASES_PAGE = f"https://github.com/{UPDATE_REPO}/releases/latest"
 _RELEASE_PAGE_PREFIX = f"https://github.com/{UPDATE_REPO}/releases/"
 _DOWNLOAD_PREFIX = f"https://github.com/{UPDATE_REPO}/releases/download/"
 MAX_RELEASE_JSON = 2_000_000
+# Release files with the same name for every version: the download links never change.
+WINDOWS_INSTALLER = "KINO-Windows.exe"
+MACOS_DISK_IMAGE = "KINO-macOS.dmg"
 MAX_SIGNATURE_BYTES = 32_768
 
 
@@ -67,9 +70,8 @@ def version_tuple(version: str) -> tuple[int, int, int]:
 
 
 def _public_key_path() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys._MEIPASS) / "update_public_key.hex"
-    return Path(__file__).with_name("update_public_key.hex")
+    import paths
+    return paths.resource("assets", "update_public_key.hex")
 
 
 def _signed_payload(raw: bytes, public_key_hex: str):
@@ -88,7 +90,7 @@ def _signed_payload(raw: bytes, public_key_hex: str):
 
 
 def verify_installer_signature(raw: bytes, public_key_hex: str, *, current_version: str = APP_VERSION) -> dict:
-    """The signed description of a Windows installer (KINO-Setup-x.y.z-x64.exe.sig)."""
+    """The signed description of the Windows installer (KINO-Windows.exe.sig)."""
     payload = _signed_payload(raw, public_key_hex)
     if not isinstance(payload, dict) or set(payload) != {
         "format", "version", "platform", "architecture", "bundle_id", "data_schema", "notes", "artifact",
@@ -106,7 +108,7 @@ def verify_installer_signature(raw: bytes, public_key_hex: str, *, current_versi
     artifact = payload["artifact"]
     if not isinstance(artifact, dict) or set(artifact) != {"name", "sha256", "size"}:
         raise UpdateError("Artefact invalide.")
-    if artifact["name"] != f"KINO-Setup-{payload['version']}-x64.exe":
+    if artifact["name"] != WINDOWS_INSTALLER:
         raise UpdateError("Nom d'installateur incohérent.")
     if not isinstance(artifact["sha256"], str) or not re.fullmatch(r"[a-f0-9]{64}", artifact["sha256"]):
         raise UpdateError("Empreinte d'installateur invalide.")
@@ -167,8 +169,7 @@ def release_asset_names(version: str, platform_name: str | None = None,
     if platform_name == "darwin":
         return f"KINO-{version}-{architecture or platform.machine()}.kinoupdate", None
     if platform_name == "win32":
-        name = f"KINO-Setup-{version}-x64.exe"
-        return name, f"{name}.sig"
+        return WINDOWS_INSTALLER, f"{WINDOWS_INSTALLER}.sig"
     raise UpdateError("Les mises à jour automatiques ne sont pas disponibles sur ce système.")
 
 
@@ -473,7 +474,7 @@ class UpdateManager:
         if sys.platform == "darwin":
             return self.app_path == Path("/Applications/KINO.app") and self.app_path.is_dir()
         if sys.platform == "win32":
-            # Installed by installer/kino.iss, which leaves its uninstaller next to KINO.exe.
+            # Installed by packaging/kino.iss, which leaves its uninstaller next to KINO.exe.
             return bool(getattr(sys, "frozen", False)) and (self.app_path / "unins000.exe").is_file()
         return False
 
