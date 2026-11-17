@@ -5,6 +5,7 @@ pub mod library;
 pub mod manga;
 pub mod native;
 pub mod offline;
+pub mod p2p;
 pub mod play;
 pub mod remote;
 pub mod series;
@@ -35,4 +36,5 @@ pub fn router() -> Router<Shared> {
         .merge(tv::router())
         .merge(window::router())
         .merge(native::router())
+        .merge(p2p::router())
 }

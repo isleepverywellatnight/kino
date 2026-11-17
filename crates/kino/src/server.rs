@@ -51,6 +51,8 @@ pub struct AppState {
     pub native: Option<Arc<dyn crate::native::NativePlayer>>,
     /// The page's « voix » and « clarté » choices for the native playback.
     pub native_settings: std::sync::Mutex<serde_json::Map<String, serde_json::Value>>,
+    /// Torrents read peer to peer without a debrid key, when the window runs here.
+    pub p2p: Option<Arc<crate::p2p::P2p>>,
 }
 
 pub type Shared = Arc<AppState>;

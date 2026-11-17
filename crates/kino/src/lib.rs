@@ -30,6 +30,7 @@ pub mod net;
 pub mod network;
 pub mod nowplaying;
 pub mod offline;
+pub mod p2p;
 pub mod paths;
 pub mod people;
 pub mod play;

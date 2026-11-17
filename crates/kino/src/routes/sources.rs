@@ -83,7 +83,24 @@ async fn debrid(
         .unwrap_or_default();
     let (provider, token) = search::provider_and_token(&cfg);
     if token.is_empty() {
-        return delegate(&s, method, &uri, &headers, raw).await;
+        let Some(p2p) = s.p2p.clone() else {
+            return delegate(&s, method, &uri, &headers, raw).await;
+        };
+        // No debrid key: KINO reads the torrent itself, once the user agreed.
+        let magnet = body.get("magnet").and_then(Value::as_str).unwrap_or("");
+        let resolve_url = body
+            .get("resolve_url")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        return match p2p.prepare(magnet, resolve_url, &format!("http://127.0.0.1:{}", s.port)).await {
+            Ok(found) => Json(found).into_response(),
+            Err(e) if e == crate::p2p::CONSENT_NEEDED => (
+                StatusCode::CONFLICT,
+                Json(json!({"error": "Sans service de débridage, KINO lit les torrents en P2P : acceptez-le une fois pour continuer.", "code": "p2p_consent"})),
+            )
+                .into_response(),
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e}))).into_response(),
+        };
     }
     let resolver = Resolver {
         net: &s.net,
