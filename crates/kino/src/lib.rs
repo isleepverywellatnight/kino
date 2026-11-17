@@ -10,6 +10,7 @@ pub mod cloud;
 pub mod config;
 pub mod db;
 pub mod debrid;
+pub mod errorlog;
 pub mod french;
 pub mod intro;
 pub mod library;
