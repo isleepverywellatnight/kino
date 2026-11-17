@@ -78,6 +78,8 @@ enum UserEvent {
     /// The external player started or ended: the window steps aside, then comes back.
     Hide,
     Show,
+    /// The answer to a bridge call finished off the main thread.
+    Reply(u64, Result<Value, String>),
     /// A window action the page asked through the server (/api/window/action).
     Action(String),
     /// A notification was clicked: KINO comes to the front and opens the series.
@@ -330,12 +332,138 @@ fn call(window: &Window, name: &str, args: &[Value], quit: &mut bool) -> Result<
                 ),
             }
         }
-        // The updates stay with the Python window for now.
-        "update_status" | "check_for_updates" => {
-            json!({"state": "unavailable", "message": "Mises à jour : passez par l'app KINO habituelle."})
-        }
         _ => return Err("Pas encore disponible dans cette fenêtre.".into()),
     })
+}
+
+/// At launch: the leftovers of finished updates (once the new version is
+/// confirmed), then a quiet look at GitHub for a new version.
+fn start_update_tasks(runtime: &tokio::runtime::Handle, updater: Arc<kino::update::Updater>) {
+    let cleaner = updater.clone();
+    runtime.spawn_blocking(move || {
+        if !cleaner.is_installed() {
+            return;
+        }
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(180);
+        while cleaner.state_dir.join("pending.json").exists()
+            && std::time::Instant::now() < deadline
+        {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+        kino::update::prune_leftovers(
+            &cleaner.app_path,
+            &cleaner.state_dir,
+            kino::backup::app_version(),
+            kino::db::now(),
+        );
+    });
+    runtime.spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+        let _ = updater.check_latest().await;
+    });
+}
+
+/// The bridge's update calls. Quick ones answer at once (Some); the others
+/// answer later through `replies` (None).
+fn updates(
+    name: &str,
+    updater: &Arc<kino::update::Updater>,
+    runtime: &tokio::runtime::Handle,
+    remote: &Arc<kino::remote::Remote>,
+    replies: &EventLoopProxy<UserEvent>,
+    id: u64,
+) -> Option<Result<Value, String>> {
+    let later = |work: Box<dyn FnOnce() -> Result<Value, String> + Send>, close_after: bool| {
+        let replies = replies.clone();
+        runtime.spawn_blocking(move || {
+            let result = work();
+            let done = result.is_ok();
+            let _ = replies.send_event(UserEvent::Reply(id, result));
+            if done && close_after {
+                std::thread::sleep(std::time::Duration::from_millis(400));
+                let _ = replies.send_event(UserEvent::Action("close".into()));
+            }
+        });
+        None
+    };
+    // An update never interrupts a film: the player must be closed first.
+    let playing = || {
+        let state = remote.state();
+        state.get("playing").and_then(Value::as_bool) == Some(true)
+            && kino::db::now()
+                - state
+                    .get("updated_at")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(0.0)
+                < 5.0
+    };
+    match name {
+        "update_status" => Some(Ok(updater.status())),
+        "open_release_page" => {
+            let page = updater.status()["latest"]["page"]
+                .as_str()
+                .filter(|p| {
+                    p.starts_with(&format!(
+                        "https://github.com/{}/releases/",
+                        kino::update::UPDATE_REPO
+                    ))
+                })
+                .map(str::to_string)
+                .unwrap_or_else(kino::update::releases_page);
+            let program = if cfg!(windows) {
+                "explorer.exe"
+            } else if cfg!(target_os = "macos") {
+                "open"
+            } else {
+                "xdg-open"
+            };
+            let _ = Command::new(program).arg(page).spawn();
+            Some(Ok(json!({"opened": true})))
+        }
+        "check_for_updates" => {
+            let (updater, replies) = (updater.clone(), replies.clone());
+            runtime.spawn(async move {
+                let result = updater.check_for_updates().await;
+                let _ = replies.send_event(UserEvent::Reply(id, Ok(result)));
+            });
+            None
+        }
+        "choose_update_package" => {
+            let Some(path) = rfd::FileDialog::new()
+                .add_filter("Mise à jour KINO", &["kinoupdate"])
+                .pick_file()
+            else {
+                return Some(Ok(json!({"cancelled": true})));
+            };
+            let updater = updater.clone();
+            later(Box::new(move || updater.prepare(&path)), false)
+        }
+        "install_update" | "rollback_update" => {
+            if playing() {
+                let what = if name == "install_update" {
+                    "installer la mise à jour"
+                } else {
+                    "revenir à l'ancienne version"
+                };
+                return Some(Ok(
+                    json!({"deferred": true, "message": format!("Une lecture est en cours. Fermez le lecteur pour {what}.")}),
+                ));
+            }
+            let updater = updater.clone();
+            let install = name == "install_update";
+            later(
+                Box::new(move || {
+                    if install {
+                        updater.install()
+                    } else {
+                        updater.rollback()
+                    }
+                }),
+                true,
+            )
+        }
+        _ => Some(Err("Pas encore disponible dans cette fenêtre.".into())),
+    }
 }
 
 /// A poster for « À l'écoute »: https only, 3 MB at most.
@@ -428,23 +556,30 @@ fn main() -> Result<()> {
     let (ready_tx, ready_rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let runtime = tokio::runtime::Runtime::new().expect("runtime");
+        let handle = runtime.handle().clone();
         runtime.block_on(async move {
             match kino::launch::bind(port).await {
                 Ok(listener) => {
-                    let _ = ready_tx.send(true);
+                    let _ = ready_tx.send(Some(handle));
                     if let Err(e) = kino::launch::serve(listener, options).await {
                         eprintln!("KINO server stopped: {e}");
                     }
                 }
                 Err(_) => {
-                    let _ = ready_tx.send(false);
+                    let _ = ready_tx.send(None);
                 }
             }
         });
     });
-    if !ready_rx.recv().unwrap_or(false) {
+    let Some(runtime) = ready_rx.recv().ok().flatten() else {
         anyhow::bail!("KINO's port is taken");
-    }
+    };
+    let updater = Arc::new(kino::update::Updater::new(
+        kino::update::default_app_path(),
+        kino::update::default_state_dir(),
+        None,
+    ));
+    start_update_tasks(&runtime, updater.clone());
 
     let (width, height, at) = saved_bounds();
     let mut builder = WindowBuilder::new()
@@ -473,6 +608,15 @@ fn main() -> Result<()> {
         .with_url(format!("http://127.0.0.1:{port}/"))
         .with_initialization_script(bridge_script())
         .with_background_color((9, 9, 11, 255))
+        .with_on_page_load_handler({
+            let updater = updater.clone();
+            move |event, _url| {
+                if matches!(event, wry::PageLoadEvent::Finished) {
+                    let (app, state) = (updater.app_path.clone(), updater.state_dir.clone());
+                    std::thread::spawn(move || kino::update::acknowledge_ready(&app, &state));
+                }
+            }
+        })
         .with_ipc_handler(move |request| {
             let Ok(message) = serde_json::from_str::<Value>(request.body()) else {
                 return;
@@ -484,6 +628,7 @@ fn main() -> Result<()> {
         })
         .build(&window)?;
 
+    let replies = event_loop.create_proxy();
     #[cfg(target_os = "macos")]
     let mut now_playing = {
         let posters = Mutex::new(event_loop.create_proxy());
@@ -526,6 +671,22 @@ fn main() -> Result<()> {
         }
         let mut quit = false;
         match event {
+            Event::UserEvent(UserEvent::Call(id, name, _))
+                if name.contains("update") || name == "open_release_page" =>
+            {
+                let done = updates(&name, &updater, &runtime, &remote, &replies, id);
+                if let Some(result) = done {
+                    let _ = replies.send_event(UserEvent::Reply(id, result));
+                }
+            }
+            Event::UserEvent(UserEvent::Reply(id, result)) => {
+                let (ok, value) = match result {
+                    Ok(v) => (true, v),
+                    Err(e) => (false, json!(e)),
+                };
+                let _ =
+                    webview.evaluate_script(&format!("window.__kinoReply({id}, {ok}, {value})"));
+            }
             Event::UserEvent(UserEvent::Call(id, name, args)) => {
                 let (ok, value) = match call(&window, &name, &args, &mut quit) {
                     Ok(v) => (true, v),
