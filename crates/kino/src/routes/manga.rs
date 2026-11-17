@@ -1,5 +1,5 @@
-//! /api/manga/…: the Manga tab. Downloading a volume (/api/manga/volume…) still
-//! goes to the Python server, with the P2P engine.
+//! /api/manga/…: the Manga tab. Downloading a volume (/api/manga/volume…) needs
+//! the KINO app's peer-to-peer engine.
 
 use std::collections::HashMap;
 
@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 
 use crate::body::JsonBody;
 use crate::manga::{self, Manga, MangaError, local, sources};
-use crate::server::Shared;
+use crate::server::{Shared, needs_app};
 
 type Params = Query<HashMap<String, String>>;
 
@@ -176,33 +176,17 @@ async fn folder(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
 }
 
 /// Python's answer while the window (and its P2P engine) is Python's.
-async fn delegated(s: &Shared, request: axum::extract::Request) -> Response {
-    let (parts, body) = request.into_parts();
-    let body = axum::body::to_bytes(body, 1 << 20)
-        .await
-        .unwrap_or_default();
-    crate::server::delegate(s, parts.method, &parts.uri, &parts.headers, body).await
-}
-
 /// The comic archives of a volume pack.
-async fn volume_files(
-    State(s): State<Shared>,
-    Query(p): Params,
-    request: axum::extract::Request,
-) -> Response {
+async fn volume_files(State(s): State<Shared>, Query(p): Params) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     answer(crate::manga::volumes::files(&p2p, param(&p, "hash", ""), param(&p, "name", "")).await)
 }
 
-async fn volume_status(
-    State(s): State<Shared>,
-    Query(p): Params,
-    request: axum::extract::Request,
-) -> Response {
+async fn volume_status(State(s): State<Shared>, Query(p): Params) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     let index = json!(param(&p, "index", ""));
     answer(crate::manga::volumes::status(&p2p, &s.db, param(&p, "hash", ""), &index).await)
@@ -211,7 +195,7 @@ async fn volume_status(
 /// Fetches one volume of a pack into the manga folder.
 async fn volume_start(State(s): State<Shared>, request: axum::extract::Request) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     let body = axum::body::to_bytes(request.into_body(), 1 << 20)
         .await

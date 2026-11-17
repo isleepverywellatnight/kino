@@ -14,8 +14,6 @@ pub struct Options {
     pub port: u16,
     /// The phone remote's token; a new one when empty.
     pub pairing_token: String,
-    /// The Python server behind this one, for the routes not ported yet.
-    pub legacy: Option<String>,
     pub native_player: bool,
     pub notifications: bool,
     /// The launch work (startup.rs): only for the app's own server.
@@ -87,7 +85,6 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
         port: options.port,
         pairing_token: token,
         web_root: paths::web_root(),
-        legacy: options.legacy.filter(|s| !s.is_empty()),
         http: reqwest::Client::builder().no_gzip().build()?,
         net,
         meta,

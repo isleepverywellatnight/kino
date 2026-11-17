@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 
 use crate::native::{NativePlayer, cues_to_srt, decode_subtitle, mpv_commands, stream_allowed};
 use crate::play::text;
-use crate::server::{Shared, delegate};
+use crate::server::{Shared, needs_app};
 
 pub fn router() -> Router<Shared> {
     Router::new()
@@ -21,14 +21,6 @@ pub fn router() -> Router<Shared> {
         .route("/api/native-player/close", post(close))
         .route("/api/native-player/screenshot", post(screenshot))
         .route("/api/native-player/subtitle", post(subtitle))
-}
-
-async fn delegated(s: &Shared, request: Request) -> Response {
-    let (parts, body) = request.into_parts();
-    let body = axum::body::to_bytes(body, 1 << 20)
-        .await
-        .unwrap_or_default();
-    delegate(s, parts.method, &parts.uri, &parts.headers, body).await
 }
 
 async fn json_body(request: Request) -> Value {
@@ -45,13 +37,13 @@ fn failure(status: StatusCode, message: &str) -> Response {
 const INVALID: &str = "Commande du lecteur invalide.";
 const BROKEN: &str = "Le lecteur natif n'a pas pu démarrer.";
 
-/// The native player, or the answer when there is none (or the window is Python's).
+/// The native player, or the answer when there is none.
 async fn player(
     s: &Shared,
     request: Request,
 ) -> Result<(std::sync::Arc<dyn NativePlayer>, Request), Response> {
     if s.player.is_none() {
-        return Err(delegated(s, request).await);
+        return Err(needs_app());
     }
     match s.native.clone() {
         Some(native) => Ok((native, request)),
@@ -70,9 +62,9 @@ async fn blocking<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) 
     tokio::task::spawn_blocking(work).await.ok()
 }
 
-async fn state(State(s): State<Shared>, request: Request) -> Response {
+async fn state(State(s): State<Shared>) -> Response {
     if s.player.is_none() {
-        return delegated(&s, request).await;
+        return needs_app();
     }
     let state = match s.native.clone() {
         Some(native) => with_settings(

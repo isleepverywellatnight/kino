@@ -414,6 +414,7 @@ KINO_I18N.load({
 "Diffusé il y a {}": "Вышла {} назад",
 "Disponibilité immédiate signalée par la source": "Источник сообщает о мгновенной доступности",
 "Disponible": "Доступно",
+"Disponible dans l'application KINO.": "Доступно в приложении KINO.",
 "Disponible hors ligne": "Доступно офлайн",
 "Distribution": "Актёры",
 "Documentaire": "Документальный",

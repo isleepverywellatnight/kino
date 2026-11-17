@@ -23,7 +23,6 @@ async fn main() -> Result<()> {
         port,
         // The desktop app shares its pairing token so the phone remote's link works here.
         pairing_token: std::env::var("KINO_PAIRING_TOKEN").unwrap_or_default(),
-        legacy: std::env::var("KINO_LEGACY").ok(),
         native_player: flag("KINO_NATIVE_PLAYER"),
         notifications: flag("KINO_NOTIFICATIONS"),
         startup_tasks: flag("KINO_STARTUP_TASKS"),
