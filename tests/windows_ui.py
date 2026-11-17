@@ -279,13 +279,23 @@ def main():
                 check("restore returns", window_rect(hwnd) == before, f"{window_rect(hwnd)} vs {before}")
 
                 # Double press on the bar maximizes too.
+                page.evaluate("""() => { window.__kinoEvents = [];
+                  for (const type of ['mousedown', 'mouseup', 'click', 'dblclick']) {
+                    document.addEventListener(type, (e) => window.__kinoEvents.push(
+                      `${type}${e.isTrusted ? '' : '(synthetic)'} @${Math.round(performance.now())}`), true);
+                  } }""")
                 spot = page.evaluate(EMPTY_BAR_POINT, "header")
                 sx, sy = screen_point(page, hwnd, spot["x"], spot["y"])
                 click(sx, sy)
                 move(sx, sy)
                 down(); time.sleep(0.05); up()
                 time.sleep(0.6)
-                check("double press maximizes", window_rect(hwnd) == work_area(hwnd), f"{window_rect(hwnd)}")
+                check("double press maximizes", window_rect(hwnd) == work_area(hwnd),
+                      f"{window_rect(hwnd)} events={page.evaluate('window.__kinoEvents')}")
+                if window_rect(hwnd) != work_area(hwnd):
+                    page.evaluate("windowAction('maximize')")
+                    time.sleep(0.6)
+                    print(f"after windowAction('maximize'): {window_rect(hwnd)}", flush=True)
                 # Wait for the page to lay out at the new size before aiming at a button.
                 page.wait_for_function("innerWidth === %d" % (work_area(hwnd)[2] / page.evaluate("devicePixelRatio")), timeout=5000)
                 page.wait_for_timeout(300)
