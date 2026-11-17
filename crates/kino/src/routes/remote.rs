@@ -25,7 +25,7 @@ pub fn router() -> Router<Shared> {
 }
 
 /// Python's answer while the window is Python's.
-async fn python(s: &Shared, request: Request) -> Response {
+async fn delegated(s: &Shared, request: Request) -> Response {
     let (parts, body) = request.into_parts();
     let body = axum::body::to_bytes(body, 1 << 20)
         .await
@@ -42,7 +42,7 @@ async fn json_body(request: Request) -> Value {
 
 async fn page(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     match tokio::fs::read_to_string(s.web_root.join("remote.html")).await {
         Ok(html) => ([(header::CONTENT_TYPE, "text/html; charset=utf-8")], html).into_response(),
@@ -56,14 +56,14 @@ async fn page(State(s): State<Shared>, request: Request) -> Response {
 
 async fn state(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     Json(s.remote.state_for_phone(s.port)).into_response()
 }
 
 async fn control(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     let body = json_body(request).await;
     let action = body.get("action").cloned().unwrap_or(json!(""));
@@ -74,7 +74,7 @@ async fn control(State(s): State<Shared>, request: Request) -> Response {
 
 async fn info(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     let ip = crate::remote::local_ip();
     let url = format!("http://{ip}:{}/remote?token={}", s.port, s.pairing_token);
@@ -83,7 +83,7 @@ async fn info(State(s): State<Shared>, request: Request) -> Response {
 
 async fn player_state(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     s.remote.update(&json_body(request).await);
     Json(json!({"ok": true})).into_response()
@@ -91,7 +91,7 @@ async fn player_state(State(s): State<Shared>, request: Request) -> Response {
 
 async fn commands(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     Json(json!({"commands": s.remote.pop()})).into_response()
 }
@@ -99,7 +99,7 @@ async fn commands(State(s): State<Shared>, request: Request) -> Response {
 /// Diagnostic: Python's while the window (native player, notifications) is Python's.
 async fn diagnostic(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     let window = crate::diagnostic::Window {
         native_player: s.native_player,

@@ -23,7 +23,7 @@ pub fn router() -> Router<Shared> {
         .route("/p2p/{hash}/{index}", get(file).head(file))
 }
 
-async fn python(s: &Shared, request: Request) -> Response {
+async fn delegated(s: &Shared, request: Request) -> Response {
     let (parts, body) = request.into_parts();
     let body = axum::body::to_bytes(body, 1 << 20)
         .await
@@ -40,7 +40,7 @@ async fn json_body(request: Request) -> Value {
 
 async fn state(State(s): State<Shared>, request: Request) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     Json(
         tokio::task::spawn_blocking(move || p2p.state())
@@ -52,7 +52,7 @@ async fn state(State(s): State<Shared>, request: Request) -> Response {
 
 async fn consent(State(s): State<Shared>, request: Request) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let body = json_body(request).await;
     if let Err(e) = p2p
@@ -66,7 +66,7 @@ async fn consent(State(s): State<Shared>, request: Request) -> Response {
 
 async fn settings(State(s): State<Shared>, request: Request) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let body = json_body(request).await;
     let changes: serde_json::Map<String, Value> = ["upload", "download", "encrypted", "port"]
@@ -81,7 +81,7 @@ async fn settings(State(s): State<Shared>, request: Request) -> Response {
 
 async fn clear(State(s): State<Shared>, request: Request) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     p2p.clear_cache().await;
     Json(p2p.state()).into_response()
@@ -94,7 +94,7 @@ async fn file(
     request: Request,
 ) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let valid = hash.len() == 40
         && hash

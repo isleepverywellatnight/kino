@@ -73,7 +73,7 @@ struct Lib {
 }
 
 /// libmpv.2.dylib and its libraries: inside KINO.app, else vendor/libmpv
-/// (tools/vendor_libmpv.py), else `KINO_LIBMPV`.
+/// (tools/vendor_libmpv.sh), else `KINO_LIBMPV`.
 fn libmpv_path() -> Option<PathBuf> {
     let mut candidates: Vec<PathBuf> = std::env::var_os("KINO_LIBMPV")
         .map(PathBuf::from)

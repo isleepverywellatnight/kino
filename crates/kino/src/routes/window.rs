@@ -29,7 +29,7 @@ pub fn router() -> Router<Shared> {
         .route("/api/remux", get(remux))
 }
 
-async fn python(s: &Shared, request: Request) -> Response {
+async fn delegated(s: &Shared, request: Request) -> Response {
     let (parts, body) = request.into_parts();
     let body = axum::body::to_bytes(body, 64 << 20)
         .await
@@ -46,7 +46,7 @@ async fn json_body(request: Request) -> Value {
 
 async fn discord_status(State(s): State<Shared>, request: Request) -> Response {
     let Some(player) = s.player.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     Json(json!({"status": "ok", "connected": player.discord.connected(), "enabled": player.discord.enabled()}))
         .into_response()
@@ -55,7 +55,7 @@ async fn discord_status(State(s): State<Shared>, request: Request) -> Response {
 /// KINO's own player tells Discord what plays.
 async fn discord_update(State(s): State<Shared>, request: Request) -> Response {
     let Some(player) = s.player.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let body = json_body(request).await;
     let number = |k: &str| {
@@ -89,7 +89,7 @@ async fn discord_update(State(s): State<Shared>, request: Request) -> Response {
 
 async fn discord_clear(State(s): State<Shared>, request: Request) -> Response {
     let Some(player) = s.player.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     player.discord.clear();
     Json(json!({"ok": true})).into_response()
@@ -97,7 +97,7 @@ async fn discord_clear(State(s): State<Shared>, request: Request) -> Response {
 
 async fn window_action(State(s): State<Shared>, request: Request) -> Response {
     let Some(player) = s.player.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let action = text(&json_body(request).await["action"]);
     match player.window() {
@@ -122,7 +122,7 @@ pub(crate) fn download_dir() -> std::path::PathBuf {
 /// The download folder in Finder, Explorer or the file manager.
 async fn open_folder(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     let folder = tokio::task::spawn_blocking(download_dir)
         .await
@@ -170,7 +170,7 @@ pub(crate) fn capture_name(title: &str, time: &str, time_limit: usize) -> String
 /// A frame of KINO's player, saved as a PNG in the download folder.
 async fn save_screenshot(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     let body = json_body(request).await;
     let data = text(&body["data_url"]);
@@ -226,7 +226,7 @@ async fn upload_torrent(request: Request) -> Response {
 /// « Tester » in Paramètres: permission asked if needed, then one notification.
 async fn notifications_test(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     let Some(notifier) = s.notifier.clone() else {
         return Json(json!({"ok": false, "status": "unavailable"})).into_response();
@@ -258,7 +258,7 @@ async fn notifications_test(State(s): State<Shared>, request: Request) -> Respon
 /// A stream's video and audio tracks, and the audio track KINO would pick.
 async fn probe_media(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     let source = text(&json_body(request).await["url"]);
     let source = crate::routes::play::offline_media_file(&s, &source)
@@ -310,7 +310,7 @@ async fn remux(
     request: Request,
 ) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     let failure = |status: StatusCode, body: Value| (status, Json(body)).into_response();
     let raw = p.get("url").cloned().unwrap_or_default();

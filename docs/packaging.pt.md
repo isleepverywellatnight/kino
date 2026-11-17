@@ -14,18 +14,18 @@ As versões são publicadas neste repositório; os downloads, scripts de instala
 
 ## Compilar na sua máquina
 
-O Rust (a versão de `rust-toolchain.toml`) compila o KINO; o Python 3.12 só serve às ferramentas que obtêm mpv e FFmpeg. As bibliotecas do player são copiadas em `vendor/` (ignorado pelo git).
+O Rust (a versão de `rust-toolchain.toml`) compila o KINO; o Node.js executa os testes da interface e a ferramenta de tradução. As bibliotecas do player são copiadas em `vendor/` (ignorado pelo git).
 
 ### macOS (Apple Silicon)
 
 A libmpv vem do [IINA](https://iina.io), instalado em `/Applications`.
 
 ```bash
-python3.12 -m venv .venv && .venv/bin/pip install imageio-ffmpeg
-.venv/bin/python tools/vendor_libmpv.py               # libmpv from IINA, into vendor/
+tools/fetch_ffmpeg.sh                                 # FFmpeg, pinned and checked, into vendor/
+tools/vendor_libmpv.sh                                # libmpv from IINA, into vendor/
 cargo run -p kino-desktop                             # run from the sources
 cargo build --release --locked -p kino-desktop
-packaging/build_macos_app.sh "$(.venv/bin/python -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')"
+packaging/build_macos_app.sh
 packaging/make_dmg.sh                                 # dist/KINO-macOS.dmg
 ```
 
@@ -34,11 +34,11 @@ packaging/make_dmg.sh                                 # dist/KINO-macOS.dmg
 O mpv é baixado numa versão fixa, com a soma de verificação conferida; o [7-Zip](https://7-zip.org) faz a extração. O instalador é gerado com o [Inno Setup 6](https://jrsoftware.org/isinfo.php).
 
 ```powershell
-py -3.12 -m venv .venv; .venv\Scripts\pip install imageio-ffmpeg
-.venv\Scripts\python tools\fetch_mpv_windows.py
+pwsh tools\fetch_ffmpeg.ps1
+pwsh tools\fetch_mpv_windows.ps1
 cargo run -p kino-desktop                           # run from the sources
 cargo build --release --locked -p kino-desktop
-pwsh packaging\build_windows_app.ps1 (.venv\Scripts\python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())")
+pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
 ```
 
@@ -51,7 +51,7 @@ A CI roda os dois a cada push. O teste do Windows (workflow «Windows UI») inic
 ```bash
 bash tools/check_rust.sh            # formatting, lints, Rust tests (server and app)
 node --test tests/test_*.js         # the interface
-python tests/windows_ui.py          # Windows only: the real window, real mouse input
+node tests/windows-ui/windows_ui.js  # Windows only: the real window, real mouse input
 ```
 
 ## Traduções
@@ -59,9 +59,9 @@ python tests/windows_ui.py          # Windows only: the real window, real mouse 
 A interface é escrita em francês. `web/js/i18n.js` a traduz na exibição com um dicionário por idioma, `web/js/i18n/<idioma>.js`, que associa cada texto francês à sua tradução (`{}` marca uma parte variável). Um texto ausente aparece em inglês, ou em francês para o inglês.
 
 ```bash
-python3 tools/i18n.py extract       # web/ and crates/ texts -> web/js/i18n/strings.json
-python3 tools/i18n.py status        # translated texts, per language
-python3 tools/i18n.py missing de    # texts German still lacks
+node tools/i18n.js extract          # web/ and crates/ texts -> web/js/i18n/strings.json
+node tools/i18n.js status           # translated texts, per language
+node tools/i18n.js missing de       # texts German still lacks
 ```
 
 Para adicionar um idioma: crie `web/js/i18n/<código>.js` no modelo dos outros e acrescente o código em `LANGUAGES` (`web/js/i18n.js`) e `UI_LANGUAGES` (`crates/kino/src/config.rs`).

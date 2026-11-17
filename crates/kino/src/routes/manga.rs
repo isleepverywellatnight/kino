@@ -176,7 +176,7 @@ async fn folder(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
 }
 
 /// Python's answer while the window (and its P2P engine) is Python's.
-async fn python(s: &Shared, request: axum::extract::Request) -> Response {
+async fn delegated(s: &Shared, request: axum::extract::Request) -> Response {
     let (parts, body) = request.into_parts();
     let body = axum::body::to_bytes(body, 1 << 20)
         .await
@@ -191,7 +191,7 @@ async fn volume_files(
     request: axum::extract::Request,
 ) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     answer(crate::manga::volumes::files(&p2p, param(&p, "hash", ""), param(&p, "name", "")).await)
 }
@@ -202,7 +202,7 @@ async fn volume_status(
     request: axum::extract::Request,
 ) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let index = json!(param(&p, "index", ""));
     answer(crate::manga::volumes::status(&p2p, &s.db, param(&p, "hash", ""), &index).await)
@@ -211,7 +211,7 @@ async fn volume_status(
 /// Fetches one volume of a pack into the manga folder.
 async fn volume_start(State(s): State<Shared>, request: axum::extract::Request) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let body = axum::body::to_bytes(request.into_body(), 1 << 20)
         .await

@@ -14,18 +14,18 @@
 
 ## 在本机构建
 
-KINO 由 Rust（`rust-toolchain.toml` 中的版本）构建；Python 3.12 仅用于获取 mpv 和 FFmpeg 的工具。播放器所需的库会复制到 `vendor/`（git 忽略）。
+KINO 由 Rust（`rust-toolchain.toml` 中的版本）构建；界面测试和翻译工具由 Node.js 运行。播放器所需的库会复制到 `vendor/`（git 忽略）。
 
 ### macOS (Apple Silicon)
 
 libmpv 取自安装在 `/Applications` 中的 [IINA](https://iina.io)。
 
 ```bash
-python3.12 -m venv .venv && .venv/bin/pip install imageio-ffmpeg
-.venv/bin/python tools/vendor_libmpv.py               # libmpv from IINA, into vendor/
+tools/fetch_ffmpeg.sh                                 # FFmpeg, pinned and checked, into vendor/
+tools/vendor_libmpv.sh                                # libmpv from IINA, into vendor/
 cargo run -p kino-desktop                             # run from the sources
 cargo build --release --locked -p kino-desktop
-packaging/build_macos_app.sh "$(.venv/bin/python -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')"
+packaging/build_macos_app.sh
 packaging/make_dmg.sh                                 # dist/KINO-macOS.dmg
 ```
 
@@ -34,11 +34,11 @@ packaging/make_dmg.sh                                 # dist/KINO-macOS.dmg
 mpv 以固定版本下载并校验其哈希；由 [7-Zip](https://7-zip.org) 解压。安装程序使用 [Inno Setup 6](https://jrsoftware.org/isinfo.php) 构建。
 
 ```powershell
-py -3.12 -m venv .venv; .venv\Scripts\pip install imageio-ffmpeg
-.venv\Scripts\python tools\fetch_mpv_windows.py
+pwsh tools\fetch_ffmpeg.ps1
+pwsh tools\fetch_mpv_windows.ps1
 cargo run -p kino-desktop                           # run from the sources
 cargo build --release --locked -p kino-desktop
-pwsh packaging\build_windows_app.ps1 (.venv\Scripts\python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())")
+pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
 ```
 
@@ -51,7 +51,7 @@ CI 在每次推送时运行这两项测试。Windows 测试（工作流“Window
 ```bash
 bash tools/check_rust.sh            # formatting, lints, Rust tests (server and app)
 node --test tests/test_*.js         # the interface
-python tests/windows_ui.py          # Windows only: the real window, real mouse input
+node tests/windows-ui/windows_ui.js  # Windows only: the real window, real mouse input
 ```
 
 ## 翻译
@@ -59,9 +59,9 @@ python tests/windows_ui.py          # Windows only: the real window, real mouse 
 界面原文为法语。`web/js/i18n.js` 在显示时进行翻译，每种语言一个词典 `web/js/i18n/<语言>.js`，将每段法语文本对应到译文（`{}` 表示可变部分）。缺失的文本显示为英语，英语缺失时显示法语。
 
 ```bash
-python3 tools/i18n.py extract       # web/ and crates/ texts -> web/js/i18n/strings.json
-python3 tools/i18n.py status        # translated texts, per language
-python3 tools/i18n.py missing de    # texts German still lacks
+node tools/i18n.js extract          # web/ and crates/ texts -> web/js/i18n/strings.json
+node tools/i18n.js status           # translated texts, per language
+node tools/i18n.js missing de       # texts German still lacks
 ```
 
 添加一种语言：仿照其他文件创建 `web/js/i18n/<代码>.js`，然后把代码加入 `LANGUAGES`（`web/js/i18n.js`）和 `UI_LANGUAGES`（`crates/kino/src/config.rs`）。

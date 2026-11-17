@@ -23,7 +23,7 @@ pub fn router() -> Router<Shared> {
         .route("/api/native-player/subtitle", post(subtitle))
 }
 
-async fn python(s: &Shared, request: Request) -> Response {
+async fn delegated(s: &Shared, request: Request) -> Response {
     let (parts, body) = request.into_parts();
     let body = axum::body::to_bytes(body, 1 << 20)
         .await
@@ -51,7 +51,7 @@ async fn player(
     request: Request,
 ) -> Result<(std::sync::Arc<dyn NativePlayer>, Request), Response> {
     if s.player.is_none() {
-        return Err(python(s, request).await);
+        return Err(delegated(s, request).await);
     }
     match s.native.clone() {
         Some(native) => Ok((native, request)),
@@ -72,7 +72,7 @@ async fn blocking<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) 
 
 async fn state(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     }
     let state = match s.native.clone() {
         Some(native) => with_settings(

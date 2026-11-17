@@ -850,7 +850,7 @@ fn main() -> Result<()> {
         win_frame::watch_presses();
     }
     let builder = WebViewBuilder::new();
-    // Windows: WebView2's DevTools port, for the window test (tests/windows_ui.py).
+    // Windows: WebView2's DevTools port, for the window test (tests/windows-ui).
     #[cfg(windows)]
     let builder = match std::env::var("KINO_DEVTOOLS_PORT")
         .ok()

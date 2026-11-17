@@ -1,4 +1,4 @@
-# KINO's real window on Windows, driven with real mouse input (tests/windows_ui.py):
+# KINO's real window on Windows, driven with real mouse input (tests/windows-ui):
 # title bar, window buttons, dragging, maximize, player and fullscreen cursor.
 # Runs the Rust app built here (target/release/kino-desktop.exe).
 name: Windows UI
@@ -6,7 +6,7 @@ name: Windows UI
 on:
   push:
     branches: ["**"]
-    paths: ["crates/**", "web/**", "Cargo.lock", "tests/windows_ui.py", ".github/workflows/windows-ui.yml"]
+    paths: ["crates/**", "web/**", "Cargo.lock", "tests/windows-ui/**", "tools/fetch_ffmpeg.ps1", ".github/workflows/windows-ui.yml"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -24,13 +24,15 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-node@v7
         with:
-          python-version: "3.12"
+          node-version: "24"
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: KINO
         run: cargo build --release --locked -p kino-desktop
+      - name: FFmpeg (test video)
+        run: ./tools/fetch_ffmpeg.ps1
       - name: Dependencies
-        run: pip install playwright pillow imageio-ffmpeg
+        run: npm ci --prefix tests/windows-ui
       - name: Real window test
-        run: python tests/windows_ui.py
+        run: node tests/windows-ui/windows_ui.js

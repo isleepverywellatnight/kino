@@ -25,7 +25,7 @@ source with `HOME` set to a temporary folder to keep your own data out of it.
 ## Guidelines
 
 - The interface is written in French. A new text needs its translations: run
-  `python tools/i18n.py extract`, then add it to `web/js/i18n/<language>.js`.
+  `node tools/i18n.js extract`, then add it to `web/js/i18n/<language>.js`.
 - Keep changes small and tested. A pull request says what changes and how it was
   tried.
 - Commit messages are short, in English, and say what changes.

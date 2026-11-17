@@ -1,0 +1,10 @@
+{
+  "name": "kino-windows-ui-test",
+  "private": true,
+  "description": "KINO's real window on Windows, driven with real mouse input.",
+  "scripts": { "test": "node windows_ui.js" },
+  "dependencies": {
+    "koffi": "2.16.3",
+    "playwright-core": "1.64.1"
+  }
+}

@@ -19,3 +19,5 @@ vendor/mpv-windows/
 
 # Rust
 /target/
+node_modules/
+vendor/ffmpeg/
