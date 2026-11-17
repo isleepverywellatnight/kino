@@ -953,7 +953,10 @@ fn main() -> Result<()> {
             // The window catches up with the cursor, then Windows moves it (and snaps it).
             #[cfg(windows)]
             Event::UserEvent(UserEvent::Drag(x, y, cursor_x, cursor_y)) => {
+                use tao::platform::windows::WindowExtWindows;
                 let (now_x, now_y) = win_frame::cursor();
+                let (x, y) = win_frame::unmaximize_under(window.hwnd(), (cursor_x, cursor_y))
+                    .unwrap_or((x, y));
                 window.set_outer_position(tao::dpi::PhysicalPosition::new(
                     x + now_x - cursor_x,
                     y + now_y - cursor_y,

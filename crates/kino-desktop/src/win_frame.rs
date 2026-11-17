@@ -156,3 +156,22 @@ pub fn cursor() -> (i32, i32) {
     unsafe { GetCursorPos(&mut p) };
     (p.x, p.y)
 }
+
+/// A maximized window dragged by its bar: back to its size, under the cursor
+/// at the same relative place, as Windows does. Returns the window's new place.
+pub fn unmaximize_under(window: isize, cursor: (i32, i32)) -> Option<(i32, i32)> {
+    let previous = RESTORE
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(&window)?;
+    let handle = window as HWND;
+    let (x, y, w, _) = rect_of(handle);
+    let ratio = if w > 0 {
+        f64::from(cursor.0 - x) / f64::from(w)
+    } else {
+        0.5
+    };
+    let left = cursor.0 - (f64::from(previous.2) * ratio) as i32;
+    place(handle, (left, y, previous.2, previous.3));
+    Some((left, y))
+}
