@@ -132,3 +132,27 @@ pub fn button_down() -> bool {
         (GetAsyncKeyState(button as i32) as u16 & 0x8000) != 0
     }
 }
+
+/// After a press on KINO's bar: true once the mouse moved 4 px with the button
+/// held (a drag), false when the button is released first (a click, maybe
+/// half of a double press, which must reach the page).
+pub fn wait_for_drag(start: (i32, i32)) -> bool {
+    while button_down() {
+        let now = cursor();
+        if (now.0 - start.0).abs() > 3 || (now.1 - start.1).abs() > 3 {
+            return true;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(8));
+    }
+    false
+}
+
+/// The cursor on screen, in pixels.
+pub fn cursor() -> (i32, i32) {
+    use windows_sys::Win32::Foundation::POINT;
+    use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
+    let mut p = POINT { x: 0, y: 0 };
+    // SAFETY: a plain Win32 query.
+    unsafe { GetCursorPos(&mut p) };
+    (p.x, p.y)
+}
