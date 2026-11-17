@@ -34,3 +34,4 @@ pub mod subtitles;
 pub mod titles;
 pub mod tonight;
 pub mod trailer;
+pub mod trakt;
