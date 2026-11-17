@@ -81,6 +81,7 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
             Default::default(),
         )
     });
+    let p2p = player.as_ref().map(|_| crate::p2p::P2p::new(db.clone()));
     let state = Arc::new(server::AppState {
         db: db.clone(),
         port: options.port,
@@ -97,6 +98,7 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
         native_player: options.native_player || options.native.is_some(),
         native: options.native.clone(),
         native_settings: Default::default(),
+        p2p,
         notifications: options.notifications || options.notifier.is_some(),
         notifier: options.notifier.clone(),
         player,

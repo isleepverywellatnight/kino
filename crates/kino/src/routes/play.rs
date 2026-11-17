@@ -133,7 +133,7 @@ async fn one_click_play(
         .unwrap_or_default();
     let (provider, token) = search::provider_and_token(&cfg);
     let play = Play::new(&body, &cfg);
-    if token.is_empty() || (!play.built_in && s.player.is_none()) {
+    if (token.is_empty() && s.p2p.is_none()) || (!play.built_in && s.player.is_none()) {
         return delegate(&s, method, &uri, &headers, raw).await;
     }
     if !play.built_in && crate::player::find().is_none() {
@@ -176,6 +176,21 @@ async fn one_click_play(
     if !play.imdb_id.is_empty() {
         skip.extend(play::excluded(&s.db, &body));
     }
+    // No debrid key: the torrents are read peer to peer, once the user agreed.
+    let p2p_reader = s
+        .p2p
+        .clone()
+        .filter(|_| token.is_empty())
+        .map(|p2p| play::P2pReader {
+            p2p,
+            base_url: format!("http://127.0.0.1:{}", s.port),
+        });
+    if let Some(reader) = &p2p_reader
+        && reader.p2p.consent().is_none()
+        && !sources.iter().any(direct_link)
+    {
+        return error(StatusCode::CONFLICT, P2P_CONSENT, Some("p2p_consent"));
+    }
     let resolver = Resolver {
         net: &s.net,
         provider,
@@ -196,7 +211,7 @@ async fn one_click_play(
     };
 
     // « La qualité choisie d'abord »: the source the page waited for, or the one to prepare.
-    if let Some((torrent_id, key)) = play::prepared(&body) {
+    if let Some((torrent_id, key)) = play::prepared(&body).filter(|_| p2p_reader.is_none()) {
         let empty = json!({});
         let candidate = sources
             .iter()
@@ -235,7 +250,7 @@ async fn one_click_play(
         };
         return Json(start(&s, &play, &cfg, found, vec![key]).await).into_response();
     }
-    if quality_first && !truthy(&body["prefer_ready"]) {
+    if quality_first && !truthy(&body["prefer_ready"]) && p2p_reader.is_none() {
         let chosen: Vec<&Value> = sources
             .iter()
             .filter(|c| truthy(&c["score_parts"]["priority_points"]))
@@ -269,16 +284,41 @@ async fn one_click_play(
             }
         }
     }
-    let attempts = play::try_sources(
-        &s.meta,
-        &resolver,
-        &sources,
-        &query,
-        play.episode(),
-        aliases_for,
-        &skip,
-    )
-    .await;
+    let attempts = match &p2p_reader {
+        Some(reader) => {
+            let a = play::try_sources(
+                &s.meta,
+                reader,
+                &sources,
+                &query,
+                play.episode(),
+                aliases_for,
+                &skip,
+            )
+            .await;
+            if a.found.is_none()
+                && let Some(e) = a
+                    .last_error
+                    .as_ref()
+                    .filter(|e| e.0 == crate::p2p::ENCRYPTION_UNSUPPORTED)
+            {
+                return error(StatusCode::CONFLICT, &e.0, Some("p2p_encryption"));
+            }
+            a
+        }
+        None => {
+            play::try_sources(
+                &s.meta,
+                &resolver,
+                &sources,
+                &query,
+                play.episode(),
+                aliases_for,
+                &skip,
+            )
+            .await
+        }
+    };
     match attempts.found {
         Some(found) => {
             let keys = tried(&attempts.tried);
@@ -293,6 +333,14 @@ async fn one_click_play(
 }
 
 use play::truthy;
+
+const P2P_CONSENT: &str = "Sans service de débridage, KINO lit les torrents en P2P : acceptez-le une fois pour continuer.";
+
+/// A source an add-on serves as a plain web file: it plays without debrid nor P2P.
+fn direct_link(source: &Value) -> bool {
+    let url = text(&source["resolve_url"]);
+    (url.starts_with("http://") || url.starts_with("https://")) && !truthy(&source["info_hash"])
+}
 
 /// Once a source and its file are found: the season's playlist, the next
 /// episode in the background, the resume point.
