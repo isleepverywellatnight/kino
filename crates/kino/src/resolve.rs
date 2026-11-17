@@ -380,7 +380,7 @@ impl Resolver<'_> {
             let is_target = target(&name, season, episode);
             candidates.push((name, size, raw.to_string(), is_target));
         }
-        candidates.sort_by(|a, b| (!a.3, a.0.clone()).cmp(&(!b.3, b.0.clone())));
+        candidates.sort_by_key(|a| (!a.3, a.0.clone()));
         let mut files = Vec::new();
         for (name, size, raw, is_target) in candidates.into_iter().take(12) {
             let url = format!(
