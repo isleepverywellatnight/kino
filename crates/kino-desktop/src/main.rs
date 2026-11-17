@@ -794,7 +794,22 @@ fn main() -> Result<()> {
     }
     let window = builder.build(&event_loop)?;
     *bounds.lock().unwrap_or_else(|e| e.into_inner()) = bounds_of(&window);
-    let webview = WebViewBuilder::new()
+    let builder = WebViewBuilder::new();
+    // Windows: WebView2's DevTools port, for the window test (tests/windows_ui.py).
+    #[cfg(windows)]
+    let builder = match std::env::var("KINO_DEVTOOLS_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+    {
+        Some(devtools) => {
+            use wry::WebViewBuilderExtWindows;
+            builder.with_additional_browser_args(format!(
+                "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --remote-debugging-port={devtools}"
+            ))
+        }
+        None => builder,
+    };
+    let webview = builder
         .with_url(format!("http://127.0.0.1:{port}/"))
         .with_initialization_script(bridge_script())
         .with_background_color((9, 9, 11, 255))
