@@ -1703,6 +1703,17 @@ body.is-win-native.is-fullscreen .inapp-hud-top { padding-right: 44px; }
 .manga-chapter span { color: var(--k-text-3); font-size: var(--k-fs-sm); overflow-wrap: anywhere; }
 .manga-chapter.is-read strong { color: var(--k-text-3); font-weight: 500; }
 .manga-chapter.is-current strong::after { content: ' · en cours'; color: var(--k-text-2); font-weight: 500; }
+.manga-volumes { margin: 0 0 var(--k-space-5); padding: var(--k-space-4); border: 1px solid var(--k-line); border-radius: var(--k-radius); background: var(--k-surface-1); }
+.manga-volumes[hidden] { display: none; }
+.manga-volumes > .btn { margin: 8px 0; }
+.manga-volumes-note { margin: 6px 0 10px; color: var(--k-text-3); font-size: var(--k-fs-sm); }
+.manga-torrents { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.manga-torrents li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--k-line); }
+.manga-torrents li:last-child { border-bottom: 0; }
+.manga-torrents div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.manga-torrents strong { color: var(--k-text); font-size: var(--k-fs-md); font-weight: 600; overflow-wrap: anywhere; }
+.manga-torrents span, .manga-volume-progress { color: var(--k-text-3); font-size: var(--k-fs-sm); font-variant-numeric: tabular-nums; }
+.manga-volume-state { flex: none; }
 .manga-reader { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; background: #000; }
 .manga-reader[hidden] { display: none; }
 body.manga-reading { overflow: hidden; }

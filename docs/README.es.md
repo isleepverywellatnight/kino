@@ -16,9 +16,11 @@ KINO no aloja, proporciona ni distribuye ningún contenido. Consulta las fuentes
 - **Sin servicio de debrid**: añade complementos (más fuentes y sus
   catálogos en Explorar) y reproduce torrents por P2P tras aceptar lo que implica
   (tu dirección IP es visible y compartes mientras ves).
-- **Manga**: lee las series de MangaDex (traducidas por equipos de voluntarios) y
-  tus propios archivos CBZ o carpetas de imágenes, página a página o con
-  desplazamiento, en sentido japonés si quieres; KINO recuerda dónde lo dejaste.
+- **Manga**: todo el catálogo y las series en publicación, cada capítulo
+  reunido desde varios sitios (en tu idioma cuando existe, si no en inglés),
+  tomos completos en HD por torrent y tus propios archivos CBZ y carpetas de
+  imágenes; lectura página a página o en desplazamiento, en sentido japonés si
+  quieres. KINO recuerda dónde lo dejaste.
 - **Reproducción**: reproductor de vídeo integrado basado en mpv (HDR, subtítulos, pistas de audio, salto de la intro).
 - **Seguimiento**: Mi lista, en curso, vistas, mis series, calendario de estrenos, valoraciones con un gesto.
 - **Sugerencias**: «Para ti» y «Si te gustó», calculadas en tu ordenador a partir de lo que has visto y valorado.

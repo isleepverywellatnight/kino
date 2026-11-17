@@ -80,6 +80,10 @@ Classe `CatalogueRoutes`.
 | GET | `/api/manga/local/chapters` | `get_manga_local_chapters` |
 | GET | `/api/manga/local/page` | `get_manga_local_page` |
 | GET | `/api/manga/progress` | `get_manga_progress` |
+| GET | `/api/manga/row` | `get_manga_row` |
+| GET | `/api/manga/volumes` | `get_manga_volumes` |
+| GET | `/api/manga/volume/files` | `get_manga_volume_files` |
+| GET | `/api/manga/volume/status` | `get_manga_volume_status` |
 | GET | `/api/anime/week` | `get_anime_week` |
 | POST | `/api/anime/open` | `post_anime_open` |
 | POST | `/api/anime/journey/resolve` | `post_anime_journey_resolve` |
@@ -171,6 +175,7 @@ Classe `AccountRoutes`.
 | POST | `/api/p2p/clear` | `post_p2p_clear` |
 | POST | `/api/manga/progress` | `post_manga_progress` |
 | POST | `/api/manga/folder` | `post_manga_folder` |
+| POST | `/api/manga/volume` | `post_manga_volume` |
 | POST | `/api/stremio-addons` | `post_stremio_addons` |
 | POST | `/api/notifications/test` | `post_notifications_test` |
 
