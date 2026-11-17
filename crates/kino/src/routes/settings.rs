@@ -22,6 +22,8 @@ pub fn router() -> Router<Shared> {
         .route("/api/stremio-addons/catalog", get(stremio_catalog))
         .route("/api/addons", get(addons))
         .route("/api/backups", get(backups))
+        .route("/api/network", get(network))
+        .route("/api/sync/gdrive", get(gdrive).post(gdrive))
         .route("/api/backups/now", axum::routing::post(backup_now))
         .route("/api/backups/restore", axum::routing::post(backup_restore))
         .route("/api/trakt/status", get(trakt_status))
@@ -339,4 +341,20 @@ async fn backup_restore(State(s): State<Shared>, JsonBody(body): JsonBody) -> Re
         )
             .into_response(),
     }
+}
+
+async fn gdrive(State(s): State<Shared>) -> Response {
+    let db = s.db.clone();
+    let done =
+        tokio::task::spawn_blocking(move || crate::gdrive::sync(&db, crate::gdrive::find_dir()))
+            .await
+            .unwrap_or_default();
+    Json(done).into_response()
+}
+
+async fn network(
+    axum::extract::Query(p): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Response {
+    let refresh = p.get("refresh").map(String::as_str) == Some("1");
+    Json(json!({"online": crate::network::online(refresh).await})).into_response()
 }
