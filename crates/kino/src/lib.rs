@@ -25,4 +25,5 @@ pub mod series;
 pub mod server;
 pub mod sources;
 pub mod stats;
+pub mod subtitles;
 pub mod titles;

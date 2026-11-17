@@ -28,6 +28,8 @@ pub fn router() -> Router<Shared> {
         .route("/api/one-click-play", post(one_click_play))
         .route("/api/auto-stream", get(auto_stream))
         .route("/api/playback-feedback", post(feedback))
+        .route("/api/subtitles", get(subtitles))
+        .route("/api/subtitle-cues", get(subtitle_cues))
 }
 
 fn error(status: StatusCode, message: &str, code: Option<&str>) -> Response {
@@ -401,5 +403,83 @@ async fn auto_stream(
         )
             .into_response(),
         Err(e) => error(StatusCode::INTERNAL_SERVER_ERROR, &e.0, None),
+    }
+}
+
+/// French and English subtitles for the release being played.
+async fn subtitles(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
+    let get = |k: &str| p.get(k).cloned().unwrap_or_default();
+    // int(value or 1): a missing or empty number is 1, season 0 (specials) stays.
+    let number = |k: &str| {
+        p.get(k)
+            .filter(|v| !v.is_empty())
+            .and_then(|v| v.trim().parse::<i64>().ok())
+            .unwrap_or(1)
+    };
+    let release: String = get("release").chars().take(300).collect();
+    let fps = p
+        .get("fps")
+        .and_then(|f| f.trim().parse::<f64>().ok())
+        .filter(|f| *f > 1.0 && *f < 200.0);
+    let kind = p.get("type").cloned().unwrap_or_else(|| "movie".into());
+    let id = get("imdb_id");
+    let found = if id.is_empty() {
+        vec![]
+    } else {
+        crate::subtitles::opensubtitles(
+            &s.meta,
+            &id,
+            &kind,
+            number("season"),
+            number("episode"),
+            &release,
+            fps,
+        )
+        .await
+    };
+    Json(json!({"subtitles": found})).into_response()
+}
+
+/// The lines of a subtitle file KINO listed, for its own player.
+async fn subtitle_cues(
+    State(s): State<Shared>,
+    Query(p): Query<HashMap<String, String>>,
+) -> Response {
+    let url = p
+        .get("url")
+        .map(|u| u.trim().to_string())
+        .unwrap_or_default();
+    if url.is_empty() || !url.starts_with("http") {
+        return Json(json!({"cues": []})).into_response();
+    }
+    if !crate::subtitles::may_fetch(&url) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "Adresse de sous-titres refusée.",
+            None,
+        );
+    }
+    let fetched = s
+        .http
+        .get(&url)
+        .header("User-Agent", crate::net::BROWSER)
+        .timeout(std::time::Duration::from_secs(6))
+        .send()
+        .await
+        .and_then(reqwest::Response::error_for_status);
+    let raw = match fetched {
+        Ok(r) => r.bytes().await.ok(),
+        Err(_) => None,
+    };
+    match raw {
+        Some(raw) => {
+            Json(json!({"cues": crate::subtitles::parse_srt(&crate::subtitles::decode(&raw))}))
+                .into_response()
+        }
+        None => error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Sous-titres indisponibles pour le moment.",
+            None,
+        ),
     }
 }
