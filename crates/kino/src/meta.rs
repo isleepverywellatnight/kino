@@ -209,7 +209,7 @@ impl Meta {
             .await
     }
 
-    fn index_later(&self, items: Vec<Value>) {
+    pub(crate) fn index_later(&self, items: Vec<Value>) {
         if items.is_empty() {
             return;
         }

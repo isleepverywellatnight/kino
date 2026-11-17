@@ -1,12 +1,11 @@
 //! Titles: the catalogue rows, a title's page, the instant search, and
-//! recording a play. The anime catalogue still goes to the Python server.
+//! recording a play.
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use axum::body::Bytes;
 use axum::extract::{Query, State};
-use axum::http::{HeaderMap, Method, StatusCode, Uri};
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -14,7 +13,7 @@ use regex::Regex;
 use serde_json::{Map, Value, json};
 
 use crate::body::JsonBody;
-use crate::server::{Shared, delegate};
+use crate::server::Shared;
 use crate::{catalog, library};
 
 static TITLE_ID: LazyLock<Regex> =
@@ -47,19 +46,10 @@ fn down() -> Response {
         .into_response()
 }
 
-async fn catalog_page(
-    State(s): State<Shared>,
-    Query(p): Params,
-    method: Method,
-    uri: Uri,
-    headers: HeaderMap,
-) -> Response {
+async fn catalog_page(State(s): State<Shared>, Query(p): Params) -> Response {
     let kind = p.get("type").map(String::as_str).unwrap_or("movie");
     if !["movie", "series", "anime", "classics"].contains(&kind) {
         return refused("Catalogue inconnu.");
-    }
-    if kind == "anime" {
-        return delegate(&s, method, &uri, &headers, Bytes::new()).await;
     }
     let skip = p
         .get("skip")
@@ -67,7 +57,12 @@ async fn catalog_page(
         .unwrap_or(0);
     let genre = p.get("genre").map(String::as_str).unwrap_or("");
     let sort = p.get("sort").map(String::as_str).unwrap_or("top");
-    match s.meta.catalog_top(kind, genre, skip, sort).await {
+    let page = if kind == "anime" {
+        s.meta.anime_catalog_page(genre, skip, sort).await
+    } else {
+        s.meta.catalog_top(kind, genre, skip, sort).await
+    };
+    match page {
         Ok(metas) => Json(json!({"metas": metas})).into_response(),
         Err(_) => down(),
     }

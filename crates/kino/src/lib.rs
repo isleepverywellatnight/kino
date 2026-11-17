@@ -1,6 +1,7 @@
 //! KINO in Rust: the local server, its data and its sources.
 
 pub mod access;
+pub mod anime;
 pub mod body;
 pub mod catalog;
 pub mod config;
