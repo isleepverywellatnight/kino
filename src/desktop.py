@@ -234,6 +234,9 @@ class WindowApi:
     def check_for_updates(self):
         return kino_update.manager.check_for_updates()
 
+    def set_update_auto_check(self, enabled):
+        return kino_update.manager.set_auto_check(enabled is True)
+
     def open_release_page(self):
         """The release page of the version announced by update_status (GitHub only)."""
         import webbrowser
