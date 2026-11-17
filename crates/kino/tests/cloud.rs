@@ -15,9 +15,15 @@ use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn fixture() -> Value {
-    let raw = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cloud.json.gz")).unwrap();
+    let raw = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/cloud.json.gz"
+    ))
+    .unwrap();
     let mut text = String::new();
-    flate2::read::GzDecoder::new(&raw[..]).read_to_string(&mut text).unwrap();
+    flate2::read::GzDecoder::new(&raw[..])
+        .read_to_string(&mut text)
+        .unwrap();
     serde_json::from_str(&text).unwrap()
 }
 
@@ -29,16 +35,32 @@ fn release_names_groups_and_matches_as_python() {
     for case in data["parsed"].as_array().unwrap() {
         let name = case[0].as_str().unwrap();
         if parse_release(name, today) != case[1] {
-            wrong.push(format!("{name}\n  python {}\n  rust   {}", case[1], parse_release(name, today)));
+            wrong.push(format!(
+                "{name}\n  python {}\n  rust   {}",
+                case[1],
+                parse_release(name, today)
+            ));
         }
     }
-    assert!(wrong.is_empty(), "{} of {} names differ:\n{}", wrong.len(), data["parsed"].as_array().unwrap().len(), wrong[..wrong.len().min(8)].join("\n"));
+    assert!(
+        wrong.is_empty(),
+        "{} of {} names differ:\n{}",
+        wrong.len(),
+        data["parsed"].as_array().unwrap().len(),
+        wrong[..wrong.len().min(8)].join("\n")
+    );
     for (index, case) in data["groups"].as_array().unwrap().iter().enumerate() {
-        assert_eq!(Value::Array(group_items(case[0].as_array().unwrap(), today)), case[1], "grouping {index}");
+        assert_eq!(
+            Value::Array(group_items(case[0].as_array().unwrap(), today)),
+            case[1],
+            "grouping {index}"
+        );
     }
     let metas = data["metas"].as_array().unwrap();
     for case in data["matches"].as_array().unwrap() {
-        let found = best_match(metas, case[0].as_str().unwrap(), case[1].as_str().unwrap()).cloned().unwrap_or(Value::Null);
+        let found = best_match(metas, case[0].as_str().unwrap(), case[1].as_str().unwrap())
+            .cloned()
+            .unwrap_or(Value::Null);
         assert_eq!(found, case[2], "match for {}", case[0]);
     }
 }
@@ -48,7 +70,10 @@ fn account<'a>(net: &'a Net, server: &MockServer) -> Account<'a> {
         net,
         provider: "realdebrid".into(),
         token: "FAKE".into(),
-        hosts: Hosts { realdebrid: format!("{}/rd", server.uri()), ..Hosts::default() },
+        hosts: Hosts {
+            realdebrid: format!("{}/rd", server.uri()),
+            ..Hosts::default()
+        },
         port: 8080,
     }
 }
@@ -76,16 +101,34 @@ async fn real_debrid_list_delete_and_cleanup() {
         .mount(&server)
         .await;
     for id in ["A", "B", "C"] {
-        Mock::given(method("DELETE")).and(path(format!("/rd/downloads/delete/{id}"))).respond_with(ResponseTemplate::new(204)).mount(&server).await;
+        Mock::given(method("DELETE"))
+            .and(path(format!("/rd/downloads/delete/{id}")))
+            .respond_with(ResponseTemplate::new(204))
+            .mount(&server)
+            .await;
     }
-    Mock::given(method("DELETE")).and(path("/rd/torrents/delete/T1")).respond_with(ResponseTemplate::new(204)).expect(1).mount(&server).await;
-    Mock::given(method("DELETE")).and(path("/rd/torrents/delete/T2")).respond_with(ResponseTemplate::new(204)).expect(0).mount(&server).await;
+    Mock::given(method("DELETE"))
+        .and(path("/rd/torrents/delete/T1"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path("/rd/torrents/delete/T2"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(0)
+        .mount(&server)
+        .await;
 
     let dir = tempfile::tempdir().unwrap();
     let net = Net::new(Arc::new(Db::open(&dir.path().join("kino.db")).unwrap()));
     let cloud = account(&net, &server);
     let items = cloud.downloads(100).await.unwrap();
-    assert_eq!(items.len(), 2, "one entry per file name, nameless ones left out");
+    assert_eq!(
+        items.len(),
+        2,
+        "one entry per file name, nameless ones left out"
+    );
     assert_eq!(items[0]["ids"], json!(["A", "B"]));
     assert_eq!(items[1]["filesize"], "27.94 GB");
     let groups = group_items(&items, NaiveDate::from_ymd_opt(2026, 11, 17).unwrap());
@@ -93,10 +136,25 @@ async fn real_debrid_list_delete_and_cleanup() {
     assert_eq!(groups[0]["seasons"], json!([3]));
     assert_eq!(groups[1]["key"], "movie:dune:2021");
 
-    assert_eq!(cloud.delete(&[json!("A"), json!(""), json!("C")]).await, 2, "an empty id is skipped");
+    assert_eq!(
+        cloud.delete(&[json!("A"), json!(""), json!("C")]).await,
+        2,
+        "an empty id is skipped"
+    );
     let cleaned = cloud.cleanup(30).await;
-    assert_eq!(cleaned, json!({"deleted_downloads": 1, "deleted_torrents": 1}), "only what is older than 30 days");
-    assert_eq!(cloud.cleanup(0).await, json!({"deleted_downloads": 0, "deleted_torrents": 0}), "0 keeps everything");
-    let none = Account { token: String::new(), ..account(&net, &server) };
+    assert_eq!(
+        cleaned,
+        json!({"deleted_downloads": 1, "deleted_torrents": 1}),
+        "only what is older than 30 days"
+    );
+    assert_eq!(
+        cloud.cleanup(0).await,
+        json!({"deleted_downloads": 0, "deleted_torrents": 0}),
+        "0 keeps everything"
+    );
+    let none = Account {
+        token: String::new(),
+        ..account(&net, &server)
+    };
     assert!(none.downloads(100).await.unwrap().is_empty());
 }
