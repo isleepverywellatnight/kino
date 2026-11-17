@@ -6,6 +6,7 @@ pub mod play;
 pub mod series;
 pub mod settings;
 pub mod sources;
+pub mod suggestions;
 pub mod titles;
 
 use axum::Router;
@@ -21,4 +22,5 @@ pub fn router() -> Router<Shared> {
         .merge(sources::router())
         .merge(play::router())
         .merge(series::router())
+        .merge(suggestions::router())
 }
