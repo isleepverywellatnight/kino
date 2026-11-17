@@ -25,7 +25,7 @@ pub fn router() -> Router<Shared> {
         .route("/tv/stream/{*rest}", get(relay).head(relay))
 }
 
-async fn python(s: &Shared, request: Request) -> Response {
+async fn delegated(s: &Shared, request: Request) -> Response {
     let (parts, body) = request.into_parts();
     let body = axum::body::to_bytes(body, 1 << 20)
         .await
@@ -65,7 +65,7 @@ async fn devices(
     request: Request,
 ) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let found = tv
         .devices(p.get("refresh").map(String::as_str) == Some("1"))
@@ -81,14 +81,14 @@ async fn devices(
 
 async fn status(State(s): State<Shared>, request: Request) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     Json(tv.status()).into_response()
 }
 
 async fn choose(State(s): State<Shared>, request: Request) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let location = text(&json_body(request).await["location"]);
     let Some(device) = tv
@@ -106,7 +106,7 @@ async fn choose(State(s): State<Shared>, request: Request) -> Response {
 
 async fn play(State(s): State<Shared>, request: Request) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let body = json_body(request).await;
     let Some(device) = tv.chosen().await else {
@@ -139,7 +139,7 @@ async fn play(State(s): State<Shared>, request: Request) -> Response {
 
 async fn control(State(s): State<Shared>, request: Request) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let body = json_body(request).await;
     let done = tv.control(&text(&body["action"]), &body["value"]).await;
@@ -149,7 +149,7 @@ async fn control(State(s): State<Shared>, request: Request) -> Response {
 /// The TV asks KINO, KINO asks Debrid (https), Range passed through.
 async fn relay(State(s): State<Shared>, request: Request) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return python(&s, request).await;
+        return delegated(&s, request).await;
     };
     let peer = request
         .headers()

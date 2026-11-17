@@ -52,12 +52,12 @@ test('top bar, tools menu, search and settings draw from the sprite only', () =>
 test('one KINO logo: the page header, the phone remote and the tab icon share the frame and its K', () => {
   const remote = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/remote.html'), 'utf8');
   const mark = html.match(/<svg class="logo-mark" viewBox="130 130 764 764"[^>]*>([\s\S]*?)<\/svg>/);
-  assert.ok(mark, 'header mark drawn on the 1024 grid (tools/render_logo.py)');
+  assert.ok(mark, 'header mark drawn on the 1024 grid (tools/render_logo.swift)');
   assert.match(mark[1], /<rect x="176" y="176" width="672" height="672" rx="150" fill="none" stroke="#fafafa" stroke-width="76"\/>/);
   assert.ok(remote.includes(mark[1]), 'the remote page uses the same mark');
   assert.match(html, /<link rel="icon" type="image\/svg\+xml" href="data:image\/svg\+xml,[^"]*viewBox=%22100 100 824 824%22/);
   for (const [name, text] of [['index.html', html], ['web/remote.html', remote]]) {
     assert.doesNotMatch(text, /23\.5,7\.5|M10 8v16M10 16l11-8v16/, `${name}: the old « previous » mark is gone`);
   }
-  for (const file of ['assets/AppIcon.icns', 'assets/kino.png', 'assets/kino.ico', 'tools/render_logo.py']) assert.ok(fs.existsSync(path.join(path.join(__dirname, '..'), file)), file);
+  for (const file of ['assets/AppIcon.icns', 'assets/kino.png', 'assets/kino.ico', 'tools/render_logo.swift']) assert.ok(fs.existsSync(path.join(path.join(__dirname, '..'), file)), file);
 });

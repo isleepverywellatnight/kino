@@ -1,17 +1,18 @@
 #!/bin/bash
 # Assemble dist/KINO.app from the Rust build (target/release/kino-desktop).
 # Needs: cargo build --release --locked -p kino-desktop, vendor/libmpv
-# (tools/vendor_libmpv.py), the update helper (packaging/update-helper) and an
-# FFmpeg executable to ship.
-# Usage: packaging/build_macos_app.sh /path/to/ffmpeg
+# (tools/vendor_libmpv.sh), vendor/ffmpeg (tools/fetch_ffmpeg.sh) and the
+# update helper (packaging/update-helper).
+# Usage: packaging/build_macos_app.sh [/path/to/ffmpeg]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-FFMPEG=${1:?"Usage: packaging/build_macos_app.sh /path/to/ffmpeg"}
+FFMPEG=${1:-vendor/ffmpeg/ffmpeg}
+[ -x "$FFMPEG" ] || { echo "$FFMPEG is missing: run tools/fetch_ffmpeg.sh" >&2; exit 1; }
 BINARY=target/release/kino-desktop
 VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
 [ -x "$BINARY" ] || { echo "$BINARY is missing: run cargo build --release --locked -p kino-desktop" >&2; exit 1; }
-[ -f vendor/libmpv/libmpv.2.dylib ] || { echo "vendor/libmpv is missing: run tools/vendor_libmpv.py" >&2; exit 1; }
+[ -f vendor/libmpv/libmpv.2.dylib ] || { echo "vendor/libmpv is missing: run tools/vendor_libmpv.sh" >&2; exit 1; }
 [ -x packaging/update-helper/kino-update-helper ] || { echo "packaging/update-helper/kino-update-helper is missing" >&2; exit 1; }
 [ -n "$VERSION" ] || { echo "The version is missing from Cargo.toml ([workspace.package])" >&2; exit 1; }
 

@@ -1,4 +1,4 @@
-// KINO interface, French -> zh. See tools/i18n.py.
+// KINO interface, French -> zh. See tools/i18n.js.
 KINO_I18N.load({
 "({} films)": "（{} 部电影）",
 "+ Importer une liste": "+ 导入列表",

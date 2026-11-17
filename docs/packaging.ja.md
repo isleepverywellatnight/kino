@@ -14,18 +14,18 @@ KINO が新しいバージョンを自動でインストールできるよう、
 
 ## 手元でビルドする
 
-KINO は Rust（`rust-toolchain.toml` のバージョン）でビルドします。Python 3.12 は mpv と FFmpeg を取得するツールにのみ使います。プレーヤーのライブラリは `vendor/`（git の管理外）にコピーされます。
+KINO は Rust（`rust-toolchain.toml` のバージョン）でビルドします。インターフェースのテストと翻訳ツールは Node.js で動きます。プレーヤーのライブラリは `vendor/`（git の管理外）にコピーされます。
 
 ### macOS (Apple Silicon)
 
 libmpv は `/Applications` にインストールされた [IINA](https://iina.io) から取得します。
 
 ```bash
-python3.12 -m venv .venv && .venv/bin/pip install imageio-ffmpeg
-.venv/bin/python tools/vendor_libmpv.py               # libmpv from IINA, into vendor/
+tools/fetch_ffmpeg.sh                                 # FFmpeg, pinned and checked, into vendor/
+tools/vendor_libmpv.sh                                # libmpv from IINA, into vendor/
 cargo run -p kino-desktop                             # run from the sources
 cargo build --release --locked -p kino-desktop
-packaging/build_macos_app.sh "$(.venv/bin/python -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')"
+packaging/build_macos_app.sh
 packaging/make_dmg.sh                                 # dist/KINO-macOS.dmg
 ```
 
@@ -34,11 +34,11 @@ packaging/make_dmg.sh                                 # dist/KINO-macOS.dmg
 mpv は固定バージョンをダウンロードし、チェックサムを検証します。展開には [7-Zip](https://7-zip.org) を使います。インストーラーは [Inno Setup 6](https://jrsoftware.org/isinfo.php) でビルドします。
 
 ```powershell
-py -3.12 -m venv .venv; .venv\Scripts\pip install imageio-ffmpeg
-.venv\Scripts\python tools\fetch_mpv_windows.py
+pwsh tools\fetch_ffmpeg.ps1
+pwsh tools\fetch_mpv_windows.ps1
 cargo run -p kino-desktop                           # run from the sources
 cargo build --release --locked -p kino-desktop
-pwsh packaging\build_windows_app.ps1 (.venv\Scripts\python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())")
+pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
 ```
 
@@ -51,7 +51,7 @@ CI は push のたびに両方を実行します。Windows のテスト（ワー
 ```bash
 bash tools/check_rust.sh            # formatting, lints, Rust tests (server and app)
 node --test tests/test_*.js         # the interface
-python tests/windows_ui.py          # Windows only: the real window, real mouse input
+node tests/windows-ui/windows_ui.js  # Windows only: the real window, real mouse input
 ```
 
 ## 翻訳
@@ -59,9 +59,9 @@ python tests/windows_ui.py          # Windows only: the real window, real mouse 
 インターフェースはフランス語で書かれています。`web/js/i18n.js` が表示時に翻訳し、言語ごとの辞書 `web/js/i18n/<言語>.js` で各フランス語テキストを訳文に対応させます（`{}` は可変部分）。訳がないテキストは英語で、英語の場合はフランス語で表示されます。
 
 ```bash
-python3 tools/i18n.py extract       # web/ and crates/ texts -> web/js/i18n/strings.json
-python3 tools/i18n.py status        # translated texts, per language
-python3 tools/i18n.py missing de    # texts German still lacks
+node tools/i18n.js extract          # web/ and crates/ texts -> web/js/i18n/strings.json
+node tools/i18n.js status           # translated texts, per language
+node tools/i18n.js missing de       # texts German still lacks
 ```
 
 言語を追加するには、他のファイルにならって `web/js/i18n/<コード>.js` を作成し、`LANGUAGES`（`web/js/i18n.js`）と `UI_LANGUAGES`（`crates/kino/src/config.rs`）にコードを追加します。
