@@ -28,4 +28,5 @@ pub mod sources;
 pub mod stats;
 pub mod subtitles;
 pub mod titles;
+pub mod tonight;
 pub mod trailer;
