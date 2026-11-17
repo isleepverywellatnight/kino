@@ -1,0 +1,27 @@
+[package]
+name = "kino-desktop"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "KINO's window in Rust (opt-in): the page, its bridge, the server in-process"
+
+[dependencies]
+kino = { path = "../kino" }
+anyhow = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "process"] }
+tao = "0.37.2"
+wry = "0.57.2"
+rfd = "0.18"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-user-notifications = "0.3"
+block2 = "0.6"
+objc2-media-player = "0.3"
+objc2-app-kit = "0.3"
+libloading = "0.8"
+libc = "0.2"
+tempfile = "3"

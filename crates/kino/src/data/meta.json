@@ -1,0 +1,1149 @@
+{
+ "genre_fr": {
+  "Action": "Action",
+  "Adventure": "Aventure",
+  "Animation": "Animation",
+  "Biography": "Biopic",
+  "Comedy": "Comédie",
+  "Crime": "Policier",
+  "Documentary": "Documentaire",
+  "Drama": "Drame",
+  "Family": "Famille",
+  "Fantasy": "Fantastique",
+  "History": "Histoire",
+  "Horror": "Horreur",
+  "Mystery": "Mystère",
+  "Romance": "Romance",
+  "Sci-Fi": "Science-Fiction",
+  "Thriller": "Thriller",
+  "War": "Guerre",
+  "Western": "Western",
+  "Music": "Musique",
+  "Musical": "Comédie musicale",
+  "Sport": "Sport",
+  "Film-Noir": "Film noir",
+  "Short": "Court métrage",
+  "Reality-TV": "Téléréalité",
+  "Talk-Show": "Talk-show",
+  "Game-Show": "Jeu télévisé",
+  "News": "Actualités"
+ },
+ "imdb_aliases": {
+  "tt22248374": "tt22248376",
+  "tt1370601": "tt1355642"
+ },
+ "anime_image_fixes": {
+  "tt22248376": {
+   "poster": "https://media.kitsu.app/anime/46474/poster_image/large-ec9b98dd5fbf8f92532d1edb45f9e882.jpeg",
+   "background": "https://media.kitsu.app/anime/46474/cover_image/large-167edf3e01fac59ce6aacfeb47df5634.jpeg",
+   "cover": "https://media.kitsu.app/anime/46474/cover_image/large-167edf3e01fac59ce6aacfeb47df5634.jpeg"
+  },
+  "tt1355642": {
+   "poster": "https://media.kitsu.app/anime/3936/poster_image/large-a94f61b0c0f8623b371cf78696ecdd44.jpeg",
+   "background": "https://media.kitsu.app/anime/cover_images/3936/large.jpg",
+   "cover": "https://media.kitsu.app/anime/cover_images/3936/large.jpg"
+  },
+  "tt21209876": {
+   "poster": "https://media.kitsu.app/anime/46231/poster_image/large-22cba102be8d90ca0d6eec4d57cff5b6.jpeg",
+   "background": "https://media.kitsu.app/anime/46231/cover_image/large-33273dc297cdc8b10cc1140de07d3dae.jpeg",
+   "cover": "https://media.kitsu.app/anime/46231/cover_image/large-33273dc297cdc8b10cc1140de07d3dae.jpeg"
+  }
+ },
+ "fallback_animes": [
+  {
+   "id": "tt2560140",
+   "type": "series",
+   "name": "Attack on Titan",
+   "year": "2013",
+   "releaseInfo": "2013-2023",
+   "imdbRating": "9.1",
+   "poster": "https://images.metahub.space/poster/medium/tt2560140/img",
+   "background": "https://images.metahub.space/background/medium/tt2560140/img",
+   "genres": [
+    "Animation",
+    "Action",
+    "Adventure"
+   ],
+   "description": "Dans un monde où les humains vivent enfermés dans des cités entourées de gigantesques remparts pour se protéger de créatures colossales nommées Titans, le jeune Eren Jaeger jure d'éradiquer ces prédateurs."
+  },
+  {
+   "id": "tt12343534",
+   "type": "series",
+   "name": "Jujutsu Kaisen",
+   "year": "2020",
+   "releaseInfo": "2020-",
+   "imdbRating": "8.5",
+   "poster": "https://images.metahub.space/poster/medium/tt12343534/img",
+   "background": "https://images.metahub.space/background/medium/tt12343534/img",
+   "genres": [
+    "Animation",
+    "Action",
+    "Fantasy"
+   ],
+   "description": "Yuji Itadori, lycéen aux aptitudes physiques exceptionnelles, avale une relique maudite de rang S pour sauver ses amis et se retrouve possédé par Ryomen Sukuna, le Roi des Fléaux."
+  },
+  {
+   "id": "tt9335498",
+   "type": "series",
+   "name": "Demon Slayer: Kimetsu no Yaiba",
+   "year": "2019",
+   "releaseInfo": "2019-",
+   "imdbRating": "8.6",
+   "poster": "https://images.metahub.space/poster/medium/tt9335498/img",
+   "background": "https://images.metahub.space/background/medium/tt9335498/img",
+   "genres": [
+    "Animation",
+    "Action",
+    "Fantasy"
+   ],
+   "description": "Après le massacre de sa famille par un démon et la transformation de sa jeune sœur Nezuko, Tanjiro Kamado devient pourfendeur de démons pour la délivrer de cette malédiction."
+  },
+  {
+   "id": "tt0388629",
+   "type": "series",
+   "name": "One Piece",
+   "year": "1999",
+   "releaseInfo": "1999-",
+   "imdbRating": "9.0",
+   "poster": "https://images.metahub.space/poster/medium/tt0388629/img",
+   "background": "https://images.metahub.space/background/medium/tt0388629/img",
+   "genres": [
+    "Animation",
+    "Action",
+    "Adventure"
+   ],
+   "description": "Monkey D. Luffy prend la mer à la recherche du trésor légendaire, le One Piece, avec l'ambition suprême de devenir le Roi des Pirates."
+  },
+  {
+   "id": "tt22248376",
+   "type": "series",
+   "name": "Frieren: Beyond Journey's End",
+   "year": "2023",
+   "releaseInfo": "2023-",
+   "imdbRating": "8.9",
+   "poster": "https://media.kitsu.app/anime/46474/poster_image/large-ec9b98dd5fbf8f92532d1edb45f9e882.jpeg",
+   "background": "https://media.kitsu.app/anime/46474/cover_image/large-167edf3e01fac59ce6aacfeb47df5634.jpeg",
+   "cover": "https://media.kitsu.app/anime/46474/cover_image/large-167edf3e01fac59ce6aacfeb47df5634.jpeg",
+   "genres": [
+    "Animation",
+    "Adventure",
+    "Drama"
+   ],
+   "description": "Après la défaite du Roi Démon par le groupe de héros, l'elfe magicienne Frieren entame un nouveau voyage pour comprendre la valeur éphémère du temps et des liens humains."
+  },
+  {
+   "id": "tt21209876",
+   "type": "series",
+   "name": "Solo Leveling",
+   "year": "2024",
+   "releaseInfo": "2024-",
+   "imdbRating": "8.3",
+   "poster": "https://media.kitsu.app/anime/46231/poster_image/large-22cba102be8d90ca0d6eec4d57cff5b6.jpeg",
+   "background": "https://media.kitsu.app/anime/46231/cover_image/large-33273dc297cdc8b10cc1140de07d3dae.jpeg",
+   "cover": "https://media.kitsu.app/anime/46231/cover_image/large-33273dc297cdc8b10cc1140de07d3dae.jpeg",
+   "genres": [
+    "Animation",
+    "Action",
+    "Fantasy"
+   ],
+   "description": "Sung Jinwoo, le chasseur le plus faible du monde, reçoit la capacité unique d'évoluer sans limite via une interface de jeu invisible."
+  },
+  {
+   "id": "tt0877057",
+   "type": "series",
+   "name": "Death Note",
+   "year": "2006",
+   "releaseInfo": "2006-2007",
+   "imdbRating": "8.9",
+   "poster": "https://images.metahub.space/poster/medium/tt0877057/img",
+   "background": "https://images.metahub.space/background/medium/tt0877057/img",
+   "genres": [
+    "Animation",
+    "Crime",
+    "Drama"
+   ],
+   "description": "Light Yagami, brillant lycéen, trouve un carnet surnaturel permettant de tuer quiconque dont on connaît le nom et le visage."
+  },
+  {
+   "id": "tt1355642",
+   "type": "series",
+   "name": "Fullmetal Alchemist: Brotherhood",
+   "year": "2009",
+   "releaseInfo": "2009-2010",
+   "imdbRating": "9.1",
+   "poster": "https://media.kitsu.app/anime/3936/poster_image/large-a94f61b0c0f8623b371cf78696ecdd44.jpeg",
+   "background": "https://media.kitsu.app/anime/cover_images/3936/large.jpg",
+   "cover": "https://media.kitsu.app/anime/cover_images/3936/large.jpg",
+   "genres": [
+    "Animation",
+    "Action",
+    "Adventure"
+   ],
+   "description": "Edward et Alphonse Elric parcourent le monde à la recherche de la Pierre Philosophale pour restaurer leurs corps perdus."
+  },
+  {
+   "id": "tt2098220",
+   "type": "series",
+   "name": "Hunter x Hunter",
+   "year": "2011",
+   "releaseInfo": "2011-2014",
+   "imdbRating": "9.0",
+   "poster": "https://images.metahub.space/poster/medium/tt2098220/img",
+   "background": "https://images.metahub.space/background/medium/tt2098220/img",
+   "genres": [
+    "Animation",
+    "Action",
+    "Adventure"
+   ],
+   "description": "Gon Freecss décide de passer le redoutable examen de Hunter dans l'espoir de retrouver son père Ging, l'un des Hunters les plus mystérieux au monde."
+  },
+  {
+   "id": "tt13616990",
+   "type": "series",
+   "name": "Chainsaw Man",
+   "year": "2022",
+   "releaseInfo": "2022-",
+   "imdbRating": "8.4",
+   "poster": "https://images.metahub.space/poster/medium/tt13616990/img",
+   "background": "https://images.metahub.space/background/medium/tt13616990/img",
+   "genres": [
+    "Animation",
+    "Action",
+    "Horror"
+   ],
+   "description": "Denji, jeune homme criblé de dettes vivant avec son démon-tronçonneuse Pochita, fusionne avec ce dernier pour devenir Chainsaw Man."
+  },
+  {
+   "id": "tt0434665",
+   "type": "series",
+   "name": "Bleach",
+   "year": "2004",
+   "releaseInfo": "2004-2012",
+   "imdbRating": "8.2",
+   "poster": "https://images.metahub.space/poster/medium/tt0434665/img",
+   "background": "https://images.metahub.space/background/medium/tt0434665/img",
+   "genres": [
+    "Animation",
+    "Action",
+    "Adventure"
+   ],
+   "description": "Ichigo Kurosaki, adolescent capable de voir les esprits, devient Shinigami pour défendre les humains contre les monstres Hollows."
+  },
+  {
+   "id": "tt0409591",
+   "type": "series",
+   "name": "Naruto",
+   "year": "2002",
+   "releaseInfo": "2002-2007",
+   "imdbRating": "8.4",
+   "poster": "https://images.metahub.space/poster/medium/tt0409591/img",
+   "background": "https://images.metahub.space/background/medium/tt0409591/img",
+   "genres": [
+    "Animation",
+    "Action",
+    "Adventure"
+   ],
+   "description": "Naruto Uzumaki, jeune ninja orphelin porteur du Démon-Renard à neuf queues, rêve de devenir Hokage pour être enfin reconnu par tous."
+  },
+  {
+   "id": "tt0988824",
+   "type": "series",
+   "name": "Naruto: Shippuden",
+   "year": "2007",
+   "releaseInfo": "2007-2017",
+   "imdbRating": "8.7",
+   "poster": "https://images.metahub.space/poster/medium/tt0988824/img",
+   "background": "https://images.metahub.space/background/medium/tt0988824/img",
+   "genres": [
+    "Animation",
+    "Action",
+    "Adventure"
+   ],
+   "description": "Deux ans et demi après son départ, Naruto revient à Konoha plus fort que jamais face à la menace grandissante de l'Akatsuki."
+  },
+  {
+   "id": "tt0245429",
+   "type": "movie",
+   "name": "Le Voyage de Chihiro",
+   "year": "2001",
+   "releaseInfo": "2001",
+   "imdbRating": "8.6",
+   "poster": "https://images.metahub.space/poster/medium/tt0245429/img",
+   "background": "https://images.metahub.space/background/medium/tt0245429/img",
+   "genres": [
+    "Animation",
+    "Adventure",
+    "Family"
+   ],
+   "description": "Chihiro, une fillette de dix ans, s'aventure dans un parc à thème abandonné qui s'avère être un monde enchanté peuplé d'esprits."
+  },
+  {
+   "id": "tt5311514",
+   "type": "movie",
+   "name": "Your Name.",
+   "year": "2016",
+   "releaseInfo": "2016",
+   "imdbRating": "8.4",
+   "poster": "https://images.metahub.space/poster/medium/tt5311514/img",
+   "background": "https://images.metahub.space/background/medium/tt5311514/img",
+   "genres": [
+    "Animation",
+    "Drama",
+    "Fantasy"
+   ],
+   "description": "Mitsuha, lycéenne dans un village rural, et Taki, lycéen à Tokyo, découvrent qu'ils échangent mystérieusement de corps pendant leur sommeil."
+  },
+  {
+   "id": "tt0119698",
+   "type": "movie",
+   "name": "Princesse Mononoké",
+   "year": "1997",
+   "releaseInfo": "1997",
+   "imdbRating": "8.3",
+   "poster": "https://images.metahub.space/poster/medium/tt0119698/img",
+   "background": "https://images.metahub.space/background/medium/tt0119698/img",
+   "genres": [
+    "Animation",
+    "Action",
+    "Adventure"
+   ],
+   "description": "Frappé d'une malédiction, le jeune guerrier Ashitaka quitte son village et se retrouve pris dans une guerre sanglante entre les dieux de la forêt et les humains."
+  }
+ ],
+ "known_anime_ids": [
+  "tt0078638",
+  "tt0088509",
+  "tt0092455",
+  "tt0094583",
+  "tt0096633",
+  "tt0099685",
+  "tt0103442",
+  "tt0112108",
+  "tt0112159",
+  "tt0119698",
+  "tt0131179",
+  "tt0168366",
+  "tt0202206",
+  "tt0245429",
+  "tt0318871",
+  "tt0388629",
+  "tt0409591",
+  "tt0421357",
+  "tt0423731",
+  "tt0434665",
+  "tt0434706",
+  "tt0481256",
+  "tt0500092",
+  "tt0810705",
+  "tt0877057",
+  "tt0948103",
+  "tt0988818",
+  "tt0988824",
+  "tt0994314",
+  "tt10233448",
+  "tt11147852",
+  "tt1118804",
+  "tt12343534",
+  "tt12590266",
+  "tt13103134",
+  "tt13196080",
+  "tt13293588",
+  "tt1355642",
+  "tt13616990",
+  "tt13706018",
+  "tt13718450",
+  "tt13911284",
+  "tt14115938",
+  "tt14976292",
+  "tt15222080",
+  "tt15765670",
+  "tt17069148",
+  "tt1910272",
+  "tt2098220",
+  "tt21030032",
+  "tt21209876",
+  "tt21621494",
+  "tt21975436",
+  "tt22248376",
+  "tt2230051",
+  "tt2250192",
+  "tt2359704",
+  "tt2379308",
+  "tt2404499",
+  "tt2560140",
+  "tt26737616",
+  "tt26743760",
+  "tt28618556",
+  "tt28919914",
+  "tt30217403",
+  "tt32536168",
+  "tt32550889",
+  "tt32612521",
+  "tt32869308",
+  "tt32991344",
+  "tt33028568",
+  "tt33044444",
+  "tt33334216",
+  "tt3358020",
+  "tt3398540",
+  "tt36034547",
+  "tt36517689",
+  "tt36592690",
+  "tt36988358",
+  "tt3741634",
+  "tt37532356",
+  "tt37532893",
+  "tt37614297",
+  "tt38939446",
+  "tt3895150",
+  "tt3909224",
+  "tt39123061",
+  "tt39304754",
+  "tt39551330",
+  "tt40548519",
+  "tt41293157",
+  "tt4508902",
+  "tt4644488",
+  "tt5249462",
+  "tt5311514",
+  "tt5607616",
+  "tt5626028",
+  "tt5897304",
+  "tt7078180",
+  "tt7222086",
+  "tt7263328",
+  "tt7441658",
+  "tt8086718",
+  "tt8788458",
+  "tt9054364",
+  "tt9307686",
+  "tt9335498",
+  "tt9458304",
+  "tt9522300",
+  "tt9679542"
+ ],
+ "classics": [
+  [
+   "tt0111161",
+   "The Shawshank Redemption (Les Évadés)",
+   "1994",
+   "9.3",
+   [
+    "Drama"
+   ],
+   "Condamné à perpétuité à la prison de Shawshank, le banquier Andy Dufresne se lie d'amitié avec Red et prépare patiemment sa rédemption."
+  ],
+  [
+   "tt0068646",
+   "The Godfather (Le Parrain)",
+   "1972",
+   "9.2",
+   [
+    "Crime",
+    "Drama"
+   ],
+   "Le patriarche vieillissant d'une dynastie mafieuse new-yorkaise transmet l'empire clandestin à son fils cadet réticent, Michael Corleone."
+  ],
+  [
+   "tt0468569",
+   "The Dark Knight",
+   "2008",
+   "9.0",
+   [
+    "Action",
+    "Crime",
+    "Drama",
+    "Thriller"
+   ],
+   "Batman, le lieutenant Gordon et le procureur Harvey Dent affrontent le Joker, un génie criminel anarchiste qui plonge Gotham dans le chaos."
+  ],
+  [
+   "tt0071562",
+   "The Godfather Part II (Le Parrain 2)",
+   "1974",
+   "9.0",
+   [
+    "Crime",
+    "Drama"
+   ],
+   "La jeunesse de Vito Corleone à New York dans les années 1920 en parallèle de l'expansion impitoyable de l'empire de son fils Michael."
+  ],
+  [
+   "tt0050083",
+   "12 Angry Men (Douze Hommes en colère)",
+   "1957",
+   "9.0",
+   [
+    "Crime",
+    "Drama"
+   ],
+   "Un juré solitaire tente de convaincre les onze autres membres du jury de reconsidérer leur verdict de culpabilité dans un procès pour meurtre."
+  ],
+  [
+   "tt0108052",
+   "Schindler's List (La Liste de Schindler)",
+   "1993",
+   "9.0",
+   [
+    "Drama",
+    "War"
+   ],
+   "En Pologne occupée, l'industriel allemand Oskar Schindler sauve plus d'un millier de réfugiés juifs en les employant dans son usine."
+  ],
+  [
+   "tt0167260",
+   "The Lord of the Rings: The Return of the King",
+   "2003",
+   "9.0",
+   [
+    "Action",
+    "Adventure",
+    "Drama",
+    "Fantasy"
+   ],
+   "Gandalf et Aragorn mènent le Monde des Hommes contre l'armée de Sauron tandis que Frodon et Sam approchent de la Montagne du Destin."
+  ],
+  [
+   "tt0110912",
+   "Pulp Fiction",
+   "1994",
+   "8.9",
+   [
+    "Crime",
+    "Drama"
+   ],
+   "Les destins croisés de deux tueurs à gages philosophes, d'un boxeur en fuite et de la femme d'un caïd à Los Angeles."
+  ],
+  [
+   "tt0120737",
+   "The Lord of the Rings: The Fellowship of the Ring",
+   "2001",
+   "8.9",
+   [
+    "Action",
+    "Adventure",
+    "Drama",
+    "Fantasy"
+   ],
+   "Un jeune Hobbit hérite d'un anneau maléfique et s'engage avec une communauté de compagnons pour le détruire au cœur du Mordor."
+  ],
+  [
+   "tt0060196",
+   "The Good, the Bad and the Ugly (Le Bon, la Brute et le Truand)",
+   "1966",
+   "8.8",
+   [
+    "Adventure",
+    "Western"
+   ],
+   "Trois pistoleros rivaux s'affrontent en pleine guerre de Sécession pour mettre la main sur un trésor d'or confédéré enfoui dans un cimetière."
+  ],
+  [
+   "tt0137523",
+   "Fight Club",
+   "1999",
+   "8.8",
+   [
+    "Drama",
+    "Thriller"
+   ],
+   "Un employé insomniaque désabusé et un vendeur de savon charismatique fondent un club de combat clandestin qui échappe à tout contrôle."
+  ],
+  [
+   "tt0109830",
+   "Forrest Gump",
+   "1994",
+   "8.8",
+   [
+    "Comedy",
+    "Drama"
+   ],
+   "Plusieurs décennies d'histoire américaine vécues à travers le regard candide de Forrest Gump, prêt à tout pour retrouver son amour d'enfance."
+  ],
+  [
+   "tt1375666",
+   "Inception",
+   "2010",
+   "8.8",
+   [
+    "Action",
+    "Adventure",
+    "Sci-Fi",
+    "Thriller"
+   ],
+   "Un voleur spécialisé dans l'extraction de secrets au cœur du subconscient tente l'opération inverse : implanter une idée dans l'esprit d'un héritier."
+  ],
+  [
+   "tt0167261",
+   "The Lord of the Rings: The Two Towers",
+   "2002",
+   "8.8",
+   [
+    "Action",
+    "Adventure",
+    "Drama",
+    "Fantasy"
+   ],
+   "Alors que Frodon et Sam poursuivent leur route vers le Mordor guidés par Gollum, la Communauté divisée se prépare au siège du Gouffre de Helm."
+  ],
+  [
+   "tt0080684",
+   "Star Wars: Episode V - The Empire Strikes Back",
+   "1980",
+   "8.7",
+   [
+    "Action",
+    "Adventure",
+    "Fantasy",
+    "Sci-Fi"
+   ],
+   "Traqués par Dark Vador à travers la galaxie, les Rebelles se dispersent tandis que Luke Skywalker suit l'enseignement du maître Jedi Yoda."
+  ],
+  [
+   "tt0133093",
+   "The Matrix",
+   "1999",
+   "8.7",
+   [
+    "Action",
+    "Sci-Fi"
+   ],
+   "Un pirate informatique découvre que la réalité n'est qu'une simulation numérique créée par des machines et rejoint la rébellion humaine."
+  ],
+  [
+   "tt0099685",
+   "Goodfellas (Les Affranchis)",
+   "1990",
+   "8.7",
+   [
+    "Biography",
+    "Crime",
+    "Drama"
+   ],
+   "L'ascension et la chute brutale d'Henry Hill au sein de la mafia new-yorkaise sur trois décennies."
+  ],
+  [
+   "tt0073486",
+   "One Flew Over the Cuckoo's Nest (Vol au-dessus d'un nid de coucou)",
+   "1975",
+   "8.7",
+   [
+    "Drama"
+   ],
+   "Pour échapper à la prison, un criminel rebelle simule la folie et bouleverse le quotidien étouffant d'un asile psychiatrique dirigé par l'infirmière Ratched."
+  ],
+  [
+   "tt0047478",
+   "Seven Samurai (Les Sept Samouraïs)",
+   "1954",
+   "8.6",
+   [
+    "Action",
+    "Drama"
+   ],
+   "Au Japon féodal, les habitants d'un village de paysans engagent sept samouraïs sans maître pour les défendre contre des bandits pillards."
+  ],
+  [
+   "tt0114369",
+   "Se7en",
+   "1995",
+   "8.6",
+   [
+    "Crime",
+    "Drama",
+    "Mystery",
+    "Thriller"
+   ],
+   "Deux inspecteurs de police traquent un tueur en série méticuleux dont les meurtres atroces s'inspirent des sept péchés capitaux."
+  ],
+  [
+   "tt0102926",
+   "The Silence of the Lambs (Le Silence des agneaux)",
+   "1991",
+   "8.6",
+   [
+    "Crime",
+    "Drama",
+    "Thriller"
+   ],
+   "Une jeune recrue du FBI consulte le machiavélique docteur Hannibal Lecter, psychiatre et cannibale emprisonné, pour coincer un autre tueur."
+  ],
+  [
+   "tt0816692",
+   "Interstellar",
+   "2014",
+   "8.7",
+   [
+    "Adventure",
+    "Drama",
+    "Sci-Fi"
+   ],
+   "Une équipe d'explorateurs franchit un trou de ver dans l'espace pour tenter de trouver une planète habitable et sauver l'humanité de l'extinction."
+  ],
+  [
+   "tt0118799",
+   "Life Is Beautiful (La vie est belle)",
+   "1997",
+   "8.6",
+   [
+    "Comedy",
+    "Drama",
+    "Romance"
+   ],
+   "Enfermés dans un camp de concentration nazi, un père juif use d'imagination et d'humour pour masquer l'horreur à son jeune fils."
+  ],
+  [
+   "tt0245429",
+   "Spirited Away (Le Voyage de Chihiro)",
+   "2001",
+   "8.6",
+   [
+    "Animation",
+    "Adventure",
+    "Family",
+    "Fantasy"
+   ],
+   "Chihiro, une fillette de dix ans, pénètre dans un monde secret dominé par les esprits et doit travailler dans les bains publics d'une sorcière pour sauver ses parents transformés en porcs."
+  ],
+  [
+   "tt0120815",
+   "Saving Private Ryan (Il faut sauver le soldat Ryan)",
+   "1998",
+   "8.6",
+   [
+    "Drama",
+    "War"
+   ],
+   "Après le débarquement en Normandie, une escouade de soldats américains part derrière les lignes ennemies pour retrouver un soldat dont les trois frères sont morts au combat."
+  ],
+  [
+   "tt0105236",
+   "Reservoir Dogs",
+   "1992",
+   "8.3",
+   [
+    "Crime",
+    "Thriller"
+   ],
+   "Après l'échec sanglant d'un braquage de diamants, six criminels qui ne se connaissent que par des noms de code réalisent qu'une taupe est parmi eux."
+  ],
+  [
+   "tt0076759",
+   "Star Wars: Episode IV - A New Hope",
+   "1977",
+   "8.6",
+   [
+    "Action",
+    "Adventure",
+    "Fantasy",
+    "Sci-Fi"
+   ],
+   "Luke Skywalker s'allie à un chevalier Jedi, un pilote arrogant et deux droïdes pour sauver la galaxie de la terrifiante Étoile de la Mort."
+  ],
+  [
+   "tt0172495",
+   "Gladiator",
+   "2000",
+   "8.5",
+   [
+    "Action",
+    "Adventure",
+    "Drama"
+   ],
+   "Trahis et réduits en esclavage, un ancien général romain devient gladiateur pour venger le massacre de sa famille et défier l'empereur corrompu."
+  ],
+  [
+   "tt0114814",
+   "The Usual Suspects",
+   "1995",
+   "8.5",
+   [
+    "Crime",
+    "Drama",
+    "Mystery",
+    "Thriller"
+   ],
+   "L'unique survivant d'un massacre sur un cargo raconte à la police comment un mystérieux baron du crime nommé Keyser Söze a orchestré l'affaire."
+  ],
+  [
+   "tt0110413",
+   "Léon: The Professional",
+   "1994",
+   "8.5",
+   [
+    "Action",
+    "Crime",
+    "Drama"
+   ],
+   "Léon, un tueur à gages solitaire à New York, prend sous son aile Mathilda, une fillette de douze ans dont la famille a été assassinée par un flic corrompu."
+  ],
+  [
+   "tt0103064",
+   "Terminator 2: Judgment Day",
+   "1991",
+   "8.6",
+   [
+    "Action",
+    "Sci-Fi"
+   ],
+   "Un cyborg reprogrammé est envoyé du futur pour protéger un jeune garçon destiné à mener la résistance humaine contre les machines."
+  ],
+  [
+   "tt0088763",
+   "Back to the Future (Retour vers le futur)",
+   "1985",
+   "8.5",
+   [
+    "Adventure",
+    "Comedy",
+    "Sci-Fi"
+   ],
+   "Marty McFly est propulsé accidentellement en 1955 au volant d'une DeLorean modifiée par son ami inventeur Doc Brown."
+  ],
+  [
+   "tt0054215",
+   "Psycho (Psychose)",
+   "1960",
+   "8.5",
+   [
+    "Horror",
+    "Mystery",
+    "Thriller"
+   ],
+   "Une secrétaire en fuite avec une forte somme d'argent fait étape dans un motel isolé tenu par Norman Bates, un jeune homme sous l'emprise de sa mère."
+  ],
+  [
+   "tt0034583",
+   "Casablanca",
+   "1942",
+   "8.5",
+   [
+    "Drama",
+    "Romance",
+    "War"
+   ],
+   "Pendant la Seconde Guerre mondiale à Casablanca, le propriétaire d'un club huppé doit choisir entre son amour de jeunesse et la lutte contre le nazisme."
+  ],
+  [
+   "tt0027977",
+   "Modern Times (Les Temps modernes)",
+   "1936",
+   "8.5",
+   [
+    "Comedy",
+    "Drama",
+    "Romance"
+   ],
+   "Charlot se débat avec la cadence infernale du travail à la chaîne dans une société industrielle en pleine crise économique."
+  ],
+  [
+   "tt0064116",
+   "Once Upon a Time in the West (Il était une fois dans l'Ouest)",
+   "1968",
+   "8.5",
+   [
+    "Western"
+   ],
+   "Une veuve, un hors-la-loi au grand cœur et un mystérieux joueur d'harmonica s'unissent contre un tueur impitoyable à la solde du chemin de fer."
+  ],
+  [
+   "tt0046949",
+   "Rear Window (Fenêtre sur cour)",
+   "1954",
+   "8.5",
+   [
+    "Mystery",
+    "Thriller"
+   ],
+   "Immobilisé chez lui par une jambe plâtrée, un photographe observe ses voisins d'en face et en vient à soupçonner l'un d'eux de meurtre."
+  ],
+  [
+   "tt0078748",
+   "Alien (Le Huitième Passager)",
+   "1979",
+   "8.5",
+   [
+    "Horror",
+    "Sci-Fi"
+   ],
+   "L'équipage du remorqueur spatial Nostromo répond à un signal de détresse et embarque à son insu une créature extraterrestre prédatrice."
+  ],
+  [
+   "tt0093779",
+   "Full Metal Jacket",
+   "1987",
+   "8.3",
+   [
+    "Drama",
+    "War"
+   ],
+   "L'entraînement impitoyable de jeunes recrues des Marines sous la houlette d'un sergent instructeur sadique, avant d'être plongés dans l'enfer de la guerre du Viêt Nam."
+  ],
+  [
+   "tt0075314",
+   "Taxi Driver",
+   "1976",
+   "8.2",
+   [
+    "Crime",
+    "Drama"
+   ],
+   "Un vétéran du Viêt Nam solitaire et insomniaque conduit un taxi de nuit à New York et sombre peu à peu dans une spirale paranoïaque et violente."
+  ],
+  [
+   "tt0066765",
+   "A Clockwork Orange (Orange mécanique)",
+   "1971",
+   "8.3",
+   [
+    "Crime",
+    "Sci-Fi"
+   ],
+   "Dans une Angleterre futuriste gangrenée par la délinquance, le chef d'une bande d'adolescents ultraviolents subit une thérapie expérimentale de conditionnement psychologique."
+  ],
+  [
+   "tt0084787",
+   "The Thing",
+   "1982",
+   "8.2",
+   [
+    "Horror",
+    "Mystery",
+    "Sci-Fi"
+   ],
+   "Dans une base scientifique en Antarctique, une équipe de chercheurs est confrontée à une entité extraterrestre capable d'imiter parfaitement n'importe quel être vivant."
+  ],
+  [
+   "tt0082971",
+   "Raiders of the Lost Ark (Les Aventuriers de l'arche perdue)",
+   "1981",
+   "8.4",
+   [
+    "Action",
+    "Adventure"
+   ],
+   "En 1936, l'archéologue Indiana Jones est engagé par le gouvernement américain pour retrouver l'Arche d'Alliance avant les nazis."
+  ],
+  [
+   "tt0080678",
+   "The Shining",
+   "1980",
+   "8.4",
+   [
+    "Drama",
+    "Horror"
+   ],
+   "Engagé comme gardien d'hiver d'un hôtel de montagne isolé, un écrivain s'y installe avec sa famille tandis que des forces sinistres le font basculer dans la folie."
+  ],
+  [
+   "tt0078788",
+   "Apocalypse Now",
+   "1979",
+   "8.4",
+   [
+    "Drama",
+    "Mystery",
+    "War"
+   ],
+   "Pendant la guerre du Viêt Nam, un capitaine américain est chargé d'une mission secrète : remonter un fleuve jusqu'au Cambodge pour éliminer un colonel renégat."
+  ],
+  [
+   "tt0062622",
+   "2001: A Space Odyssey (2001 : L'Odyssée de l'espace)",
+   "1968",
+   "8.3",
+   [
+    "Adventure",
+    "Sci-Fi"
+   ],
+   "De l'aube de l'humanité à un voyage vers Jupiter, deux astronautes et l'ordinateur de bord tout-puissant HAL 9000 découvrent un mystérieux monolithe noir."
+  ],
+  [
+   "tt0120586",
+   "American History X",
+   "1998",
+   "8.5",
+   [
+    "Crime",
+    "Drama"
+   ],
+   "Un ancien leader néonazi tente d'empêcher son jeune frère de suivre la même voie de haine et de violence après sa sortie de prison."
+  ],
+  [
+   "tt0109506",
+   "The Lion King (Le Roi Lion)",
+   "1994",
+   "8.5",
+   [
+    "Animation",
+    "Adventure",
+    "Drama"
+   ],
+   "Le lionceau Simba, héritier du trône de la savane, doit surmonter la culpabilité de la mort de son père pour reconquérir son royaume des mains de son oncle Scar."
+  ],
+  [
+   "tt0111282",
+   "Stargate",
+   "1994",
+   "7.0",
+   [
+    "Action",
+    "Adventure",
+    "Sci-Fi"
+   ],
+   "La découverte d'un anneau de pierre antique en Égypte ouvre un passage interstellaire vers un monde dominé par un faux dieu extraterrestre."
+  ],
+  [
+   "tt0095016",
+   "Die Hard (Piège de cristal)",
+   "1988",
+   "8.2",
+   [
+    "Action",
+    "Thriller"
+   ],
+   "Le flic new-yorkais John McClane se retrouve seul face à un commando de terroristes qui a pris d'assaut un gratte-ciel de Los Angeles le soir de Noël."
+  ],
+  [
+   "tt0086250",
+   "Scarface",
+   "1983",
+   "8.3",
+   [
+    "Crime",
+    "Drama"
+   ],
+   "Réfugié cubain débarqué à Miami, Tony Montana gravit impitoyablement les échelons du trafic de cocaïne jusqu'au sommet du cartel."
+  ],
+  [
+   "tt0079588",
+   "Mad Max",
+   "1979",
+   "6.8",
+   [
+    "Action",
+    "Adventure",
+    "Sci-Fi"
+   ],
+   "Dans une Australie post-apocalyptique en ruines, un policier venge le massacre de sa femme et de son enfant par une bande de motards sanguinaires."
+  ],
+  [
+   "tt0097576",
+   "Indiana Jones and the Last Crusade",
+   "1989",
+   "8.2",
+   [
+    "Action",
+    "Adventure"
+   ],
+   "Indiana Jones part à la recherche de son père disparu, lui-même lancé sur la piste du légendaire Saint Graal convoité par les nazis."
+  ],
+  [
+   "tt0119217",
+   "Good Will Hunting",
+   "1997",
+   "8.3",
+   [
+    "Drama",
+    "Romance"
+   ],
+   "Un jeune agent d'entretien doué d'un génie mathématique extraordinaire surmonte ses traumatismes d'enfance avec l'aide d'un thérapeute bienveillant."
+  ],
+  [
+   "tt0112573",
+   "Braveheart",
+   "1995",
+   "8.3",
+   [
+    "Biography",
+    "Drama",
+    "History",
+    "War"
+   ],
+   "Au XIIIe siècle, William Wallace prend la tête de la rébellion écossaise contre la tyrannie du roi d'Angleterre Édouard Ier."
+  ],
+  [
+   "tt0084827",
+   "The Untouchables (Les Incorruptibles)",
+   "1987",
+   "7.8",
+   [
+    "Crime",
+    "Drama",
+    "Thriller"
+   ],
+   "À Chicago pendant la Prohibition, l'agent fédéral Eliot Ness forme une brigade de flics intègres pour faire tomber le caïd Al Capone."
+  ],
+  [
+   "tt0120689",
+   "The Green Mile (La Ligne verte)",
+   "1999",
+   "8.6",
+   [
+    "Crime",
+    "Drama",
+    "Fantasy"
+   ],
+   "Les gardiens d'un couloir de la mort dans les années 1930 découvrent qu'un condamné colossal possède un pouvoir de guérison miraculeux."
+  ],
+  [
+   "tt0434409",
+   "V for Vendetta (V pour Vendetta)",
+   "2005",
+   "8.2",
+   [
+    "Action",
+    "Drama",
+    "Sci-Fi",
+    "Thriller"
+   ],
+   "Dans une Angleterre totalitaire, un justicier masqué connu sous le nom de « V » orchestre une révolte spectaculaire contre la dictature."
+  ],
+  [
+   "tt0457430",
+   "Pan's Labyrinth (Le Labyrinthe de Pan)",
+   "2006",
+   "8.2",
+   [
+    "Drama",
+    "Fantasy",
+    "War"
+   ],
+   "En Espagne franquiste en 1944, la jeune Ofelia découvre un labyrinthe ancien où un faune lui révèle qu'elle serait la princesse d'un royaume souterrain."
+  ],
+  [
+   "tt0167404",
+   "The Sixth Sense (Sixième Sens)",
+   "1999",
+   "8.2",
+   [
+    "Drama",
+    "Thriller"
+   ],
+   "Un psychologue pour enfants marqué par un échec tente d'aider Cole, un garçon de huit ans terrorisé par un lourd secret : il voit des morts."
+  ],
+  [
+   "tt0071853",
+   "Monty Python and the Holy Grail (Sacré Graal !)",
+   "1975",
+   "8.2",
+   [
+    "Adventure",
+    "Comedy",
+    "Fantasy"
+   ],
+   "Le roi Arthur et ses chevaliers de la Table Ronde se lancent dans une quête surréaliste et hilarante à la recherche du Saint Graal."
+  ],
+  [
+   "tt0073195",
+   "Jaws (Les Dents de la mer)",
+   "1975",
+   "8.1",
+   [
+    "Adventure",
+    "Thriller"
+   ],
+   "Lorsqu'un grand requin blanc sème la terreur sur les plages d'une île touristique, le chef de la police, un océanographe et un chasseur prennent la mer."
+  ]
+ ]
+}

@@ -1,0 +1,34 @@
+# KINO's real window on Windows, driven with real mouse input (tests/windows_ui.py):
+# title bar, window buttons, dragging, maximize, player and fullscreen cursor.
+# Runs from the sources, so it answers in a few minutes.
+name: Windows UI
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["src/**", "web/**", "tests/windows_ui.py", ".github/workflows/windows-ui.yml", "requirements.txt"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Dependencies
+        run: pip install -r requirements.txt playwright pillow
+      - name: Real window test
+        run: python tests/windows_ui.py
