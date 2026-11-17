@@ -4,4 +4,5 @@
 pub mod release;
 pub mod relevance;
 pub mod score;
+pub mod search;
 pub mod stream;

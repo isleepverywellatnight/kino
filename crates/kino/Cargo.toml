@@ -23,6 +23,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "fs", "
 unicode-normalization = "0.1"
 zip = { version = "4", default-features = false, features = ["deflate"] }
 fancy-regex = "0.14"
+base64 = "0.22"
+futures-util = "0.3"
 
 [dev-dependencies]
 flate2 = "1"

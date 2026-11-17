@@ -3,6 +3,7 @@
 pub mod library;
 pub mod manga;
 pub mod settings;
+pub mod sources;
 pub mod titles;
 
 use axum::Router;
@@ -15,4 +16,5 @@ pub fn router() -> Router<Shared> {
         .merge(library::router())
         .merge(titles::router())
         .merge(settings::router())
+        .merge(sources::router())
 }

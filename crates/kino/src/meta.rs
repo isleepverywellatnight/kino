@@ -631,6 +631,52 @@ impl Meta {
     }
 }
 
+/// The IMDb number Cinemeta uses for a title KINO knows under another one.
+pub fn canonical_id(id: &str) -> String {
+    TABLES
+        .imdb_aliases
+        .get(id)
+        .cloned()
+        .unwrap_or_else(|| id.to_string())
+}
+
+impl Meta {
+    /// Position of SxxEyy among all regular episodes (specials left out), as anime
+    /// groups number them: S02E01 after a 24-episode season 1 is « 25 ».
+    pub async fn absolute_episode(
+        &self,
+        imdb_id: &str,
+        season: i64,
+        episode: i64,
+        allow_network: bool,
+    ) -> Option<i64> {
+        let videos = self
+            .episode_list(imdb_id, allow_network)
+            .await
+            .unwrap_or_default();
+        let mut numbered: Vec<(i64, i64)> = videos
+            .iter()
+            .map(|v| {
+                (
+                    number(&v["season"]),
+                    if number(&v["episode"]) != 0 {
+                        number(&v["episode"])
+                    } else {
+                        number(&v["number"])
+                    },
+                )
+            })
+            .filter(|(s, e)| *s > 0 && *e > 0)
+            .collect();
+        numbered.sort_unstable();
+        numbered.dedup();
+        numbered
+            .iter()
+            .position(|p| *p == (season, episode))
+            .map(|i| i as i64 + 1)
+    }
+}
+
 fn text_or_str(value: &Value) -> String {
     value
         .as_str()
