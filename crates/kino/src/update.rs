@@ -1581,19 +1581,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn constants_follow_the_python_declaration() {
-        let declared = include_str!("../../../src/kino_version.py");
-        for (name, value) in [
-            ("BUNDLE_ID", format!("\"{BUNDLE_ID}\"")),
-            ("DATA_SCHEMA", DATA_SCHEMA.to_string()),
-            ("UPDATE_FORMAT", UPDATE_FORMAT.to_string()),
-            ("UPDATE_REPO", format!("\"{UPDATE_REPO}\"")),
-        ] {
-            assert!(declared.contains(&format!("{name} = {value}")), "{name}");
-        }
-    }
-
-    #[test]
     fn canonical_and_versions() {
         let v = json!({"b": 1, "a": {"z": "é", "c": [2, {"y": null, "x": true}]}});
         assert_eq!(

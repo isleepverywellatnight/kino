@@ -1,6 +1,6 @@
 [package]
 name = "kino-desktop"
-version = "0.1.0"
+version.workspace = true
 edition = "2024"
 license = "MIT"
 description = "KINO's desktop app: the window, its bridge and the server in one process"
