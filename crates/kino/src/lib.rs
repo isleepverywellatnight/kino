@@ -6,6 +6,7 @@ pub mod anime_home;
 pub mod anime_journey;
 pub mod body;
 pub mod catalog;
+pub mod cloud;
 pub mod config;
 pub mod db;
 pub mod debrid;
