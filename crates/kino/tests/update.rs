@@ -141,6 +141,7 @@ fn a_valid_package_is_staged() {
     let staged = stage(dir.path(), &built).unwrap();
     let app = PathBuf::from(staged["candidate"].as_str().unwrap());
     assert_eq!(staged["payload"]["version"], "2.0.0");
+    assert!(app.join("Contents/Info.plist").is_file());
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
