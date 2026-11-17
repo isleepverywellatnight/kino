@@ -36,7 +36,7 @@ depuis internet.
 - **Démarrage :** le code de démarrage (`checkConfig()`, `switchTab('movies')`…)
   reste à la fin de `app-start.js`.
 - **Tests :** ils lisent les fichiers recollés dans l'ordre de `index.html`
-  (`tools/interface_source.js`, `tools/interface_source.py`). Déplacer une
+  (`tools/interface_source.js`). Déplacer une
   fonction d'un fichier à l'autre ne les dérange pas tant que l'ordre du texte
   recollé reste le même.
 - **Nouveau fichier :** pour ajouter un thème, l'ajouter à `index.html` à sa

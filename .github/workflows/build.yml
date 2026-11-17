@@ -34,9 +34,6 @@ jobs:
       released: ${{ steps.version.outputs.released }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
       - name: Version
         id: version
         env:
@@ -60,18 +57,10 @@ jobs:
           if gh release view --repo "$RELEASES_REPO" >/dev/null 2>&1; then released=true; else released=false; fi
           echo "released=$released" >> "$GITHUB_OUTPUT"
           echo "Version $version, publication : $publish"
-      - name: Compile
-        run: python -m compileall -q src tools tests
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Tests (server)
-        # The tests write in a throwaway home folder, never in real data.
-        run: |
-          pip install -r requirements.txt pytest
-          export HOME="$RUNNER_TEMP/kino-home"
-          mkdir -p "$HOME"
-          python -m pytest -q tests
+      # The server and the app are tested by the Rust workflow (rust.yml).
       - name: Tests (interface)
         run: |
           node --test tests/test_*.js

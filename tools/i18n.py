@@ -6,17 +6,15 @@ displayed, with one dictionary per language: web/js/i18n/<lang>.js, which maps
 each French text to its translation. "{}" stands for a variable part:
 "{} épisodes" -> "{} episodes" (use {1}, {2}… to reorder them).
 
-The server (src/*.py) also writes French that the interface shows: the values of
-its "message" and "error" keys, and the text of the exceptions it raises (sent as
-{"error": str(error)} or shown by an alert()). Those are listed too.
+The server (crates/, Rust) also writes French that the interface shows: its
+error messages and notices. Its French string literals are listed too.
 
-  python tools/i18n.py extract   list the French texts of web/ and src/ in web/js/i18n/strings.json
+  python tools/i18n.py extract   list the French texts of web/ and crates/ in web/js/i18n/strings.json
   python tools/i18n.py status    count, per language, the texts still untranslated
   python tools/i18n.py missing de    print the texts German still lacks (JSON)
 
 A missing text stays in French: translations can be completed little by little.
 """
-import ast
 import html
 import json
 import re
@@ -26,7 +24,7 @@ from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parent.parent
 WEB = PROJECT / "web"
-SRC = PROJECT / "src"
+CRATES = PROJECT / "crates"
 I18N = WEB / "js" / "i18n"
 CATALOG = I18N / "strings.json"
 PREFIX, SUFFIX = "KINO_I18N.load(", ");\n"
@@ -157,46 +155,20 @@ def js_literals(source):
 
 
 # Keys whose value the server sends to the interface as text: {"error": "…"}.
-SERVER_KEYS = ("message", "error")
 # The server also writes English (logs, internal errors): only French reaches the catalog.
 FRENCH = re.compile(r"[À-ÿŒœ«»’]|\b(?:l'|d'|le|la|les|de|des|du|un|une|ce|cette|est|pas|aucun|aucune|pour|sur|votre|vos"
                     r"|introuvable|invalide|inconnue?|manquante?|indisponible)\b", re.I)
 
 
-def python_texts(node):
-    """The texts a Python expression can produce, variables as {}: a literal, an
-    f-string, "…" % x, "…".format(x), and both sides of `a if c else b` / `a or b`."""
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return [node.value]
-    if isinstance(node, ast.JoinedStr):
-        return ["".join(v.value if isinstance(v, ast.Constant) else "{}" for v in node.values)]
-    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod):
-        return [re.sub(r"%(?:\(\w+\))?[-#0 +]*\d*(?:\.\d+)?[sdifr]", "{}", t).replace("%%", "%")
-                for t in python_texts(node.left)]
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "format":
-        return [re.sub(r"\{[^{}]*\}", "{}", t) for t in python_texts(node.func.value)]
-    if isinstance(node, ast.IfExp):
-        return python_texts(node.body) + python_texts(node.orelse)
-    if isinstance(node, ast.BoolOp):
-        return [t for value in node.values for t in python_texts(value)]
-    return []
-
-
-def server_texts(source):
-    """French texts of a server module that the interface displays: values of the
-    "message"/"error" keys (dict literals and keyword arguments) and the first
-    argument of every exception raised."""
+def rust_texts(source):
+    """French texts of the Rust server that the interface may display: its
+    string literals (comments left out), « {} » for a variable part."""
+    source = source.split("#[cfg(test)]", 1)[0]  # the unit tests' own texts are not shown
+    code = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("//"))
     out = []
-    for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Dict):
-            values = [v for k, v in zip(node.keys, node.values) if isinstance(k, ast.Constant) and k.value in SERVER_KEYS]
-        elif isinstance(node, ast.Call):
-            values = [kw.value for kw in node.keywords if kw.arg in SERVER_KEYS]
-        elif isinstance(node, ast.Raise) and isinstance(node.exc, ast.Call):
-            values = node.exc.args[:1]
-        else:
-            continue
-        out.extend(normalize(t) for value in values for t in python_texts(value))
+    for match in re.finditer(r'(?<![A-Za-z0-9_#])"((?:[^"\\]|\\.)*)"', code):
+        text = match.group(1).replace('\\"', '"').replace("\\n", "\n")
+        out.append(normalize(re.sub(r"\{[^{}]*\}", "{}", text)))
     return [t for t in out if FRENCH.search(t) and is_shown_text(t)]
 
 
@@ -235,8 +207,9 @@ def extract():
     for script in sorted((WEB / "js").glob("*.js")):
         for literal in js_literals(script.read_text(encoding="utf-8")):
             found.update(text_segments(literal))
-    for module in sorted(SRC.glob("*.py")):
-        found.update(server_texts(module.read_text(encoding="utf-8")))
+    for module in sorted(CRATES.rglob("*.rs")):
+        if "tests" not in module.parts and "bin" not in module.parts:
+            found.update(rust_texts(module.read_text(encoding="utf-8")))
     return sorted(t for t in found if is_shown_text(t))
 
 
