@@ -29,6 +29,8 @@ pub fn router() -> Router<Shared> {
         .route("/api/series-meta", get(series_meta))
         .route("/api/search-suggest", get(suggest))
         .route("/api/search", get(search))
+        .route("/api/people", get(people))
+        .route("/api/person", get(person))
         .route("/api/history-record", post(history_record))
         .route("/api/watched-toggle", post(watched_toggle))
 }
@@ -396,4 +398,31 @@ async fn search(State(s): State<Shared>, Query(p): Query<HashMap<String, String>
         metas = catalog::search_fast(&s.db, &q, only, 20);
     }
     Json(json!({"metas": metas})).into_response()
+}
+
+/// Cast photos: up to 12 names separated by « | ».
+async fn people(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
+    let names: Vec<String> = p
+        .get("names")
+        .map(String::as_str)
+        .unwrap_or("")
+        .split('|')
+        .filter(|n| !n.trim().is_empty())
+        .take(12)
+        .map(str::to_string)
+        .collect();
+    Json(json!({"people": crate::people::person_photos(&s.meta, &names).await})).into_response()
+}
+
+/// « Page acteur ».
+async fn person(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
+    let name = crate::people::clean_name(p.get("name").map(String::as_str).unwrap_or(""));
+    if name.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "Nom manquant."})),
+        )
+            .into_response();
+    }
+    Json(crate::people::page(&s.meta, &name).await).into_response()
 }
