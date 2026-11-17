@@ -57,6 +57,19 @@ function initResizeHandles() {
         const minW = 640;
         const minH = 420;
         let rafPending = false;
+        // One set_bounds at a time, the latest size waiting (see syncWindowState).
+        let bounds = null;
+        let sending = false;
+        const send = async () => {
+          if (sending) return;
+          sending = true;
+          while (bounds) {
+            const next = bounds;
+            bounds = null;
+            try { await window.pywebview.api.set_bounds(...next); } catch (_) {}
+          }
+          sending = false;
+        };
 
         const onMove = (ev) => {
           if (rafPending) return;
@@ -96,7 +109,8 @@ function initResizeHandles() {
                 ny = origY + (origH - minH);
               }
             }
-            window.pywebview.api.set_bounds(nx, ny, nw, nh);
+            bounds = [nx, ny, nw, nh];
+            send();
           });
         };
 
@@ -133,7 +147,37 @@ function updateInAppFsBtnUI() {
   }
 }
 
+// One question to the app at a time. Each call to pywebview's API answers from a
+// thread of its own through the window's thread; a burst of them while the
+// window resizes (dozens of « resize » events) crashed KINO on Windows.
+let windowStateBusy = false;
+let windowStateAgain = false;
+let windowStateTimer = null;
+
 async function syncWindowState() {
+  if (windowStateBusy) {
+    windowStateAgain = true;
+    return;
+  }
+  windowStateBusy = true;
+  try {
+    await readWindowState();
+  } finally {
+    windowStateBusy = false;
+    if (windowStateAgain) {
+      windowStateAgain = false;
+      syncWindowState();
+    }
+  }
+}
+
+// While the window is being resized: once, when it has settled.
+function syncWindowStateSoon() {
+  clearTimeout(windowStateTimer);
+  windowStateTimer = setTimeout(syncWindowState, 150);
+}
+
+async function readWindowState() {
   try {
     let isFs = false;
     if (window.pywebview && window.pywebview.api && window.pywebview.api.get_state) {
@@ -163,7 +207,7 @@ async function syncWindowState() {
   } catch (e) {}
 }
 
-window.addEventListener('resize', syncWindowState);
+window.addEventListener('resize', syncWindowStateSoon);
 document.addEventListener('fullscreenchange', syncWindowState);
 document.addEventListener('webkitfullscreenchange', syncWindowState);
 setInterval(() => { if (!document.hidden) syncWindowState(); }, 1500);
