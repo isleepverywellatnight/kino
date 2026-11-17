@@ -45,6 +45,7 @@ _VERSION_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 _ARTIFACT_RE = re.compile(r"^KINO-[0-9]+\.[0-9]+\.[0-9]+-(arm64|x86_64)\.tar\.gz$")
 RELEASES_API = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
 RELEASES_PAGE = f"https://github.com/{UPDATE_REPO}/releases/latest"
+AUTO_CHECK_EVERY = 6 * 3600
 _RELEASE_PAGE_PREFIX = f"https://github.com/{UPDATE_REPO}/releases/"
 _DOWNLOAD_PREFIX = f"https://github.com/{UPDATE_REPO}/releases/download/"
 MAX_RELEASE_JSON = 2_000_000
@@ -117,12 +118,21 @@ def verify_installer_signature(raw: bytes, public_key_hex: str, *, current_versi
     return payload
 
 
+_HTTPS_CONTEXT: ssl.SSLContext | None = None
+_HTTPS_LOCK = threading.Lock()
+
+
 def _https_context() -> ssl.SSLContext:
-    try:
-        import certifi
-        return ssl.create_default_context(cafile=certifi.where())
-    except Exception:
-        return ssl.create_default_context()
+    """Built once: see config.get_ssl_context."""
+    global _HTTPS_CONTEXT
+    with _HTTPS_LOCK:
+        if _HTTPS_CONTEXT is None:
+            try:
+                import certifi
+                _HTTPS_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+            except Exception:
+                _HTTPS_CONTEXT = ssl.create_default_context()
+        return _HTTPS_CONTEXT
 
 
 def _open_url(url: str, *, timeout: float = 20, accept: str = "application/vnd.github+json"):
@@ -519,6 +529,7 @@ class UpdateManager:
                 "version": APP_VERSION,
                 "platform": sys.platform,
                 "channel": "github",
+                "auto_check": self.auto_check(),
                 "remote_configured": True,
                 "installed": self.is_installed(),
                 "local_packages": sys.platform == "darwin",
@@ -540,13 +551,38 @@ class UpdateManager:
             self._latest = release
         return release
 
-    def check_latest_quietly(self, delay: float = 20.0) -> None:
-        """Startup: learn about a new version in the background; failures stay silent."""
-        time.sleep(delay)
+    def auto_check(self) -> bool:
+        """Whether KINO asks GitHub for a new version by itself (Settings → Updates); on by default."""
         try:
-            self.check_latest()
-        except Exception:
-            pass
+            settings = json.loads((self.state_dir / "settings.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return True
+        return settings.get("auto_check") is not False
+
+    def set_auto_check(self, enabled: bool) -> dict:
+        self.state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path = self.state_dir / "settings.json"
+        path.write_text(json.dumps({"auto_check": enabled is True}), encoding="utf-8")
+        path.chmod(0o600)
+        return self.status()
+
+    def check_latest_quietly(self, delay: float = 20.0, every: float = AUTO_CHECK_EVERY, rounds: int | None = None) -> None:
+        """At startup, then every six hours unless the user turned it off; failures stay silent.
+
+        The request carries nothing but itself (the computer's address and KINO's
+        version, in its User-Agent): KINO reports nothing to anyone."""
+        time.sleep(delay)
+        while True:
+            if self.auto_check():
+                try:
+                    self.check_latest()
+                except Exception:
+                    pass
+            if rounds is not None:
+                rounds -= 1
+                if rounds <= 0:
+                    return
+            time.sleep(every)
 
     def check_for_updates(self, fetch=fetch_latest_release) -> dict:
         """The « Rechercher une mise à jour » button: GitHub first, then (macOS) local packages."""

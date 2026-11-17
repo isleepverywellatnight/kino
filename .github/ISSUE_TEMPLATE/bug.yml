@@ -1,0 +1,45 @@
+name: Report a bug
+description: Something wrong with playback, sources, manga, updates or the interface
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Never paste a debrid key, a Trakt token or any other secret. For a security issue, use **Security → Report a vulnerability** instead (see [SECURITY.md](https://github.com/isleepverywellatnight/kino/blob/main/SECURITY.md)).
+        English or French, as you like.
+  - type: dropdown
+    id: system
+    attributes:
+      label: System
+      options:
+        - macOS
+        - Windows
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: KINO version
+      description: Settings → Updates.
+      placeholder: "1.9.0"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What happened
+      description: The steps that lead to it, what you saw, and what you expected instead.
+      placeholder: |
+        1. Open a series from Series
+        2. Press Play
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Diagnostic report
+      description: Settings → Application → Diagnostic → Copy the report. It leaves out keys and personal data.
+      render: text

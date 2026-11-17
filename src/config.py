@@ -284,13 +284,30 @@ def _sanitize_tv_device(value):
             "name": _safe_string(value.get("name"), max_len=120) or host}
 
 
+_SSL_CONTEXT = None
+_SSL_LOCK = threading.Lock()
+
+
 def get_ssl_context():
-    try:
-        import certifi
-        return ssl.create_default_context(cafile=certifi.where())
-    except Exception:
-        pass
-    return ssl.create_default_context()
+    """One SSL context for all of KINO, built once and shared by every thread.
+
+    Building one per request (certifi's bundle read each time) while other
+    threads read HTTPS answers crashed KINO on Windows with an access violation,
+    at startup when several catalogues are read at once."""
+    global _SSL_CONTEXT
+    with _SSL_LOCK:
+        if _SSL_CONTEXT is None:
+            try:
+                import certifi
+                _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+            except Exception:
+                _SSL_CONTEXT = ssl.create_default_context()
+        return _SSL_CONTEXT
+
+
+# urlopen() without a context of its own uses the shared one too, instead of
+# building a new context for every connection.
+urllib.request.install_opener(urllib.request.build_opener(urllib.request.HTTPSHandler(context=get_ssl_context())))
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")

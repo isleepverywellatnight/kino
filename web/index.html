@@ -990,6 +990,13 @@
                 <button type="button" class="btn btn-secondary btn-small" id="kinoUpdatePageBtn" onclick="openKinoReleasePage()" hidden>Page des versions</button>
               </div>
             </div>
+            <div class="set-row">
+              <div class="set-text">
+                <label class="settings-label" for="kinoUpdateAuto">Rechercher automatiquement</label>
+                <p class="settings-desc">Au démarrage puis toutes les 6 heures, KINO demande à GitHub s’il existe une nouvelle version. Rien d’autre n’est envoyé.</p>
+              </div>
+              <label class="k-switch"><input type="checkbox" id="kinoUpdateAuto" role="switch" onchange="setKinoUpdateAuto(this)"><span aria-hidden="true"></span></label>
+            </div>
             <div class="kino-update-progress" id="kinoUpdateProgressBox" hidden>
               <div class="kino-update-progress-track"><span id="kinoUpdateProgressBar"></span></div>
               <span id="kinoUpdateProgressLabel">Vérification…</span>
