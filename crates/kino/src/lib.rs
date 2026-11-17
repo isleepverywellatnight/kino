@@ -14,3 +14,4 @@ pub mod paths;
 pub mod prefs;
 pub mod routes;
 pub mod server;
+pub mod sources;
