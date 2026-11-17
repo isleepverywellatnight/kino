@@ -34,7 +34,7 @@ fn origin_parts(origin: &str) -> Option<(String, Option<u16>)> {
 }
 
 /// Constant-time comparison for the pairing token.
-fn same_secret(a: &str, b: &str) -> bool {
+pub fn same_secret(a: &str, b: &str) -> bool {
     a.len() == b.len()
         && a.bytes()
             .zip(b.bytes())

@@ -405,7 +405,7 @@ impl EpisodeLinks {
             .insert(key, (download.into(), filename.into(), now()));
     }
 
-    fn recent(&self, key: &(String, i64, i64)) -> Option<(String, String)> {
+    pub fn recent(&self, key: &(String, i64, i64)) -> Option<(String, String)> {
         let links = self.links.lock().unwrap_or_else(|e| e.into_inner());
         links
             .get(key)

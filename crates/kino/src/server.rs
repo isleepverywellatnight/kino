@@ -43,6 +43,8 @@ pub struct AppState {
     pub player: Option<Arc<crate::player::Player>>,
     /// The phone remote: the player's state and the commands waiting for it.
     pub remote: Arc<crate::remote::Remote>,
+    /// « Lire sur la TV », when the window runs in this process.
+    pub tv: Option<Arc<crate::tv::Cast>>,
 }
 
 pub type Shared = Arc<AppState>;

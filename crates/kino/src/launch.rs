@@ -63,6 +63,18 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
     let player = options
         .window
         .map(|w| crate::player::Player::new(db.clone(), meta.clone(), Some(w)));
+    let remote: Arc<crate::remote::Remote> = Default::default();
+    let tv = player.as_ref().map(|p| {
+        crate::tv::Cast::new(
+            db.clone(),
+            meta.clone(),
+            links.clone(),
+            remote.clone(),
+            Some(p.discord.clone()),
+            options.port,
+            Default::default(),
+        )
+    });
     let state = Arc::new(server::AppState {
         db: db.clone(),
         port: options.port,
@@ -79,7 +91,8 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
         native_player: options.native_player,
         notifications: options.notifications,
         player,
-        remote: Default::default(),
+        remote,
+        tv,
         sites: crate::manga::sources::Sites::default(),
     });
     if options.startup_tasks {
