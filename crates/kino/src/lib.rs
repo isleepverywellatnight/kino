@@ -6,6 +6,7 @@ pub mod catalog;
 pub mod config;
 pub mod db;
 pub mod debrid;
+pub mod french;
 pub mod library;
 pub mod manga;
 pub mod meta;

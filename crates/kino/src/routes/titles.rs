@@ -28,6 +28,7 @@ pub fn router() -> Router<Shared> {
         .route("/api/meta", get(meta))
         .route("/api/series-meta", get(series_meta))
         .route("/api/search-suggest", get(suggest))
+        .route("/api/search", get(search))
         .route("/api/history-record", post(history_record))
         .route("/api/watched-toggle", post(watched_toggle))
 }
@@ -369,4 +370,30 @@ pub async fn toggle_watched(s: &Shared, payload: &Value) -> Vec<Value> {
 async fn watched_toggle(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
     let history = toggle_watched(&s, &body).await;
     Json(json!({"ok": true, "history": history})).into_response()
+}
+
+/// The catalogue's answer, with the works found by their French title first;
+/// KINO's own catalogue when neither knows the title.
+async fn search(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
+    let q = p.get("q").cloned().unwrap_or_default();
+    let kind = p.get("type").cloned().unwrap_or_else(|| "movie".into());
+    let (catalogue, french) = tokio::join!(
+        s.meta.search(&q, &kind),
+        crate::french::search(&s.meta, &q, &kind)
+    );
+    let known: Vec<Value> = french.iter().map(|m| m["id"].clone()).collect();
+    let mut metas = french;
+    metas.extend(
+        catalogue
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|m| !known.contains(&m["id"])),
+    );
+    if metas.is_empty() {
+        let only = ["movie", "series"]
+            .contains(&kind.as_str())
+            .then_some(kind.as_str());
+        metas = catalog::search_fast(&s.db, &q, only, 20);
+    }
+    Json(json!({"metas": metas})).into_response()
 }
