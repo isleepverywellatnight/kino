@@ -1,6 +1,7 @@
-// The Manga tab: series from MangaDex and from the user's own files (src/manga.py),
-// a page per series with its chapters, and a reader (page by page, or one long
-// scroll for webtoons), that remembers where the user stopped.
+// The Manga tab: AniList's catalogue and the user's own files (src/manga.py), a
+// page per series with its chapters gathered from several sites and its whole
+// volumes by torrent (manga_volumes.py), and a reader (page by page, or one long
+// scroll for webtoons) that remembers where the user stopped.
 
 const MANGA_LANG_KEY = 'kino.mangaLang';
 const MANGA_READER_KEY = 'kino.mangaReader';
@@ -9,7 +10,11 @@ let mangaLang = 'fr';
 let mangaSeries = null;   // { source, id, title, cover, chapters }
 let mangaReader = null;   // { chapterIndex, pages, page, mode, rtl }
 let mangaSaveTimer = null;
+let mangaVolumeTimers = {};
+const MANGA_ROWS = [['trending', 'Tendances', 'Les séries en cours de parution les plus lues en ce moment'],
+  ['popular', 'Les plus populaires', ''], ['webtoon', 'Manhwa et webtoons', 'Séries coréennes']];
 const MANGA_LAST_CHAPTER = 'Dernier chapitre disponible.';
+const MANGA_NO_ARCHIVE = 'Ce torrent ne contient pas de fichier CBZ.';
 
 function mangaStored(key, fallback) {
   try { return localStorage.getItem(key) || fallback; } catch (error) { return fallback; }
@@ -66,18 +71,21 @@ async function renderMangaTab() {
   if (page) page.hidden = true;
   home.hidden = false;
   home.innerHTML = '<p class="list-shelf-empty">Chargement…</p>';
-  const [progress, popular, local] = await Promise.all([
+  const [progress, local, ...rows] = await Promise.all([
     api('/api/manga/progress').catch(() => ({ progress: [] })),
-    api(`/api/manga/popular?lang=${encodeURIComponent(mangaLang)}`).catch(error => ({ error: error.message, series: [] })),
     api('/api/manga/local').catch(() => ({ folder: '', series: [] })),
+    ...MANGA_ROWS.map(([name]) => api(`/api/manga/row?name=${name}`).catch(error => ({ error: error.message, series: [] }))),
   ]);
   const reading = (progress.progress || []).map(p => ({ source: p.source, id: p.series, title: p.title, cover: p.cover, progress: p }));
   const folderLabel = local.folder ? 'Changer de dossier' : 'Choisir un dossier';
   const folderButton = `<button type="button" class="btn btn-secondary btn-small" onclick="chooseMangaFolder()">${folderLabel}</button>`;
   home.innerHTML = (reading.length ? mangaShelf('Continuer la lecture', '', mangaRow(reading, '', item =>
       item.progress.number ? `Chapitre ${item.progress.number}` : '')) : '')
-    + mangaShelf('Populaires', 'MangaDex · chapitres dans la langue choisie',
-      popular.error ? `<p class="list-shelf-empty">${escapeHtml(popular.error)}</p>` : mangaRow(popular.series || [], 'Aucune série dans cette langue.'))
+    + MANGA_ROWS.map(([, title, meta], index) => {
+      const data = rows[index] || {};
+      return mangaShelf(title, meta, data.error ? `<p class="list-shelf-empty">${escapeHtml(data.error)}</p>`
+        : mangaRow(data.series || [], 'Aucune série pour l’instant.'));
+    }).join('')
     + mangaShelf('Sur ce Mac', local.folder || 'Vos fichiers CBZ et dossiers d’images',
       mangaRow(local.series || [], local.folder ? 'Aucune série trouvée dans ce dossier.' : 'Choisissez le dossier qui contient vos mangas.',
         item => `${item.chapters} chapitre${item.chapters > 1 ? 's' : ''}`), folderButton);
@@ -92,7 +100,7 @@ async function searchManga() {
   home.innerHTML = '<p class="list-shelf-empty">Recherche…</p>';
   try {
     const data = await api(`/api/manga/search?lang=${encodeURIComponent(mangaLang)}&q=${encodeURIComponent(query)}`);
-    home.innerHTML = mangaShelf(`Résultats pour « ${query} »`, 'MangaDex',
+    home.innerHTML = mangaShelf(`Résultats pour « ${query} »`, '',
       (data.series || []).length ? `<div class="manga-grid">${data.series.map(s => mangaCardHtml(s, s.year ? String(s.year) : '')).join('')}</div>`
         : '<p class="list-shelf-empty">Aucune série trouvée.</p>',
       '<button type="button" class="btn btn-secondary btn-small" onclick="renderMangaTab()">← Manga</button>');
@@ -131,7 +139,8 @@ async function openMangaSeries(source, id) {
   page.innerHTML = '<p class="list-shelf-empty">Chargement…</p>';
   window.scrollTo({ top: 0, behavior: 'auto' });
   try {
-    const progress = ((await api('/api/manga/progress')).progress || []).find(p => p.source === source && p.series === id);
+    const saved = (await api('/api/manga/progress')).progress || [];
+    let progress = saved.find(p => p.source === source && p.series === id);
     let info, chapters;
     if (source === 'local') {
       const data = await api(`/api/manga/local/chapters?series=${encodeURIComponent(id)}`);
@@ -143,7 +152,13 @@ async function openMangaSeries(source, id) {
         api(`/api/manga/chapters?lang=${encodeURIComponent(mangaLang)}&id=${encodeURIComponent(id)}`).then(d => d.chapters || []),
       ]);
     }
-    mangaSeries = { source, id, title: info.title, cover: info.cover, chapters, progress };
+    // A series opened before the catalogue moved to AniList comes back under its AniList number.
+    if (source === 'mangadex' && info.source === 'anilist') {
+      progress = saved.find(p => p.source === 'anilist' && p.series === info.id) || progress;
+      source = info.source;
+      id = info.id;
+    }
+    mangaSeries = { source, id, title: info.title, cover: info.cover, chapters, progress, info };
     renderMangaSeries(info);
   } catch (error) {
     page.innerHTML = `<button type="button" class="btn btn-secondary lists-back" onclick="renderMangaTab()">← Manga</button><p class="list-shelf-empty">${escapeHtml(error.message)}</p>`;
@@ -153,13 +168,17 @@ async function openMangaSeries(source, id) {
 function renderMangaSeries(info) {
   const page = document.getElementById('mangaSeries');
   const { chapters, progress } = mangaSeries;
-  const resumeIndex = progress ? chapters.findIndex(c => c.id === progress.chapter) : -1;
+  const resumeIndex = progress ? chapters.findIndex(c => c.id === progress.chapter || c.id === `md:${progress.chapter}`
+    || (progress.number && c.number === progress.number)) : -1;
   const first = chapters.findIndex(c => !c.external);
   const start = resumeIndex >= 0
     ? `<button type="button" class="btn" onclick="openMangaReader(${resumeIndex}, ${Number(progress.page) || 0})">Reprendre · ${escapeHtml(mangaChapterLabel(chapters[resumeIndex]))}</button>`
     : (first >= 0 ? `<button type="button" class="btn" onclick="openMangaReader(${first}, 0)">Commencer la lecture</button>` : '');
-  const languages = mangaSeries.source === 'mangadex' && !chapters.length
-    ? `<p class="list-shelf-empty">Aucun chapitre dans cette langue. Choisissez-en une autre en haut de la page${info.languages?.length ? ` (disponible : ${escapeHtml(info.languages.slice(0, 8).join(', '))})` : ''}.</p>` : '';
+  const online = mangaSeries.source === 'anilist';
+  const empty = online && !chapters.length ? '<p class="list-shelf-empty">Aucun chapitre trouvé pour cette série pour l’instant.</p>' : '';
+  const last = chapters.length ? chapters[chapters.length - 1] : null;
+  const count = online && last ? `${chapters.length} chapitre${chapters.length > 1 ? 's' : ''} · dernier : ${last.number || '?'}${last.date ? ` (${last.date})` : ''}` : '';
+  const volumes = online ? '<button type="button" class="btn btn-secondary" onclick="showMangaVolumes()">Volumes HD (torrent)</button>' : '';
   page.innerHTML = `
     <button type="button" class="btn btn-secondary lists-back" onclick="renderMangaTab()">← Manga</button>
     <div class="manga-series-head">
@@ -167,20 +186,110 @@ function renderMangaSeries(info) {
       <div class="manga-series-text">
         <h2>${escapeHtml(info.title)}</h2>
         <p class="manga-series-meta">${escapeHtml([info.authors?.join(', '), info.year, info.tags?.slice(0, 4).join(' · ')].filter(Boolean).join(' · '))}</p>
+        ${count ? `<p class="manga-series-meta">${escapeHtml(count)}</p>` : ''}
         ${info.description ? `<p class="manga-series-desc">${escapeHtml(info.description)}</p>` : ''}
-        <div class="manga-series-actions">${start}</div>
+        <div class="manga-series-actions">${start}${volumes}</div>
       </div>
     </div>
-    ${languages}
+    <div id="mangaVolumes" class="manga-volumes" hidden></div>
+    ${empty}
     <ol class="manga-chapters">${chapters.map((chapter, index) => {
       const read = resumeIndex >= 0 && index < resumeIndex;
-      const meta = [chapter.title, chapter.group, chapter.pages ? `${chapter.pages} pages` : ''].filter(Boolean).join(' · ');
+      const meta = [chapter.title, chapter.group, chapter.pages ? `${chapter.pages} pages` : '',
+        chapter.source ? `${chapter.source}${chapter.lang ? ` · ${chapter.lang.toUpperCase()}` : ''}` : '', chapter.date].filter(Boolean).join(' · ');
       const action = chapter.external
         ? `<a class="btn btn-secondary btn-small" href="${escapeHtml(chapter.external)}" target="_blank" rel="noopener noreferrer">Chez l’éditeur ↗</a>`
         : `<button type="button" class="btn btn-secondary btn-small" onclick="openMangaReader(${index}, 0)">Lire</button>`;
       return `<li class="manga-chapter${read ? ' is-read' : ''}${index === resumeIndex ? ' is-current' : ''}">
           <div><strong>${escapeHtml(mangaChapterLabel(chapter))}</strong>${meta ? `<span>${escapeHtml(meta)}</span>` : ''}</div>${action}</li>`;
     }).join('')}</ol>`;
+}
+
+// ---------- Whole volumes by torrent ----------
+
+function mangaVolumesBox(html) {
+  const box = document.getElementById('mangaVolumes');
+  if (box) {
+    box.hidden = false;
+    box.innerHTML = html;
+  }
+  return box;
+}
+
+async function showMangaVolumes() {
+  if (!mangaSeries) return;
+  mangaVolumesBox('<p class="list-shelf-empty">Recherche des volumes…</p>');
+  try {
+    const data = await api(`/api/manga/volumes?id=${encodeURIComponent(mangaSeries.id)}`);
+    const torrents = data.torrents || [];
+    mangaVolumesBox(`<h3 class="list-shelf-title">Volumes HD</h3>
+      <p class="manga-volumes-note">Volumes complets partagés en torrent, souvent les éditions numériques officielles. Ils se téléchargent en P2P dans votre dossier manga, puis se lisent hors ligne.</p>
+      ${torrents.length ? `<ul class="manga-torrents">${torrents.map(t => `<li>
+          <div><strong>${escapeHtml(t.name)}</strong><span>${escapeHtml([t.size, `${t.seeders} source${t.seeders > 1 ? 's' : ''}`, t.date].filter(Boolean).join(' · '))}</span></div>
+          <button type="button" class="btn btn-secondary btn-small" onclick="openMangaTorrent(${attrJson(t.hash)}, ${attrJson(t.name)})">Voir les volumes</button>
+        </li>`).join('')}</ul>` : '<p class="list-shelf-empty">Aucun volume en torrent pour cette série.</p>'}`);
+  } catch (error) {
+    mangaVolumesBox(`<p class="list-shelf-empty">${escapeHtml(error.message)}</p>`);
+  }
+}
+
+async function openMangaTorrent(hash, name) {
+  mangaVolumesBox('<p class="list-shelf-empty">Ouverture du torrent… (jusqu’à 30 secondes)</p>');
+  let data;
+  try {
+    data = await api(`/api/manga/volume/files?hash=${encodeURIComponent(hash)}&name=${encodeURIComponent(name)}`);
+  } catch (error) {
+    if (error.code === 'p2p_consent' && typeof askP2PConsent === 'function' && await askP2PConsent()) return openMangaTorrent(hash, name);
+    mangaVolumesBox(`<p class="list-shelf-empty">${escapeHtml(error.message)}</p><button type="button" class="btn btn-secondary btn-small" onclick="showMangaVolumes()">← Volumes</button>`);
+    return;
+  }
+  const files = data.files || [];
+  mangaVolumesBox(`<h3 class="list-shelf-title">${escapeHtml(name)}</h3>
+    <button type="button" class="btn btn-secondary btn-small" onclick="showMangaVolumes()">← Volumes</button>
+    ${files.length ? `<ul class="manga-torrents">${files.map(f => `<li>
+        <div><strong>${escapeHtml(f.name)}</strong><span>${escapeHtml(typeof offlineSize === 'function' ? offlineSize(f.size) : `${f.size}`)}</span></div>
+        <span class="manga-volume-state" data-volume="${f.index}"><button type="button" class="btn btn-secondary btn-small" onclick="downloadMangaVolume(${attrJson(hash)}, ${f.index})">Télécharger</button></span>
+      </li>`).join('')}</ul>` : `<p class="list-shelf-empty">${MANGA_NO_ARCHIVE}</p>`}`);
+}
+
+function mangaVolumeState(index, html) {
+  const cell = document.querySelector(`[data-volume="${index}"]`);
+  if (cell) cell.innerHTML = html;
+}
+
+async function downloadMangaVolume(hash, index) {
+  mangaVolumeState(index, '<span class="manga-volume-progress">Démarrage…</span>');
+  try {
+    const state = await api('/api/manga/volume', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hash, index, series: mangaSeries?.title || '' }) });
+    followMangaVolume(hash, index, state);
+  } catch (error) {
+    if (error.code === 'p2p_consent' && typeof askP2PConsent === 'function' && await askP2PConsent()) return downloadMangaVolume(hash, index);
+    mangaVolumeState(index, `<span class="manga-volume-progress">${escapeHtml(error.message)}</span>`);
+  }
+}
+
+function followMangaVolume(hash, index, state) {
+  const key = `${hash}:${index}`;
+  clearTimeout(mangaVolumeTimers[key]);
+  if (state.error) {
+    mangaVolumeState(index, `<span class="manga-volume-progress">${escapeHtml(state.error)}</span>`);
+    return;
+  }
+  if (state.done) {
+    mangaVolumeState(index, state.local
+      ? `<button type="button" class="btn btn-small" onclick="openMangaSeries('local', ${attrJson(state.local)})">Lire</button>`
+      : '<span class="manga-volume-progress">Téléchargé</span>');
+    return;
+  }
+  mangaVolumeState(index, `<span class="manga-volume-progress">${Math.floor((state.progress || 0) * 100)} %</span>`);
+  mangaVolumeTimers[key] = setTimeout(async () => {
+    try {
+      followMangaVolume(hash, index, await api(`/api/manga/volume/status?hash=${encodeURIComponent(hash)}&index=${index}`));
+    } catch (error) {
+      mangaVolumeState(index, `<span class="manga-volume-progress">${escapeHtml(error.message)}</span>`);
+    }
+  }, 2000);
 }
 
 // ---------- The reader ----------

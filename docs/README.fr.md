@@ -17,10 +17,11 @@ KINO n'héberge, ne fournit et ne distribue aucun contenu. Il interroge des sour
   et leurs catalogues dans Explorer), et lisez les torrents en P2P après avoir
   accepté ce que cela implique (votre adresse IP est visible, vous partagez
   pendant la lecture).
-- **Manga** : lisez les séries de MangaDex (traduites par des équipes de
-  bénévoles) et vos propres fichiers CBZ ou dossiers d'images, page par page ou
-  en défilement, dans le sens japonais si vous le voulez ; KINO retient où vous
-  vous êtes arrêté.
+- **Manga** : tout le catalogue et les séries en cours de parution, chaque
+  chapitre réuni depuis plusieurs sites (dans votre langue quand il existe,
+  sinon en anglais), des volumes complets en HD par torrent, et vos propres
+  fichiers CBZ et dossiers d’images ; lecture page par page ou en défilement,
+  dans le sens japonais si vous voulez. KINO retient où vous vous êtes arrêté.
 - **Lecture** : lecteur vidéo inclus, basé sur mpv (HDR, sous-titres, pistes audio, saut du générique).
 - **Suivi** : Ma Liste, lectures en cours, Déjà vus, Mes séries, calendrier des sorties, notes en un geste.
 - **Suggestions** : « Pour vous » et « Si vous avez aimé », calculées sur votre ordinateur à partir de ce que vous avez vu et noté.
