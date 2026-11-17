@@ -4,6 +4,10 @@ The Rust server (crates/kino, built as kino-server) answers on KINO's port
 and forwards to this Python server, on a private local port, the routes it
 does not handle yet. When it is missing or does not start, this server takes
 the port itself, as before. KINO_PYTHON_ONLY=1 keeps the Python server alone.
+
+With kino-server in front, it runs the launch work (cache, Drive sync, account
+and network checks, finished series, suggestion pool, daily backup) and the
+offline downloads; desktop.py leaves those to it.
 """
 import os
 import socket
@@ -41,7 +45,7 @@ def _answers(port):
 def start(program, port, legacy_port, web_root, pairing_token, native_player=False, notifications=False, log_dir=None):
     """Starts kino-server on `port` in front of this server; the process, or None if it did not answer."""
     env = dict(os.environ, KINO_PORT=str(port), KINO_LEGACY=f"http://127.0.0.1:{legacy_port}", KINO_WEB=str(web_root),
-               KINO_PAIRING_TOKEN=pairing_token, KINO_EXIT_WITH_STDIN="1",
+               KINO_PAIRING_TOKEN=pairing_token, KINO_EXIT_WITH_STDIN="1", KINO_STARTUP_TASKS="1",
                KINO_NATIVE_PLAYER="1" if native_player else "0", KINO_NOTIFICATIONS="1" if notifications else "0")
     log = subprocess.DEVNULL
     if log_dir:

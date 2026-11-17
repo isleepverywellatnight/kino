@@ -794,6 +794,169 @@ impl Store {
     }
 }
 
+// ---------- The pool, read from Cinemeta's public catalogues ----------
+
+const MOVIE_GENRES: [&str; 19] = [
+    "Action",
+    "Adventure",
+    "Animation",
+    "Biography",
+    "Comedy",
+    "Crime",
+    "Documentary",
+    "Drama",
+    "Family",
+    "Fantasy",
+    "History",
+    "Horror",
+    "Mystery",
+    "Romance",
+    "Sci-Fi",
+    "Sport",
+    "Thriller",
+    "War",
+    "Western",
+];
+const POOL_MAX_AGE: f64 = 30.0 * 86400.0;
+static BUILDING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// (kind, catalogue, genre, skip) of the pages read: about 200 requests.
+fn pool_pages(year: i32) -> Vec<(&'static str, &'static str, String, u32)> {
+    let mut pages = Vec::new();
+    pages.extend(
+        (0..1000)
+            .step_by(50)
+            .map(|s| ("movie", "top", String::new(), s)),
+    );
+    pages.extend(
+        (0..500)
+            .step_by(50)
+            .map(|s| ("movie", "imdbRating", String::new(), s)),
+    );
+    for genre in MOVIE_GENRES {
+        pages.extend([0, 50, 100].map(|s| ("movie", "top", genre.to_string(), s)));
+    }
+    for y in (2000..=year).rev() {
+        pages.extend([0, 50].map(|s| ("movie", "year", y.to_string(), s)));
+    }
+    pages.extend(
+        (0..500)
+            .step_by(50)
+            .map(|s| ("series", "top", String::new(), s)),
+    );
+    pages.extend(
+        (0..250)
+            .step_by(50)
+            .map(|s| ("series", "imdbRating", String::new(), s)),
+    );
+    for genre in MOVIE_GENRES.iter().chain(["Reality-TV"].iter()) {
+        pages.extend([0, 50].map(|s| ("series", "top", genre.to_string(), s)));
+    }
+    pages
+}
+
+fn page_url(base: &str, kind: &str, catalog: &str, genre: &str, skip: u32) -> String {
+    let extra: Vec<String> = [
+        (!genre.is_empty()).then(|| format!("genre={genre}")),
+        (skip != 0).then(|| format!("skip={skip}")),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    let extra = if extra.is_empty() {
+        String::new()
+    } else {
+        format!("/{}", extra.join("&"))
+    };
+    format!("{base}/catalog/{kind}/{catalog}{extra}.json")
+}
+
+/// Whether the pool is being read again now.
+pub fn building() -> bool {
+    BUILDING.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+impl Store {
+    /// Reads the public catalogues again when the pool is empty or a month old.
+    pub async fn refresh_pool(
+        &self,
+        db: &Db,
+        net: &crate::net::Net,
+        base: &str,
+        force: bool,
+    ) -> usize {
+        let (count, age) = self.pool_age(db, crate::db::now());
+        if !force && count as usize >= POOL_READY && age.is_some_and(|a| a < POOL_MAX_AGE) {
+            return count as usize;
+        }
+        if BUILDING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            return count as usize;
+        }
+        let year = chrono::Datelike::year(&chrono::Utc::now());
+        let headers = [
+            ("User-Agent", crate::net::BROWSER),
+            ("Accept", "application/json, text/plain, */*"),
+        ];
+        let pages: Vec<(String, bool)> = pool_pages(year)
+            .into_iter()
+            .map(|(kind, catalog, genre, skip)| {
+                (
+                    page_url(base, kind, catalog, &genre, skip),
+                    kind == "series",
+                )
+            })
+            .collect();
+        let mut found: IndexMap<String, Value> = IndexMap::new();
+        let mut reads = futures_util::StreamExt::buffered(
+            futures_util::stream::iter(pages.into_iter().map(|(url, series)| async move {
+                let metas = net
+                    .request_json(
+                        reqwest::Method::GET,
+                        &url,
+                        &headers,
+                        None,
+                        std::time::Duration::from_secs(12),
+                        1,
+                    )
+                    .await
+                    .map(|d| d["metas"].as_array().cloned().unwrap_or_default())
+                    .unwrap_or_default();
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                (metas, series)
+            })),
+            4,
+        );
+        while let Some((metas, series)) = futures_util::StreamExt::next(&mut reads).await {
+            for meta in metas {
+                if let Some(entry) = compact(&meta, if series { "series" } else { "movie" }) {
+                    found.entry(text(&entry["id"])).or_insert(entry);
+                }
+            }
+        }
+        let entries: Vec<Value> = found.into_values().collect();
+        let saved = if entries.len() >= POOL_READY {
+            let at = crate::db::now();
+            let _ = db.with(|c| {
+                tables(c)?;
+                let tx = c.unchecked_transaction()?;
+                tx.execute("DELETE FROM taste_pool", [])?;
+                for e in &entries {
+                    tx.execute(
+                        "INSERT INTO taste_pool (id, type, data_json, updated_at) VALUES (?, ?, ?, ?)",
+                        params![text(&e["id"]), text(&e["type"]), e.to_string(), at],
+                    )?;
+                }
+                tx.commit()
+            });
+            entries.len()
+        } else {
+            count as usize
+        };
+        BUILDING.store(false, std::sync::atomic::Ordering::SeqCst);
+        saved
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

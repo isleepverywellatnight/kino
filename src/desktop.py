@@ -195,18 +195,18 @@ def run_server():
     # it runs the downloads and reconciles them itself.
     if not app.RUST_FRONT:
         app.offline_library.library.reconcile()
-    # After the single-instance check: a second window must not compact the database
-    # or synchronise Google Drive alongside the running app.
-    app.kino_db.start_background_maintenance()
+        # After the single-instance check: a second window must not compact the database
+        # or synchronise Google Drive alongside the running app.
+        app.kino_db.start_background_maintenance()
+        threading.Thread(target=app.refresh_finished_series, daemon=True).start()
+        threading.Thread(target=app.api_service.warm_account, daemon=True).start()
+        threading.Thread(target=app.network_state.warm, daemon=True).start()
+        # KINO's own suggestions: the public catalogues read again once a month.
+        threading.Thread(target=app.refresh_suggestion_pool, daemon=True, name="suggestions").start()
+        app.backups().start()
     threading.Thread(target=kino_update.prune_installed_update_leftovers, daemon=True).start()
     threading.Thread(target=kino_update.manager.check_latest_quietly, daemon=True, name="update-check").start()
-    threading.Thread(target=app.refresh_finished_series, daemon=True).start()
-    threading.Thread(target=app.api_service.warm_account, daemon=True).start()
-    threading.Thread(target=app.network_state.warm, daemon=True).start()
     threading.Thread(target=watch_new_episodes, daemon=True).start()
-    # KINO's own suggestions: the public catalogues read again once a month.
-    threading.Thread(target=app.refresh_suggestion_pool, daemon=True, name="suggestions").start()
-    app.backups().start()
     server_instance.serve_forever()
 
 
