@@ -1265,13 +1265,15 @@ def make_native_player():
 
 def start_hang_trace():
     """KINO_TRACE_FILE=path: write every thread's Python stack there every 15 s,
-    to see where KINO waits when its window stops responding."""
+    to see where KINO waits when its window stops responding, and once more if
+    KINO crashes (an access violation in native code, for instance)."""
     path = os.environ.get("KINO_TRACE_FILE")
     if not path:
         return
     import faulthandler
     global _TRACE_FILE
     _TRACE_FILE = open(path, "w", encoding="utf-8")
+    faulthandler.enable(file=_TRACE_FILE, all_threads=True)
     faulthandler.dump_traceback_later(15, repeat=True, file=_TRACE_FILE)
 
 

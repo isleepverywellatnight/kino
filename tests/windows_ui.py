@@ -342,16 +342,21 @@ def main():
             page.wait_for_timeout(800)
             browser.close()
     finally:
-        print(f"KINO still running at the end: {kino.poll() is None} (exit code {kino.poll()})", flush=True)
+        crashed = kino.poll() is not None
+        print(f"KINO still running at the end: {not crashed} (exit code {kino.poll()})", flush=True)
         kino.terminate()
         try:
             kino.wait(10)
         except subprocess.TimeoutExpired:
             kino.kill()
         trace = work / "trace.txt"
-        if not all(results) and trace.exists():
+        if (crashed or not all(results)) and trace.exists():
+            text = trace.read_text(encoding="utf-8", errors="replace")
+            # A crash dump starts with « Windows fatal exception »: from there, it names
+            # the thread that crashed first; otherwise the last periodic dump.
+            start = text.rfind("Windows fatal exception")
             print("--- Python threads ---")
-            print(trace.read_text(encoding="utf-8", errors="replace")[-6000:])
+            print(text[start:start + 12000] if start >= 0 else text[-6000:])
     print(f"{results.count(True)}/{len(results)} checks passed")
     sys.exit(0 if results and all(results) else 1)
 
