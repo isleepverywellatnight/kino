@@ -413,69 +413,8 @@ impl P2p {
         } else {
             format!("magnet:?xt=urn:btih:{hash}")
         };
-        let mut guard = self.live.lock().await;
-        let live = self.session(&mut guard).await?;
-        let torrent = match live.torrents.get_mut(&hash) {
-            Some(entry) => {
-                entry.1 = Instant::now();
-                entry.0.clone()
-            }
-            None => {
-                // Until the player asks for one, only the videos are wanted.
-                let peers = self
-                    .known_peers
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .clone();
-                let options = AddTorrentOptions {
-                    overwrite: true,
-                    initial_peers: (!peers.is_empty()).then_some(peers),
-                    ..Default::default()
-                };
-                let added = tokio::time::timeout(
-                    METADATA_TIMEOUT,
-                    live.session
-                        .add_torrent(AddTorrent::from_url(&magnet), Some(options)),
-                )
-                .await;
-                let torrent = match added {
-                    Ok(Ok(
-                        AddTorrentResponse::Added(_, t) | AddTorrentResponse::AlreadyManaged(_, t),
-                    )) => t,
-                    _ => return Ok(json!({"ready": false, "files": []})),
-                };
-                let videos: HashSet<usize> = torrent
-                    .with_metadata(|m| {
-                        m.file_infos
-                            .iter()
-                            .enumerate()
-                            .filter(|(_, f)| is_video(&f.relative_filename.to_string_lossy()))
-                            .map(|(i, _)| i)
-                            .collect()
-                    })
-                    .unwrap_or_default();
-                if !videos.is_empty() {
-                    let _ = live.session.update_only_files(&torrent, &videos).await;
-                }
-                live.torrents
-                    .insert(hash.clone(), (torrent.clone(), Instant::now(), None));
-                // Only the latest torrents stay, with their files.
-                let mut by_age: Vec<(String, Instant)> = live
-                    .torrents
-                    .iter()
-                    .map(|(k, v)| (k.clone(), v.1))
-                    .collect();
-                by_age.sort_by_key(|(_, at)| *at);
-                for (old, _) in by_age
-                    .iter()
-                    .take(by_age.len().saturating_sub(KEEP_TORRENTS))
-                {
-                    if let Some((t, _, _)) = live.torrents.remove(old) {
-                        let _ = live.session.delete(t.id().into(), true).await;
-                    }
-                }
-                torrent
-            }
+        let Some(torrent) = self.torrent(&hash, &magnet, false).await? else {
+            return Ok(json!({"ready": false, "files": []}));
         };
         let files: Vec<Value> = torrent
             .with_metadata(|m| {
@@ -491,6 +430,136 @@ impl P2p {
             })
             .unwrap_or_default();
         Ok(json!({"ready": !files.is_empty(), "files": files, "p2p": true}))
+    }
+
+    /// The torrent of `hash`, added if needed: its file list once the peers
+    /// sent it (None after 30 s). New ones fetch only their videos, or nothing
+    /// (`idle`, a volume pack) until a file is asked for.
+    async fn torrent(
+        &self,
+        hash: &str,
+        magnet: &str,
+        idle: bool,
+    ) -> Result<Option<Arc<ManagedTorrent>>, String> {
+        let mut guard = self.live.lock().await;
+        let live = self.session(&mut guard).await?;
+        if let Some(entry) = live.torrents.get_mut(hash) {
+            entry.1 = Instant::now();
+            return Ok(Some(entry.0.clone()));
+        }
+        let peers = self
+            .known_peers
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        let options = AddTorrentOptions {
+            overwrite: true,
+            paused: idle,
+            initial_peers: (!peers.is_empty()).then_some(peers),
+            ..Default::default()
+        };
+        let added = tokio::time::timeout(
+            METADATA_TIMEOUT,
+            live.session
+                .add_torrent(AddTorrent::from_url(magnet), Some(options)),
+        )
+        .await;
+        let torrent = match added {
+            Ok(Ok(AddTorrentResponse::Added(_, t) | AddTorrentResponse::AlreadyManaged(_, t))) => t,
+            _ => return Ok(None),
+        };
+        if !idle {
+            // Until the player asks for one, only the videos are wanted.
+            let videos: HashSet<usize> = torrent
+                .with_metadata(|m| {
+                    m.file_infos
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, f)| is_video(&f.relative_filename.to_string_lossy()))
+                        .map(|(i, _)| i)
+                        .collect()
+                })
+                .unwrap_or_default();
+            if !videos.is_empty() {
+                let _ = live.session.update_only_files(&torrent, &videos).await;
+            }
+        }
+        live.torrents
+            .insert(hash.to_string(), (torrent.clone(), Instant::now(), None));
+        // Only the latest torrents stay, with their files.
+        let mut by_age: Vec<(String, Instant)> = live
+            .torrents
+            .iter()
+            .map(|(k, v)| (k.clone(), v.1))
+            .collect();
+        by_age.sort_by_key(|(_, at)| *at);
+        for (old, _) in by_age
+            .iter()
+            .take(by_age.len().saturating_sub(KEEP_TORRENTS))
+        {
+            if let Some((t, _, _)) = live.torrents.remove(old) {
+                let _ = live.session.delete(t.id().into(), true).await;
+            }
+        }
+        Ok(Some(torrent))
+    }
+
+    /// Every file of a torrent: (index, path inside it, size). Nothing is fetched yet.
+    pub async fn files(
+        &self,
+        hash: &str,
+        magnet: &str,
+    ) -> Result<Option<Vec<(usize, String, u64)>>, String> {
+        let Some(torrent) = self.torrent(hash, magnet, true).await? else {
+            return Ok(None);
+        };
+        Ok(torrent
+            .with_metadata(|m| {
+                m.file_infos
+                    .iter()
+                    .enumerate()
+                    .map(|(i, f)| {
+                        (
+                            i,
+                            f.relative_filename.to_string_lossy().replace('\\', "/"),
+                            f.len,
+                        )
+                    })
+                    .collect()
+            })
+            .ok())
+    }
+
+    /// Fetches these files of a torrent already added, and only them.
+    pub async fn fetch(&self, hash: &str, files: &HashSet<usize>) -> Result<(), String> {
+        let guard = self.live.lock().await;
+        let live = guard.as_ref().ok_or("Le téléchargement s'est arrêté.")?;
+        let (torrent, _, _) = live
+            .torrents
+            .get(hash)
+            .ok_or("Le téléchargement s'est arrêté.")?;
+        live.session
+            .update_only_files(torrent, files)
+            .await
+            .map_err(|e| e.to_string())?;
+        if torrent.is_paused() {
+            live.session
+                .unpause(torrent)
+                .await
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+
+    /// (bytes done, where the file is written) of one file being fetched.
+    pub async fn progress(&self, hash: &str, index: usize) -> Option<(u64, PathBuf)> {
+        let guard = self.live.lock().await;
+        let (torrent, _, _) = guard.as_ref()?.torrents.get(hash)?;
+        let done = *torrent.stats().file_progress.get(index)?;
+        let relative = torrent
+            .with_metadata(|m| m.file_infos.get(index).map(|f| f.relative_filename.clone()))
+            .ok()??;
+        Some((done, torrent.output_folder().join(relative)))
     }
 
     /// A file of a torrent being read, its size and type, and a stream that
