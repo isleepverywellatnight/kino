@@ -118,12 +118,21 @@ def verify_installer_signature(raw: bytes, public_key_hex: str, *, current_versi
     return payload
 
 
+_HTTPS_CONTEXT: ssl.SSLContext | None = None
+_HTTPS_LOCK = threading.Lock()
+
+
 def _https_context() -> ssl.SSLContext:
-    try:
-        import certifi
-        return ssl.create_default_context(cafile=certifi.where())
-    except Exception:
-        return ssl.create_default_context()
+    """Built once: see config.get_ssl_context."""
+    global _HTTPS_CONTEXT
+    with _HTTPS_LOCK:
+        if _HTTPS_CONTEXT is None:
+            try:
+                import certifi
+                _HTTPS_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+            except Exception:
+                _HTTPS_CONTEXT = ssl.create_default_context()
+        return _HTTPS_CONTEXT
 
 
 def _open_url(url: str, *, timeout: float = 20, accept: str = "application/vnd.github+json"):
