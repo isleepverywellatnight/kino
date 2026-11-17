@@ -264,7 +264,13 @@ fn call(window: &Window, name: &str, args: &[Value], quit: &mut bool) -> Result<
             set_maximized(window, !maximized(window));
             json!(maximized(window))
         }
-        "start_window_drag" => json!(window.drag_window().is_ok()),
+        "start_window_drag" => {
+            #[cfg(windows)]
+            if !win_frame::button_down() {
+                return Ok(json!(false));
+            }
+            json!(window.drag_window().is_ok())
+        }
         "start_resize" => {
             let d = args
                 .first()
