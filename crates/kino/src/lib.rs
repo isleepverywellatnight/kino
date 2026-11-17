@@ -51,3 +51,4 @@ pub mod torrentfile;
 pub mod trailer;
 pub mod trakt;
 pub mod tv;
+pub mod update;
