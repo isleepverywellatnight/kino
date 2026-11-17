@@ -1,5 +1,6 @@
 //! The API routes ported to Rust, by subject.
 
+pub mod anime;
 pub mod library;
 pub mod manga;
 pub mod play;
@@ -23,4 +24,5 @@ pub fn router() -> Router<Shared> {
         .merge(play::router())
         .merge(series::router())
         .merge(suggestions::router())
+        .merge(anime::router())
 }
