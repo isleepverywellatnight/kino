@@ -72,6 +72,11 @@ impl Db {
         Ok(())
     }
 
+    pub fn delete_config(&self, key: &str) -> Result<()> {
+        self.with(|c| c.execute("DELETE FROM app_config WHERE key = ?", [key]))?;
+        Ok(())
+    }
+
     /// A cached value that has not expired.
     pub fn cache_get(&self, key: &str) -> Option<Value> {
         let row: Option<(Option<String>, Option<f64>)> = self

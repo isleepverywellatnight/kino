@@ -516,19 +516,19 @@ impl Manga<'_> {
 // ---------- Where the user stopped ----------
 
 pub fn progress(db: &Db) -> Vec<Value> {
-    let mut items: Vec<Value> = db
+    let mut items: Vec<(usize, Value)> = db
         .get_config(PROGRESS_KEY)
         .and_then(|v| v.as_object().cloned())
         .unwrap_or_default()
         .into_values()
+        .enumerate()
         .collect();
-    items.sort_by(|a, b| {
-        b["updated"]
-            .as_f64()
-            .unwrap_or(0.0)
-            .total_cmp(&a["updated"].as_f64().unwrap_or(0.0))
+    // Most recent first; within one millisecond, the one written last.
+    items.sort_by(|(i, a), (j, b)| {
+        let updated = |v: &Value| v["updated"].as_f64().unwrap_or(0.0);
+        updated(b).total_cmp(&updated(a)).then(j.cmp(i))
     });
-    items
+    items.into_iter().map(|(_, v)| v).collect()
 }
 
 fn text(value: &Value, limit: usize) -> String {
