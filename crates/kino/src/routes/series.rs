@@ -16,6 +16,7 @@ pub fn router() -> Router<Shared> {
         .route("/api/my-series", get(my_series))
         .route("/api/calendar", get(calendar))
         .route("/api/user-lists", get(user_lists))
+        .route("/api/stats", get(stats))
 }
 
 fn lists(s: &Shared) -> (Vec<Value>, Vec<Value>) {
@@ -50,6 +51,11 @@ async fn calendar(State(s): State<Shared>) -> Response {
         .await,
     )
     .into_response()
+}
+
+async fn stats(State(s): State<Shared>) -> Response {
+    let history = library::history(&s.db);
+    Json(crate::stats::viewing_stats(&s.db, &s.meta, &history).await).into_response()
 }
 
 async fn user_lists(State(s): State<Shared>) -> Response {

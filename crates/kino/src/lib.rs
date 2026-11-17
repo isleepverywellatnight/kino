@@ -18,3 +18,4 @@ pub mod routes;
 pub mod series;
 pub mod server;
 pub mod sources;
+pub mod stats;
