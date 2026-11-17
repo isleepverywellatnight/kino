@@ -29,6 +29,8 @@ pub fn router() -> Router<Shared> {
         .route("/api/auto-stream", get(auto_stream))
         .route("/api/playback-feedback", post(feedback))
         .route("/api/subtitles", get(subtitles))
+        .route("/api/intro-times", get(intro_times))
+        .route("/api/trailer", get(trailer))
         .route("/api/subtitle-cues", get(subtitle_cues))
 }
 
@@ -482,4 +484,51 @@ async fn subtitle_cues(
             None,
         ),
     }
+}
+
+/// Opening and ending times of an episode, for « Passer le générique ».
+async fn intro_times(
+    State(s): State<Shared>,
+    Query(p): Query<HashMap<String, String>>,
+) -> Response {
+    let get = |k: &str| p.get(k).map(|v| v.trim().to_string()).unwrap_or_default();
+    let number = |k: &str| {
+        p.get(k)
+            .filter(|v| !v.is_empty())
+            .and_then(|v| v.trim().parse::<i64>().ok())
+            .filter(|v| *v != 0)
+            .unwrap_or(1)
+    };
+    let mut title = get("title");
+    let kind = p
+        .get("type")
+        .map(|v| v.trim().to_string())
+        .unwrap_or_else(|| "series".into());
+    let imdb_id = get("imdb_id");
+    if title.is_empty()
+        && !imdb_id.is_empty()
+        && let Ok(found) = s.meta.media(&imdb_id, "movie").await
+    {
+        // Cinemeta names a title « name »; the Python version read « title » and found nothing.
+        title = found["name"].as_str().unwrap_or("").to_string();
+    }
+    let url = get("url");
+    let found = crate::intro::intro_times(
+        &s.meta,
+        &title,
+        &kind,
+        number("season"),
+        number("episode"),
+        Some(url.as_str()).filter(|u| !u.is_empty()),
+        &imdb_id,
+    )
+    .await;
+    Json(found).into_response()
+}
+
+async fn trailer(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
+    let get = |k: &str| p.get(k).cloned().unwrap_or_default();
+    let lang = p.get("lang").cloned().unwrap_or_else(|| "vf".into());
+    Json(crate::trailer::trailer(&s.meta, &get("title"), &get("year"), &get("yt_id"), &lang).await)
+        .into_response()
 }
