@@ -1,12 +1,13 @@
 """KINO's real window on Windows, driven like a person would (GitHub Actions, windows-latest).
 
-KINO runs from the sources with WebView2's DevTools port open (KINO_DEVTOOLS_PORT):
+KINO (target/release/kino-desktop.exe) runs with WebView2's DevTools port open:
 Playwright reads the page through it, while clicks and drags are real mouse input
 sent to Windows, so the window behaves exactly as under a hand. Each check prints
 « CHECK name: PASS|FAIL detail »; screenshots go to the log as base64 JPEG
 (« SCREENSHOT name » … « END SCREENSHOT »). Exit code 1 when a check fails.
 
-Run: python tests/windows_ui.py   (Windows only; needs playwright and pillow)
+Run: cargo build --release -p kino-desktop, then python tests/windows_ui.py
+(Windows only; needs playwright, pillow and imageio-ffmpeg)
 """
 import base64
 import ctypes
@@ -174,8 +175,12 @@ def main():
     work = Path(tempfile.mkdtemp(prefix="kino-ui-"))
     make_video(work)
     video_url = serve(work)
-    env = dict(os.environ, KINO_DEVTOOLS_PORT=str(PORT), KINO_TRACE_FILE=str(work / "trace.txt"))
-    kino = subprocess.Popen([sys.executable, str(PROJECT / "src" / "desktop.py")], env=env, cwd=str(PROJECT))
+    # A home of its own: the test never touches the runner user's KINO data.
+    home = work / "home"
+    home.mkdir()
+    env = dict(os.environ, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=f"--remote-debugging-port={PORT}",
+               USERPROFILE=str(home), HOME=str(home))
+    kino = subprocess.Popen([str(PROJECT / "target" / "release" / "kino-desktop.exe")], env=env, cwd=str(PROJECT))
     try:
         # Connect once KINO's page is a DevTools target (before, Playwright may keep about:blank).
         for _ in range(120):
@@ -348,10 +353,6 @@ def main():
             kino.wait(10)
         except subprocess.TimeoutExpired:
             kino.kill()
-        trace = work / "trace.txt"
-        if not all(results) and trace.exists():
-            print("--- Python threads ---")
-            print(trace.read_text(encoding="utf-8", errors="replace")[-6000:])
     print(f"{results.count(True)}/{len(results)} checks passed")
     sys.exit(0 if results and all(results) else 1)
 

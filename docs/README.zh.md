@@ -78,9 +78,8 @@ KINO 尚未经过 Apple 或 Microsoft 签名。通过浏览器下载后：
 
 | 文件夹 | 内容 |
 |---|---|
-| `src/` | KINO 的 Python 代码；`desktop.py` 用于启动 |
+| `crates/` | KINO 的 Rust 代码：`kino`（服务器）和 `kino-desktop`（应用） |
 | `web/` | 界面（HTML、CSS、JavaScript） |
-| `addons/` | 附加片源，可在设置中启用 |
 | `assets/` | 随应用附带的图标和文件 |
 | `packaging/` | 应用构建、安装程序、安装脚本 |
 | `tools/` | 构建与发布工具 |

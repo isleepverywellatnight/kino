@@ -104,9 +104,8 @@ KINO does not delete this data.
 
 | Folder | Contents |
 |---|---|
-| `src/` | KINO's Python code; `desktop.py` starts it |
+| `crates/` | KINO's code, in Rust: `kino` (the server) and `kino-desktop` (the app) |
 | `web/` | Interface (HTML, CSS, JavaScript) |
-| `addons/` | Extra sources, enabled in Settings |
 | `assets/` | Icons and files shipped with the app |
 | `packaging/` | App builds, installers, install scripts |
 | `tools/` | Build and release tools |

@@ -82,9 +82,8 @@ Les clés restent sur votre ordinateur : elles ne sont ni sauvegardées ni synch
 
 | Dossier | Contenu |
 |---|---|
-| `src/` | Code Python de KINO ; `desktop.py` le démarre |
+| `crates/` | Code de KINO, en Rust : `kino` (le serveur) et `kino-desktop` (l'application) |
 | `web/` | Interface (HTML, CSS, JavaScript) |
-| `addons/` | Sources supplémentaires, activables dans Paramètres |
 | `assets/` | Icônes et fichiers fournis avec l'application |
 | `packaging/` | Construction des applications, installateurs, scripts d'installation |
 | `tools/` | Outils de construction et de publication |

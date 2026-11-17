@@ -81,9 +81,8 @@ Le chiavi restano sul tuo computer: non vengono né salvate nei backup né sincr
 
 | Cartella | Contenuto |
 |---|---|
-| `src/` | Codice Python di KINO; `desktop.py` lo avvia |
+| `crates/` | Codice di KINO in Rust: `kino` (il server) e `kino-desktop` (l'app) |
 | `web/` | Interfaccia (HTML, CSS, JavaScript) |
-| `addons/` | Fonti aggiuntive, attivabili in Impostazioni |
 | `assets/` | Icone e file forniti con l'app |
 | `packaging/` | Build delle app, installer, script di installazione |
 | `tools/` | Strumenti di build e pubblicazione |

@@ -81,9 +81,8 @@ Las claves se quedan en tu ordenador: no se copian ni se sincronizan. Desinstala
 
 | Carpeta | Contenido |
 |---|---|
-| `src/` | Código Python de KINO; `desktop.py` lo inicia |
+| `crates/` | Código de KINO en Rust: `kino` (el servidor) y `kino-desktop` (la aplicación) |
 | `web/` | Interfaz (HTML, CSS, JavaScript) |
-| `addons/` | Fuentes adicionales, activables en Ajustes |
 | `assets/` | Iconos y archivos incluidos con la aplicación |
 | `packaging/` | Compilación de las aplicaciones, instaladores, scripts de instalación |
 | `tools/` | Herramientas de compilación y publicación |
