@@ -1,0 +1,373 @@
+//! KINO's window in Rust (opt-in while it grows): the page in a web view, the
+//! bridge it calls (window.pywebview.api, as with the Python window), KINO's
+//! server in this same process, and the Python server behind it, headless,
+//! for what is not in Rust yet (players, P2P, TV, remote, updates).
+
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
+
+use anyhow::Result;
+use serde_json::{Value, json};
+use tao::dpi::{LogicalPosition, LogicalSize};
+use tao::event::{Event, WindowEvent};
+use tao::event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy};
+use tao::window::{Fullscreen, ResizeDirection, Window, WindowBuilder};
+use wry::WebViewBuilder;
+
+/// What the page may call; each returns a promise, as pywebview's do.
+const BRIDGE: [&str; 21] = [
+    "minimize",
+    "toggle_maximize",
+    "start_window_drag",
+    "start_resize",
+    "is_fullscreen",
+    "toggle_fullscreen",
+    "enter_fullscreen",
+    "exit_fullscreen",
+    "close",
+    "set_bounds",
+    "resize",
+    "get_state",
+    "choose_manga_folder",
+    "export_playback_diagnostic",
+    "update_status",
+    "check_for_updates",
+    "open_release_page",
+    "choose_update_package",
+    "install_update",
+    "rollback_update",
+    "platform",
+];
+
+fn bridge_script() -> String {
+    let names = serde_json::to_string(&BRIDGE).unwrap_or_default();
+    format!(
+        r#"(function () {{
+  const pending = new Map(); let next = 0;
+  window.__kinoReply = (id, ok, value) => {{
+    const call = pending.get(id); if (!call) return; pending.delete(id);
+    ok ? call.resolve(value) : call.reject(new Error(value));
+  }};
+  const api = {{}};
+  for (const name of {names}) {{
+    api[name] = (...args) => new Promise((resolve, reject) => {{
+      const id = ++next; pending.set(id, {{ resolve, reject }});
+      window.ipc.postMessage(JSON.stringify({{ id, name, args }}));
+    }});
+  }}
+  window.pywebview = {{ api, platform: 'kino-desktop' }};
+  const ready = () => window.dispatchEvent(new Event('pywebviewready'));
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready); else ready();
+}})();"#
+    )
+}
+
+enum UserEvent {
+    Call(u64, String, Vec<Value>),
+}
+
+/// Remembered between launches, as the Python window does (`window_bounds`).
+fn saved_bounds() -> (f64, f64, Option<(f64, f64)>) {
+    let cfg = kino::config::load();
+    let b = &cfg.get("window_bounds").cloned().unwrap_or(Value::Null);
+    let n = |k: &str, d: f64| b[k].as_f64().unwrap_or(d);
+    let at = (b["x"].is_number() && b["y"].is_number()).then(|| (n("x", 0.0), n("y", 0.0)));
+    (
+        n("width", 1280.0).max(640.0),
+        n("height", 820.0).max(420.0),
+        at,
+    )
+}
+
+fn save_bounds(window: &Window) {
+    if window.is_maximized() || window.fullscreen().is_some() {
+        return;
+    }
+    let scale = window.scale_factor();
+    let size = window.inner_size().to_logical::<f64>(scale);
+    let at = window
+        .outer_position()
+        .map(|p| p.to_logical::<f64>(scale))
+        .ok();
+    let mut bounds = json!({"width": size.width.round(), "height": size.height.round()});
+    if let Some(p) = at {
+        bounds["x"] = json!(p.x.round());
+        bounds["y"] = json!(p.y.round());
+    }
+    let _ = kino::config::save(&json!({"window_bounds": bounds}));
+}
+
+/// A free port from `start`, as the Python app looks for one.
+fn free_port(start: u16) -> u16 {
+    (start..start + 10)
+        .find(|p| std::net::TcpListener::bind(("127.0.0.1", *p)).is_ok())
+        .unwrap_or(start)
+}
+
+/// The Python server, headless, behind this one (KINO_PYTHON and src/app.py in
+/// a checkout). It ends when its input closes, with this process.
+fn start_python(private_port: u16, front_port: u16, token: &str) -> Option<Child> {
+    let python = std::env::var_os("KINO_PYTHON").map(PathBuf::from)?;
+    let script = std::env::var_os("KINO_PYTHON_APP")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("src/app.py"));
+    Command::new(python)
+        .arg(script)
+        .env("KINO_SIDECAR_PORT", private_port.to_string())
+        .env("KINO_PORT", front_port.to_string())
+        .env("KINO_PAIRING_TOKEN", token)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .ok()
+}
+
+fn direction(name: &str) -> Option<ResizeDirection> {
+    Some(match name.replace('_', "-").as_str() {
+        "left" => ResizeDirection::West,
+        "right" => ResizeDirection::East,
+        "top" => ResizeDirection::North,
+        "bottom" => ResizeDirection::South,
+        "topleft" | "top-left" => ResizeDirection::NorthWest,
+        "topright" | "top-right" => ResizeDirection::NorthEast,
+        "bottomleft" | "bottom-left" => ResizeDirection::SouthWest,
+        "bottomright" | "bottom-right" => ResizeDirection::SouthEast,
+        _ => return None,
+    })
+}
+
+fn state(window: &Window) -> Value {
+    let scale = window.scale_factor();
+    let size = window.inner_size().to_logical::<f64>(scale);
+    let at = window
+        .outer_position()
+        .map(|p| p.to_logical::<f64>(scale))
+        .unwrap_or(LogicalPosition::new(0.0, 0.0));
+    json!({"maximized": window.is_maximized(), "fullscreen": window.fullscreen().is_some(), "width": size.width.round(),
+           "height": size.height.round(), "x": at.x.round(), "y": at.y.round(), "platform": std::env::consts::OS})
+}
+
+/// One call of the page: Ok(answer) or Err(message). `quit` ends the app.
+fn call(window: &Window, name: &str, args: &[Value], quit: &mut bool) -> Result<Value, String> {
+    let number = |i: usize| args.get(i).and_then(Value::as_f64);
+    Ok(match name {
+        "minimize" => {
+            window.set_minimized(true);
+            json!(true)
+        }
+        "toggle_maximize" => {
+            window.set_maximized(!window.is_maximized());
+            json!(window.is_maximized())
+        }
+        "start_window_drag" => json!(window.drag_window().is_ok()),
+        "start_resize" => {
+            let d = args
+                .first()
+                .and_then(Value::as_str)
+                .and_then(direction)
+                .ok_or("Bord inconnu.")?;
+            json!(window.drag_resize_window(d).is_ok())
+        }
+        "is_fullscreen" => json!(window.fullscreen().is_some()),
+        "toggle_fullscreen" => {
+            let on = window.fullscreen().is_none();
+            window.set_fullscreen(on.then_some(Fullscreen::Borderless(None)));
+            json!(on)
+        }
+        "enter_fullscreen" => {
+            window.set_fullscreen(Some(Fullscreen::Borderless(None)));
+            json!(true)
+        }
+        "exit_fullscreen" => {
+            window.set_fullscreen(None);
+            json!(false)
+        }
+        "close" => {
+            *quit = true;
+            json!(true)
+        }
+        "set_bounds" | "resize" => {
+            let (x, y, w, h) = if name == "resize" {
+                (None, None, number(0), number(1))
+            } else {
+                (number(0), number(1), number(2), number(3))
+            };
+            if let (Some(x), Some(y)) = (x, y) {
+                window.set_outer_position(LogicalPosition::new(x, y));
+            }
+            if let (Some(w), Some(h)) = (w, h) {
+                window.set_inner_size(LogicalSize::new(w.max(640.0), h.max(420.0)));
+            }
+            state(window)
+        }
+        "get_state" => state(window),
+        "platform" => json!(std::env::consts::OS),
+        "choose_manga_folder" => match rfd::FileDialog::new().set_parent(window).pick_folder() {
+            None => json!({"cancelled": true}),
+            Some(path) => {
+                let db = kino::db::Db::open(&kino::paths::database()).map_err(|e| e.to_string())?;
+                kino::manga::local::set_folder(&db, &path.to_string_lossy())
+                    .map_err(|e| format!("{e:?}"))?
+            }
+        },
+        "export_playback_diagnostic" => {
+            // Numbers only: nothing about the title or the source leaves.
+            let allowed = [
+                "schema",
+                "position",
+                "duration",
+                "paused",
+                "muted",
+                "volume",
+                "readyState",
+                "networkState",
+                "mediaError",
+                "compatibleStream",
+                "audioTrackCount",
+                "selectedAudioIndex",
+                "subtitleCueCount",
+                "subtitleDelay",
+                "sourceAttempts",
+            ];
+            let report = args
+                .first()
+                .and_then(Value::as_object)
+                .ok_or("Rapport invalide")?;
+            let mut safe: serde_json::Map<String, Value> = report
+                .iter()
+                .filter(|(k, v)| {
+                    allowed.contains(&k.as_str())
+                        && (v.is_null() || v.is_boolean() || v.as_f64().is_some_and(f64::is_finite))
+                })
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+            safe.insert("player".into(), json!("KINO internal"));
+            match rfd::FileDialog::new()
+                .set_parent(window)
+                .set_file_name("KINO-diagnostic.json")
+                .add_filter("JSON", &["json"])
+                .save_file()
+            {
+                None => json!(false),
+                Some(path) => json!(
+                    std::fs::write(
+                        path,
+                        serde_json::to_string_pretty(&Value::Object(safe)).unwrap_or_default()
+                    )
+                    .is_ok()
+                ),
+            }
+        }
+        // The updates stay with the Python window for now.
+        "update_status" | "check_for_updates" => {
+            json!({"state": "unavailable", "message": "Mises à jour : passez par l'app KINO habituelle."})
+        }
+        _ => return Err("Pas encore disponible dans cette fenêtre.".into()),
+    })
+}
+
+fn main() -> Result<()> {
+    let port = free_port(8080);
+    let private_port = free_port(port + 1);
+    let token = kino::launch::new_token();
+    let mut python = start_python(private_port, port, &token);
+    let legacy = python
+        .as_ref()
+        .map(|_| format!("http://127.0.0.1:{private_port}"));
+    let options = kino::launch::Options {
+        port,
+        pairing_token: token,
+        legacy,
+        native_player: false,
+        notifications: false,
+        startup_tasks: true,
+    };
+    let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let runtime = tokio::runtime::Runtime::new().expect("runtime");
+        runtime.block_on(async move {
+            match kino::launch::bind(port).await {
+                Ok(listener) => {
+                    let _ = ready_tx.send(true);
+                    if let Err(e) = kino::launch::serve(listener, options).await {
+                        eprintln!("KINO server stopped: {e}");
+                    }
+                }
+                Err(_) => {
+                    let _ = ready_tx.send(false);
+                }
+            }
+        });
+    });
+    if !ready_rx.recv().unwrap_or(false) {
+        anyhow::bail!("KINO's port is taken");
+    }
+
+    let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
+    let proxy: EventLoopProxy<UserEvent> = event_loop.create_proxy();
+    let (width, height, at) = saved_bounds();
+    let mut builder = WindowBuilder::new()
+        .with_title("KINO")
+        .with_inner_size(LogicalSize::new(width, height))
+        .with_min_inner_size(LogicalSize::new(640.0, 420.0));
+    if let Some((x, y)) = at {
+        builder = builder.with_position(LogicalPosition::new(x, y));
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // Native buttons over KINO's own bar, as the Python window shows them.
+        use tao::platform::macos::WindowBuilderExtMacOS;
+        builder = builder
+            .with_titlebar_transparent(true)
+            .with_title_hidden(true)
+            .with_fullsize_content_view(true);
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        builder = builder.with_decorations(false);
+    }
+    let window = builder.build(&event_loop)?;
+    let webview = WebViewBuilder::new()
+        .with_url(format!("http://127.0.0.1:{port}/"))
+        .with_initialization_script(bridge_script())
+        .with_background_color((9, 9, 11, 255))
+        .with_ipc_handler(move |request| {
+            let Ok(message) = serde_json::from_str::<Value>(request.body()) else {
+                return;
+            };
+            let id = message["id"].as_u64().unwrap_or(0);
+            let name = message["name"].as_str().unwrap_or("").to_string();
+            let args = message["args"].as_array().cloned().unwrap_or_default();
+            let _ = proxy.send_event(UserEvent::Call(id, name, args));
+        })
+        .build(&window)?;
+
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+        let mut quit = false;
+        match event {
+            Event::UserEvent(UserEvent::Call(id, name, args)) => {
+                let (ok, value) = match call(&window, &name, &args, &mut quit) {
+                    Ok(v) => (true, v),
+                    Err(e) => (false, json!(e)),
+                };
+                let _ =
+                    webview.evaluate_script(&format!("window.__kinoReply({id}, {ok}, {value})"));
+            }
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => quit = true,
+            _ => {}
+        }
+        if quit {
+            save_bounds(&window);
+            if let Some(mut child) = python.take() {
+                drop(child.stdin.take());
+                let _ = child.wait();
+            }
+            *control_flow = ControlFlow::Exit;
+        }
+    });
+}

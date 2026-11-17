@@ -2531,7 +2531,29 @@ class RequestHandler(PlaybackRoutes, CatalogueRoutes, LibraryRoutes, DebridRoute
             self.send_json({"error": str(e)}, status=500)
 
 
-if __name__ == "__main__":
+def run_sidecar(private_port, front_port, pairing_token):
+    """Behind kino-desktop (the window in Rust): this server answers only the
+    routes not ported yet, on a private local port, and ends with the window
+    (its input closes). The launch work and the downloads are the Rust side's."""
+    global PORT, REMOTE_PAIRING_TOKEN, RUST_FRONT
+    PORT, RUST_FRONT = front_port, True
+    if len(pairing_token or "") >= 16:
+        REMOTE_PAIRING_TOKEN = pairing_token
+    server = ThreadingHTTPServer(("127.0.0.1", private_port), RequestHandler)
+
+    def end_with_window():
+        try:
+            sys.stdin.read()
+        finally:
+            os._exit(0)
+    threading.Thread(target=end_with_window, daemon=True, name="window").start()
+    server.serve_forever()
+
+
+if __name__ == "__main__" and os.environ.get("KINO_SIDECAR_PORT", "").isdigit():
+    run_sidecar(int(os.environ["KINO_SIDECAR_PORT"]), int(os.environ.get("KINO_PORT") or PORT),
+                os.environ.get("KINO_PAIRING_TOKEN", ""))
+elif __name__ == "__main__":
     offline_library.library.reconcile()
     kino_db.start_background_maintenance()
     if sys.stdout is None:

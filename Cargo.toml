@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/kino"]
+members = ["crates/kino", "crates/kino-desktop"]
 resolver = "2"
 
 [profile.release]

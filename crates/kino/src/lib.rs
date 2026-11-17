@@ -16,6 +16,7 @@ pub mod errorlog;
 pub mod french;
 pub mod gdrive;
 pub mod intro;
+pub mod launch;
 pub mod letterboxd;
 pub mod library;
 pub mod manga;
