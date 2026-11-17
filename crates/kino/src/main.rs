@@ -18,6 +18,15 @@ async fn main() -> Result<()> {
         .collect();
     let db = Arc::new(Db::open(&paths::database())?);
     let net = Arc::new(kino::net::Net::new(db.clone()));
+    let meta = kino::meta::Meta {
+        net: net.clone(),
+        cinemeta: kino::meta::CINEMETA.into(),
+        translate: true,
+    };
+    let links: Arc<kino::play::EpisodeLinks> = Default::default();
+    let offline = kino::offline::Library::new(db.clone(), Some((meta.clone(), links.clone())));
+    // A download cut by the app closing stays resumable; a waiting episode starts.
+    offline.reconcile();
     let state = Arc::new(server::AppState {
         db: db.clone(),
         port,
@@ -26,13 +35,10 @@ async fn main() -> Result<()> {
         legacy: std::env::var("KINO_LEGACY").ok().filter(|s| !s.is_empty()),
         http: reqwest::Client::builder().build()?,
         net: net.clone(),
-        meta: kino::meta::Meta {
-            net: net.clone(),
-            cinemeta: kino::meta::CINEMETA.into(),
-            translate: true,
-        },
+        meta,
         accounts: Default::default(),
-        links: Default::default(),
+        links,
+        offline,
         suggestions: Default::default(),
         native_player: false,
         notifications: false,
