@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.2
+
+- Windows: fixed a crash (access violation) that could happen at startup or
+  while the window was moved, resized or maximized.
+- Faster HTTPS requests: one SSL context is built once and shared.
+
 ## 1.9.1
 
 - Updates: KINO also looks for a new version every six hours, and
