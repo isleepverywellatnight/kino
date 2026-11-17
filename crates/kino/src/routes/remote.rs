@@ -1,6 +1,5 @@
-//! The phone remote and the page player's state. Answered here when the
-//! window runs in this process (kino-desktop); behind the Python window they
-//! stay with Python, whose TV cast and media keys share that state.
+//! The phone remote and the page player's state. Only the KINO app
+//! (kino-desktop) answers: its TV cast and media keys share that state.
 
 use axum::Json;
 use axum::Router;
@@ -10,7 +9,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use serde_json::{Value, json};
 
-use crate::server::{Shared, delegate};
+use crate::server::{Shared, needs_app};
 
 pub fn router() -> Router<Shared> {
     Router::new()
@@ -25,14 +24,6 @@ pub fn router() -> Router<Shared> {
 }
 
 /// Python's answer while the window is Python's.
-async fn delegated(s: &Shared, request: Request) -> Response {
-    let (parts, body) = request.into_parts();
-    let body = axum::body::to_bytes(body, 1 << 20)
-        .await
-        .unwrap_or_default();
-    delegate(s, parts.method, &parts.uri, &parts.headers, body).await
-}
-
 async fn json_body(request: Request) -> Value {
     let body = axum::body::to_bytes(request.into_body(), 1 << 20)
         .await
@@ -40,9 +31,9 @@ async fn json_body(request: Request) -> Value {
     serde_json::from_slice(&body).unwrap_or_else(|_| json!({}))
 }
 
-async fn page(State(s): State<Shared>, request: Request) -> Response {
+async fn page(State(s): State<Shared>) -> Response {
     if s.player.is_none() {
-        return delegated(&s, request).await;
+        return needs_app();
     }
     match tokio::fs::read_to_string(s.web_root.join("remote.html")).await {
         Ok(html) => ([(header::CONTENT_TYPE, "text/html; charset=utf-8")], html).into_response(),
@@ -54,16 +45,16 @@ async fn page(State(s): State<Shared>, request: Request) -> Response {
     }
 }
 
-async fn state(State(s): State<Shared>, request: Request) -> Response {
+async fn state(State(s): State<Shared>) -> Response {
     if s.player.is_none() {
-        return delegated(&s, request).await;
+        return needs_app();
     }
     Json(s.remote.state_for_phone(s.port)).into_response()
 }
 
 async fn control(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return delegated(&s, request).await;
+        return needs_app();
     }
     let body = json_body(request).await;
     let action = body.get("action").cloned().unwrap_or(json!(""));
@@ -72,9 +63,9 @@ async fn control(State(s): State<Shared>, request: Request) -> Response {
     Json(json!({"ok": true, "action": action})).into_response()
 }
 
-async fn info(State(s): State<Shared>, request: Request) -> Response {
+async fn info(State(s): State<Shared>) -> Response {
     if s.player.is_none() {
-        return delegated(&s, request).await;
+        return needs_app();
     }
     let ip = crate::remote::local_ip();
     let url = format!("http://{ip}:{}/remote?token={}", s.port, s.pairing_token);
@@ -83,23 +74,23 @@ async fn info(State(s): State<Shared>, request: Request) -> Response {
 
 async fn player_state(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
-        return delegated(&s, request).await;
+        return needs_app();
     }
     s.remote.update(&json_body(request).await);
     Json(json!({"ok": true})).into_response()
 }
 
-async fn commands(State(s): State<Shared>, request: Request) -> Response {
+async fn commands(State(s): State<Shared>) -> Response {
     if s.player.is_none() {
-        return delegated(&s, request).await;
+        return needs_app();
     }
     Json(json!({"commands": s.remote.pop()})).into_response()
 }
 
 /// Diagnostic: Python's while the window (native player, notifications) is Python's.
-async fn diagnostic(State(s): State<Shared>, request: Request) -> Response {
+async fn diagnostic(State(s): State<Shared>) -> Response {
     if s.player.is_none() {
-        return delegated(&s, request).await;
+        return needs_app();
     }
     let window = crate::diagnostic::Window {
         native_player: s.native_player,

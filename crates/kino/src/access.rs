@@ -66,8 +66,8 @@ pub fn request_allowed(
     ) {
         return false;
     }
-    // The TV being cast to reads its stream from the network; the Python server
-    // checks the session token and the TV's address (x-kino-peer).
+    // The TV being cast to reads its stream from the network; the stream
+    // route checks the session token and the TV's address (x-kino-peer).
     if path.starts_with("/tv/stream/") {
         return true;
     }

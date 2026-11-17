@@ -413,6 +413,7 @@ KINO_I18N.load({
 "Diffusé il y a {}": "{} 前に放送",
 "Disponibilité immédiate signalée par la source": "ソースによると即時利用可能",
 "Disponible": "利用可能",
+"Disponible dans l'application KINO.": "KINO アプリで利用できます。",
 "Disponible hors ligne": "オフラインで利用可能",
 "Distribution": "キャスト",
 "Documentaire": "ドキュメンタリー",

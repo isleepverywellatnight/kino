@@ -1,13 +1,13 @@
 //! /api/one-click-play with KINO's own player, and /api/auto-stream, which
 //! the player calls for the next episodes. Without a debrid key (P2P) or with
-//! mpv, the Python server still answers.
+//! mpv, only the KINO app answers (the bare server has neither).
 
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
 use axum::body::Bytes;
 use axum::extract::{Query, State};
-use axum::http::{HeaderMap, Method, StatusCode, Uri, header};
+use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -16,7 +16,7 @@ use serde_json::{Map, Value, json};
 
 use crate::play::{self, Episode, Found, text};
 use crate::resolve::Resolver;
-use crate::server::{Shared, delegate};
+use crate::server::{Shared, needs_app};
 use crate::sources::search::{self, Search};
 
 const NO_SOURCE: &str = "Aucune autre source prête à lire. Vous pouvez réessayer les sources écartées ou ouvrir la fiche.";
@@ -112,13 +112,7 @@ impl Play {
     }
 }
 
-async fn one_click_play(
-    State(s): State<Shared>,
-    method: Method,
-    uri: Uri,
-    headers: HeaderMap,
-    raw: Bytes,
-) -> Response {
+async fn one_click_play(State(s): State<Shared>, raw: Bytes) -> Response {
     let Ok(Value::Object(body)) =
         serde_json::from_slice::<Value>(if raw.is_empty() { b"{}" } else { &raw })
     else {
@@ -134,7 +128,7 @@ async fn one_click_play(
     let (provider, token) = search::provider_and_token(&cfg);
     let play = Play::new(&body, &cfg);
     if (token.is_empty() && s.p2p.is_none()) || (!play.built_in && s.player.is_none()) {
-        return delegate(&s, method, &uri, &headers, raw).await;
+        return needs_app();
     }
     if !play.built_in && crate::player::find().is_none() {
         return error(
@@ -633,15 +627,9 @@ pub fn offline_media_file(s: &Shared, source: &str) -> Option<String> {
 
 /// « Lire dans mpv / VLC » from a source list: the file (or a pack's files, or
 /// the season from this episode on) in the external player, from the resume point.
-async fn external_player(
-    State(s): State<Shared>,
-    method: Method,
-    uri: Uri,
-    headers: HeaderMap,
-    raw: Bytes,
-) -> Response {
+async fn external_player(State(s): State<Shared>, raw: Bytes) -> Response {
     let Some(player) = s.player.clone() else {
-        return delegate(&s, method, &uri, &headers, raw).await;
+        return needs_app();
     };
     let body: Value = serde_json::from_slice(&raw).unwrap_or_else(|_| json!({}));
     let url = text(&body["url"]);

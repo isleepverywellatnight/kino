@@ -777,7 +777,6 @@ fn main() -> Result<()> {
     let options = kino::launch::Options {
         port,
         pairing_token: token,
-        legacy: None,
         native_player: false,
         notifications: false,
         startup_tasks: true,

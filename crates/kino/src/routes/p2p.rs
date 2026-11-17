@@ -1,6 +1,6 @@
 //! Peer-to-peer playback: the user's consent and choices, and the files of
-//! the torrents being read, served to the player with byte ranges. Answered
-//! here when the window runs in this process; behind the Python window, by Python.
+//! the torrents being read, served to the player with byte ranges. Only the KINO
+//! app answers: the bare server has no peer-to-peer engine.
 
 use axum::Json;
 use axum::Router;
@@ -12,7 +12,7 @@ use axum::routing::{get, post};
 use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
-use crate::server::{Shared, delegate};
+use crate::server::{Shared, needs_app};
 
 pub fn router() -> Router<Shared> {
     Router::new()
@@ -23,14 +23,6 @@ pub fn router() -> Router<Shared> {
         .route("/p2p/{hash}/{index}", get(file).head(file))
 }
 
-async fn delegated(s: &Shared, request: Request) -> Response {
-    let (parts, body) = request.into_parts();
-    let body = axum::body::to_bytes(body, 1 << 20)
-        .await
-        .unwrap_or_default();
-    delegate(s, parts.method, &parts.uri, &parts.headers, body).await
-}
-
 async fn json_body(request: Request) -> Value {
     let body = axum::body::to_bytes(request.into_body(), 1 << 20)
         .await
@@ -38,9 +30,9 @@ async fn json_body(request: Request) -> Value {
     serde_json::from_slice(&body).unwrap_or_else(|_| json!({}))
 }
 
-async fn state(State(s): State<Shared>, request: Request) -> Response {
+async fn state(State(s): State<Shared>) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     Json(
         tokio::task::spawn_blocking(move || p2p.state())
@@ -52,7 +44,7 @@ async fn state(State(s): State<Shared>, request: Request) -> Response {
 
 async fn consent(State(s): State<Shared>, request: Request) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     let body = json_body(request).await;
     if let Err(e) = p2p
@@ -66,7 +58,7 @@ async fn consent(State(s): State<Shared>, request: Request) -> Response {
 
 async fn settings(State(s): State<Shared>, request: Request) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     let body = json_body(request).await;
     let changes: serde_json::Map<String, Value> = ["upload", "download", "encrypted", "port"]
@@ -79,9 +71,9 @@ async fn settings(State(s): State<Shared>, request: Request) -> Response {
     }
 }
 
-async fn clear(State(s): State<Shared>, request: Request) -> Response {
+async fn clear(State(s): State<Shared>) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     p2p.clear_cache().await;
     Json(p2p.state()).into_response()
@@ -94,7 +86,7 @@ async fn file(
     request: Request,
 ) -> Response {
     let Some(p2p) = s.p2p.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     let valid = hash.len() == 40
         && hash

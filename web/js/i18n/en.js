@@ -404,6 +404,7 @@ KINO_I18N.load({
 "Diffusé il y a {}": "Aired {} ago",
 "Disponibilité immédiate signalée par la source": "Immediate availability reported by the source",
 "Disponible": "Available",
+"Disponible dans l'application KINO.": "Available in the KINO app.",
 "Disponible hors ligne": "Available offline",
 "Distribution": "Cast",
 "Documentaire": "Documentary",

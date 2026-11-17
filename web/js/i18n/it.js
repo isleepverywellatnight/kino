@@ -412,6 +412,7 @@ KINO_I18N.load({
 "Diffusé il y a {}": "Trasmesso {} fa",
 "Disponibilité immédiate signalée par la source": "Disponibilità immediata segnalata dalla fonte",
 "Disponible": "Disponibile",
+"Disponible dans l'application KINO.": "Disponibile nell'app KINO.",
 "Disponible hors ligne": "Disponibile offline",
 "Distribution": "Cast",
 "Documentaire": "Documentario",

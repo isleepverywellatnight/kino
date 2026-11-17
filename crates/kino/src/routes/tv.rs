@@ -1,5 +1,5 @@
-//! « Lire sur la TV » and the stream the TV reads. Answered here when the
-//! window runs in this process; behind the Python window, Python casts.
+//! « Lire sur la TV » and the stream the TV reads. Only the KINO app
+//! casts: the bare server answers that it cannot.
 
 use axum::Json;
 use axum::Router;
@@ -12,7 +12,7 @@ use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 
 use crate::play::text;
-use crate::server::{Shared, delegate};
+use crate::server::{Shared, needs_app};
 use crate::tv::{DLNA_FEATURES, TvError};
 
 pub fn router() -> Router<Shared> {
@@ -23,14 +23,6 @@ pub fn router() -> Router<Shared> {
         .route("/api/tv/play", post(play))
         .route("/api/tv/control", post(control))
         .route("/tv/stream/{*rest}", get(relay).head(relay))
-}
-
-async fn delegated(s: &Shared, request: Request) -> Response {
-    let (parts, body) = request.into_parts();
-    let body = axum::body::to_bytes(body, 1 << 20)
-        .await
-        .unwrap_or_default();
-    delegate(s, parts.method, &parts.uri, &parts.headers, body).await
 }
 
 async fn json_body(request: Request) -> Value {
@@ -59,13 +51,9 @@ fn answer(result: Result<Value, TvError>, refused: StatusCode, unreachable: &str
     }
 }
 
-async fn devices(
-    State(s): State<Shared>,
-    Query(p): Query<HashMap<String, String>>,
-    request: Request,
-) -> Response {
+async fn devices(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     let found = tv
         .devices(p.get("refresh").map(String::as_str) == Some("1"))
@@ -79,16 +67,16 @@ async fn devices(
     Json(json!({"devices": found, "chosen": chosen})).into_response()
 }
 
-async fn status(State(s): State<Shared>, request: Request) -> Response {
+async fn status(State(s): State<Shared>) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     Json(tv.status()).into_response()
 }
 
 async fn choose(State(s): State<Shared>, request: Request) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     let location = text(&json_body(request).await["location"]);
     let Some(device) = tv
@@ -106,7 +94,7 @@ async fn choose(State(s): State<Shared>, request: Request) -> Response {
 
 async fn play(State(s): State<Shared>, request: Request) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     let body = json_body(request).await;
     let Some(device) = tv.chosen().await else {
@@ -139,7 +127,7 @@ async fn play(State(s): State<Shared>, request: Request) -> Response {
 
 async fn control(State(s): State<Shared>, request: Request) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     let body = json_body(request).await;
     let done = tv.control(&text(&body["action"]), &body["value"]).await;
@@ -149,7 +137,7 @@ async fn control(State(s): State<Shared>, request: Request) -> Response {
 /// The TV asks KINO, KINO asks Debrid (https), Range passed through.
 async fn relay(State(s): State<Shared>, request: Request) -> Response {
     let Some(tv) = s.tv.clone() else {
-        return delegated(&s, request).await;
+        return needs_app();
     };
     let peer = request
         .headers()

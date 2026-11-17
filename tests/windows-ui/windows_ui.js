@@ -19,6 +19,7 @@ const { chromium } = require('playwright-core');
 
 const PROJECT = path.resolve(__dirname, '..', '..');
 const PORT = 9333;
+const EXPECTED_CHECKS = 22;
 const FFMPEG = process.env.KINO_FFMPEG || path.join(PROJECT, 'vendor', 'ffmpeg', 'ffmpeg.exe');
 
 const user32 = koffi.load('user32.dll');
@@ -42,10 +43,23 @@ const win = {
   GetWindowLongW: user32.func('int32 __stdcall GetWindowLongW(intptr_t hwnd, int index)'),
 };
 
+// Synchronous output: the log stays whole even when the test ends with process.exit
+// (stdout to a pipe is asynchronous on Windows).
+function say(text) {
+  const data = Buffer.from(`${text}\n`);
+  for (let done = 0; done < data.length;) {
+    try {
+      done += fs.writeSync(1, data, done);
+    } catch (error) {
+      if (error.code !== 'EAGAIN') throw error;
+    }
+  }
+}
+
 const results = [];
 function check(name, ok, detail = '') {
   results.push(Boolean(ok));
-  console.log(`CHECK ${name}: ${ok ? 'PASS' : 'FAIL'} ${detail}`);
+  say(`CHECK ${name}: ${ok ? 'PASS' : 'FAIL'} ${detail}`);
 }
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -130,10 +144,10 @@ $params.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter ([System.D
 $small.Save('${file}', $jpeg, $params)`;
   try {
     execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { stdio: ['ignore', 'ignore', 'inherit'] });
-    console.log(`SCREENSHOT ${name}\n${fs.readFileSync(file).toString('base64')}\nEND SCREENSHOT`);
+    say(`SCREENSHOT ${name}\n${fs.readFileSync(file).toString('base64')}\nEND SCREENSHOT`);
     fs.rmSync(file, { force: true });
   } catch (error) {
-    console.log(`screenshot ${name} failed: ${error.message}`);
+    say(`screenshot ${name} failed: ${error.message}`);
   }
 }
 
@@ -242,7 +256,7 @@ async function run(hwnd, videoUrl) {
   const logo = await centerOf(page, hwnd, 'header .logo');
   for (let i = 0; i < 6; i++) await move(logo[0] + i, logo[1] + i);
   const baselineCursor = cursorShowing();
-  console.log(`cursor shown by Windows in a normal window: ${baselineCursor}`);
+  say(`cursor shown by Windows in a normal window: ${baselineCursor}`);
 
   const style = win.GetWindowLongW(hwnd, -16) >>> 0;
   const [cw, ch] = clientSize(hwnd);
@@ -313,7 +327,7 @@ async function run(hwnd, videoUrl) {
     if (!same(windowRect(hwnd), workArea(hwnd))) {
       await page.evaluate(() => windowAction('maximize'));
       await sleep(600);
-      console.log(`after windowAction('maximize'): ${show(windowRect(hwnd))}`);
+      say(`after windowAction('maximize'): ${show(windowRect(hwnd))}`);
     }
     await waitForLayout(page, hwnd);
     await page.waitForTimeout(300);
@@ -405,11 +419,12 @@ async function main() {
   } catch (error) {
     check('test ran to the end', false, error.stack);
   } finally {
-    console.log(`KINO still running at the end: ${exitCode === null} (exit code ${exitCode})`);
+    say(`KINO still running at the end: ${exitCode === null} (exit code ${exitCode})`);
     kino.kill();
   }
-  console.log(`${results.filter(Boolean).length}/${results.length} checks passed`);
-  process.exit(results.length && results.every(Boolean) ? 0 : 1);
+  say(`${results.filter(Boolean).length}/${results.length} checks passed`);
+  // Every check ran (a run cut short is a failure too) and passed.
+  process.exit(results.length >= EXPECTED_CHECKS && results.every(Boolean) ? 0 : 1);
 }
 
 main();
