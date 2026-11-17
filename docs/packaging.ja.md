@@ -10,7 +10,7 @@
 
 KINO が新しいバージョンを自動でインストールできるよう、CI はシークレット `KINO_UPDATE_SIGNING_KEY`（Settings → Secrets and variables → Actions）でアップデートに署名します。中身は `tools/build_update_package.py --init-key` で作成した秘密鍵で、公開鍵は `assets/update_public_key.hex` です。このシークレットがない場合、KINO は新しいバージョンを通知してダウンロードを案内します。
 
-このリポジトリは非公開です。リリースは公開リポジトリ [kino-releases](https://github.com/isleepverywellatnight/kino-releases) に公開され、KINO のダウンロード、インストールスクリプト、アップデートはそこを使います。CI はシークレット `KINORELEASE`（kino-releases 専用で Contents の読み書き権限を持つ fine-grained トークン）で書き込みます。
+リリースはこのリポジトリに公開され、KINO のダウンロード、インストールスクリプト、アップデートはそれを使います。CI は自身の `GITHUB_TOKEN` で公開するため、ほかのシークレットは不要です。
 
 ## 手元でビルドする
 

@@ -1,5 +1,5 @@
 # Install or update KINO on Windows 10/11 (64-bit), from PowerShell:
-#   irm https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/install.ps1 | iex
+#   irm https://github.com/isleepverywellatnight/kino/releases/latest/download/install.ps1 | iex
 # Downloads the latest release, checks its SHA-256, installs it for the current
 # user (no administrator rights) and starts KINO. Nothing else to install.
 $ErrorActionPreference = "Stop"
@@ -7,7 +7,7 @@ $ProgressPreference = "SilentlyContinue"   # Invoke-WebRequest is much faster wi
 
 # GitHub needs TLS 1.2, which older Windows PowerShell 5.1 does not always enable.
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-$base = "https://github.com/isleepverywellatnight/kino-releases/releases/latest/download"
+$base = "https://github.com/isleepverywellatnight/kino/releases/latest/download"
 if (-not [Environment]::Is64BitOperatingSystem) { throw "KINO demande Windows 64 bits." }
 
 $work = Join-Path ([IO.Path]::GetTempPath()) ("kino-install-" + [Guid]::NewGuid().ToString("N"))

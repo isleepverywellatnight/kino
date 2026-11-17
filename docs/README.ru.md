@@ -32,8 +32,8 @@ KINO не размещает, не предоставляет и не распр
 
 | Система | Скачать |
 |---|---|
-| **macOS** — Mac на Apple Silicon (M1 или новее), macOS 14 или новее | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/KINO-macOS.dmg) |
-| **Windows** — Windows 10 или 11, 64 бит | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/KINO-Windows.exe) |
+| **macOS** — Mac на Apple Silicon (M1 или новее), macOS 14 или новее | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
+| **Windows** — Windows 10 или 11, 64 бит | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
 
 В KINO есть всё необходимое: видеоплеер, FFmpeg, интерфейс. Больше ничего устанавливать не нужно. Затем вставьте ключ вашего сервиса debrid в Настройках.
 
@@ -49,13 +49,13 @@ KINO не размещает, не предоставляет и не распр
 macOS (приложение «Терминал»):
 
 ```bash
-curl -fsSL https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/isleepverywellatnight/kino/releases/latest/download/install.sh | bash
 ```
 
 Windows (PowerShell):
 
 ```powershell
-irm https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/install.ps1 | iex
+irm https://github.com/isleepverywellatnight/kino/releases/latest/download/install.ps1 | iex
 ```
 
 ### Если система блокирует первый запуск
