@@ -3,6 +3,7 @@
 pub mod library;
 pub mod manga;
 pub mod play;
+pub mod series;
 pub mod settings;
 pub mod sources;
 pub mod titles;
@@ -19,4 +20,5 @@ pub fn router() -> Router<Shared> {
         .merge(settings::router())
         .merge(sources::router())
         .merge(play::router())
+        .merge(series::router())
 }

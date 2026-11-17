@@ -15,5 +15,6 @@ pub mod play;
 pub mod prefs;
 pub mod resolve;
 pub mod routes;
+pub mod series;
 pub mod server;
 pub mod sources;

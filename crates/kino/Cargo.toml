@@ -25,6 +25,7 @@ zip = { version = "4", default-features = false, features = ["deflate"] }
 fancy-regex = "0.14"
 base64 = "0.22"
 futures-util = "0.3"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
 
 [dev-dependencies]
 flate2 = "1"
