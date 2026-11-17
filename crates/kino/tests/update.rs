@@ -217,10 +217,11 @@ fn refused_packages() {
         let sub = dir.path().join(label);
         std::fs::create_dir(&sub).unwrap();
         let built = package(&sub, "2.0.0", &archive, tweak, &signer);
-        let error = stage(&sub, &built).unwrap_err();
+        // Only a Mac knows its macOS version.
         if !cfg!(target_os = "macos") && label == "macos" {
             continue;
         }
+        let error = stage(&sub, &built).unwrap_err();
         assert!(error.contains(expected), "{label}: {error}");
         assert!(
             std::fs::read_dir(&sub).unwrap().all(|e| !e
