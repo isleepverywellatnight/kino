@@ -21,6 +21,7 @@ pub fn router() -> Router<Shared> {
         .route("/api/remote/qr", get(info))
         .route("/api/player/state", post(player_state))
         .route("/api/player/commands", get(commands))
+        .route("/api/diagnostic", get(diagnostic))
 }
 
 /// Python's answer while the window is Python's.
@@ -93,4 +94,16 @@ async fn commands(State(s): State<Shared>, request: Request) -> Response {
         return python(&s, request).await;
     }
     Json(json!({"commands": s.remote.pop()})).into_response()
+}
+
+/// Diagnostic: Python's while the window (native player, notifications) is Python's.
+async fn diagnostic(State(s): State<Shared>, request: Request) -> Response {
+    if s.player.is_none() {
+        return python(&s, request).await;
+    }
+    let window = crate::diagnostic::Window {
+        native_player: s.native_player,
+        notifications: None,
+    };
+    Json(crate::diagnostic::run(&s, &window).await).into_response()
 }

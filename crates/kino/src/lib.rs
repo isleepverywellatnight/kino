@@ -12,6 +12,7 @@ pub mod cloud;
 pub mod config;
 pub mod db;
 pub mod debrid;
+pub mod diagnostic;
 pub mod discord;
 pub mod errorlog;
 pub mod french;
