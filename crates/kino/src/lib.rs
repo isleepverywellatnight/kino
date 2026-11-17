@@ -11,6 +11,7 @@ pub mod manga;
 pub mod meta;
 pub mod net;
 pub mod paths;
+pub mod play;
 pub mod prefs;
 pub mod resolve;
 pub mod routes;

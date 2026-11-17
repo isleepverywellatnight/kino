@@ -195,6 +195,7 @@ fn number(value: &Value) -> i64 {
         .unwrap_or(0)
 }
 
+#[derive(Clone)]
 pub struct Meta {
     pub net: Arc<Net>,
     pub cinemeta: String,

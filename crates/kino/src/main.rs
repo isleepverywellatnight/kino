@@ -32,6 +32,7 @@ async fn main() -> Result<()> {
             translate: true,
         },
         accounts: Default::default(),
+        links: Default::default(),
         native_player: false,
         notifications: false,
         sites: kino::manga::sources::Sites::default(),
