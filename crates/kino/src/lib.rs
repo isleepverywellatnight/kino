@@ -13,6 +13,7 @@ pub mod debrid;
 pub mod errorlog;
 pub mod french;
 pub mod intro;
+pub mod letterboxd;
 pub mod library;
 pub mod manga;
 pub mod meta;
