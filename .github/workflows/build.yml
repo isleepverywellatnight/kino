@@ -247,6 +247,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # For the build attestations: `gh attestation verify <file> -R <this repository>`
+      # names the workflow and the commit that built a downloaded file.
+      id-token: write
+      attestations: write
     env:
       VERSION: ${{ needs.checks.outputs.version }}
       GH_TOKEN: ${{ github.token }}
@@ -257,11 +261,17 @@ jobs:
           pattern: kino-*
           path: release
           merge-multiple: true
-      - name: Publish
+      - name: Checksums
         run: |
           cp packaging/install.sh packaging/install.ps1 release/
           cd release
           sha256sum * > SHA256SUMS.txt
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release/*
+      - name: Publish
+        run: |
+          cd release
           sed "s/{{VERSION}}/$VERSION/g" ../.github/release-notes.md > "$RUNNER_TEMP/notes.md"
           gh release create "v$VERSION" * --repo "$RELEASES_REPO" --target "$GITHUB_SHA" \
             --title "KINO $VERSION" --notes-file "$RUNNER_TEMP/notes.md"

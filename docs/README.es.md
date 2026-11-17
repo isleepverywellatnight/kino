@@ -69,6 +69,27 @@ KINO todavía no está firmado por Apple ni por Microsoft. Tras una descarga des
 
 Los comandos de arriba evitan ambos mensajes.
 
+## Verificar una descarga
+
+Cada archivo de una versión lo construye GitHub Actions a partir del commit que
+la versión indica. Su SHA-256 está en `SHA256SUMS.txt` y, desde la versión
+posterior a la 1.9.0, una atestación de compilación indica qué workflow y qué
+commit lo produjeron:
+
+```bash
+gh attestation verify KINO-macOS.dmg -R isleepverywellatnight/kino
+```
+
+## Privacidad
+
+KINO no tiene servidor propio y no recopila nada. Habla directamente con los
+servicios que conectas (tu servicio de debrid, Trakt, Discord, Google Drive),
+con los catálogos públicos que lee (como Cinemeta, AniList, MangaDex y TMDB con
+tu clave), con las fuentes que consulta (indexadores, tus complementos, sitios
+de manga), con los pares BitTorrent cuando la reproducción P2P está activada, y
+con GitHub para buscar una versión nueva al iniciar y cada seis horas.
+Ajustes → Actualizaciones desactiva esa búsqueda.
+
 ## Dónde están tus datos
 
 - `~/.kino_data.db`: biblioteca, historial, valoraciones y caché.
