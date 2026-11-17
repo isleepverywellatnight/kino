@@ -66,6 +66,11 @@ pub fn request_allowed(
     ) {
         return false;
     }
+    // The TV being cast to reads its stream from the network; the Python server
+    // checks the session token and the TV's address (x-kino-peer).
+    if path.starts_with("/tv/stream/") {
+        return true;
+    }
     if peer.is_loopback() {
         if !LOCAL_NAMES.contains(&host_name(header("host"))) {
             return false;
@@ -150,6 +155,21 @@ mod tests {
             8080,
             "t"
         ));
+    }
+
+    #[test]
+    fn the_tv_reads_its_stream_and_the_python_server_checks_it() {
+        let tv: IpAddr = "192.168.1.30".parse().unwrap();
+        let h = headers(&[("host", "192.168.1.10:8080")]);
+        assert!(request_allowed(
+            tv,
+            "/tv/stream/token/0",
+            &h,
+            None,
+            8080,
+            "secret"
+        ));
+        assert!(!request_allowed(tv, "/tv/other", &h, None, 8080, "secret"));
     }
 
     #[test]

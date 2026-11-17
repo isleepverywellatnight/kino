@@ -56,9 +56,15 @@ pub fn router(state: Shared) -> Router {
 async fn guard(
     State(state): State<Shared>,
     ConnectInfo(peer): ConnectInfo<SocketAddr>,
-    request: Request,
+    mut request: Request,
     next: Next,
 ) -> Response {
+    // The Python server behind sees every request from this process: it is told
+    // the real peer, and never trusts one a client wrote itself.
+    request.headers_mut().remove("x-kino-peer");
+    if let Ok(value) = HeaderValue::from_str(&peer.ip().to_string()) {
+        request.headers_mut().insert("x-kino-peer", value);
+    }
     let token = request.uri().query().and_then(|q| {
         q.split('&')
             .find_map(|pair| pair.strip_prefix("token="))
@@ -210,12 +216,7 @@ async fn forward(
         // request was already checked here.
         if !matches!(
             name.as_str(),
-            "host"
-                | "origin"
-                | "connection"
-                | "content-length"
-                | "sec-fetch-site"
-                | "transfer-encoding"
+            "host" | "origin" | "connection" | "sec-fetch-site" | "transfer-encoding"
         ) {
             request = request.header(name, value);
         }
@@ -224,10 +225,9 @@ async fn forward(
         Ok(answer) => {
             let mut response = Response::builder().status(answer.status().as_u16());
             for (name, value) in answer.headers() {
-                if !matches!(
-                    name.as_str(),
-                    "connection" | "transfer-encoding" | "content-length"
-                ) {
+                // Bodies pass through untouched (no decompression here): the
+                // length stays right, and a player can seek in a relayed video.
+                if !matches!(name.as_str(), "connection" | "transfer-encoding") {
                     response = response.header(name, value);
                 }
             }

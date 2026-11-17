@@ -3,6 +3,10 @@ name = "kino"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "kino-server"
+path = "src/main.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 anyhow = "1"

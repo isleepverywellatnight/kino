@@ -182,6 +182,9 @@ TV_CAST = tv_cast.TvCast(lambda: PORT, record_history, remote_controller.update_
                          next_of=tv_next_of, resolve=tv_resolve, prefetch=tv_prefetch)
 
 REMOTE_PAIRING_TOKEN = secrets.token_urlsafe(32)
+# kino-server answers on KINO's port and forwards here (rust_front.py): it tells
+# the real peer of a request in X-Kino-Peer.
+RUST_FRONT = False
 
 
 # Stable opaque identifier used to avoid retrying a failed source.
@@ -2120,7 +2123,10 @@ class RequestHandler(PlaybackRoutes, CatalogueRoutes, LibraryRoutes, DebridRoute
         if (self.headers.get("Sec-Fetch-Site") or "").strip().lower() in ("cross-site", "same-site"):
             return False
         if path.startswith("/tv/stream/"):
-            return TV_CAST.relay_allowed(self.client_address[0], path)
+            client = self.client_address[0]
+            if RUST_FRONT and client in ("127.0.0.1", "::1") and self.headers.get("X-Kino-Peer"):
+                client = self.headers["X-Kino-Peer"].strip()
+            return TV_CAST.relay_allowed(client, path)
         try:
             local = ipaddress.ip_address(self.client_address[0]).is_loopback
         except ValueError:

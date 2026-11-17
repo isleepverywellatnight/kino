@@ -5,7 +5,7 @@ name: Rust
 on:
   push:
     branches: ["**"]
-    paths: ["crates/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "web/**", ".github/workflows/rust.yml"]
+    paths: ["crates/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "web/**", "src/kino_version.py", ".github/workflows/rust.yml"]
   pull_request:
     branches: [main]
 
