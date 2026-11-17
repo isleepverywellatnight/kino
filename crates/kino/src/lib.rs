@@ -27,6 +27,7 @@ pub mod media;
 pub mod meta;
 pub mod net;
 pub mod network;
+pub mod nowplaying;
 pub mod offline;
 pub mod paths;
 pub mod people;

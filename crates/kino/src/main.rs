@@ -29,6 +29,7 @@ async fn main() -> Result<()> {
         startup_tasks: flag("KINO_STARTUP_TASKS"),
         window: None,
         notifier: None,
+        remote: None,
     };
     launch::serve(launch::bind(port).await?, options).await
 }

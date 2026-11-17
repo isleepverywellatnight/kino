@@ -16,6 +16,8 @@ use tao::window::{Fullscreen, ResizeDirection, Window, WindowBuilder};
 use wry::WebViewBuilder;
 
 #[cfg(target_os = "macos")]
+mod mac_media;
+#[cfg(target_os = "macos")]
 mod mac_notify;
 
 /// What the page may call; each returns a promise, as pywebview's do.
@@ -75,6 +77,9 @@ enum UserEvent {
     Action(String),
     /// A notification was clicked: KINO comes to the front and opens the series.
     Notification(Value),
+    /// A poster fetched for « À l'écoute » (its address, its bytes).
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    Poster(String, Vec<u8>),
 }
 
 type Bounds = Arc<Mutex<Option<(i32, i32, u32, u32)>>>;
@@ -324,6 +329,32 @@ fn call(window: &Window, name: &str, args: &[Value], quit: &mut bool) -> Result<
     })
 }
 
+/// A poster for « À l'écoute »: https only, 3 MB at most.
+#[cfg(target_os = "macos")]
+fn fetch_poster(url: &str) -> Option<Vec<u8>> {
+    if !url.starts_with("https://") {
+        return None;
+    }
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .ok()?;
+    runtime.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(6))
+            .build()
+            .ok()?;
+        let answer = client
+            .get(url)
+            .header("User-Agent", "KINO")
+            .send()
+            .await
+            .ok()?;
+        let bytes = answer.bytes().await.ok()?;
+        (bytes.len() <= 3 * 1024 * 1024).then(|| bytes.to_vec())
+    })
+}
+
 fn main() -> Result<()> {
     let port = free_port(8080);
     let private_port = free_port(port + 1);
@@ -351,6 +382,7 @@ fn main() -> Result<()> {
     };
     #[cfg(not(target_os = "macos"))]
     let notifier: Option<Arc<dyn kino::alerts::Notifier>> = None;
+    let remote: Arc<kino::remote::Remote> = Default::default();
     let options = kino::launch::Options {
         port,
         pairing_token: token,
@@ -360,6 +392,7 @@ fn main() -> Result<()> {
         startup_tasks: true,
         window: Some(hooks),
         notifier,
+        remote: Some(remote.clone()),
     };
     let (ready_tx, ready_rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
@@ -420,8 +453,37 @@ fn main() -> Result<()> {
         })
         .build(&window)?;
 
+    #[cfg(target_os = "macos")]
+    let mut now_playing = {
+        let posters = Mutex::new(event_loop.create_proxy());
+        objc2::MainThreadMarker::new().and_then(|main| {
+            mac_media::NowPlaying::create(
+                main,
+                remote.clone(),
+                Box::new(move |url: String| {
+                    let proxy = posters.lock().ok().map(|p| (*p).clone());
+                    std::thread::spawn(move || {
+                        let bytes = fetch_poster(&url).unwrap_or_default();
+                        if let Some(p) = proxy {
+                            let _ = p.send_event(UserEvent::Poster(url, bytes));
+                        }
+                    });
+                }),
+            )
+        })
+    };
+    let mut next_tick = std::time::Instant::now();
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
+        #[cfg(target_os = "macos")]
+        if let Some(center) = now_playing.as_mut() {
+            if std::time::Instant::now() >= next_tick {
+                center.tick();
+                next_tick = std::time::Instant::now() + std::time::Duration::from_secs(1);
+            }
+            *control_flow = ControlFlow::WaitUntil(next_tick);
+        }
         let mut quit = false;
         match event {
             Event::UserEvent(UserEvent::Call(id, name, args)) => {
@@ -451,6 +513,12 @@ fn main() -> Result<()> {
                 window.set_focus();
                 if info["id"].is_string() {
                     let _ = webview.evaluate_script(&format!("openFromNotification({info})"));
+                }
+            }
+            #[cfg(target_os = "macos")]
+            Event::UserEvent(UserEvent::Poster(url, bytes)) => {
+                if let Some(center) = now_playing.as_mut() {
+                    center.poster(url, bytes);
                 }
             }
             Event::UserEvent(UserEvent::Hide) => window.set_visible(false),

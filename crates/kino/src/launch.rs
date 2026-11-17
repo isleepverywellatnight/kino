@@ -24,6 +24,8 @@ pub struct Options {
     pub window: Option<Arc<dyn crate::player::WindowHooks>>,
     /// The system's notifications, when the window can send them.
     pub notifier: Option<Arc<dyn crate::alerts::Notifier>>,
+    /// The player's state and commands, shared with the window (media keys).
+    pub remote: Option<Arc<crate::remote::Remote>>,
 }
 
 /// A new random pairing token, as the Python server makes them.
@@ -65,7 +67,7 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
     let player = options
         .window
         .map(|w| crate::player::Player::new(db.clone(), meta.clone(), Some(w)));
-    let remote: Arc<crate::remote::Remote> = Default::default();
+    let remote = options.remote.clone().unwrap_or_default();
     let tv = player.as_ref().map(|p| {
         crate::tv::Cast::new(
             db.clone(),
