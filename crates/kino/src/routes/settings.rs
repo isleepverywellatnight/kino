@@ -15,6 +15,13 @@ pub fn router() -> Router<Shared> {
         .route("/api/config", get(read).post(save))
         .route("/api/tmdb/key", axum::routing::post(tmdb_key))
         .route("/api/client-error", axum::routing::post(client_error))
+        .route(
+            "/api/stremio-addons",
+            get(stremio_addons).post(change_stremio_addons),
+        )
+        .route("/api/stremio-addons/catalog", get(stremio_catalog))
+        .route("/api/addons", get(addons))
+        .route("/api/addons/toggle", axum::routing::post(toggle_addon))
 }
 
 async fn read(State(s): State<Shared>) -> Response {
@@ -141,4 +148,74 @@ async fn client_error(JsonBody(body): JsonBody) -> Response {
     .await
     .ok();
     Json(json!({"ok": true})).into_response()
+}
+
+fn installed_answer(s: &Shared) -> Response {
+    Json(json!({"addons": crate::addons::installed(&s.db), "catalogs": crate::addons::catalogs(&s.db)})).into_response()
+}
+
+async fn stremio_addons(State(s): State<Shared>) -> Response {
+    installed_answer(&s)
+}
+
+async fn change_stremio_addons(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
+    use crate::addons::{self, AddonError};
+    let id = match &body["id"] {
+        Value::Null => String::new(),
+        other => field(&json!({"v": other}), "v"),
+    };
+    let done = match body["action"].as_str() {
+        Some("add") => addons::add(&s.db, &s.net, &field(&body, "url"))
+            .await
+            .map(|_| ()),
+        Some("remove") => addons::remove(&s.db, &id),
+        Some("enable") => addons::set_enabled(&s.db, &id, body["enabled"] == true),
+        _ => Err(AddonError("Action inconnue.".into())),
+    };
+    match done {
+        Ok(()) => installed_answer(&s),
+        Err(AddonError(message)) => (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(json!({"error": message})),
+        )
+            .into_response(),
+    }
+}
+
+async fn stremio_catalog(
+    State(s): State<Shared>,
+    axum::extract::Query(p): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Response {
+    use axum::http::StatusCode;
+    let get = |k: &str| p.get(k).cloned().unwrap_or_default();
+    match crate::addons::catalog_items(&s.db, &s.net, &get("addon"), &get("type"), &get("id")).await
+    {
+        Ok(items) => Json(json!({"items": items})).into_response(),
+        Err(crate::addons::CatalogError::Unknown) => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "Catalogue inconnu."})),
+        )
+            .into_response(),
+        Err(crate::addons::CatalogError::Down) => (
+            StatusCode::BAD_GATEWAY,
+            Json(json!({"error": "Ce catalogue ne répond pas pour le moment.", "items": []})),
+        )
+            .into_response(),
+    }
+}
+
+/// KINO's built-in sources (the Python plugin add-ons are not run any more).
+async fn addons(State(s): State<Shared>) -> Response {
+    Json(json!({"status": "ok", "addons": crate::addons::builtin(&s.db)})).into_response()
+}
+
+async fn toggle_addon(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
+    let enabled = match body.get("enabled") {
+        None => true,
+        Some(v) => {
+            !matches!(v, Value::Null | Value::Bool(false)) && v != &json!(0) && v != &json!("")
+        }
+    };
+    crate::addons::toggle_builtin(&s.db, &field(&body, "id"), enabled);
+    Json(json!({"ok": true, "addons": crate::addons::builtin(&s.db)})).into_response()
 }
