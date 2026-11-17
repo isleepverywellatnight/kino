@@ -15,6 +15,7 @@ pub mod paths;
 pub mod people;
 pub mod play;
 pub mod prefs;
+pub mod recommender;
 pub mod resolve;
 pub mod routes;
 pub mod series;

@@ -926,6 +926,7 @@ dependencies = [
  "futures-util",
  "hex",
  "html-escape",
+ "indexmap",
  "md-5",
  "rand 0.9.5",
  "regex",
