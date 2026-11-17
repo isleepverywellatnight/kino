@@ -66,6 +66,22 @@ KINO 尚未经过 Apple 或 Microsoft 签名。通过浏览器下载后：
 
 使用上面的命令不会出现这两条提示。
 
+## 校验下载文件
+
+每个版本的文件都由 GitHub Actions 从该版本所指的提交构建。它的 SHA-256 写在
+`SHA256SUMS.txt` 中；从 1.9.0 之后的版本起，构建证明会说明是哪个工作流、哪个提交生成了它：
+
+```bash
+gh attestation verify KINO-macOS.dmg -R isleepverywellatnight/kino
+```
+
+## 隐私
+
+KINO 没有自己的服务器，不收集任何信息。它直接与以下对象通信：你连接的服务（你的 Debrid
+服务、Trakt、Discord、Google Drive）、它读取的公共目录（如 Cinemeta、AniList、MangaDex，
+以及使用你的密钥的 TMDB）、它搜索的来源（索引器、你的插件、漫画网站）、开启 P2P 播放时的
+BitTorrent 节点，以及 GitHub（在启动时和每六小时检查一次新版本）。设置 → 更新 可以关闭此检查。
+
 ## 数据存放位置
 
 - `~/.kino_data.db`：媒体库、历史、评分和缓存。

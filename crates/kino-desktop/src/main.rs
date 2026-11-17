@@ -33,7 +33,7 @@ mod win_dock;
 mod win_frame;
 
 /// What the page may call; each returns a promise, as pywebview's do.
-const BRIDGE: [&str; 21] = [
+const BRIDGE: [&str; 22] = [
     "minimize",
     "toggle_maximize",
     "start_window_drag",
@@ -49,6 +49,7 @@ const BRIDGE: [&str; 21] = [
     "choose_manga_folder",
     "export_playback_diagnostic",
     "update_status",
+    "set_update_auto_check",
     "check_for_updates",
     "open_release_page",
     "choose_update_package",
@@ -398,9 +399,16 @@ fn start_update_tasks(runtime: &tokio::runtime::Handle, updater: Arc<kino::updat
             kino::db::now(),
         );
     });
+    // At launch, then every six hours unless the user turned it off. The
+    // request carries nothing but itself: KINO reports nothing to anyone.
     runtime.spawn(async move {
         tokio::time::sleep(std::time::Duration::from_secs(20)).await;
-        let _ = updater.check_latest().await;
+        loop {
+            if updater.auto_check() {
+                let _ = updater.check_latest().await;
+            }
+            tokio::time::sleep(kino::update::AUTO_CHECK_EVERY).await;
+        }
     });
 }
 
@@ -413,6 +421,7 @@ fn updates(
     remote: &Arc<kino::remote::Remote>,
     replies: &EventLoopProxy<UserEvent>,
     id: u64,
+    args: &[Value],
 ) -> Option<Result<Value, String>> {
     let later = |work: Box<dyn FnOnce() -> Result<Value, String> + Send>, close_after: bool| {
         let replies = replies.clone();
@@ -440,6 +449,7 @@ fn updates(
     };
     match name {
         "update_status" => Some(Ok(updater.status())),
+        "set_update_auto_check" => Some(updater.set_auto_check(args.first() == Some(&json!(true)))),
         "open_release_page" => {
             let page = updater.status()["latest"]["page"]
                 .as_str()
@@ -926,10 +936,10 @@ fn main() -> Result<()> {
         }
         let mut quit = false;
         match event {
-            Event::UserEvent(UserEvent::Call(id, name, _))
+            Event::UserEvent(UserEvent::Call(id, name, args))
                 if name.contains("update") || name == "open_release_page" =>
             {
-                let done = updates(&name, &updater, &runtime, &remote, &replies, id);
+                let done = updates(&name, &updater, &runtime, &remote, &replies, id, &args);
                 if let Some(result) = done {
                     let _ = replies.send_event(UserEvent::Reply(id, result));
                 }

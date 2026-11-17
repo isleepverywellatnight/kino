@@ -20,7 +20,7 @@ jobs:
         os: [ubuntu-latest, macos-15, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Window libraries (Linux)
         if: runner.os == 'Linux'

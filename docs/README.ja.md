@@ -66,6 +66,24 @@ KINO はまだ Apple や Microsoft の署名を受けていません。ブラウ
 
 上のコマンドを使えば、どちらのメッセージも表示されません。
 
+## ダウンロードの検証
+
+リリースの各ファイルは、そのリリースが示すコミットから GitHub Actions がビルドしています。
+SHA-256 は `SHA256SUMS.txt` にあり、1.9.0 の次のリリースからは、どのワークフローとどのコミットが
+作ったかをビルド証明で確認できます：
+
+```bash
+gh attestation verify KINO-macOS.dmg -R isleepverywellatnight/kino
+```
+
+## プライバシー
+
+KINO は独自のサーバーを持たず、何も収集しません。通信するのは、あなたが接続したサービス
+（Debrid サービス、Trakt、Discord、Google Drive）、読み込む公開カタログ（Cinemeta、AniList、
+MangaDex、あなたのキーを使った TMDB など）、検索するソース（インデクサー、あなたのアドオン、
+マンガサイト）、P2P 再生がオンのときの BitTorrent ピア、そして起動時と 6 時間ごとに新しい
+バージョンを確認する GitHub だけです。設定 → アップデート でこの確認をオフにできます。
+
 ## データの保存場所
 
 - `~/.kino_data.db`：ライブラリ、履歴、評価、キャッシュ。

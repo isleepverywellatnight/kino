@@ -385,3 +385,23 @@ fn python_signatures_verify() {
     tampered[at] = b'8';
     assert!(update::verify_installer_signature(&tampered, &public_hex(), "1.0.0").is_err());
 }
+
+/// The automatic check (Settings → Updates): on by default, kept once turned off.
+#[test]
+fn the_automatic_check_setting() {
+    let dir = tempfile::tempdir().unwrap();
+    let updater = Updater::new(
+        dir.path().join("KINO.app"),
+        dir.path().join("state"),
+        Some(public_hex()),
+    );
+    assert!(updater.auto_check());
+    assert_eq!(updater.status()["auto_check"], true);
+    assert_eq!(updater.set_auto_check(false).unwrap()["auto_check"], false);
+    let again = Updater::new(
+        dir.path().join("KINO.app"),
+        dir.path().join("state"),
+        Some(public_hex()),
+    );
+    assert!(!again.auto_check());
+}

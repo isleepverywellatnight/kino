@@ -493,6 +493,8 @@ function kinoUpdateMessage(message) {
 function renderKinoUpdate(state) {
   if (!state) return;
   document.getElementById('kinoUpdateVersion').textContent = state.version || '—';
+  const auto = document.getElementById('kinoUpdateAuto');
+  if (auto) auto.checked = state.auto_check !== false;
   const candidate = document.getElementById('kinoUpdateCandidate');
   candidate.hidden = !state.candidate;
   if (state.candidate) {
@@ -523,6 +525,20 @@ async function refreshKinoUpdate() {
   }
   try { renderKinoUpdate(await bridge.update_status()); }
   catch (error) { kinoUpdateMessage(error.message || String(error)); }
+}
+
+async function setKinoUpdateAuto(input) {
+  const bridge = kinoUpdateBridge();
+  if (!bridge?.set_update_auto_check) {
+    input.checked = !input.checked;
+    kinoUpdateMessage('Les mises à jour se font depuis l’application KINO.');
+    return;
+  }
+  try { renderKinoUpdate(await bridge.set_update_auto_check(input.checked)); }
+  catch (error) {
+    input.checked = !input.checked;
+    kinoUpdateMessage(error.message || String(error));
+  }
 }
 
 async function checkKinoUpdates() {
