@@ -16,7 +16,7 @@ import urllib.error
 import urllib.request
 
 PY, RS = int(os.environ.get("PY_PORT", 8081)), int(os.environ.get("RS_PORT", 8099))
-IGNORED = ("updated", "last_watched", "updated_at")
+IGNORED = ("updated", "last_watched", "updated_at", "rated_at")
 
 
 def get(port, path, method="GET", body=None):

@@ -27,6 +27,7 @@ pub fn router() -> Router<Shared> {
     Router::new()
         .route("/api/one-click-play", post(one_click_play))
         .route("/api/auto-stream", get(auto_stream))
+        .route("/api/playback-feedback", post(feedback))
 }
 
 fn error(status: StatusCode, message: &str, code: Option<&str>) -> Response {
@@ -276,13 +277,7 @@ async fn one_click_play(
     }
 }
 
-fn truthy(value: &Value) -> bool {
-    !matches!(value, Value::Null | Value::Bool(false))
-        && value != &json!(0)
-        && value != &json!("")
-        && value != &json!([])
-        && value != &json!({})
-}
+use play::truthy;
 
 /// Once a source and its file are found: the season's playlist, the next
 /// episode in the background, the resume point.
@@ -355,6 +350,33 @@ async fn start(
     json!({"ok": true, "source_key": key, "attempted_source_keys": tried, "chosen_torrent": play::chosen_label(&candidate),
            "debrid": answer, "file": file, "stream_url": download, "playlist": playlist,
            "mpv": {"mode": "integrated", "playlist_count": count}, "resume_sec": resume})
+}
+
+/// « Signaler un problème » on a source, or every source of a title given back.
+async fn feedback(
+    State(s): State<Shared>,
+    crate::body::JsonBody(body): crate::body::JsonBody,
+) -> Response {
+    let context = if play::truthy(&body["context"]) {
+        body["context"].clone()
+    } else {
+        json!({})
+    };
+    let done = match body.get("action").map(text).as_deref() {
+        None | Some("report") => {
+            play::report_source(&s.db, &context, &body["source_key"], &body["reason"])
+        }
+        Some("clear") => play::clear_sources(&s.db, &context),
+        Some(_) => Err("action"),
+    };
+    match done {
+        Ok(()) => Json(json!({"ok": true})).into_response(),
+        Err(_) => error(
+            StatusCode::BAD_REQUEST,
+            "Contenu, source ou action invalide.",
+            None,
+        ),
+    }
 }
 
 async fn auto_stream(

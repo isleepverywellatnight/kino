@@ -47,7 +47,7 @@ pub fn text(value: &Value) -> String {
     }
 }
 
-fn truthy(value: &Value) -> bool {
+pub fn truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
         Value::Bool(b) => *b,
@@ -88,7 +88,7 @@ pub fn candidate_key(candidate: &Value) -> String {
 
 // ---------- Sources the page or earlier plays set aside ----------
 
-fn feedback_scope(context: &Value) -> Option<String> {
+pub fn feedback_scope(context: &Value) -> Option<String> {
     let identity = [&context["imdb_id"], &context["id"]]
         .into_iter()
         .find(|v| truthy(v))
@@ -98,11 +98,17 @@ fn feedback_scope(context: &Value) -> Option<String> {
         return None;
     }
     let series = ["series", "anime", "tv"].contains(&context["type"].as_str().unwrap_or(""));
+    // As Python's int(): a missing number is 1, a null or a word is refused.
+    let number = |key: &str| match context.get(key) {
+        None => Some(1),
+        Some(Value::Bool(b)) => Some(*b as i64),
+        Some(Value::String(s)) => s.trim().parse().ok(),
+        Some(v) => v
+            .as_i64()
+            .or_else(|| v.as_f64().filter(|f| f.is_finite()).map(|f| f as i64)),
+    };
     let (season, episode) = if series {
-        (
-            Some(int(&context["season"], 1)),
-            Some(int(&context["episode"], 1)),
-        )
+        (Some(number("season")?), Some(number("episode")?))
     } else {
         (None, None)
     };
@@ -121,20 +127,74 @@ fn feedback_scope(context: &Value) -> Option<String> {
     )
 }
 
+fn feedback_table(c: &rusqlite::Connection) -> rusqlite::Result<()> {
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS playback_source_feedback (scope TEXT NOT NULL, source_key TEXT NOT NULL, reason TEXT NOT NULL, \
+         expires_at REAL, PRIMARY KEY (scope, source_key))",
+        [],
+    )
+    .map(|_| ())
+}
+
+/// « Signaler un problème » on a source: wrong content sets it aside for good
+/// for this title, a stall or no sound for an hour.
+pub fn report_source(
+    db: &Db,
+    context: &Value,
+    key: &Value,
+    reason: &Value,
+) -> Result<(), &'static str> {
+    let scope = feedback_scope(context).ok_or("scope")?;
+    let key = key
+        .as_str()
+        .filter(|k| SOURCE_KEY.is_match(k))
+        .ok_or("key")?;
+    let reason = reason
+        .as_str()
+        .filter(|r| ["wrong_content", "stalled", "no_audio"].contains(r))
+        .ok_or("reason")?;
+    let expires = (reason != "wrong_content").then(|| now() + 3600.0);
+    db.with(|c| {
+        feedback_table(c)?;
+        c.execute(
+            "INSERT INTO playback_source_feedback VALUES (?, ?, ?, ?) ON CONFLICT(scope, source_key) DO UPDATE SET \
+             reason=CASE WHEN expires_at IS NULL THEN reason ELSE excluded.reason END, \
+             expires_at=CASE WHEN expires_at IS NULL THEN NULL ELSE excluded.expires_at END",
+            params![scope, key, reason, expires],
+        )
+    })
+    .map(|_| ())
+    .map_err(|_| "db")
+}
+
+/// The sources set aside for a title, all given back.
+pub fn clear_sources(db: &Db, context: &Value) -> Result<(), &'static str> {
+    let scope = feedback_scope(context).ok_or("scope")?;
+    db.with(|c| {
+        feedback_table(c)?;
+        c.execute(
+            "DELETE FROM playback_source_feedback WHERE scope=?",
+            [&scope],
+        )
+    })
+    .map(|_| ())
+    .map_err(|_| "db")
+}
+
 /// Sources that failed for this title before (wrong content for good, the others an hour).
 pub fn excluded(db: &Db, context: &Value) -> HashSet<String> {
     let Some(scope) = feedback_scope(context) else {
         return HashSet::new();
     };
     db.with(|c| {
+        feedback_table(c)?;
         c.execute(
-            "CREATE TABLE IF NOT EXISTS playback_source_feedback (scope TEXT NOT NULL, source_key TEXT NOT NULL, reason TEXT NOT NULL, \
-             expires_at REAL, PRIMARY KEY (scope, source_key))",
-            [],
+            "DELETE FROM playback_source_feedback WHERE expires_at <= ?",
+            params![now()],
         )?;
-        c.execute("DELETE FROM playback_source_feedback WHERE expires_at <= ?", params![now()])?;
         let mut s = c.prepare("SELECT source_key FROM playback_source_feedback WHERE scope = ?")?;
-        s.query_map([&scope], |r| r.get::<_, String>(0))?.collect::<rusqlite::Result<HashSet<_>>>()
+        s.query_map([&scope], |r| r.get::<_, String>(0))?
+            .collect::<rusqlite::Result<HashSet<_>>>()
     })
     .unwrap_or_default()
 }

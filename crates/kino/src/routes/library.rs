@@ -17,6 +17,7 @@ pub fn router() -> Router<Shared> {
     Router::new()
         .route("/api/watchlist", post(watchlist))
         .route("/api/history-remove", post(history_remove))
+        .route("/api/rating", post(rating))
         .route(
             "/api/spoiler-protection",
             get(spoilers).post(update_spoilers),
@@ -33,6 +34,24 @@ fn refused(text: &str) -> Response {
 
 async fn watchlist(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
     Json(json!({"ok": true, "watchlist": library::toggle_watchlist(&s.db, &body)})).into_response()
+}
+
+async fn rating(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
+    let id = match &body["id"] {
+        Value::Null | Value::Bool(false) => String::new(),
+        Value::String(t) => t.clone(),
+        other => other.to_string(),
+    };
+    let empty = serde_json::Map::new();
+    let fields = match library::rating_patch(body.as_object().unwrap_or(&empty), crate::db::now()) {
+        Ok(f) => f,
+        Err(e) => return refused(e),
+    };
+    if id.is_empty() || id.chars().count() > 300 || !library::patch_history(&s.db, &id, &fields) {
+        let missing = json!({"error": "Ce titre n'est pas dans l'historique."});
+        return (StatusCode::NOT_FOUND, Json(missing)).into_response();
+    }
+    Json(json!({"ok": true, "id": id, "fields": fields})).into_response()
 }
 
 async fn history_remove(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {

@@ -301,10 +301,9 @@ pub fn patch_history(db: &Db, id: &str, fields: &Map<String, Value>) -> bool {
                 |r| r.get(0),
             )
             .optional()?;
-        let Some(mut data) = raw
-            .flatten()
-            .and_then(|s| serde_json::from_str::<Map<String, Value>>(&s).ok())
-        else {
+        let Some(mut data) = raw.and_then(|s| {
+            serde_json::from_str::<Map<String, Value>>(s.as_deref().unwrap_or("{}")).ok()
+        }) else {
             return Ok(false);
         };
         data.extend(fields.clone());
@@ -352,6 +351,64 @@ pub fn remove_history(db: &Db, id: &str) -> Vec<Value> {
         tx.commit()
     });
     history(db)
+}
+
+/// « Noter en un geste »: '' or a note from 0.5 to 5 by halves, as text ('4', '4.5').
+pub fn clean_rating(value: &Value) -> Result<String, &'static str> {
+    let number = match value {
+        Value::Null => return Ok(String::new()),
+        Value::String(s) if s.is_empty() => return Ok(String::new()),
+        Value::String(s) => s.trim().parse::<f64>().map_err(|_| "Note invalide.")?,
+        Value::Number(n) => n.as_f64().unwrap_or(f64::NAN),
+        _ => return Err("Note invalide."),
+    };
+    if !(0.5..=5.0).contains(&number) || number * 2.0 != (number * 2.0).trunc() {
+        return Err("Note invalide.");
+    }
+    let shown = format!("{number:.1}");
+    Ok(shown
+        .trim_end_matches('0')
+        .trim_end_matches('.')
+        .to_string())
+}
+
+/// The history fields a POST /api/rating body changes: the note, the moment
+/// that asked for it (« film », « S2 »), and « Passer ».
+pub fn rating_patch(
+    body: &Map<String, Value>,
+    now: f64,
+) -> Result<Map<String, Value>, &'static str> {
+    static ASKED: std::sync::LazyLock<regex::Regex> =
+        std::sync::LazyLock::new(|| regex::Regex::new(r"^(film|S\d{1,3})$").unwrap());
+    let mut fields = Map::new();
+    if let Some(rating) = body.get("rating") {
+        fields.insert("user_rating".into(), clean_rating(rating)?.into());
+        fields.insert("rated_at".into(), json!(now));
+        fields.insert("rating_skipped".into(), false.into());
+    }
+    if let Some(asked) = body.get("asked") {
+        let asked = match asked {
+            Value::String(s) => s.clone(),
+            Value::Null | Value::Bool(false) => String::new(),
+            other => other.to_string(),
+        };
+        if !ASKED.is_match(&asked) {
+            return Err("Moment de la question inconnu.");
+        }
+        fields.insert("rating_asked".into(), asked.into());
+    }
+    if let Some(skip) = body.get("skip")
+        && !body.contains_key("rating")
+    {
+        let on = !matches!(skip, Value::Null | Value::Bool(false))
+            && skip != &json!(0)
+            && skip != &json!("");
+        fields.insert("rating_skipped".into(), on.into());
+    }
+    if fields.is_empty() {
+        return Err("Rien à enregistrer.");
+    }
+    Ok(fields)
 }
 
 #[cfg(test)]
