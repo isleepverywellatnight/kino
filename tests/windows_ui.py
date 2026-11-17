@@ -356,7 +356,8 @@ def main():
             page.wait_for_timeout(800)
             browser.close()
     finally:
-        print(f"KINO still running at the end: {kino.poll() is None} (exit code {kino.poll()})", flush=True)
+        crashed = kino.poll() is not None
+        print(f"KINO still running at the end: {not crashed} (exit code {kino.poll()})", flush=True)
         kino.terminate()
         try:
             kino.wait(10)

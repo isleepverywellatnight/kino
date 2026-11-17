@@ -27,6 +27,8 @@ const MAX_APP_BYTES: u64 = 1800 * 1024 * 1024;
 const MAX_RELEASE_JSON: usize = 2_000_000;
 const MAX_SIGNATURE_BYTES: usize = 32_768;
 pub const WINDOWS_INSTALLER: &str = "KINO-Windows.exe";
+/// The automatic check for a new version (Settings → Updates), unless turned off.
+pub const AUTO_CHECK_EVERY: std::time::Duration = std::time::Duration::from_secs(6 * 3600);
 const KEEP_DATA_SNAPSHOTS: usize = 3;
 const STALE_STAGE_SEC: f64 = 10.0 * 60.0;
 const STALE_WORK_FILE_SEC: f64 = 24.0 * 3600.0;
@@ -992,6 +994,23 @@ impl Updater {
         }
     }
 
+    /// Whether KINO asks GitHub for a new version by itself; on by default.
+    pub fn auto_check(&self) -> bool {
+        std::fs::read_to_string(self.state_dir.join("settings.json"))
+            .ok()
+            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+            .is_none_or(|s| s["auto_check"] != json!(false))
+    }
+
+    pub fn set_auto_check(&self, enabled: bool) -> Result<Value> {
+        private_dir(&self.state_dir)?;
+        let path = self.state_dir.join("settings.json");
+        std::fs::write(&path, json!({"auto_check": enabled}).to_string())
+            .map_err(|e| e.to_string())?;
+        private(&path);
+        Ok(self.status())
+    }
+
     pub fn status(&self) -> Value {
         let inner = self.inner();
         let state = self.read_state();
@@ -1013,7 +1032,7 @@ impl Updater {
             inner.message.clone()
         };
         json!({
-            "version": app_version(), "platform": platform, "channel": "github", "remote_configured": true,
+            "version": app_version(), "platform": platform, "channel": "github", "auto_check": self.auto_check(), "remote_configured": true,
             "installed": self.is_installed(), "local_packages": mac, "rollback_supported": mac,
             "latest": latest, "candidate": inner.candidate.as_ref().map(|c| c["payload"].clone()),
             "progress": inner.progress, "progress_label": inner.progress_label, "message": message,

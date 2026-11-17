@@ -4,7 +4,7 @@ resolver = "2"
 
 # KINO's version: the app, its bundle, its updates and its releases.
 [workspace.package]
-version = "1.9.0"
+version = "1.9.2"
 
 [profile.release]
 lto = "thin"
