@@ -29,6 +29,10 @@ pub struct AppState {
     pub net: Arc<Net>,
     pub sites: Sites,
     pub meta: crate::meta::Meta,
+    pub accounts: crate::debrid::Accounts,
+    /// What the window offers (set by the desktop app): the native player, notifications.
+    pub native_player: bool,
+    pub notifications: bool,
 }
 
 pub type Shared = Arc<AppState>;

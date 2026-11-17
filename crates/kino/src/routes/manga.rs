@@ -10,6 +10,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{Value, json};
 
+use crate::body::JsonBody;
 use crate::manga::{self, Manga, MangaError, local, sources};
 use crate::server::Shared;
 
@@ -150,7 +151,7 @@ async fn progress(State(s): State<Shared>) -> Response {
     Json(json!({"progress": manga::progress(s.net.db())})).into_response()
 }
 
-async fn save_progress(State(s): State<Shared>, Json(body): Json<Value>) -> Response {
+async fn save_progress(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
     let db = s.net.db();
     if body["forget"].as_bool().unwrap_or(false) || body["forget"].as_i64().is_some_and(|n| n != 0)
     {
@@ -164,7 +165,7 @@ async fn save_progress(State(s): State<Shared>, Json(body): Json<Value>) -> Resp
     answer(manga::save_progress(db, &body).map(|r| json!({"saved": r})))
 }
 
-async fn folder(State(s): State<Shared>, Json(body): Json<Value>) -> Response {
+async fn folder(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
     answer(local::set_folder(
         s.net.db(),
         body["path"].as_str().unwrap_or(""),

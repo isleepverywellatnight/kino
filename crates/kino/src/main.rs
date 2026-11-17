@@ -31,6 +31,9 @@ async fn main() -> Result<()> {
             cinemeta: kino::meta::CINEMETA.into(),
             translate: true,
         },
+        accounts: Default::default(),
+        native_player: false,
+        notifications: false,
         sites: kino::manga::sources::Sites::default(),
     });
     // Every interface: the phone remote reaches KINO from the local network.

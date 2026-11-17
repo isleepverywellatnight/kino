@@ -142,6 +142,77 @@ impl Net {
         serde_json::from_str(&text).map_err(|_| NetError("Réponse JSON invalide".into()))
     }
 
+    /// A JSON request with headers, retried on 429 and 5xx answers as the Python
+    /// version does (`retries` more times, waiting 1 s then 2 s).
+    pub async fn request_json(
+        &self,
+        method: reqwest::Method,
+        url: &str,
+        extra: &[(&str, &str)],
+        body: Option<&Value>,
+        timeout: Duration,
+        retries: u32,
+    ) -> NetResult<Value> {
+        let mut attempt = 0;
+        loop {
+            let mut request = self
+                .client
+                .request(method.clone(), url)
+                .headers(headers(extra, "KINO-Desktop"))
+                .timeout(timeout);
+            if let Some(body) = body {
+                request = request.json(body);
+            }
+            let outcome = request.send().await;
+            let retry = match &outcome {
+                Ok(r) => matches!(r.status().as_u16(), 429 | 500 | 502 | 503 | 504),
+                Err(e) => !e.is_connect(),
+            };
+            if retry && attempt < retries {
+                tokio::time::sleep(Duration::from_secs(1 << attempt.min(1))).await;
+                attempt += 1;
+                continue;
+            }
+            let response = outcome?;
+            let status = response.status();
+            let host = response
+                .url()
+                .host_str()
+                .unwrap_or("service distant")
+                .to_string();
+            let text = response.text().await?;
+            if !status.is_success() {
+                let detail = serde_json::from_str::<Value>(&text)
+                    .ok()
+                    .and_then(|v| {
+                        v.get("error").or(v.get("detail")).map(|e| {
+                            e.as_str()
+                                .map(str::to_string)
+                                .unwrap_or_else(|| e.to_string())
+                        })
+                    })
+                    .unwrap_or_else(|| text.clone());
+                let detail = detail.split_whitespace().collect::<Vec<_>>().join(" ");
+                let detail = if detail.is_empty() {
+                    "réponse vide".to_string()
+                } else if detail.starts_with('<') {
+                    "page d'erreur du service".to_string()
+                } else {
+                    detail.chars().take(200).collect()
+                };
+                return Err(NetError(format!(
+                    "Erreur API ({}) de {host} : {detail}",
+                    status.as_u16()
+                )));
+            }
+            if text.trim().is_empty() {
+                return Ok(Value::Object(Default::default()));
+            }
+            return serde_json::from_str(&text)
+                .map_err(|_| NetError(format!("Réponse JSON invalide de {host}")));
+        }
+    }
+
     /// A value from the memory cache, then SQLite, else fetched and kept for `ttl` seconds.
     /// A null answer is not kept.
     pub async fn cached<F, Fut>(&self, key: &str, ttl: f64, fetch: F) -> NetResult<Value>

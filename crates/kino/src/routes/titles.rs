@@ -13,6 +13,7 @@ use axum::{Json, Router};
 use regex::Regex;
 use serde_json::{Map, Value, json};
 
+use crate::body::JsonBody;
 use crate::server::{Shared, delegate};
 use crate::{catalog, library};
 
@@ -168,7 +169,7 @@ fn episode_finished(entry: &Map<String, Value>) -> bool {
     duration > 0.0 && (position / duration >= 0.88 || duration - position <= 180.0)
 }
 
-async fn history_record(State(s): State<Shared>, Json(body): Json<Value>) -> Response {
+async fn history_record(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
     let Some(mut entry) = body["media"]
         .as_object()
         .cloned()
@@ -365,7 +366,7 @@ pub async fn toggle_watched(s: &Shared, payload: &Value) -> Vec<Value> {
     library::record_history(db, &ordered)
 }
 
-async fn watched_toggle(State(s): State<Shared>, Json(body): Json<Value>) -> Response {
+async fn watched_toggle(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
     let history = toggle_watched(&s, &body).await;
     Json(json!({"ok": true, "history": history})).into_response()
 }
