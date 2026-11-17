@@ -24,6 +24,8 @@ mod mac_media;
 mod mac_mpv;
 #[cfg(target_os = "macos")]
 mod mac_notify;
+#[cfg(target_os = "macos")]
+mod mac_window;
 
 /// What the page may call; each returns a promise, as pywebview's do.
 const BRIDGE: [&str; 21] = [
@@ -492,6 +494,92 @@ fn fetch_poster(url: &str) -> Option<Vec<u8>> {
     })
 }
 
+/// One KINO at a time: a second launch brings the first one forward and quits.
+/// Returns the held lock (kept for the process's life), or None to quit.
+#[cfg(unix)]
+fn single_instance() -> Option<std::fs::File> {
+    use std::io::{Read, Seek, Write};
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+    let home = kino::paths::home();
+    let dir = if cfg!(target_os = "macos") {
+        home.join("Library/Application Support/KINO")
+    } else {
+        home.join(".local/share/kino")
+    };
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("instance.lock");
+    let Ok(mut file) = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .custom_flags(libc::O_NOFOLLOW)
+        .mode(0o600)
+        .open(&path)
+    else {
+        return None;
+    };
+    let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+    // SAFETY: flock on a file this process opened.
+    if unsafe {
+        libc::flock(
+            std::os::fd::AsRawFd::as_raw_fd(&file),
+            libc::LOCK_EX | libc::LOCK_NB,
+        )
+    } != 0
+    {
+        let mut pid = String::new();
+        let _ = file.read_to_string(&mut pid);
+        #[cfg(target_os = "macos")]
+        if let Ok(pid) = pid.trim().parse::<i32>() {
+            {
+                if let Some(running) =
+                    objc2_app_kit::NSRunningApplication::runningApplicationWithProcessIdentifier(
+                        pid,
+                    )
+                {
+                    running.activateWithOptions(
+                        objc2_app_kit::NSApplicationActivationOptions::ActivateAllWindows,
+                    );
+                }
+            }
+        }
+        return None;
+    }
+    let _ = file.set_len(0);
+    let _ = file.rewind();
+    let _ = write!(file, "{}", std::process::id());
+    Some(file)
+}
+
+#[cfg(windows)]
+fn single_instance() -> Option<()> {
+    use windows_sys::Win32::Foundation::{ERROR_ALREADY_EXISTS, GetLastError};
+    use windows_sys::Win32::System::Threading::CreateMutexW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        FindWindowW, SW_RESTORE, SetForegroundWindow, ShowWindow,
+    };
+    let wide = |s: &str| {
+        s.encode_utf16()
+            .chain(std::iter::once(0))
+            .collect::<Vec<u16>>()
+    };
+    let name = wide("Local\\KINO_SINGLE_INSTANCE_MUTEX");
+    // SAFETY: Win32 calls with NUL-terminated wide strings; the mutex lives as long as KINO.
+    unsafe {
+        let _mutex = CreateMutexW(std::ptr::null(), 0, name.as_ptr());
+        if GetLastError() == ERROR_ALREADY_EXISTS {
+            let window = FindWindowW(std::ptr::null(), wide("KINO").as_ptr());
+            if !window.is_null() {
+                ShowWindow(window, SW_RESTORE);
+                SetForegroundWindow(window);
+            }
+            return None;
+        }
+    }
+    Some(())
+}
+
 fn main() -> Result<()> {
     // The build's self-check: KINO's version and the bundled libmpv.
     if std::env::args().any(|a| a == "--self-check") {
@@ -505,6 +593,9 @@ fn main() -> Result<()> {
         );
         return Ok(());
     }
+    let Some(_instance) = single_instance() else {
+        return Ok(());
+    };
     let port = free_port(8080);
     let private_port = free_port(port + 1);
     let token = kino::launch::new_token();
@@ -658,6 +749,8 @@ fn main() -> Result<()> {
         // SAFETY: the WKWebView is an NSView.
         unsafe { Retained::cast_unchecked(webview.webview()) }
     };
+    #[cfg(target_os = "macos")]
+    mac_window::setup(&window, &page_view);
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
