@@ -2,6 +2,8 @@
 
 pub mod access;
 pub mod anime;
+pub mod anime_home;
+pub mod anime_journey;
 pub mod body;
 pub mod catalog;
 pub mod config;
