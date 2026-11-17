@@ -133,38 +133,77 @@ pub fn button_down() -> bool {
     }
 }
 
+/// The latest presses of the main button: when, and where on screen.
+static PRESSES: LazyLock<Mutex<Vec<(std::time::Instant, (i32, i32))>>> =
+    LazyLock::new(Default::default);
+
+fn double_click_time() -> std::time::Duration {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::GetDoubleClickTime;
+    // SAFETY: a plain Win32 query.
+    std::time::Duration::from_millis(u64::from(unsafe { GetDoubleClickTime() }))
+}
+
+/// Records each press of the main button, all along. The page may receive a
+/// press late, or never the second half of a double press: the app knows.
+pub fn watch_presses() {
+    std::thread::spawn(|| {
+        let mut was_down = false;
+        loop {
+            let down = button_down();
+            if down && !was_down {
+                let mut presses = PRESSES.lock().unwrap_or_else(|e| e.into_inner());
+                presses.push((std::time::Instant::now(), cursor()));
+                let keep = presses.len().saturating_sub(4);
+                presses.drain(..keep);
+            }
+            was_down = down;
+            std::thread::sleep(std::time::Duration::from_millis(8));
+        }
+    });
+}
+
+/// Whether the last two presses make a double press (at one spot, within the
+/// double-click time, just now). Taken once: the presses are forgotten.
+pub fn take_double() -> bool {
+    let mut presses = PRESSES.lock().unwrap_or_else(|e| e.into_inner());
+    let found = match presses.as_slice() {
+        [.., (first, a), (second, b)] => {
+            second.duration_since(*first) <= double_click_time()
+                && second.elapsed() < std::time::Duration::from_millis(1500)
+                && (a.0 - b.0).abs() <= 5
+                && (a.1 - b.1).abs() <= 5
+        }
+        _ => false,
+    };
+    if found {
+        presses.clear();
+    }
+    found
+}
+
 /// What a press on KINO's bar turned out to be.
 pub enum Press {
     /// The mouse moved 4 px with the button held.
     Drag,
-    /// A second press at the same spot within the double-click time.
+    /// The second press of a double press.
     Double,
     Click,
 }
 
-/// Follows a press on KINO's bar. Windows may keep a double press's second
-/// half from the page, so it is told apart here.
+/// Follows a press on KINO's bar while its button is down, then for the
+/// double-click time in case a second press follows.
 pub fn follow_press(start: (i32, i32)) -> Press {
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::GetDoubleClickTime;
-    let near = |p: (i32, i32), limit: i32| {
-        (p.0 - start.0).abs() <= limit && (p.1 - start.1).abs() <= limit
-    };
+    let near = |p: (i32, i32)| (p.0 - start.0).abs() <= 3 && (p.1 - start.1).abs() <= 3;
     while button_down() {
-        if !near(cursor(), 3) {
+        if !near(cursor()) {
             return Press::Drag;
         }
         std::thread::sleep(std::time::Duration::from_millis(8));
     }
-    // SAFETY: a plain Win32 query.
-    let double = std::time::Duration::from_millis(u64::from(unsafe { GetDoubleClickTime() }));
     let released = std::time::Instant::now();
-    while released.elapsed() < double {
-        if button_down() {
-            return if near(cursor(), 5) {
-                Press::Double
-            } else {
-                Press::Click
-            };
+    while released.elapsed() < double_click_time() {
+        if take_double() {
+            return Press::Double;
         }
         std::thread::sleep(std::time::Duration::from_millis(8));
     }
