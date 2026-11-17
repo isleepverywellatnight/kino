@@ -89,9 +89,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Build tools
-        # FFmpeg to ship, and the signing of the update package (tools/).
-        run: pip install "imageio-ffmpeg>=0.6.0" cryptography==48.0.0
+      - name: FFmpeg to ship
+        run: pip install "imageio-ffmpeg>=0.6.0"
       - name: libmpv (from IINA)
         run: |
           brew install --cask iina
@@ -117,7 +116,8 @@ jobs:
           fi
           key="$RUNNER_TEMP/kino-update-key.pem"
           printf '%s\n' "$KINO_UPDATE_SIGNING_KEY" > "$key"
-          python tools/build_update_package.py --app dist/KINO.app --key "$key" \
+          cargo build --release --locked -p kino --bin kino-release
+          target/release/kino-release --app dist/KINO.app --key "$key" \
             --output "dist/KINO-$VERSION-arm64.kinoupdate" --notes "KINO $VERSION"
           rm -f "$key"
       - uses: actions/upload-artifact@v4
@@ -142,9 +142,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           architecture: x64
-      - name: Build tools
-        # FFmpeg to ship, and the signing of the installer (tools/).
-        run: pip install "imageio-ffmpeg>=0.6.0" cryptography==48.0.0
+      - name: FFmpeg to ship
+        run: pip install "imageio-ffmpeg>=0.6.0"
       - name: mpv
         run: python tools/fetch_mpv_windows.py
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
@@ -230,7 +229,8 @@ jobs:
           }
           $key = Join-Path $env:RUNNER_TEMP "kino-update-key.pem"
           Set-Content -Path $key -Value $env:KINO_UPDATE_SIGNING_KEY -NoNewline -Encoding ascii
-          python tools/build_update_package.py --installer "dist\KINO-Windows.exe" --key $key --notes "KINO $env:VERSION"
+          cargo build --release --locked -p kino --bin kino-release
+          target\release\kino-release.exe --installer "dist\KINO-Windows.exe" --key $key --notes "KINO $env:VERSION"
           $code = $LASTEXITCODE
           Remove-Item $key
           if ($code -ne 0) { throw "Signing failed" }
