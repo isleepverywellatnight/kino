@@ -1,77 +1,72 @@
 # Lecture : de « Lancer » au lecteur
 
-Ce document suit une lecture pas à pas. Chaque étape est une fonction courte
-et testée (`test_playback_steps.py`). Les réponses sont fixées par
-`test_playback_pins.py` : mêmes scores, même ordre de sources, mêmes réponses.
+Ce document suit une lecture pas à pas, dans le code Rust (`crates/kino`).
+Les réponses sont fixées par les tests de `crates/kino/tests/` (`play.rs`,
+`sources.rs`, `resolve.rs`, `player.rs`) et par les cas enregistrés de
+l'ancienne version (`crates/kino/tests/fixtures/`) : mêmes scores, même ordre
+de sources, mêmes réponses.
 
 ## « Lecture en un clic » (`POST /api/one-click-play`)
 
-`post_one_click_play` dans `app.py` enchaîne :
+`one_click_play` (`crates/kino/src/routes/play.rs`) enchaîne :
 
-1. **La clé** : sans clé Debrid, réponse 401 `one_click.NO_PROVIDER`.
-2. **La demande** : `one_click.request(body, cfg)` lit le titre, le type
-   (film, série, anime), la saison, l'épisode et le lecteur demandé, avec les
-   valeurs par défaut de KINO.
-3. **La durée du film** : `get_media_meta`, puis `one_click.runtime_minutes`.
-   Elle aide la recherche à écarter les homonymes.
-4. **Les sources** : `get_available_streams(query)` (`stream_engine`), déjà
-   classées.
-5. **Les sources écartées** :
-   - `one_click.set_aside(body)` donne les clés que la page demande de passer
-     (au plus 30, bien formées) ;
-   - `playback_support.excluded` ajoute celles qui ont déjà échoué pour ce
-     titre.
-6. **Les essais** : `stream_engine.try_sources(...)`, détaillé plus bas, avec
-   `one_click.file_aliases` pour reconnaître le fichier d'un film.
-7. **Le départ** : `start_one_click(play, source, réponse Debrid, fichier)`.
-   - Pour une série, la liste de lecture (`build_series_playlist_items`) et
-     la préparation de l'épisode suivant (`prefetch_next_episode`).
-   - Le point de reprise (`get_resume_position`).
-   - `one_click.media_context` : ce que le lecteur et l'historique savent du
-     titre.
-   - Le lecteur : `one_click.uses_built_in_player` choisit celui de KINO,
-     sauf si mpv est demandé ; sur Mac, sauf si « external » l'est. Avec mpv,
-     `launch_mpv`, puis `record_history`.
+1. **La clé** : sans clé Debrid, les torrents se lisent en P2P (`p2p.rs`), une
+   fois la lecture P2P acceptée ; sinon 409 `p2p_consent`, sauf si une source
+   est un simple lien web (`direct_link`).
+2. **La demande** : `Play::new(body, cfg)` lit le titre, le type (film, série,
+   anime), la saison, l'épisode et le lecteur demandé, avec les valeurs par
+   défaut de KINO.
+3. **La durée du film** : la fiche Cinemeta, pour écarter les homonymes.
+4. **Les sources** : `Search::streams(query, …)` (`sources/search.rs`), déjà
+   classées ; « La qualité choisie d'abord » met les sources prêtes devant.
+5. **Les sources écartées** : `play::set_aside(body)` (celles que la page
+   demande de passer) et `play::excluded` (celles qui ont déjà échoué pour ce
+   titre).
+6. **Les essais** : `play::try_sources(...)`, détaillé plus bas, avec
+   `play::file_aliases` pour reconnaître le fichier d'un film.
+7. **Le départ** : `start(...)`.
+   - Pour une série, la liste de lecture (`play::season_playlist`) et la
+     préparation de l'épisode suivant (`play::prefetch_next`).
+   - Le point de reprise (`play::resume_position`).
+   - Le lecteur : celui de KINO, sauf si mpv est demandé ; sur Mac, sauf si
+     « external » l'est. Avec mpv, `Player::launch` (`player.rs`).
 8. **La réponse** : la source choisie, les clés essayées et le fichier.
-   - Sans source prête : 422 `one_click.NO_SOURCE`.
-   - Si le fournisseur refuse : 401 `one_click.REFUSED`.
+   - Sans source prête : 422 `no_source`.
+   - Si le fournisseur refuse : 401 `provider_auth`.
 
-## Essayer les sources : `stream_engine.try_sources`
+## Essayer les sources : `play::try_sources`
 
 Elle sert à « Lecture en un clic » et à l'épisode suivant. Elle parcourt les
 dix premières sources dans leur ordre :
 
 - Une source écartée est passée, mais elle compte dans les dix.
-- Pour chaque autre source, elle demande le lien Debrid, cherche le bon
-  fichier (`select_playable_file`), puis appelle `use(...)`.
+- Pour chaque autre source, elle demande le lien à son lecteur (`Reader` :
+  le service Debrid, ou KINO en P2P), puis cherche le bon fichier
+  (`play::select_file`).
 - Une source pas prête, sans bon fichier, ou qui échoue passe à la suivante,
   y compris quand le lecteur ne démarre pas. La dernière erreur est gardée.
-- Seule une erreur pour laquelle `stop(erreur)` est vrai arrête tout.
-  « Lecture en un clic » s'arrête ainsi sur un refus du fournisseur : un code
-  HTTP 401 ou 403 porté par l'erreur.
-- Le résultat est un `SourceAttempts` : found, result, key, tried, last_error.
+- Le résultat est un `Attempts` : found, pending, tried, last_error.
 
-`stream_candidate_key` donne la clé opaque d'une source. `app.stream_candidate_key`
-reste le même objet.
+`play::candidate_key` donne la clé opaque d'une source.
 
-## L'épisode suivant : `resolve_auto_stream_episode` (`player_engine.py`)
+## L'épisode suivant : `play::resolve_episode` (`crates/kino/src/play.rs`)
 
 1. Un lien trouvé dans les 30 dernières minutes est réutilisé.
-2. Sinon, les sources de l'épisode : `_prefer_previous_source` garde l'ordre
+2. Sinon, les sources de l'épisode : la source de l'épisode précédent garde l'ordre
    du serveur, et la source de l'épisode précédent ne gagne qu'une égalité.
-3. `stream_engine.try_sources`, puis le lien est gardé et l'historique mis à
-   jour (`_episode_entry`). Ce n'est pas le cas pour un téléchargement hors
-   ligne (`update_history=False`).
+3. `play::try_sources`, puis le lien est gardé (`EpisodeLinks`) et
+   l'historique mis à jour. Ce n'est pas le cas pour un téléchargement hors
+   ligne (`update_history` faux).
 4. Sans résultat : « Impossible de résoudre S02E05 (dernière erreur) ».
 
-## La recherche de sources : `search_multi_torrents` (`torrent_engine.py`)
+## La recherche de sources : `Search::streams` (`crates/kino/src/sources/search.rs`)
 
 1. `stream_target` : `movie/tt…` ou `series/tt…:saison:épisode`.
 2. `indexer_sources` donne, dans l'ordre de lancement :
    - Torrentio (20 s), Torrentio FR (10 s), Torrentio Anime (10 s) ;
    - Comet (`comet_url`, avec le service Debrid quand une clé existe, 10 s) ;
    - KnightCrawler (4 s), TPB+ (6 s), Peerflix (6 s).
-3. `fetch_streams` interroge tout en même temps, avec APIBay et les modules.
+3. `fetch_streams` interroge tout en même temps, avec APIBay et Nyaa.
    - L'attente est de 20 s au plus pour Torrentio, 8 s pour ses listes
      française et anime, 4 s pour les autres. Une réponse plus tardive est
      laissée de côté.
@@ -90,23 +85,23 @@ reste le même objet.
 
 | Partie | Question | Points |
 |---|---|---|
-| `_instant_points` | Déjà en cache Debrid ? | +3500 |
-| `_quality_points` | Résolution et source face à la qualité voulue | 0 à +480 |
-| `_language_points` | Langue face à la langue voulue | +50 à +950 |
-| `_picture_points` | HDR, Dolby Vision, SDR face au réglage d'image | Image SDR : SDR +40, HDR et DV + HDR 0, DV seul −350 ; HDR : jusqu'à +110 |
-| `_sound_points` | Atmos, TrueHD/DTS-HD, DD+/5.1 | 0 à +80 |
-| `_seeder_points` | Santé du torrent | 0 à +80 |
-| `_fake_penalty` | Taille impossible, CAM/TS | −10000, −20000 |
-| `_size_points` | Taille adaptée à la qualité | −80 à +60 |
-| `_anime_group_points` | Équipe anime connue, Nyaa | 0, +260, +340 |
-| `_year_points` | Année du titre confirmée, ou autre œuvre | +500, −10000 |
-| `_priority_points` | « La qualité choisie d'abord » (réglage Priorité) | 0 ou +10000 |
+| `instant_points` | Déjà en cache Debrid ? | +3500 |
+| `quality_points` | Résolution et source face à la qualité voulue | 0 à +480 |
+| `language_points` | Langue face à la langue voulue | +50 à +950 |
+| `picture_points` | HDR, Dolby Vision, SDR face au réglage d'image | Image SDR : SDR +40, HDR et DV + HDR 0, DV seul −350 ; HDR : jusqu'à +110 |
+| `sound_points` | Atmos, TrueHD/DTS-HD, DD+/5.1 | 0 à +80 |
+| `seeder_points` | Santé du torrent | 0 à +80 |
+| `fake_penalty` | Taille impossible, CAM/TS | −10000, −20000 |
+| `size_points` | Taille adaptée à la qualité | −80 à +60 |
+| `anime_group_points` | Équipe anime connue, Nyaa | 0, +260, +340 |
+| `year_points` | Année du titre confirmée, ou autre œuvre | +500, −10000 |
+| `priority_points` | « La qualité choisie d'abord » (réglage Priorité) | 0 ou +10000 |
 
 ## Le réglage « Priorité » (`source_priority`)
 
 - **« Lancer vite »** (`speed`, par défaut) : l'ordre est le même qu'avant ce
   réglage. Une source prête tout de suite passe avant le reste (+3500).
-- **« La qualité choisie d'abord »** (`quality`) : `_priority_points` ajoute
+- **« La qualité choisie d'abord »** (`quality`) : `priority_points` ajoute
   +10000 aux sources qui réunissent toutes ces conditions :
   - la qualité choisie est annoncée (4K, ou 1080p si c'est le réglage) ;
   - elles sont dans une langue acceptée (au moins 400 points de langue en VF,
@@ -165,8 +160,8 @@ Dans la fiche (`app-sources.js`) :
 
 Le lecteur natif (libmpv, sortie OpenGL) ne fixe aucun réglage d'image : il
 laisse mpv convertir le HDR selon ses réglages par défaut (`tone-mapping=auto`,
-`target-trc=auto`). `test_native_hdr.py` empêche qu'un réglage s'y ajoute sans
-nouvelle mesure.
+`target-trc=auto`). Les options du lecteur natif (`crates/kino/src/native.rs`)
+n'en ajoutent aucun : un réglage n'y entre qu'avec une nouvelle mesure.
 
 Mesure faite dans le lecteur natif, avec un fichier HDR10 d'essai : HEVC
 Main 10, PQ, BT.2020, max-cll 1000, et cinq gris de luminance connue. Valeurs
@@ -192,46 +187,47 @@ lues à l'écran, sur 255 :
   départager deux sources égales ; le Dolby Vision seul garde −350. Le réglage
   « HDR et Dolby Vision » est inchangé.
 
-## Le lien Debrid d'un magnet : `rd_debrid_magnet` (`debrid_engine.py`)
+## Le lien Debrid d'un magnet : `Resolver::magnet` (`crates/kino/src/resolve.rs`)
 
 1. Sans clé : « Clé API … manquante ».
 2. Un lien de résolution (Torrentio, Comet), ou un magnet qui est un lien
-   http, est essayé d'abord (`resolve_torrentio_rd_url`). En cas d'échec, un
+   http, est essayé d'abord (`resolve_link`). En cas d'échec, un
    vrai magnet continue ; un lien http s'arrête.
-3. `MAGNET_SERVICES` choisit la fonction du service du compte ; tout autre
-   service est Real-Debrid :
+3. Le service du compte choisit sa fonction ; tout autre service est
+   Real-Debrid :
 
-   | Service | Fonction | Ce qu'elle fait |
-   |---|---|---|
-   | Real-Debrid | `_realdebrid_magnet` | ajoute, choisit les vidéos de plus de 25 Mo (`_realdebrid_select_videos`), attend jusqu'à 8 s (`_realdebrid_wait`), puis débride |
-   | AllDebrid | `_alldebrid_magnet` | envoie, vérifie jusqu'à 6 fois, puis débloque |
-   | Debrid-Link | `_debridlink_magnet` | la seedbox liste les fichiers déjà prêts |
-   | Premiumize | `_premiumize_magnet` | seulement ce qui est déjà en cache |
-   | TorBox | `_torbox_magnet` | ajoute, puis lit le torrent (`rd_check_torrent`) |
-   | Mega-Debrid | `_megadebrid_magnet` | liens d'hébergeurs seulement |
+ | Service | Fonction | Ce qu'elle fait |
+ |---|---|---|
+ | Real-Debrid | `realdebrid` | ajoute, choisit les vidéos de plus de 25 Mo , attend jusqu'à 8 s , puis débride |
+ | AllDebrid | `alldebrid` | envoie, vérifie jusqu'à 6 fois, puis débloque |
+ | Debrid-Link | `debridlink` | la seedbox liste les fichiers déjà prêts |
+ | Premiumize | `premiumize` | seulement ce qui est déjà en cache |
+ | TorBox | `torbox` | ajoute, puis lit le torrent (`check`) |
+ | Mega-Debrid | `megadebrid` | liens d'hébergeurs seulement |
 
 4. Les réponses ont une seule forme :
-   - `_ready_files` : prêt, l'épisode voulu d'abord ;
-   - `_not_ready` : en cours, avec la progression, la vitesse et les pairs ;
-   - `_file_entry` : un fichier.
+   - `ready` : prêt, l'épisode voulu d'abord ;
+   - `not_ready` : en cours, avec la progression, la vitesse et les pairs ;
+   - `file_entry` : un fichier.
 
-## Le lecteur externe : `launch_mpv` (`player_engine.py`)
+## Le lecteur externe : `Player::launch` (`crates/kino/src/player.rs`)
 
-1. `_claim_mpv_launch` : un second lancement dans les secondes qui suivent
-   reçoit la réponse du premier. Sans lecteur trouvé : erreur.
-2. `_playback_target` : le fichier, ou une liste M3U s'il y a plusieurs
-   épisodes. `_write_mpv_input_conf` ajoute la touche « s » (+85 s).
+1. Un second lancement dans les secondes qui suivent reçoit la réponse du
+   premier. Sans lecteur trouvé (`player::find`) : erreur.
+2. `playback_target` : le fichier, ou une liste M3U s'il y a plusieurs
+   épisodes. `input_conf` ajoute la touche « s » (+85 s).
 3. La commande, selon le lecteur :
-   - `_iina_command` : IINA par `iina-cli`, options mpv en « --mpv- » ;
+   - `iina_command` : IINA par `iina-cli`, options mpv en « --mpv- » ;
    - VLC : le média seul ;
-   - `_mpv_command` : sans bordure, titré KINO. Sur Windows, la fenêtre est
-     ancrée dans KINO ou placée à son endroit (`_mpv_window_options`).
+   - `mpv_command` : sans bordure, titré KINO, placé à l'endroit de la
+     fenêtre. Sur Windows, mpv est ancré dans la fenêtre KINO
+     (`crates/kino-desktop/src/win_dock.rs`).
    - Son, image HDR et reprise sont communs à mpv et à IINA :
-     `_shared_mpv_options`.
-4. La fenêtre KINO se cache, et Discord affiche le titre (`_show_in_discord`).
-5. Le départ : `_start_on_windows` (un seul lecteur, ancré ou sur le bureau)
-   ou `_start_elsewhere` (session à part, suivie jusqu'à sa fermeture).
-   `_remember_mpv_launch` garde la réponse.
+     `shared_options`.
+4. La fenêtre KINO se cache (sauf mpv ancré), et Discord affiche le titre.
+5. Le départ : `start` (un seul lecteur sur Windows), suivi toutes les 3 s
+   jusqu'à sa fermeture (`follow` : historique, épisode de la liste, Discord).
 
-Ces deux fonctions sont fixées par `test_debrid_mpv_pins.py`.
+Ces deux parties sont fixées par `crates/kino/tests/resolve.rs` et
+`crates/kino/tests/player.rs`.
 

@@ -6,7 +6,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = require('../tools/interface_source.js').appSource();
-const remotePage = fs.readFileSync(path.join(path.join(__dirname, '..'), 'src/remote_controller.py'), 'utf8');
+const remotePage = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/remote.html'), 'utf8');
 const handler = 'function handleRemoteCommand(cmd)' + source
   .split('function handleRemoteCommand(cmd)', 2)[1]
   .split('// --- Watch Party P2P (PeerJS) ---', 1)[0];
@@ -72,7 +72,9 @@ test('the in-app player reports the fields the remote and the update guard read'
   const inApp = polling.split("const v = document.getElementById('inAppVideo');", 2)[1];
   const body = inApp.split("fetch('/api/player/state'", 2)[1].split('JSON.stringify({', 2)[1].split('})', 1)[0];
   const sent = new Set([...body.matchAll(/^\s+([a-z_]+):/gm)].map(([, key]) => key));
-  const stateBlock = remotePage.split('_player_state: Dict[str, Any] = {', 2)[1].split('}', 1)[0];
+  // The remote's state as the server keeps it (crates/kino/src/remote.rs).
+  const remoteState = fs.readFileSync(path.join(path.join(__dirname, '..'), 'crates/kino/src/remote.rs'), 'utf8');
+  const stateBlock = remoteState.split('let state = json!({', 2)[1].split('});', 1)[0];
   const known = new Set([...stateBlock.matchAll(/"([a-z_]+)":/g)].map(([, key]) => key));
   for (const key of ['playing', 'paused', 'current_time', 'duration']) assert.ok(sent.has(key), `${key} is not reported`);
   for (const key of sent) assert.ok(known.has(key), `${key} is not part of the remote state`);

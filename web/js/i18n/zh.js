@@ -1,4 +1,4 @@
-// KINO interface, French -> zh. See tools/i18n.py.
+// KINO interface, French -> zh. See tools/i18n.js.
 KINO_I18N.load({
 "({} films)": "（{} 部电影）",
 "+ Importer une liste": "+ 导入列表",
@@ -413,6 +413,7 @@ KINO_I18N.load({
 "Diffusé il y a {}": "{} 前播出",
 "Disponibilité immédiate signalée par la source": "片源显示可立即使用",
 "Disponible": "可用",
+"Disponible dans l'application KINO.": "可在 KINO 应用中使用。",
 "Disponible hors ligne": "可离线观看",
 "Distribution": "演员",
 "Documentaire": "纪录片",

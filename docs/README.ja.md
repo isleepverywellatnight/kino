@@ -96,9 +96,8 @@ MangaDex、あなたのキーを使った TMDB など）、検索するソース
 
 | フォルダ | 内容 |
 |---|---|
-| `src/` | KINO の Python コード。`desktop.py` で起動 |
+| `crates/` | KINO の Rust コード：`kino`（サーバー）と `kino-desktop`（アプリ） |
 | `web/` | インターフェース（HTML、CSS、JavaScript） |
-| `addons/` | 追加ソース（設定で有効化） |
 | `assets/` | アプリに同梱するアイコンとファイル |
 | `packaging/` | アプリのビルド、インストーラー、インストールスクリプト |
 | `tools/` | ビルドと公開のツール |

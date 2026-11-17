@@ -2,6 +2,6 @@
 
 ## How it was tested
 
-- [ ] `python -m pytest -q tests`
+- [ ] `bash tools/check_rust.sh`
 - [ ] `node --test tests/test_*.js`
 - [ ] Tried in the app (say on which system)

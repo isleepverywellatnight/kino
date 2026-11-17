@@ -1,7 +1,0 @@
-pywebview>=6.2.1
-imageio-ffmpeg>=0.8.1
-cryptography==50.0.2
-certifi>=2026.10.23
-pyobjc-framework-WebKit>=13.0; sys_platform == 'darwin'
-pyobjc-framework-Cocoa>=13.0; sys_platform == 'darwin'
-libtorrent==2.1.1

@@ -56,9 +56,10 @@ test('the QR code script (phone remote) is the one KINO has always shipped', () 
 });
 
 test('the app ships the file, serves it, and refuses to start a build without it', () => {
-  assert.match(read('packaging/kino_macos.spec'), /\(str\(project \/ "web"\), "web"\)/, 'the whole web folder is in the bundle');
-  assert.match(read('src/app.py'), /parsed\.path\.startswith\(\("\/css\/", "\/js\/", "\/static\/", "\/web\/"\)\)/);
-  assert.match(read('src/desktop.py'), /if not \(resource_dir \/ "web" \/ "js" \/ "vendor" \/ "peerjs\.min\.js"\)\.is_file\(\):\n\s+raise RuntimeError\("Watch Party library is missing"\)/);
+  assert.match(read('packaging/build_macos_app.sh'), /ditto web "\$APP\/Contents\/Resources\/web"/, 'the whole web folder is in the Mac app');
+  assert.match(read('packaging/build_windows_app.ps1'), /Copy-Item web "\$app\\web" -Recurse/, 'and in the Windows one');
+  assert.match(read('crates/kino/src/server.rs'), /\["\/css\/", "\/js\/", "\/static\/", "\/web\/"\]/);
+  assert.match(read('crates/kino-desktop/src/main.rs'), /"js\/vendor\/peerjs\.min\.js"/, 'the self-check refuses a build without it');
 });
 
 function watchParty({ online = true, peer = true } = {}) {

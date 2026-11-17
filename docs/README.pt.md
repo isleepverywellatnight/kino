@@ -102,9 +102,8 @@ As chaves ficam no seu computador: não entram em backups nem são sincronizadas
 
 | Pasta | Conteúdo |
 |---|---|
-| `src/` | Código Python do KINO; `desktop.py` o inicia |
+| `crates/` | Código do KINO em Rust: `kino` (o servidor) e `kino-desktop` (o aplicativo) |
 | `web/` | Interface (HTML, CSS, JavaScript) |
-| `addons/` | Fontes extras, ativadas em Configurações |
 | `assets/` | Ícones e arquivos incluídos no aplicativo |
 | `packaging/` | Build dos aplicativos, instaladores, scripts de instalação |
 | `tools/` | Ferramentas de build e publicação |

@@ -4,7 +4,7 @@
 
 Au démarrage, puis à chaque « Rechercher une mise à jour » (Paramètres →
 Mises à jour), KINO lit la dernière release de `UPDATE_REPO`
-(`src/kino_version.py`). La CI y publie, à chaque nouvelle version sur `main` :
+(`crates/kino/src/update.rs`). La CI y publie, à chaque nouvelle version sur `main` :
 
 - macOS : `KINO-<version>-arm64.kinoupdate`, un manifeste JSON signé en
   Ed25519 et une archive de `KINO.app` ;
@@ -60,6 +60,6 @@ Le retour arrière n'est proposé que pour le même `DATA_SCHEMA` (aujourd'hui
 ## Construire un paquet à la main
 
 ```sh
-python tools/build_update_package.py --app dist/KINO.app --key <clé privée.pem> \
+cargo run --release -p kino --bin kino-release -- --app dist/KINO.app --key <clé privée.pem> \
   --output dist/KINO-<version>-arm64.kinoupdate --notes "KINO <version>"
 ```

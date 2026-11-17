@@ -34,7 +34,7 @@ fn origin_parts(origin: &str) -> Option<(String, Option<u16>)> {
 }
 
 /// Constant-time comparison for the pairing token.
-fn same_secret(a: &str, b: &str) -> bool {
+pub fn same_secret(a: &str, b: &str) -> bool {
     a.len() == b.len()
         && a.bytes()
             .zip(b.bytes())
@@ -66,8 +66,8 @@ pub fn request_allowed(
     ) {
         return false;
     }
-    // The TV being cast to reads its stream from the network; the Python server
-    // checks the session token and the TV's address (x-kino-peer).
+    // The TV being cast to reads its stream from the network; the stream
+    // route checks the session token and the TV's address (x-kino-peer).
     if path.starts_with("/tv/stream/") {
         return true;
     }
