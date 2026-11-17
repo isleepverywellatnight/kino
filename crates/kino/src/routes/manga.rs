@@ -1,5 +1,5 @@
-//! /api/manga/…: the Manga tab. Downloading a volume (/api/manga/volume…) still
-//! goes to the Python server, with the P2P engine.
+//! /api/manga/…: the Manga tab. Downloading a volume (/api/manga/volume…) needs
+//! the KINO app's peer-to-peer engine.
 
 use std::collections::HashMap;
 
@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 
 use crate::body::JsonBody;
 use crate::manga::{self, Manga, MangaError, local, sources};
-use crate::server::Shared;
+use crate::server::{Shared, needs_app};
 
 type Params = Query<HashMap<String, String>>;
 
@@ -25,6 +25,9 @@ pub fn router() -> Router<Shared> {
         .route("/api/manga/chapters", get(chapters))
         .route("/api/manga/pages", get(pages))
         .route("/api/manga/volumes", get(volumes))
+        .route("/api/manga/volume/files", get(volume_files))
+        .route("/api/manga/volume/status", get(volume_status))
+        .route("/api/manga/volume", axum::routing::post(volume_start))
         .route("/api/manga/local", get(local_series))
         .route("/api/manga/local/chapters", get(local_chapters))
         .route("/api/manga/local/page", get(local_page))
@@ -170,4 +173,38 @@ async fn folder(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
         s.net.db(),
         body["path"].as_str().unwrap_or(""),
     ))
+}
+
+/// Python's answer while the window (and its P2P engine) is Python's.
+/// The comic archives of a volume pack.
+async fn volume_files(State(s): State<Shared>, Query(p): Params) -> Response {
+    let Some(p2p) = s.p2p.clone() else {
+        return needs_app();
+    };
+    answer(crate::manga::volumes::files(&p2p, param(&p, "hash", ""), param(&p, "name", "")).await)
+}
+
+async fn volume_status(State(s): State<Shared>, Query(p): Params) -> Response {
+    let Some(p2p) = s.p2p.clone() else {
+        return needs_app();
+    };
+    let index = json!(param(&p, "index", ""));
+    answer(crate::manga::volumes::status(&p2p, &s.db, param(&p, "hash", ""), &index).await)
+}
+
+/// Fetches one volume of a pack into the manga folder.
+async fn volume_start(State(s): State<Shared>, request: axum::extract::Request) -> Response {
+    let Some(p2p) = s.p2p.clone() else {
+        return needs_app();
+    };
+    let body = axum::body::to_bytes(request.into_body(), 1 << 20)
+        .await
+        .unwrap_or_default();
+    let body: Value = serde_json::from_slice(&body).unwrap_or_else(|_| json!({}));
+    let (hash, series) = (
+        crate::play::text(&body["hash"]),
+        crate::play::text(&body["series"]),
+    );
+    let index = body.get("index").cloned().unwrap_or(json!(-1));
+    answer(crate::manga::volumes::start(&p2p, &s.db, &hash, &index, &series).await)
 }

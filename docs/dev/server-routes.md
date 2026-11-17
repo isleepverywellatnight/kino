@@ -1,211 +1,272 @@
 # Routes du serveur
 
-Le serveur local de KINO (`app.py`) répond à l'interface. Chaque adresse
-exacte a sa fonction, rangée par thème dans une classe ; deux tables
-(`RequestHandler.GET_ROUTES` et `POST_ROUTES`) les relient.
-`do_GET` et `do_POST` ne gardent que :
+Le serveur local de KINO (`crates/kino`) répond à l'interface. Chaque thème a
+son fichier dans `crates/kino/src/routes/`, avec une fonction par adresse ;
+`routes::router()` les réunit. `server.rs` garde :
 
-- le contrôle d'accès ;
-- les adresses qui demandent un motif, un préfixe ou une seconde condition ;
+- le contrôle d'accès (`access.rs`) : depuis le réseau local, seulement la
+  télécommande avec son jeton et le flux de la TV en cours ;
+- la page et ses fichiers (`/`, `/index.html`, `/icons.svg`, `/css/…`, `/js/…`) ;
 - la réponse « Route introuvable ».
 
-Cas gardés dans `do_GET` / `do_POST` :
+Les routes liées à la fenêtre (lecteurs, télécommande, TV, P2P, notifications,
+diagnostic) sont servies quand la fenêtre tourne dans le même programme
+(`kino-desktop`).
 
-- `/api/offline/…` : fichiers, affiches et sous-titres de la bibliothèque hors ligne ;
-- `/p2p/<empreinte>/<fichier>` : le fichier d'un torrent lu en P2P, servi au lecteur de ce Mac seulement (`p2p_engine.serve`) ;
-- `/`, `/index.html`, `/icons.svg`, `/css/…`, `/js/…` : la page et ses fichiers ;
-- `/qrcode.min.js` : passe à la suite s'il manque ;
-- `/api/remote/info`, `/api/remote/qr` : appairage de la télécommande ;
-- `/api/search?type=all` : la recherche « Tout » ;
-- `/api/native-player/open|command|close|screenshot|subtitle` : le lecteur natif ;
-- `/api/download-resume|restart|remove` : bibliothèque hors ligne ;
-- `/api/mpv`, `/api/vlc` : lecteurs externes ;
-- `/tv/stream/<jeton>/…` (GET, HEAD) : le relais de « Lire sur la TV », seulement pour l'adresse de la TV en cours et son jeton (`tv_cast.py`).
+## Catalogue et fiches
 
-## Lecture : sources, débridage, lecteurs, sous-titres, épisode suivant
-
-Classe `PlaybackRoutes`.
+`crates/kino/src/routes/titles.rs`
 
 | Méthode | Adresse | Fonction |
 |---|---|---|
-| GET | `/api/player/commands` | `get_player_commands` |
-| GET | `/api/remux` | `get_remux` |
-| GET | `/api/auto-stream` | `get_auto_stream` |
-| GET | `/api/series-playback-preference` | `get_series_playback_preference` |
-| GET | `/api/intro-times` | `get_intro_times` |
-| GET | `/api/subtitles` | `get_subtitles` |
-| GET | `/api/subtitle-cues` | `get_subtitle_cues` |
-| GET | `/api/native-player/state` | `get_native_player_state` |
-| GET | `/api/trailer` | `get_trailer` |
-| GET | `/api/torrents` | `get_torrents` |
-| POST | `/api/series-playback-preference` | `post_series_playback_preference` |
-| POST | `/api/playback-feedback` | `post_playback_feedback` |
-| POST | `/api/probe-media` | `post_probe_media` |
-| POST | `/api/player/state` | `post_player_state` |
-| POST | `/api/save-screenshot` | `post_save_screenshot` |
-| POST | `/api/upload-torrent` | `post_upload_torrent` |
-| POST | `/api/debrid` | `post_debrid` |
-| POST | `/api/one-click-play` | `post_one_click_play` |
-| POST | `/api/debrid-status` | `post_debrid_status` |
+| GET | `/api/catalog` | `catalog_page` |
+| GET | `/api/meta` | `meta` |
+| GET | `/api/series-meta` | `series_meta` |
+| GET | `/api/search-suggest` | `suggest` |
+| GET | `/api/search` | `search` |
+| GET | `/api/people` | `people` |
+| POST | `/api/french-titles` | `french_titles` |
+| POST | `/api/original-titles` | `original_titles` |
+| GET | `/api/episodes-fr` | `episodes_fr` |
+| GET | `/api/person` | `person` |
+| POST | `/api/history-record` | `history_record` |
+| POST | `/api/watched-toggle` | `watched_toggle` |
 
-## Catalogue et recherche : catalogue, recherche, fiches, anime, nouveaux épisodes
+## Sources et débridage
 
-Classe `CatalogueRoutes`.
+`crates/kino/src/routes/sources.rs`
 
 | Méthode | Adresse | Fonction |
 |---|---|---|
-| GET | `/api/catalog` | `get_catalog` |
-| GET | `/api/related` | `get_related` |
-| GET | `/api/for-you` | `get_for_you` |
-| GET | `/api/new-episodes` | `get_new_episodes` |
-| GET | `/api/episodes-fr` | `get_episodes_fr` |
-| GET | `/api/people` | `get_people` |
-| GET | `/api/person` | `get_person` |
-| GET | `/api/search-suggest` | `get_search_suggest` |
-| GET | `/api/search` | `get_search` |
-| GET | `/api/meta` | `get_meta` |
-| GET | `/api/series-meta` | `get_series_meta` |
-| GET | `/api/anime/trending` | `get_anime_trending` |
-| GET | `/api/anime/popular` | `get_anime_popular` |
-| GET | `/api/anime/search` | `get_anime_search` |
-| GET | `/api/anime/journey` | `get_anime_journey` |
-| GET | `/api/anime/filler` | `get_anime_filler` |
-| GET | `/api/anime/home` | `get_anime_home` |
-| GET | `/api/manga/search` | `get_manga_search` |
-| GET | `/api/manga/popular` | `get_manga_popular` |
-| GET | `/api/manga/details` | `get_manga_details` |
-| GET | `/api/manga/chapters` | `get_manga_chapters` |
-| GET | `/api/manga/pages` | `get_manga_pages` |
-| GET | `/api/manga/local` | `get_manga_local` |
-| GET | `/api/manga/local/chapters` | `get_manga_local_chapters` |
-| GET | `/api/manga/local/page` | `get_manga_local_page` |
-| GET | `/api/manga/progress` | `get_manga_progress` |
-| GET | `/api/manga/row` | `get_manga_row` |
-| GET | `/api/manga/volumes` | `get_manga_volumes` |
-| GET | `/api/manga/volume/files` | `get_manga_volume_files` |
-| GET | `/api/manga/volume/status` | `get_manga_volume_status` |
-| GET | `/api/anime/week` | `get_anime_week` |
-| POST | `/api/anime/open` | `post_anime_open` |
-| POST | `/api/anime/journey/resolve` | `post_anime_journey_resolve` |
-| POST | `/api/anime/journey/order` | `post_anime_journey_order` |
-| POST | `/api/french-titles` | `post_french_titles` |
-| POST | `/api/original-titles` | `post_original_titles` |
+| GET | `/api/torrents` | `torrents` |
+| POST | `/api/debrid` | `debrid` |
+| POST | `/api/debrid-status` | `debrid_status` |
+| GET | `/api/rd-history` | `rd_history` |
+| POST | `/api/rd-delete` | `rd_delete` |
+| POST | `/api/rd-cleanup` | `rd_cleanup` |
+| POST | `/api/cloud-titles` | `cloud_titles` |
+| GET | `/api/ad-dl` | `ad_dl` |
+| GET | `/api/torbox-dl` | `torbox_dl` |
 
-## Bibliothèque : Ma Liste, historique, hors ligne, statistiques, Ce soir, spoilers
+## Lecture
 
-Classe `LibraryRoutes`.
+`crates/kino/src/routes/play.rs`
 
 | Méthode | Adresse | Fonction |
 |---|---|---|
-| GET | `/api/my-series` | `get_my_series` |
-| GET | `/api/calendar` | `get_calendar` |
-| GET | `/api/stats` | `get_stats` |
-| GET | `/api/user-lists` | `get_user_lists` |
-| GET | `/api/downloads` | `get_downloads` |
-| GET | `/api/spoiler-protection` | `get_spoiler_protection` |
-| POST | `/api/spoiler-protection` | `post_spoiler_protection` |
-| POST | `/api/tonight` | `post_tonight` |
-| POST | `/api/tonight/feedback` | `post_tonight_feedback` |
-| POST | `/api/tonight/undo` | `post_tonight_undo` |
-| POST | `/api/tonight/reset` | `post_tonight_reset` |
-| POST | `/api/watched-toggle` | `post_watched_toggle` |
-| POST | `/api/watchlist` | `post_watchlist` |
-| POST | `/api/history-remove` | `post_history_remove` |
-| POST | `/api/history-record` | `post_history_record` |
-| POST | `/api/rating` | `post_rating` |
-| POST | `/api/download` | `post_download` |
-| POST | `/api/download-season` | `post_download_season` |
-| POST | `/api/download-cancel` | `post_download_cancel` |
+| POST | `/api/one-click-play` | `one_click_play` |
+| POST | `/api/mpv` | `external_player` |
+| POST | `/api/vlc` | `external_player` |
+| GET | `/api/auto-stream` | `auto_stream` |
+| POST | `/api/playback-feedback` | `feedback` |
+| GET | `/api/subtitles` | `subtitles` |
+| GET | `/api/intro-times` | `intro_times` |
+| GET | `/api/trailer` | `trailer` |
+| GET | `/api/subtitle-cues` | `subtitle_cues` |
 
-## Cloud Debrid : historique, nettoyage, titres, redirections AllDebrid et TorBox
+## Lecteur natif (macOS)
 
-Classe `DebridRoutes`.
+`crates/kino/src/routes/native.rs`
 
 | Méthode | Adresse | Fonction |
 |---|---|---|
-| GET | `/api/ad-dl` | `get_ad_dl` |
-| GET | `/api/torbox-dl` | `get_torbox_dl` |
-| GET | `/api/rd-history` | `get_rd_history` |
-| POST | `/api/rd-delete` | `post_rd_delete` |
-| POST | `/api/rd-cleanup` | `post_rd_cleanup` |
-| POST | `/api/cloud-titles` | `post_cloud_titles` |
+| GET | `/api/native-player/state` | `state` |
+| POST | `/api/native-player/open` | `open` |
+| POST | `/api/native-player/command` | `command` |
+| POST | `/api/native-player/close` | `close` |
+| POST | `/api/native-player/screenshot` | `screenshot` |
+| POST | `/api/native-player/subtitle` | `subtitle` |
 
-## Listes et communauté : Letterboxd, sélections d'Explorer
+## Séries
 
-Classe `ListsRoutes`.
-
-| Méthode | Adresse | Fonction |
-|---|---|---|
-| GET | `/api/community/curated` | `get_community_curated` |
-| GET | `/api/letterboxd/custom-lists` | `get_letterboxd_custom_lists` |
-| POST | `/api/import-letterboxd` | `post_import_letterboxd` |
-| POST | `/api/letterboxd/import-list` | `post_letterboxd_import_list` |
-| POST | `/api/letterboxd/delete-list` | `post_letterboxd_delete_list` |
-
-## Réglages et comptes : configuration, Trakt, Discord, Google Drive, add-ons, notifications
-
-Classe `AccountRoutes`.
+`crates/kino/src/routes/series.rs`
 
 | Méthode | Adresse | Fonction |
 |---|---|---|
-| GET | `/api/config` | `get_config` |
-| POST | `/api/tmdb/key` | `post_tmdb_key` |
-| GET | `/api/for-you/status` | `get_for_you_status` |
-| POST | `/api/for-you/not-for-me` | `post_not_for_me` |
-| POST | `/api/for-you/reset` | `post_for_you_reset` |
-| GET | `/api/trakt/status` | `get_trakt_status` |
-| GET | `/api/sync/gdrive` | `get_sync_gdrive` |
-| GET | `/api/discord-rpc/status` | `get_discord_rpc_status` |
-| GET | `/api/addons` | `get_addons` |
-| GET | `/api/p2p` | `get_p2p` |
-| GET | `/api/stremio-addons` | `get_stremio_addons` |
-| GET | `/api/stremio-addons/catalog` | `get_stremio_catalog` |
-| POST | `/api/config` | `post_config` |
-| POST | `/api/sync/gdrive` | `post_sync_gdrive` |
-| POST | `/api/trakt/auth/start` | `post_trakt_auth_start` |
-| POST | `/api/trakt/auth/poll` | `post_trakt_auth_poll` |
-| POST | `/api/trakt/disconnect` | `post_trakt_disconnect` |
-| POST | `/api/trakt/scrobble` | `post_trakt_scrobble` |
-| POST | `/api/trakt/sync` | `post_trakt_sync` |
-| POST | `/api/discord-rpc/update` | `post_discord_rpc_update` |
-| POST | `/api/discord-rpc/clear` | `post_discord_rpc_clear` |
-| POST | `/api/addons/toggle` | `post_addons_toggle` |
-| POST | `/api/p2p/consent` | `post_p2p_consent` |
-| POST | `/api/p2p/settings` | `post_p2p_settings` |
-| POST | `/api/p2p/clear` | `post_p2p_clear` |
-| POST | `/api/manga/progress` | `post_manga_progress` |
-| POST | `/api/manga/folder` | `post_manga_folder` |
-| POST | `/api/manga/volume` | `post_manga_volume` |
-| POST | `/api/stremio-addons` | `post_stremio_addons` |
-| POST | `/api/notifications/test` | `post_notifications_test` |
+| GET | `/api/new-episodes` | `new_episodes` |
+| GET | `/api/my-series` | `my_series` |
+| GET | `/api/calendar` | `calendar` |
+| GET | `/api/user-lists` | `user_lists` |
+| GET | `/api/stats` | `stats` |
+| GET | `/api/community/curated` | `curated` |
+| GET | `/api/letterboxd/custom-lists` | `custom_lists` |
+| POST | `/api/import-letterboxd` | `import_letterboxd` |
+| POST | `/api/letterboxd/import-list` | `import_list` |
+| POST | `/api/letterboxd/delete-list` | `delete_list` |
 
-## Application : télécommande, fenêtre, dossier de téléchargement, connexion, diagnostic, TV
+## Suggestions
 
-Classe `AppRoutes`.
+`crates/kino/src/routes/suggestions.rs`
 
 | Méthode | Adresse | Fonction |
 |---|---|---|
-| GET | `/remote` | `get_remote` |
-| GET | `/api/remote/state` | `get_remote_state` |
-| GET | `/api/network` | `get_network` |
-| GET | `/api/diagnostic` | `get_diagnostic` |
-| POST | `/api/remote/control` | `post_remote_control` |
-| GET | `/api/tv/devices` | `get_tv_devices` |
-| GET | `/api/tv/status` | `get_tv_status` |
-| POST | `/api/client-error` | `post_client_error` |
-| POST | `/api/tv/device` | `post_tv_device` |
-| POST | `/api/tv/play` | `post_tv_play` |
-| POST | `/api/tv/control` | `post_tv_control` |
-| GET | `/api/backups` | `get_backups` |
-| POST | `/api/backups/now` | `post_backup_now` |
-| POST | `/api/backups/restore` | `post_backup_restore` |
-| POST | `/api/window/action` | `post_window_action` |
-| POST | `/api/open-folder` | `post_open_folder` |
+| GET | `/api/for-you` | `for_you` |
+| GET | `/api/related` | `related` |
+| POST | `/api/for-you/not-for-me` | `not_for_me` |
+| POST | `/api/for-you/reset` | `reset` |
+| GET | `/api/for-you/status` | `status` |
+
+## Anime
+
+`crates/kino/src/routes/anime.rs`
+
+| Méthode | Adresse | Fonction |
+|---|---|---|
+| GET | `/api/anime/home` | `home` |
+| GET | `/api/anime/week` | `week` |
+| POST | `/api/anime/open` | `open` |
+| GET | `/api/anime/journey` | `get_journey` |
+| POST | `/api/anime/journey/resolve` | `resolve` |
+| POST | `/api/anime/journey/order` | `order` |
+
+## Bibliothèque
+
+`crates/kino/src/routes/library.rs`
+
+| Méthode | Adresse | Fonction |
+|---|---|---|
+| POST | `/api/watchlist` | `watchlist` |
+| POST | `/api/history-remove` | `history_remove` |
+| POST | `/api/rating` | `rating` |
+| POST | `/api/tonight` | `tonight` |
+| POST | `/api/tonight/feedback` | `tonight_feedback` |
+| POST | `/api/tonight/undo` | `tonight_undo` |
+| POST | `/api/tonight/reset` | `tonight_reset` |
+| GET | `/api/spoiler-protection` | `spoilers` |
+| POST | `/api/spoiler-protection` | `update_spoilers` |
+| GET | `/api/series-playback-preference` | `playback` |
+| POST | `/api/series-playback-preference` | `update_playback` |
+
+## Hors ligne
+
+`crates/kino/src/routes/offline.rs`
+
+| Méthode | Adresse | Fonction |
+|---|---|---|
+| GET | `/api/downloads` | `list` |
+| POST | `/api/download` | `create` |
+| POST | `/api/download-season` | `season` |
+| POST | `/api/download-cancel` | `pause` |
+| POST | `/api/download-resume` | `resume` |
+| POST | `/api/download-restart` | `restart` |
+| POST | `/api/download-remove` | `remove` |
+| GET | `/api/offline/{kind}/{id}` | `asset` |
+| HEAD | `/api/offline/{kind}/{id}` | `asset` |
+
+## Manga
+
+`crates/kino/src/routes/manga.rs`
+
+| Méthode | Adresse | Fonction |
+|---|---|---|
+| GET | `/api/manga/search` | `search` |
+| GET | `/api/manga/popular` | `popular` |
+| GET | `/api/manga/row` | `row` |
+| GET | `/api/manga/details` | `details` |
+| GET | `/api/manga/chapters` | `chapters` |
+| GET | `/api/manga/pages` | `pages` |
+| GET | `/api/manga/volumes` | `volumes` |
+| GET | `/api/manga/volume/files` | `volume_files` |
+| GET | `/api/manga/volume/status` | `volume_status` |
+| POST | `/api/manga/volume` | `volume_start` |
+| GET | `/api/manga/local` | `local_series` |
+| GET | `/api/manga/local/chapters` | `local_chapters` |
+| GET | `/api/manga/local/page` | `local_page` |
+| GET | `/api/manga/progress` | `progress` |
+| POST | `/api/manga/progress` | `save_progress` |
+| POST | `/api/manga/folder` | `folder` |
+
+## P2P
+
+`crates/kino/src/routes/p2p.rs`
+
+| Méthode | Adresse | Fonction |
+|---|---|---|
+| GET | `/api/p2p` | `state` |
+| POST | `/api/p2p/consent` | `consent` |
+| POST | `/api/p2p/settings` | `settings` |
+| POST | `/api/p2p/clear` | `clear` |
+| GET | `/p2p/{hash}/{index}` | `file` |
+| HEAD | `/p2p/{hash}/{index}` | `file` |
+
+## Lire sur la TV
+
+`crates/kino/src/routes/tv.rs`
+
+| Méthode | Adresse | Fonction |
+|---|---|---|
+| GET | `/api/tv/devices` | `devices` |
+| GET | `/api/tv/status` | `status` |
+| POST | `/api/tv/device` | `choose` |
+| POST | `/api/tv/play` | `play` |
+| POST | `/api/tv/control` | `control` |
+| GET | `/tv/stream/{*rest}` | `relay` |
+| HEAD | `/tv/stream/{*rest}` | `relay` |
+
+## Télécommande, état du lecteur, diagnostic
+
+`crates/kino/src/routes/remote.rs`
+
+| Méthode | Adresse | Fonction |
+|---|---|---|
+| GET | `/remote` | `page` |
+| GET | `/api/remote/state` | `state` |
+| POST | `/api/remote/control` | `control` |
+| GET | `/api/remote/info` | `info` |
+| GET | `/api/remote/qr` | `info` |
+| POST | `/api/player/state` | `player_state` |
+| GET | `/api/player/commands` | `commands` |
+| GET | `/api/diagnostic` | `diagnostic` |
+
+## Fenêtre et ordinateur
+
+`crates/kino/src/routes/window.rs`
+
+| Méthode | Adresse | Fonction |
+|---|---|---|
+| GET | `/api/discord-rpc/status` | `discord_status` |
+| POST | `/api/discord-rpc/update` | `discord_update` |
+| POST | `/api/discord-rpc/clear` | `discord_clear` |
+| POST | `/api/window/action` | `window_action` |
+| POST | `/api/open-folder` | `open_folder` |
+| POST | `/api/save-screenshot` | `save_screenshot` |
+| POST | `/api/probe-media` | `probe_media` |
+| POST | `/api/upload-torrent` | `upload_torrent` |
+| POST | `/api/notifications/test` | `notifications_test` |
+| GET | `/api/remux` | `remux` |
+
+## Paramètres et comptes
+
+`crates/kino/src/routes/settings.rs`
+
+| Méthode | Adresse | Fonction |
+|---|---|---|
+| GET | `/api/config` | `read` |
+| POST | `/api/config` | `save` |
+| POST | `/api/tmdb/key` | `tmdb_key` |
+| POST | `/api/client-error` | `client_error` |
+| GET | `/api/stremio-addons` | `stremio_addons` |
+| POST | `/api/stremio-addons` | `change_stremio_addons` |
+| GET | `/api/stremio-addons/catalog` | `stremio_catalog` |
+| GET | `/api/addons` | `addons` |
+| GET | `/api/backups` | `backups` |
+| GET | `/api/network` | `network` |
+| GET | `/api/sync/gdrive` | `gdrive` |
+| POST | `/api/sync/gdrive` | `gdrive` |
+| POST | `/api/backups/now` | `backup_now` |
+| POST | `/api/backups/restore` | `backup_restore` |
+| GET | `/api/trakt/status` | `trakt_status` |
+| POST | `/api/trakt/auth/start` | `trakt_start` |
+| POST | `/api/trakt/auth/poll` | `trakt_poll` |
+| POST | `/api/trakt/disconnect` | `trakt_disconnect` |
+| POST | `/api/trakt/scrobble` | `trakt_scrobble` |
+| POST | `/api/trakt/sync` | `trakt_sync` |
+| POST | `/api/addons/toggle` | `toggle_addon` |
 
 ## Sans internet
 
-`network_state.py` sait si internet répond : vérification au lancement et sur
-`/api/network?refresh=1`, puis chaque requête de `config.http_json`. Une panne
+`network.rs` sait si internet répond : vérification au lancement et sur
+`/api/network?refresh=1`, puis chaque requête de `net.rs`. Une panne
 de réseau (pas de DNS, pas de route) ne relance pas la requête et donne
 « Pas de connexion à internet. ». Pendant dix secondes après une telle panne,
 les requêtes échouent tout de suite. Toute réponse 500 donnée pendant ce temps
@@ -213,7 +274,7 @@ porte `"code": "offline"`, que l'interface reconnaît.
 
 ## Diagnostic
 
-`/api/diagnostic` lit l'état de KINO sans rien modifier (`diagnostic.py`) :
+`/api/diagnostic` lit l'état de KINO sans rien modifier (`diagnostic.rs`) :
 internet, compte Debrid, Trakt, Google Drive, lecteur, notifications, espace
 disque, base de données. Chaque ligne a un état (`ok`, `warning`, `problem`,
 `off`), une phrase et, si besoin, quoi faire. Le rapport à copier ne contient
@@ -221,8 +282,6 @@ ni clé, ni lien, ni adresse e-mail, ni nom de compte.
 
 ## Ajouter une route
 
-1. Écrire la fonction dans la classe du thème : `get_…(self, parsed, params)` ou
-   `post_…(self, parsed, params, body)`.
-2. L'ajouter à `GET_ROUTES` ou `POST_ROUTES`.
-3. Régénérer ce tableau. `test_server_routes.py` vérifie que chaque adresse a sa fonction et
-   que ce document les liste toutes.
+1. Écrire la fonction dans le fichier du thème (`crates/kino/src/routes/`).
+2. L'ajouter au `router()` de ce fichier.
+3. Ajouter sa ligne à ce document.

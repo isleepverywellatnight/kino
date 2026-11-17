@@ -38,16 +38,9 @@ static BEFORE_RESTORE: LazyLock<Regex> =
 /// One copy at a time.
 static BUSY: Mutex<()> = Mutex::new(());
 
-/// KINO's version, the one the Python side declares.
+/// KINO's version (the Cargo workspace's).
 pub fn app_version() -> &'static str {
-    static VERSION: LazyLock<String> = LazyLock::new(|| {
-        Regex::new(r#"APP_VERSION\s*=\s*"([^"]+)""#)
-            .unwrap()
-            .captures(include_str!("../../../src/kino_version.py"))
-            .map(|c| c[1].to_string())
-            .unwrap_or_default()
-    });
-    &VERSION
+    env!("CARGO_PKG_VERSION")
 }
 
 pub fn default_dir() -> PathBuf {

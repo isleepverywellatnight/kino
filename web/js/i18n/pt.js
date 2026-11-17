@@ -1,4 +1,4 @@
-// KINO interface, French -> pt. See tools/i18n.py.
+// KINO interface, French -> pt. See tools/i18n.js.
 KINO_I18N.load({
 "({} films)": "({} filmes)",
 "+ Importer une liste": "+ Importar uma lista",
@@ -412,6 +412,7 @@ KINO_I18N.load({
 "Diffusé il y a {}": "Exibido há {}",
 "Disponibilité immédiate signalée par la source": "Disponibilidade imediata informada pela fonte",
 "Disponible": "Disponível",
+"Disponible dans l'application KINO.": "Disponível no app KINO.",
 "Disponible hors ligne": "Disponível offline",
 "Distribution": "Elenco",
 "Documentaire": "Documentário",

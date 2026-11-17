@@ -1,5 +1,5 @@
 # Builds KINO for macOS (Apple Silicon) and Windows (x64) on every push and pull
-# request to main. When main carries an APP_VERSION (src/kino_version.py) that
+# request to main. When main carries a version (Cargo.toml, [workspace.package]) that
 # has no release yet, it publishes release vX.Y.Z (and its tag) with the .dmg,
 # the Windows installer and, when the KINO_UPDATE_SIGNING_KEY secret is set, the
 # signed files the in-app updater uses. Pushing a tag vX.Y.Z does the same.
@@ -21,7 +21,6 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 env:
-  PYTHON_VERSION: "3.12"
   # Releases (downloads, updates, install scripts) are published in this repository.
   RELEASES_REPO: ${{ github.repository }}
 
@@ -34,18 +33,15 @@ jobs:
       released: ${{ steps.version.outputs.released }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
       - name: Version
         id: version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version=$(PYTHONPATH=src python -c "import kino_version; print(kino_version.APP_VERSION)")
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF#refs/tags/v}" != "$version" ]]; then
-            echo "::error::Le tag ${GITHUB_REF#refs/tags/} ne correspond pas à APP_VERSION ($version) dans src/kino_version.py"
+            echo "::error::Le tag ${GITHUB_REF#refs/tags/} ne correspond pas à la version ($version) de Cargo.toml"
             exit 1
           fi
           # A new version on main (or its tag) is published once.
@@ -60,18 +56,10 @@ jobs:
           if gh release view --repo "$RELEASES_REPO" >/dev/null 2>&1; then released=true; else released=false; fi
           echo "released=$released" >> "$GITHUB_OUTPUT"
           echo "Version $version, publication : $publish"
-      - name: Compile
-        run: python -m compileall -q src tools tests
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
-      - name: Tests (server)
-        # The tests write in a throwaway home folder, never in real data.
-        run: |
-          pip install -r requirements.txt pytest
-          export HOME="$RUNNER_TEMP/kino-home"
-          mkdir -p "$HOME"
-          python -m pytest -q tests
+      # The server and the app are tested by the Rust workflow (rust.yml).
       - name: Tests (interface)
         run: |
           node --test tests/test_*.js
@@ -86,20 +74,17 @@ jobs:
       VERSION: ${{ needs.checks.outputs.version }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Dependencies
-        run: pip install -r requirements-build.txt
+      - name: FFmpeg to ship
+        run: tools/fetch_ffmpeg.sh
       - name: libmpv (from IINA)
         run: |
           brew install --cask iina
-          python tools/vendor_libmpv.py
+          tools/vendor_libmpv.sh
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - name: KINO server (Rust)
-        run: cargo build --release --locked --bin kino-server
       - name: Build KINO.app
-        run: pyinstaller --noconfirm packaging/kino_macos.spec
+        run: |
+          cargo build --release --locked -p kino-desktop
+          packaging/build_macos_app.sh
       - name: Self-check
         run: |
           codesign --verify --deep --strict dist/KINO.app
@@ -116,7 +101,8 @@ jobs:
           fi
           key="$RUNNER_TEMP/kino-update-key.pem"
           printf '%s\n' "$KINO_UPDATE_SIGNING_KEY" > "$key"
-          python tools/build_update_package.py --app dist/KINO.app --key "$key" \
+          cargo build --release --locked -p kino --bin kino-release
+          target/release/kino-release --app dist/KINO.app --key "$key" \
             --output "dist/KINO-$VERSION-arm64.kinoupdate" --notes "KINO $VERSION"
           rm -f "$key"
       - uses: actions/upload-artifact@v7
@@ -137,19 +123,15 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          architecture: x64
-      - name: Dependencies
-        run: pip install -r requirements-build.txt
+      - name: FFmpeg to ship
+        run: ./tools/fetch_ffmpeg.ps1
       - name: mpv
-        run: python tools/fetch_mpv_windows.py
+        run: ./tools/fetch_mpv_windows.ps1
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - name: KINO server (Rust)
-        run: cargo build --release --locked --bin kino-server
       - name: Build KINO.exe
-        run: pyinstaller --noconfirm packaging/kino_windows.spec
+        run: |
+          cargo build --release --locked -p kino-desktop
+          ./packaging/build_windows_app.ps1
       - name: Self-check
         run: |
           $report = Join-Path $env:RUNNER_TEMP "self-check.json"
@@ -158,7 +140,6 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "Self-check failed ($($p.ExitCode))" }
       - name: Start-up test
         run: |
-          $env:KINO_TRACE_FILE = Join-Path $env:RUNNER_TEMP "kino-trace.txt"
           $p = Start-Process -FilePath dist\KINO\KINO.exe -PassThru
           $ok = $false
           for ($i = 0; $i -lt 60 -and -not $ok; $i++) {
@@ -191,7 +172,6 @@ jobs:
           } catch { Write-Warning "Capture d'écran impossible : $_" }
           Stop-Process -Name KINO -Force -ErrorAction SilentlyContinue
           Start-Sleep -Seconds 1
-          if (Test-Path $env:KINO_TRACE_FILE) { Write-Output "--- Python threads ---"; Get-Content $env:KINO_TRACE_FILE -Tail 120 }
           if (-not $ok) { throw "Le serveur de KINO n'a pas répondu" }
           if (-not $alive) { throw "KINO s'est fermé au démarrage" }
           if (-not $responding) { throw "La fenêtre de KINO ne répond pas" }
@@ -210,7 +190,7 @@ jobs:
           $p = Start-Process -FilePath $setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Installation failed ($($p.ExitCode))" }
           $app = Join-Path $env:LOCALAPPDATA "Programs\KINO"
-          foreach ($f in "KINO.exe", "unins000.exe", "_internal\mpv\mpv.exe") {
+          foreach ($f in "KINO.exe", "unins000.exe", "mpv\mpv.exe", "ffmpeg.exe", "web\index.html") {
             if (-not (Test-Path (Join-Path $app $f))) { throw "$f manquant après installation" }
           }
           $report = Join-Path $env:RUNNER_TEMP "installed-self-check.json"
@@ -229,7 +209,8 @@ jobs:
           }
           $key = Join-Path $env:RUNNER_TEMP "kino-update-key.pem"
           Set-Content -Path $key -Value $env:KINO_UPDATE_SIGNING_KEY -NoNewline -Encoding ascii
-          python tools/build_update_package.py --installer "dist\KINO-Windows.exe" --key $key --notes "KINO $env:VERSION"
+          cargo build --release --locked -p kino --bin kino-release
+          target\release\kino-release.exe --installer "dist\KINO-Windows.exe" --key $key --notes "KINO $env:VERSION"
           $code = $LASTEXITCODE
           Remove-Item $key
           if ($code -ne 0) { throw "Signing failed" }

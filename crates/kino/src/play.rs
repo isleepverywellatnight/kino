@@ -334,10 +334,57 @@ pub struct Attempts {
     pub last_error: Option<NetError>,
 }
 
+/// What reads a source: the debrid service, or KINO itself peer to peer.
+pub trait Reader: Sync {
+    fn magnet(
+        &self,
+        magnet: &str,
+        season: Option<i64>,
+        episode: Option<i64>,
+        link: Option<&str>,
+    ) -> impl std::future::Future<Output = crate::net::NetResult<Value>> + Send;
+}
+
+impl Reader for Resolver<'_> {
+    fn magnet(
+        &self,
+        magnet: &str,
+        season: Option<i64>,
+        episode: Option<i64>,
+        link: Option<&str>,
+    ) -> impl std::future::Future<Output = crate::net::NetResult<Value>> + Send {
+        Resolver::magnet(self, magnet, season, episode, link)
+    }
+}
+
+/// The torrents read peer to peer, served at `base_url`/p2p/….
+pub struct P2pReader {
+    pub p2p: std::sync::Arc<crate::p2p::P2p>,
+    pub base_url: String,
+}
+
+impl Reader for P2pReader {
+    fn magnet(
+        &self,
+        magnet: &str,
+        _season: Option<i64>,
+        _episode: Option<i64>,
+        link: Option<&str>,
+    ) -> impl std::future::Future<Output = crate::net::NetResult<Value>> + Send {
+        let (magnet, link) = (magnet.to_string(), link.unwrap_or("").to_string());
+        async move {
+            self.p2p
+                .prepare(&magnet, &link, &self.base_url)
+                .await
+                .map_err(NetError)
+        }
+    }
+}
+
 /// The first ten sources in their order: the debrid link, then the right file in it.
 pub async fn try_sources(
     meta: &Meta,
-    resolver: &Resolver<'_>,
+    resolver: &impl Reader,
     candidates: &[Value],
     query: &Query,
     episode: Option<(i64, i64)>,
@@ -405,7 +452,7 @@ impl EpisodeLinks {
             .insert(key, (download.into(), filename.into(), now()));
     }
 
-    fn recent(&self, key: &(String, i64, i64)) -> Option<(String, String)> {
+    pub fn recent(&self, key: &(String, i64, i64)) -> Option<(String, String)> {
         let links = self.links.lock().unwrap_or_else(|e| e.into_inner());
         links
             .get(key)

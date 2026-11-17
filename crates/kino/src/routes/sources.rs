@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use axum::body::Bytes;
 use axum::extract::{Query, State};
-use axum::http::{HeaderMap, Method, StatusCode, Uri};
+use axum::http::{Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 
 use crate::body::JsonBody;
 use crate::resolve::Resolver;
-use crate::server::delegate;
+use crate::server::needs_app;
 
 use crate::server::Shared;
 use crate::sources::search::{self, Search};
@@ -60,15 +60,9 @@ fn failed(error: crate::net::NetError) -> Response {
         .into_response()
 }
 
-/// The debrid link of a source. Without a debrid key, the Python server reads
-/// the torrent peer to peer (not in Rust yet).
-async fn debrid(
-    State(s): State<Shared>,
-    method: Method,
-    uri: Uri,
-    headers: HeaderMap,
-    raw: Bytes,
-) -> Response {
+/// The debrid link of a source. Without a debrid key, the KINO app reads the
+/// torrent peer to peer.
+async fn debrid(State(s): State<Shared>, raw: Bytes) -> Response {
     let Ok(Value::Object(body)) =
         serde_json::from_slice::<Value>(if raw.is_empty() { b"{}" } else { &raw })
     else {
@@ -83,7 +77,24 @@ async fn debrid(
         .unwrap_or_default();
     let (provider, token) = search::provider_and_token(&cfg);
     if token.is_empty() {
-        return delegate(&s, method, &uri, &headers, raw).await;
+        let Some(p2p) = s.p2p.clone() else {
+            return needs_app();
+        };
+        // No debrid key: KINO reads the torrent itself, once the user agreed.
+        let magnet = body.get("magnet").and_then(Value::as_str).unwrap_or("");
+        let resolve_url = body
+            .get("resolve_url")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        return match p2p.prepare(magnet, resolve_url, &format!("http://127.0.0.1:{}", s.port)).await {
+            Ok(found) => Json(found).into_response(),
+            Err(e) if e == crate::p2p::CONSENT_NEEDED => (
+                StatusCode::CONFLICT,
+                Json(json!({"error": "Sans service de débridage, KINO lit les torrents en P2P : acceptez-le une fois pour continuer.", "code": "p2p_consent"})),
+            )
+                .into_response(),
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e}))).into_response(),
+        };
     }
     let resolver = Resolver {
         net: &s.net,

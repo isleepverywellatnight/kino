@@ -6,6 +6,7 @@
 
 pub mod local;
 pub mod sources;
+pub mod volumes;
 
 use std::collections::HashMap;
 use std::sync::LazyLock;

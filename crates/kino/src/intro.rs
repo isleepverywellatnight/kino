@@ -84,13 +84,24 @@ pub fn parse_chapters(chapters: &[Value]) -> (Value, Value, Value) {
     (op, ed, recap)
 }
 
-/// FFprobe on this computer: the PATH, then the usual places.
+/// FFmpeg or FFprobe: the one shipped with KINO (next to the program, or in
+/// the app's Resources), then the PATH, then the usual places.
 pub fn find_tool(name: &str) -> Option<std::path::PathBuf> {
     let exe = if cfg!(windows) {
         format!("{name}.exe")
     } else {
         name.to_string()
     };
+    if let Some(dir) = std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(std::path::Path::to_path_buf))
+    {
+        for candidate in [dir.join(&exe), dir.join("../Resources").join(&exe)] {
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
     if let Some(path) = std::env::var_os("PATH") {
         for dir in std::env::split_paths(&path) {
             let candidate = dir.join(&exe);

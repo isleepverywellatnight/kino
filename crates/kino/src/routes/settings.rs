@@ -82,22 +82,10 @@ async fn read(State(s): State<Shared>) -> Response {
 }
 
 async fn save(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
-    // The Discord presence still runs in the Python server: it hears of its settings.
-    let discord: serde_json::Map<String, Value> = ["discord_rpc", "discord_client_id"]
-        .iter()
-        .filter_map(|k| body.get(*k).map(|v| (k.to_string(), v.clone())))
-        .collect();
-    let _ = tokio::task::spawn_blocking(move || config::save(&body)).await;
-    if let Some(legacy) = s.legacy.clone().filter(|_| !discord.is_empty()) {
-        let http = s.http.clone();
-        tokio::spawn(async move {
-            let _ = http
-                .post(format!("{legacy}/api/config"))
-                .json(&Value::Object(discord))
-                .send()
-                .await;
-        });
+    if let (Some(player), Some(on)) = (&s.player, body.get("discord_rpc")) {
+        player.discord.set_enabled(crate::play::truthy(on));
     }
+    let _ = tokio::task::spawn_blocking(move || config::save(&body)).await;
     Json(json!({"ok": true})).into_response()
 }
 

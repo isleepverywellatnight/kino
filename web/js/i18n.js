@@ -6,7 +6,7 @@
 // placeholders, tooltips and alert()/confirm() messages, including everything
 // the other scripts add later. A text missing from the dictionary stays in
 // French. Dictionaries map French to the translation; "{}" is a variable part.
-// See tools/i18n.py.
+// See tools/i18n.js.
 (function () {
   'use strict';
 

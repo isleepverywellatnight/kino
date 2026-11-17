@@ -102,9 +102,8 @@ Die Schlüssel bleiben auf deinem Computer: Sie werden weder gesichert noch sync
 
 | Ordner | Inhalt |
 |---|---|
-| `src/` | Python-Code von KINO; `desktop.py` startet es |
+| `crates/` | KINO-Code in Rust: `kino` (der Server) und `kino-desktop` (die App) |
 | `web/` | Oberfläche (HTML, CSS, JavaScript) |
-| `addons/` | Zusätzliche Quellen, in den Einstellungen aktivierbar |
 | `assets/` | Icons und Dateien, die mit der App ausgeliefert werden |
 | `packaging/` | App-Builds, Installer, Installationsskripte |
 | `tools/` | Build- und Veröffentlichungswerkzeuge |

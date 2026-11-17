@@ -1,13 +1,11 @@
-//! KINO's local HTTP server: the interface, the API, and while KINO moves to
-//! Rust, every route not ported yet forwarded to the Python server.
+//! KINO's local HTTP server: the interface and the API.
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::body::{Body, Bytes};
 use axum::extract::{ConnectInfo, Request, State};
-use axum::http::{HeaderMap, HeaderValue, Method, StatusCode, Uri, header};
+use axum::http::{HeaderValue, Method, StatusCode, Uri, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
@@ -23,8 +21,6 @@ pub struct AppState {
     pub port: u16,
     pub pairing_token: String,
     pub web_root: PathBuf,
-    /// The Python server for the routes not ported yet (`KINO_LEGACY`).
-    pub legacy: Option<String>,
     pub http: reqwest::Client,
     pub net: Arc<Net>,
     pub sites: Sites,
@@ -39,6 +35,20 @@ pub struct AppState {
     /// What the window offers (set by the desktop app): the native player, notifications.
     pub native_player: bool,
     pub notifications: bool,
+    /// The external player (mpv, IINA, VLC), when this process has the window.
+    pub player: Option<Arc<crate::player::Player>>,
+    /// The phone remote: the player's state and the commands waiting for it.
+    pub remote: Arc<crate::remote::Remote>,
+    /// « Lire sur la TV », when the window runs in this process.
+    pub tv: Option<Arc<crate::tv::Cast>>,
+    /// The system's notifications (new episodes), when the window gives them.
+    pub notifier: Option<Arc<dyn crate::alerts::Notifier>>,
+    /// KINO's native player (libmpv under the page), when the window has it.
+    pub native: Option<Arc<dyn crate::native::NativePlayer>>,
+    /// The page's « voix » and « clarté » choices for the native playback.
+    pub native_settings: std::sync::Mutex<serde_json::Map<String, serde_json::Value>>,
+    /// Torrents read peer to peer without a debrid key, when the window runs here.
+    pub p2p: Option<Arc<crate::p2p::P2p>>,
 }
 
 pub type Shared = Arc<AppState>;
@@ -59,8 +69,8 @@ async fn guard(
     mut request: Request,
     next: Next,
 ) -> Response {
-    // The Python server behind sees every request from this process: it is told
-    // the real peer, and never trusts one a client wrote itself.
+    // The routes are told the real peer (the TV stream checks it), never one
+    // a client wrote itself.
     request.headers_mut().remove("x-kino-peer");
     if let Ok(value) = HeaderValue::from_str(&peer.ip().to_string()) {
         request.headers_mut().insert("x-kino-peer", value);
@@ -154,31 +164,17 @@ fn is_static(path: &str) -> bool {
             .any(|p| path.starts_with(p))
 }
 
-/// For a route ported only in part: the cases Rust does not answer yet go to Python.
-pub async fn delegate(
-    state: &AppState,
-    method: Method,
-    uri: &Uri,
-    headers: &HeaderMap,
-    body: Bytes,
-) -> Response {
-    match &state.legacy {
-        Some(base) => forward(state, base, method, uri, headers, body).await,
-        None => (
-            StatusCode::NOT_IMPLEMENTED,
-            Json(json!({"error": "Pas encore disponible."})),
-        )
-            .into_response(),
-    }
+/// What only the KINO app can do (its window, player, peer-to-peer engine),
+/// asked of the bare server.
+pub fn needs_app() -> Response {
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        Json(json!({"error": "Disponible dans l'application KINO."})),
+    )
+        .into_response()
 }
 
-async fn fallback(
-    State(state): State<Shared>,
-    method: Method,
-    uri: Uri,
-    headers: HeaderMap,
-    body: Bytes,
-) -> Response {
+async fn fallback(State(state): State<Shared>, method: Method, uri: Uri) -> Response {
     let path = uri.path();
     if method == Method::GET && is_static(path) {
         return static_file(&state, path).await;
@@ -186,59 +182,9 @@ async fn fallback(
     if method == Method::GET && path == "/qrcode.min.js" {
         return static_file(&state, "js/vendor/qrcode.min.js").await;
     }
-    match &state.legacy {
-        Some(base) => forward(&state, base, method, &uri, &headers, body).await,
-        None => (
-            StatusCode::NOT_FOUND,
-            Json(json!({"error": "Route introuvable"})),
-        )
-            .into_response(),
-    }
-}
-
-/// Sends a request on to the Python server and streams its answer back.
-async fn forward(
-    state: &AppState,
-    base: &str,
-    method: Method,
-    uri: &Uri,
-    headers: &HeaderMap,
-    body: Bytes,
-) -> Response {
-    let url = format!(
-        "{}{}",
-        base.trim_end_matches('/'),
-        uri.path_and_query().map_or("/", |p| p.as_str())
-    );
-    let mut request = state.http.request(method, &url).body(body);
-    for (name, value) in headers {
-        // The Python server checks the origin and host of its own port: the
-        // request was already checked here.
-        if !matches!(
-            name.as_str(),
-            "host" | "origin" | "connection" | "sec-fetch-site" | "transfer-encoding"
-        ) {
-            request = request.header(name, value);
-        }
-    }
-    match request.send().await {
-        Ok(answer) => {
-            let mut response = Response::builder().status(answer.status().as_u16());
-            for (name, value) in answer.headers() {
-                // Bodies pass through untouched (no decompression here): the
-                // length stays right, and a player can seek in a relayed video.
-                if !matches!(name.as_str(), "connection" | "transfer-encoding") {
-                    response = response.header(name, value);
-                }
-            }
-            response
-                .body(Body::from_stream(answer.bytes_stream()))
-                .unwrap_or_else(|_| StatusCode::BAD_GATEWAY.into_response())
-        }
-        Err(_) => (
-            StatusCode::BAD_GATEWAY,
-            Json(json!({"error": "Le serveur de KINO ne répond pas."})),
-        )
-            .into_response(),
-    }
+    (
+        StatusCode::NOT_FOUND,
+        Json(json!({"error": "Route introuvable"})),
+    )
+        .into_response()
 }
