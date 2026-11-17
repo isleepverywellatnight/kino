@@ -134,8 +134,10 @@ pub fn button_down() -> bool {
 }
 
 /// The latest presses of the main button: when, and where on screen.
-static PRESSES: LazyLock<Mutex<Vec<(std::time::Instant, (i32, i32))>>> =
-    LazyLock::new(Default::default);
+/// A press: when, and where on screen.
+type Pressed = (std::time::Instant, (i32, i32));
+
+static PRESSES: LazyLock<Mutex<Vec<Pressed>>> = LazyLock::new(Default::default);
 
 fn double_click_time() -> std::time::Duration {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::GetDoubleClickTime;
