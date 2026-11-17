@@ -127,3 +127,36 @@ fn releases_kept_scored_and_sorted_as_in_python() {
     }
     assert_eq!(checked, 160);
 }
+
+#[test]
+fn episode_files_are_recognised_as_in_python() {
+    let raw = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/episodes.json.gz"
+    ))
+    .unwrap();
+    let mut text = String::new();
+    flate2::read::GzDecoder::new(&raw[..])
+        .read_to_string(&mut text)
+        .unwrap();
+    let rows: Vec<Value> = serde_json::from_str(&text).unwrap();
+    let mut wrong = Vec::new();
+    for row in &rows {
+        let got = kino::resolve::is_target_episode(
+            row[0].as_str().unwrap(),
+            row[1].as_i64(),
+            row[2].as_i64(),
+            row[3].as_i64(),
+        );
+        if got != row[4].as_bool().unwrap() {
+            wrong.push(row.to_string());
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "{} of {} differ: {:?}",
+        wrong.len(),
+        rows.len(),
+        &wrong[..wrong.len().min(10)]
+    );
+}

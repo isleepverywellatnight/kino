@@ -92,5 +92,27 @@ def main():
     print(OUT, OUT.stat().st_size // 1024, "KiB")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and "--episodes" not in sys.argv:
     main()
+
+
+def episode_fixtures():
+    """Which file of a pack is the episode asked for (debrid_engine.is_target_episode_file)."""
+    import debrid_engine as de
+    data = json.loads(gzip.decompress(OUT.read_bytes()))
+    names = sorted(data["details"]) + [
+        "[SubsPlease] Frieren - 12 (1080p) [ABCD1234].mkv", "[Erai-raws] Shingeki no Kyojin - 26 [1080p].mkv",
+        "Attack.on.Titan.S02E01.1080p.WEB.mkv", "One Piece - 1071 [1080p].mkv", "One.Piece.NCOP.01.mkv", "Show.3x07.HDTV.mkv",
+        "Naruto Shippuden Episode 12.mkv", "Season 2 - 05.mkv", "Show Part 2 - 01.mkv", "Show.S01E01-E03.mkv", "[Group] Show - 05v2.mkv",
+        "Show 2nd Season - 03.mkv", "Show (2019) - 04.mkv", "Show ep.4 720p.mkv", "Show #04.mkv", "Show [04].mkv", "Show (04).mkv",
+        "Show - OP.mkv", "Show - Sample.mkv", "Movie.2160p.mkv", "",
+    ]
+    cases = [(None, None, None), (1, 1, None), (1, 4, None), (1, 12, None), (2, 1, 26), (3, 7, None), (8, 6, None), (1, 1071, None), (2, 5, 30)]
+    rows = [[name, s, e, a, de.is_target_episode_file(name, s, e, a)] for name in names for s, e, a in cases]
+    path = OUT.parent / "episodes.json.gz"
+    path.write_bytes(gzip.compress(json.dumps(rows, ensure_ascii=False).encode("utf-8"), mtime=0))
+    print(path, len(rows), "cases")
+
+
+if __name__ == "__main__" and "--episodes" in sys.argv:
+    episode_fixtures()

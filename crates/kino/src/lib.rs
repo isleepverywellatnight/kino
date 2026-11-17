@@ -12,6 +12,7 @@ pub mod meta;
 pub mod net;
 pub mod paths;
 pub mod prefs;
+pub mod resolve;
 pub mod routes;
 pub mod server;
 pub mod sources;

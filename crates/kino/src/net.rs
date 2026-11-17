@@ -36,6 +36,11 @@ impl From<reqwest::Error> for NetError {
 
 pub type NetResult<T> = Result<T, NetError>;
 
+enum Body<'a> {
+    Json(&'a Value),
+    Form(&'a [(&'a str, &'a str)]),
+}
+
 pub struct Net {
     pub client: reqwest::Client,
     db: Arc<Db>,
@@ -153,6 +158,39 @@ impl Net {
         timeout: Duration,
         retries: u32,
     ) -> NetResult<Value> {
+        self.request(method, url, extra, body.map(Body::Json), timeout, retries)
+            .await
+    }
+
+    /// A form POST (application/x-www-form-urlencoded), answered in JSON.
+    pub async fn request_form(
+        &self,
+        url: &str,
+        extra: &[(&str, &str)],
+        form: &[(&str, &str)],
+        timeout: Duration,
+        retries: u32,
+    ) -> NetResult<Value> {
+        self.request(
+            reqwest::Method::POST,
+            url,
+            extra,
+            Some(Body::Form(form)),
+            timeout,
+            retries,
+        )
+        .await
+    }
+
+    async fn request(
+        &self,
+        method: reqwest::Method,
+        url: &str,
+        extra: &[(&str, &str)],
+        body: Option<Body<'_>>,
+        timeout: Duration,
+        retries: u32,
+    ) -> NetResult<Value> {
         let mut attempt = 0;
         loop {
             let mut request = self
@@ -160,8 +198,20 @@ impl Net {
                 .request(method.clone(), url)
                 .headers(headers(extra, "KINO-Desktop"))
                 .timeout(timeout);
-            if let Some(body) = body {
-                request = request.json(body);
+            match &body {
+                Some(Body::Json(value)) => request = request.json(value),
+                Some(Body::Form(pairs)) => {
+                    let encoded = form_urlencoded::Serializer::new(String::new())
+                        .extend_pairs(pairs.iter())
+                        .finish();
+                    request = request
+                        .header(
+                            reqwest::header::CONTENT_TYPE,
+                            "application/x-www-form-urlencoded",
+                        )
+                        .body(encoded);
+                }
+                None => {}
             }
             let outcome = request.send().await;
             let retry = match &outcome {
