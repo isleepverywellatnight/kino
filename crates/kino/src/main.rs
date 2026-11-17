@@ -16,13 +16,16 @@ async fn main() -> Result<()> {
         .take(43)
         .map(char::from)
         .collect();
+    let db = Arc::new(Db::open(&paths::database())?);
     let state = Arc::new(server::AppState {
-        db: Arc::new(Db::open(&paths::database())?),
+        db: db.clone(),
         port,
         pairing_token: token,
         web_root: paths::web_root(),
         legacy: std::env::var("KINO_LEGACY").ok().filter(|s| !s.is_empty()),
         http: reqwest::Client::builder().build()?,
+        net: Arc::new(kino::net::Net::new(db)),
+        sites: kino::manga::sources::Sites::default(),
     });
     // Every interface: the phone remote reaches KINO from the local network.
     let listener = match tokio::net::TcpListener::bind(("0.0.0.0", port)).await {

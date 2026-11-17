@@ -14,6 +14,8 @@ use axum::routing::get;
 use axum::{Json, Router};
 use serde_json::json;
 
+use crate::manga::sources::Sites;
+use crate::net::Net;
 use crate::{access, config, db::Db};
 
 pub struct AppState {
@@ -24,6 +26,8 @@ pub struct AppState {
     /// The Python server for the routes not ported yet (`KINO_LEGACY`).
     pub legacy: Option<String>,
     pub http: reqwest::Client,
+    pub net: Arc<Net>,
+    pub sites: Sites,
 }
 
 pub type Shared = Arc<AppState>;

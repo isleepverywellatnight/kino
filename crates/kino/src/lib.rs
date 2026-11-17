@@ -3,6 +3,8 @@
 pub mod access;
 pub mod config;
 pub mod db;
+pub mod manga;
+pub mod net;
 pub mod paths;
 pub mod routes;
 pub mod server;
