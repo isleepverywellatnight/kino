@@ -11,7 +11,10 @@ use crate::config;
 use crate::server::Shared;
 
 pub fn router() -> Router<Shared> {
-    Router::new().route("/api/config", get(read).post(save))
+    Router::new()
+        .route("/api/config", get(read).post(save))
+        .route("/api/tmdb/key", axum::routing::post(tmdb_key))
+        .route("/api/client-error", axum::routing::post(client_error))
 }
 
 async fn read(State(s): State<Shared>) -> Response {
@@ -59,5 +62,83 @@ async fn read(State(s): State<Shared>) -> Response {
 
 async fn save(JsonBody(body): JsonBody) -> Response {
     let _ = tokio::task::spawn_blocking(move || config::save(&body)).await;
+    Json(json!({"ok": true})).into_response()
+}
+
+fn field(body: &Value, key: &str) -> String {
+    match &body[key] {
+        Value::Null | Value::Bool(false) => String::new(),
+        Value::String(t) => t.clone(),
+        other => other.to_string(),
+    }
+}
+
+/// The user's TMDB key: checked by TMDB before it is kept; empty removes it.
+async fn tmdb_key(JsonBody(body): JsonBody) -> Response {
+    use axum::http::StatusCode;
+    let key = field(&body, "key").trim().to_string();
+    let store = |value: String| {
+        tokio::task::spawn_blocking(move || config::save(&json!({"tmdb_key": value})))
+    };
+    if key.is_empty() {
+        let _ = store(String::new()).await;
+        return Json(json!({"ok": true, "status": "none"})).into_response();
+    }
+    // A read access token (v4, a JWT) goes in a header; an API key (v3) in the address.
+    let url = "https://api.themoviedb.org/3/configuration";
+    let request = reqwest::Client::new()
+        .get(url)
+        .header("Accept", "application/json")
+        .header("User-Agent", "KINO")
+        .timeout(std::time::Duration::from_secs(6));
+    let request = if key.starts_with("eyJ") {
+        request.header("Authorization", format!("Bearer {key}"))
+    } else {
+        request.query(&[("api_key", key.as_str())])
+    };
+    match request.send().await {
+        Err(_) => (
+            StatusCode::GATEWAY_TIMEOUT,
+            Json(json!({"error": "TMDB ne répond pas. Vérifiez la connexion et réessayez."})),
+        )
+            .into_response(),
+        Ok(r) if !r.status().is_success() => {
+            let refused = "TMDB refuse cette clé. Copiez la « Clé d'API » de themoviedb.org → Paramètres → API.";
+            (StatusCode::BAD_REQUEST, Json(json!({"error": refused}))).into_response()
+        }
+        Ok(_) => {
+            let _ = store(key).await;
+            Json(json!({"ok": true, "status": "valid"})).into_response()
+        }
+    }
+}
+
+/// An error of the page itself, written to KINO's error log.
+async fn client_error(JsonBody(body): JsonBody) -> Response {
+    let cut = |s: String, n: usize| s.chars().take(n).collect::<String>();
+    let place = format!("page {}", cut(field(&body, "tab"), 30))
+        .trim()
+        .to_string();
+    let kind = match field(&body, "kind") {
+        k if k.is_empty() => "Erreur de la page".to_string(),
+        k => cut(k, 60),
+    };
+    let stack = format!(
+        "{}\n{}",
+        cut(field(&body, "source"), 200),
+        cut(field(&body, "stack"), 2000)
+    );
+    let frames: Vec<String> = stack
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .map(str::to_string)
+        .collect();
+    let message = cut(field(&body, "message"), 500);
+    tokio::task::spawn_blocking(move || {
+        crate::errorlog::LOG.record(&place, &kind, &message, &frames)
+    })
+    .await
+    .ok();
     Json(json!({"ok": true})).into_response()
 }
