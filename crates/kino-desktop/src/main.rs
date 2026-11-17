@@ -29,6 +29,8 @@ mod mac_notify;
 mod mac_window;
 #[cfg(windows)]
 mod win_dock;
+#[cfg(windows)]
+mod win_frame;
 
 /// What the page may call; each returns a promise, as pywebview's do.
 const BRIDGE: [&str; 21] = [
@@ -179,8 +181,29 @@ fn saved_bounds() -> (f64, f64, Option<(f64, f64)>) {
     )
 }
 
+/// Maximized: by KINO on Windows (within the work area), by the system elsewhere.
+fn maximized(window: &Window) -> bool {
+    #[cfg(windows)]
+    {
+        use tao::platform::windows::WindowExtWindows;
+        win_frame::is_maximized(window.hwnd())
+    }
+    #[cfg(not(windows))]
+    window.is_maximized()
+}
+
+fn set_maximized(window: &Window, on: bool) {
+    #[cfg(windows)]
+    {
+        use tao::platform::windows::WindowExtWindows;
+        win_frame::set_maximized(window.hwnd(), on);
+    }
+    #[cfg(not(windows))]
+    window.set_maximized(on);
+}
+
 fn save_bounds(window: &Window) {
-    if window.is_maximized() || window.fullscreen().is_some() {
+    if maximized(window) || window.fullscreen().is_some() {
         return;
     }
     let scale = window.scale_factor();
@@ -225,7 +248,7 @@ fn state(window: &Window) -> Value {
         .outer_position()
         .map(|p| p.to_logical::<f64>(scale))
         .unwrap_or(LogicalPosition::new(0.0, 0.0));
-    json!({"maximized": window.is_maximized(), "fullscreen": window.fullscreen().is_some(), "width": size.width.round(),
+    json!({"maximized": maximized(window), "fullscreen": window.fullscreen().is_some(), "width": size.width.round(),
            "height": size.height.round(), "x": at.x.round(), "y": at.y.round(), "platform": std::env::consts::OS})
 }
 
@@ -238,8 +261,8 @@ fn call(window: &Window, name: &str, args: &[Value], quit: &mut bool) -> Result<
             json!(true)
         }
         "toggle_maximize" => {
-            window.set_maximized(!window.is_maximized());
-            json!(window.is_maximized())
+            set_maximized(window, !maximized(window));
+            json!(maximized(window))
         }
         "start_window_drag" => json!(window.drag_window().is_ok()),
         "start_resize" => {
@@ -794,6 +817,11 @@ fn main() -> Result<()> {
     }
     let window = builder.build(&event_loop)?;
     *bounds.lock().unwrap_or_else(|e| e.into_inner()) = bounds_of(&window);
+    #[cfg(windows)]
+    {
+        use tao::platform::windows::WindowExtWindows;
+        win_frame::frameless(window.hwnd());
+    }
     let builder = WebViewBuilder::new();
     // Windows: WebView2's DevTools port, for the window test (tests/windows_ui.py).
     #[cfg(windows)]
@@ -911,7 +939,7 @@ fn main() -> Result<()> {
                     "maximized_off" => Some(false),
                     _ => None,
                 } {
-                    window.set_maximized(on);
+                    set_maximized(&window, on);
                 }
                 let name = match name.as_str() {
                     "maximize" => "toggle_maximize",
