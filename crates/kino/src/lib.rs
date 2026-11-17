@@ -47,6 +47,7 @@ pub mod stats;
 pub mod subtitles;
 pub mod titles;
 pub mod tonight;
+pub mod torrentfile;
 pub mod trailer;
 pub mod trakt;
 pub mod tv;

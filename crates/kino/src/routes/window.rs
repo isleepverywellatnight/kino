@@ -24,6 +24,7 @@ pub fn router() -> Router<Shared> {
         .route("/api/open-folder", post(open_folder))
         .route("/api/save-screenshot", post(save_screenshot))
         .route("/api/probe-media", post(probe_media))
+        .route("/api/upload-torrent", post(upload_torrent))
         .route("/api/notifications/test", post(notifications_test))
         .route("/api/remux", get(remux))
 }
@@ -195,6 +196,30 @@ async fn save_screenshot(State(s): State<Shared>, request: Request) -> Response 
             Json(json!({"error": e.to_string()})),
         )
             .into_response(),
+    }
+}
+
+/// A .torrent file chosen on the page, as a magnet link (no window needed).
+async fn upload_torrent(request: Request) -> Response {
+    let body = json_body(request).await;
+    let data = text(&body["data_b64"]);
+    if data.is_empty() {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": "Fichier .torrent vide."})),
+        )
+            .into_response();
+    }
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(data.trim())
+        .map_err(|_| "Fichier .torrent illisible.".to_string())
+        .and_then(|raw| crate::torrentfile::to_magnet(&raw));
+    match decoded {
+        Ok((magnet, name, info_hash)) => {
+            Json(json!({"ok": true, "magnet": magnet, "name": name, "info_hash": info_hash}))
+                .into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e}))).into_response(),
     }
 }
 
