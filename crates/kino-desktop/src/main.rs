@@ -68,6 +68,8 @@ enum UserEvent {
     /// The external player started or ended: the window steps aside, then comes back.
     Hide,
     Show,
+    /// A window action the page asked through the server (/api/window/action).
+    Action(String),
 }
 
 type Bounds = Arc<Mutex<Option<(i32, i32, u32, u32)>>>;
@@ -91,6 +93,11 @@ impl kino::player::WindowHooks for Hooks {
     }
     fn geometry(&self) -> Option<(i32, i32, u32, u32)> {
         self.bounds.lock().ok().and_then(|b| *b)
+    }
+    fn action(&self, name: &str) {
+        if let Ok(p) = self.proxy.lock() {
+            let _ = p.send_event(UserEvent::Action(name.to_string()));
+        }
     }
 }
 
@@ -406,6 +413,20 @@ fn main() -> Result<()> {
                 };
                 let _ =
                     webview.evaluate_script(&format!("window.__kinoReply({id}, {ok}, {value})"));
+            }
+            Event::UserEvent(UserEvent::Action(name)) => {
+                let name = match name.as_str() {
+                    "maximize" => "toggle_maximize",
+                    "fullscreen" => "toggle_fullscreen",
+                    "hide" | "show" => {
+                        window.set_visible(name == "show");
+                        ""
+                    }
+                    other => other,
+                };
+                if !name.is_empty() {
+                    let _ = call(&window, name, &[], &mut quit);
+                }
             }
             Event::UserEvent(UserEvent::Hide) => window.set_visible(false),
             Event::UserEvent(UserEvent::Show) => {

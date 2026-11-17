@@ -34,6 +34,9 @@ pub trait WindowHooks: Send + Sync {
     fn show(&self);
     /// (x, y, width, height) of the window, for the player to open at its place.
     fn geometry(&self) -> Option<(i32, i32, u32, u32)>;
+    /// A window action asked by the page: minimize, maximize, fullscreen,
+    /// enter_fullscreen, exit_fullscreen, close, hide, show.
+    fn action(&self, _name: &str) {}
 }
 
 /// What the history and the Discord card are told about the title.
@@ -409,6 +412,10 @@ impl Player {
             last: Default::default(),
             current: Default::default(),
         })
+    }
+
+    pub fn window(&self) -> Option<&Arc<dyn WindowHooks>> {
+        self.window.as_ref()
     }
 
     /// Starts the player; a second launch within seconds gets the first one's answer.

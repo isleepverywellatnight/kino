@@ -12,6 +12,7 @@ pub mod sources;
 pub mod suggestions;
 pub mod titles;
 pub mod tv;
+pub mod window;
 
 use axum::Router;
 
@@ -31,4 +32,5 @@ pub fn router() -> Router<Shared> {
         .merge(offline::router())
         .merge(remote::router())
         .merge(tv::router())
+        .merge(window::router())
 }
