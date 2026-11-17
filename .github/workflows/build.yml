@@ -1,5 +1,5 @@
 # Builds KINO for macOS (Apple Silicon) and Windows (x64) on every push and pull
-# request to main. When main carries an APP_VERSION (src/kino_version.py) that
+# request to main. When main carries a version (Cargo.toml, [workspace.package]) that
 # has no release yet, it publishes release vX.Y.Z (and its tag) with the .dmg,
 # the Windows installer and, when the KINO_UPDATE_SIGNING_KEY secret is set, the
 # signed files the in-app updater uses. Pushing a tag vX.Y.Z does the same.
@@ -42,10 +42,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version=$(PYTHONPATH=src python -c "import kino_version; print(kino_version.APP_VERSION)")
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF#refs/tags/v}" != "$version" ]]; then
-            echo "::error::Le tag ${GITHUB_REF#refs/tags/} ne correspond pas à APP_VERSION ($version) dans src/kino_version.py"
+            echo "::error::Le tag ${GITHUB_REF#refs/tags/} ne correspond pas à la version ($version) de Cargo.toml"
             exit 1
           fi
           # A new version on main (or its tag) is published once.

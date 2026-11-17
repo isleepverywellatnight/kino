@@ -9,11 +9,11 @@ cd "$(dirname "$0")/.."
 
 FFMPEG=${1:?"Usage: packaging/build_macos_app.sh /path/to/ffmpeg"}
 BINARY=target/release/kino-desktop
-VERSION=$(sed -n 's/^APP_VERSION = "\(.*\)"$/\1/p' src/kino_version.py)
+VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
 [ -x "$BINARY" ] || { echo "$BINARY is missing: run cargo build --release --locked -p kino-desktop" >&2; exit 1; }
 [ -f vendor/libmpv/libmpv.2.dylib ] || { echo "vendor/libmpv is missing: run tools/vendor_libmpv.py" >&2; exit 1; }
 [ -x packaging/update-helper/kino-update-helper ] || { echo "packaging/update-helper/kino-update-helper is missing" >&2; exit 1; }
-[ -n "$VERSION" ] || { echo "APP_VERSION not found in src/kino_version.py" >&2; exit 1; }
+[ -n "$VERSION" ] || { echo "The version is missing from Cargo.toml ([workspace.package])" >&2; exit 1; }
 
 APP=dist/KINO.app
 rm -rf "$APP"

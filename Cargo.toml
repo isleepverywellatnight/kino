@@ -2,6 +2,10 @@
 members = ["crates/kino", "crates/kino-desktop"]
 resolver = "2"
 
+# KINO's version: the app, its bundle, its updates and its releases.
+[workspace.package]
+version = "1.9.0"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1
