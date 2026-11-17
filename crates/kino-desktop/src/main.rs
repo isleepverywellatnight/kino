@@ -814,6 +814,12 @@ fn main() -> Result<()> {
     #[cfg(not(target_os = "macos"))]
     {
         builder = builder.with_decorations(false);
+        // Windows: no invisible resize borders around the page (KINO handles resizing).
+        #[cfg(windows)]
+        {
+            use tao::platform::windows::WindowBuilderExtWindows;
+            builder = builder.with_undecorated_shadow(false);
+        }
     }
     let window = builder.build(&event_loop)?;
     *bounds.lock().unwrap_or_else(|e| e.into_inner()) = bounds_of(&window);
