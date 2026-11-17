@@ -942,11 +942,15 @@ fn main() -> Result<()> {
                 {
                     let replies = replies.clone();
                     let start = win_frame::cursor();
-                    std::thread::spawn(move || {
-                        if win_frame::wait_for_drag(start) {
+                    std::thread::spawn(move || match win_frame::follow_press(start) {
+                        win_frame::Press::Drag => {
                             let _ = replies
                                 .send_event(UserEvent::Drag(origin.x, origin.y, start.0, start.1));
                         }
+                        win_frame::Press::Double => {
+                            let _ = replies.send_event(UserEvent::Action("maximize".into()));
+                        }
+                        win_frame::Press::Click => {}
                     });
                 }
             }
