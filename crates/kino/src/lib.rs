@@ -25,6 +25,7 @@ pub mod library;
 pub mod manga;
 pub mod media;
 pub mod meta;
+pub mod native;
 pub mod net;
 pub mod network;
 pub mod nowplaying;

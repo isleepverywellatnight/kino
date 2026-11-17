@@ -26,6 +26,8 @@ pub struct Options {
     pub notifier: Option<Arc<dyn crate::alerts::Notifier>>,
     /// The player's state and commands, shared with the window (media keys).
     pub remote: Option<Arc<crate::remote::Remote>>,
+    /// KINO's native player, when the window has it.
+    pub native: Option<Arc<dyn crate::native::NativePlayer>>,
 }
 
 /// A new random pairing token, as the Python server makes them.
@@ -92,7 +94,9 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
         links,
         offline,
         suggestions: Default::default(),
-        native_player: options.native_player,
+        native_player: options.native_player || options.native.is_some(),
+        native: options.native.clone(),
+        native_settings: Default::default(),
         notifications: options.notifications || options.notifier.is_some(),
         notifier: options.notifier.clone(),
         player,

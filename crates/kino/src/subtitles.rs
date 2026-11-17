@@ -1,7 +1,7 @@
 //! French and English subtitles from the OpenSubtitles add-on, ranked for the
 //! release being played, and their lines for KINO's own player.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
@@ -48,7 +48,8 @@ const COMMON: [&str; 24] = [
 ];
 
 /// Subtitle files KINO listed: their lines may be fetched.
-static LISTED: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(Default::default);
+/// The subtitle files KINO listed, and their language.
+static LISTED: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(Default::default);
 
 fn text(v: &Value) -> String {
     match v {
@@ -242,8 +243,23 @@ pub async fn opensubtitles(
     if listed.len() > 5000 {
         listed.clear();
     }
-    listed.extend(result.iter().map(|r| text(&r["url"])));
+    listed.extend(result.iter().map(|r| {
+        let lang: String = text(&r["lang"]).chars().take(8).collect();
+        (text(&r["url"]), lang)
+    }));
     result
+}
+
+/// The language of a subtitle file KINO listed (https only), else None.
+pub fn listed_lang(url: &str) -> Option<String> {
+    if !url.starts_with("https://") {
+        return None;
+    }
+    LISTED
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(url)
+        .cloned()
 }
 
 /// Whether KINO may fetch this subtitle file: one it listed, or an https file
@@ -252,7 +268,7 @@ pub fn may_fetch(url: &str) -> bool {
     if LISTED
         .lock()
         .unwrap_or_else(|e| e.into_inner())
-        .contains(url)
+        .contains_key(url)
     {
         return true;
     }

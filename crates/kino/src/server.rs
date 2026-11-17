@@ -47,6 +47,10 @@ pub struct AppState {
     pub tv: Option<Arc<crate::tv::Cast>>,
     /// The system's notifications (new episodes), when the window gives them.
     pub notifier: Option<Arc<dyn crate::alerts::Notifier>>,
+    /// KINO's native player (libmpv under the page), when the window has it.
+    pub native: Option<Arc<dyn crate::native::NativePlayer>>,
+    /// The page's « voix » and « clarté » choices for the native playback.
+    pub native_settings: std::sync::Mutex<serde_json::Map<String, serde_json::Value>>,
 }
 
 pub type Shared = Arc<AppState>;

@@ -30,6 +30,7 @@ async fn main() -> Result<()> {
         window: None,
         notifier: None,
         remote: None,
+        native: None,
     };
     launch::serve(launch::bind(port).await?, options).await
 }

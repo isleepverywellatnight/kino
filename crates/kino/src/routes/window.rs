@@ -108,7 +108,7 @@ async fn window_action(State(s): State<Shared>, request: Request) -> Response {
     }
 }
 
-fn download_dir() -> std::path::PathBuf {
+pub(crate) fn download_dir() -> std::path::PathBuf {
     let cfg = crate::config::load();
     let dir = cfg
         .get("download_dir")
@@ -155,6 +155,17 @@ fn clean(value: &str, underscore: bool, limit: usize) -> String {
     out.chars().take(limit).collect()
 }
 
+/// « KINO_Capture_<title>_<time>.png », safe for any file system.
+pub(crate) fn capture_name(title: &str, time: &str, time_limit: usize) -> String {
+    let title = if title.is_empty() { "KINO" } else { title };
+    let safe = clean(title.trim(), true, 45);
+    let safe = safe.trim_matches('_');
+    let safe = if safe.is_empty() { "KINO" } else { safe };
+    let time = if time.is_empty() { "00m00s" } else { time };
+    let time = clean(time, false, time_limit);
+    format!("KINO_Capture_{safe}_{time}.png")
+}
+
 /// A frame of KINO's player, saved as a PNG in the download folder.
 async fn save_screenshot(State(s): State<Shared>, request: Request) -> Response {
     if s.player.is_none() {
@@ -170,21 +181,7 @@ async fn save_screenshot(State(s): State<Shared>, request: Request) -> Response 
         )
             .into_response();
     };
-    let title = body
-        .get("title")
-        .map(text)
-        .filter(|t| !t.is_empty())
-        .unwrap_or_else(|| "KINO".into());
-    let safe = clean(title.trim(), true, 45);
-    let safe = safe.trim_matches('_');
-    let safe = if safe.is_empty() { "KINO" } else { safe };
-    let time = body
-        .get("time_str")
-        .map(text)
-        .filter(|t| !t.is_empty())
-        .unwrap_or_else(|| "00m00s".into());
-    let time = clean(&time, false, usize::MAX);
-    let name = format!("KINO_Capture_{safe}_{time}.png");
+    let name = capture_name(&text(&body["title"]), &text(&body["time_str"]), usize::MAX);
     let folder = tokio::task::spawn_blocking(download_dir)
         .await
         .unwrap_or_default();

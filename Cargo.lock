@@ -1679,6 +1679,8 @@ dependencies = [
  "anyhow",
  "block2",
  "kino",
+ "libc",
+ "libloading",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
@@ -1688,6 +1690,7 @@ dependencies = [
  "rfd",
  "serde_json",
  "tao",
+ "tempfile",
  "tokio",
  "wry",
 ]

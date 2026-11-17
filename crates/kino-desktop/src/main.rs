@@ -16,7 +16,12 @@ use tao::window::{Fullscreen, ResizeDirection, Window, WindowBuilder};
 use wry::WebViewBuilder;
 
 #[cfg(target_os = "macos")]
+use objc2::rc::Retained;
+
+#[cfg(target_os = "macos")]
 mod mac_media;
+#[cfg(target_os = "macos")]
+mod mac_mpv;
 #[cfg(target_os = "macos")]
 mod mac_notify;
 
@@ -77,6 +82,9 @@ enum UserEvent {
     Action(String),
     /// A notification was clicked: KINO comes to the front and opens the series.
     Notification(Value),
+    /// The native player's work on the main thread (open, close).
+    #[cfg(target_os = "macos")]
+    Native(mac_mpv::MainCall),
     /// A poster fetched for « À l'écoute » (its address, its bytes).
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Poster(String, Vec<u8>),
@@ -356,6 +364,18 @@ fn fetch_poster(url: &str) -> Option<Vec<u8>> {
 }
 
 fn main() -> Result<()> {
+    // The build's self-check: KINO's version and the bundled libmpv.
+    if std::env::args().any(|a| a == "--self-check") {
+        #[cfg(target_os = "macos")]
+        let mpv = mac_mpv::version();
+        #[cfg(not(target_os = "macos"))]
+        let mpv: Option<String> = None;
+        println!(
+            "{}",
+            json!({"version": kino::backup::app_version(), "libmpv": mpv})
+        );
+        return Ok(());
+    }
     let port = free_port(8080);
     let private_port = free_port(port + 1);
     let token = kino::launch::new_token();
@@ -383,6 +403,15 @@ fn main() -> Result<()> {
     #[cfg(not(target_os = "macos"))]
     let notifier: Option<Arc<dyn kino::alerts::Notifier>> = None;
     let remote: Arc<kino::remote::Remote> = Default::default();
+    #[cfg(target_os = "macos")]
+    let native: Option<Arc<dyn kino::native::NativePlayer>> = mac_mpv::available().then(|| {
+        let calls = event_loop.create_proxy();
+        Arc::new(mac_mpv::Controller::new(Box::new(move |call| {
+            let _ = calls.send_event(UserEvent::Native(call));
+        }))) as Arc<dyn kino::native::NativePlayer>
+    });
+    #[cfg(not(target_os = "macos"))]
+    let native: Option<Arc<dyn kino::native::NativePlayer>> = None;
     let options = kino::launch::Options {
         port,
         pairing_token: token,
@@ -393,6 +422,7 @@ fn main() -> Result<()> {
         window: Some(hooks),
         notifier,
         remote: Some(remote.clone()),
+        native,
     };
     let (ready_tx, ready_rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
@@ -473,6 +503,14 @@ fn main() -> Result<()> {
         })
     };
     let mut next_tick = std::time::Instant::now();
+    #[cfg(target_os = "macos")]
+    let mut native_side = mac_mpv::MainSide::default();
+    #[cfg(target_os = "macos")]
+    let page_view: Retained<objc2_app_kit::NSView> = {
+        use wry::WebViewExtMacOS;
+        // SAFETY: the WKWebView is an NSView.
+        unsafe { Retained::cast_unchecked(webview.webview()) }
+    };
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -515,6 +553,16 @@ fn main() -> Result<()> {
                     let _ = webview.evaluate_script(&format!("openFromNotification({info})"));
                 }
             }
+            #[cfg(target_os = "macos")]
+            Event::UserEvent(UserEvent::Native(call)) => match call {
+                mac_mpv::MainCall::Open(player, path, reply) => {
+                    let _ = reply.send(native_side.open(&page_view, player, &path));
+                }
+                mac_mpv::MainCall::Close(reply) => {
+                    native_side.close(&page_view);
+                    let _ = reply.send(());
+                }
+            },
             #[cfg(target_os = "macos")]
             Event::UserEvent(UserEvent::Poster(url, bytes)) => {
                 if let Some(center) = now_playing.as_mut() {
