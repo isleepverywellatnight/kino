@@ -14,7 +14,7 @@ use serde_json::{Map, Value, json};
 use crate::db::{Db, now};
 
 const DELETIONS_KEY: &str = "sync_deletions";
-const KINDS: [&str; 2] = ["history", "watchlist"];
+pub(crate) const KINDS: [&str; 2] = ["history", "watchlist"];
 const MAX_DELETIONS: usize = 2000;
 
 static EPISODE: LazyLock<Regex> =
@@ -31,7 +31,7 @@ pub fn normalize_episode_code(value: &str) -> String {
     }
 }
 
-fn stamp(value: &Value) -> f64 {
+pub(crate) fn stamp(value: &Value) -> f64 {
     let v = value
         .as_f64()
         .or_else(|| value.as_str().and_then(|s| s.trim().parse().ok()))
@@ -39,7 +39,7 @@ fn stamp(value: &Value) -> f64 {
     if v.is_finite() && v > 0.0 { v } else { 0.0 }
 }
 
-fn load_deletions(conn: &Connection) -> Map<String, Value> {
+pub(crate) fn load_deletions(conn: &Connection) -> Map<String, Value> {
     let raw: Option<String> = conn
         .query_row(
             "SELECT value_json FROM app_config WHERE key = ?",
@@ -69,7 +69,10 @@ fn load_deletions(conn: &Connection) -> Map<String, Value> {
     clean
 }
 
-fn save_deletions(conn: &Connection, deletions: &Map<String, Value>) -> rusqlite::Result<()> {
+pub(crate) fn save_deletions(
+    conn: &Connection,
+    deletions: &Map<String, Value>,
+) -> rusqlite::Result<()> {
     let mut kept = Map::new();
     for kind in KINDS {
         let mut entries: Vec<(String, f64)> = deletions[kind]
