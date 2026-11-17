@@ -292,6 +292,14 @@ impl Net {
         Ok(value)
     }
 
+    /// Empties the memory cache (after a restore put other data back).
+    pub fn forget(&self) {
+        self.memory
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
+    }
+
     fn remember(&self, key: &str, value: &Value, at: f64) {
         let mut memory = self.memory.lock().unwrap_or_else(|e| e.into_inner());
         if memory.len() > 2000 {

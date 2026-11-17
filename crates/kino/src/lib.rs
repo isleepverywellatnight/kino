@@ -5,6 +5,7 @@ pub mod addons;
 pub mod anime;
 pub mod anime_home;
 pub mod anime_journey;
+pub mod backup;
 pub mod body;
 pub mod catalog;
 pub mod cloud;

@@ -21,6 +21,9 @@ pub fn router() -> Router<Shared> {
         )
         .route("/api/stremio-addons/catalog", get(stremio_catalog))
         .route("/api/addons", get(addons))
+        .route("/api/backups", get(backups))
+        .route("/api/backups/now", axum::routing::post(backup_now))
+        .route("/api/backups/restore", axum::routing::post(backup_restore))
         .route("/api/trakt/status", get(trakt_status))
         .route("/api/trakt/auth/start", axum::routing::post(trakt_start))
         .route("/api/trakt/auth/poll", axum::routing::post(trakt_poll))
@@ -269,4 +272,71 @@ async fn trakt_scrobble(State(s): State<Shared>, JsonBody(body): JsonBody) -> Re
 
 async fn trakt_sync(State(s): State<Shared>) -> Response {
     Json(trakt(&s).sync().await).into_response()
+}
+
+async fn backups() -> Response {
+    let items = tokio::task::spawn_blocking(|| crate::backup::Backups::standard().list())
+        .await
+        .unwrap_or_default();
+    Json(json!({"items": items, "keep": crate::backup::KEEP_DAILY})).into_response()
+}
+
+async fn backup_now() -> Response {
+    let made = tokio::task::spawn_blocking(|| {
+        let backups = crate::backup::Backups::standard();
+        backups.make(false).map(|entry| (entry, backups.list()))
+    })
+    .await;
+    match made {
+        Ok(Ok((entry, items))) => {
+            Json(json!({"ok": true, "backup": entry, "items": items})).into_response()
+        }
+        Ok(Err(e)) => {
+            crate::errorlog::LOG.record("sauvegarde", "Erreur", &format!("{e:?}"), &[]);
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "La sauvegarde n'a pas pu être faite."})),
+            )
+                .into_response()
+        }
+        Err(_) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": "La sauvegarde n'a pas pu être faite."})),
+        )
+            .into_response(),
+    }
+}
+
+async fn backup_restore(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
+    use crate::backup::BackupError;
+    use axum::http::StatusCode;
+    let id = field(&body, "id");
+    let done =
+        tokio::task::spawn_blocking(move || crate::backup::Backups::standard().restore(&id)).await;
+    match done {
+        Ok(Ok(result)) => {
+            s.net.forget();
+            let mut out = serde_json::Map::new();
+            out.insert("ok".into(), json!(true));
+            out.extend(result.as_object().cloned().unwrap_or_default());
+            Json(Value::Object(out)).into_response()
+        }
+        Ok(Err(BackupError::Refused(message))) => {
+            (StatusCode::BAD_REQUEST, Json(json!({"error": message}))).into_response()
+        }
+        Ok(Err(e)) => {
+            crate::errorlog::LOG.record("restauration", "Erreur", &format!("{e:?}"), &[]);
+            let message = "La restauration n'a pas pu se faire. Vos données n'ont pas changé.";
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": message})),
+            )
+                .into_response()
+        }
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": "La restauration n'a pas pu se faire."})),
+        )
+            .into_response(),
+    }
 }
