@@ -81,6 +81,7 @@ enum UserEvent {
     /// A window action the page asked through the server (/api/window/action).
     Action(String),
     /// A notification was clicked: KINO comes to the front and opens the series.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Notification(Value),
     /// The native player's work on the main thread (open, close).
     #[cfg(target_os = "macos")]
@@ -502,6 +503,7 @@ fn main() -> Result<()> {
             )
         })
     };
+    #[cfg(target_os = "macos")]
     let mut next_tick = std::time::Instant::now();
     #[cfg(target_os = "macos")]
     let mut native_side = mac_mpv::MainSide::default();
