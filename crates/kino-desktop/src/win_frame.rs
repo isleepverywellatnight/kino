@@ -17,10 +17,12 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 };
 
 /// Window → its place before KINO maximized it.
-static RESTORE: LazyLock<Mutex<HashMap<isize, (i32, i32, i32, i32)>>> =
-    LazyLock::new(Default::default);
+/// (x, y, width, height) of a window.
+type Place = (i32, i32, i32, i32);
 
-fn rect_of(window: HWND) -> (i32, i32, i32, i32) {
+static RESTORE: LazyLock<Mutex<HashMap<isize, Place>>> = LazyLock::new(Default::default);
+
+fn rect_of(window: HWND) -> Place {
     let mut r = RECT {
         left: 0,
         top: 0,
@@ -33,7 +35,7 @@ fn rect_of(window: HWND) -> (i32, i32, i32, i32) {
 }
 
 /// The screen the window is on, without the taskbar.
-fn work_area(window: HWND) -> (i32, i32, i32, i32) {
+fn work_area(window: HWND) -> Place {
     // SAFETY: a zeroed MONITORINFO with its size, filled by Windows.
     unsafe {
         let mut info: MONITORINFO = std::mem::zeroed();
@@ -47,7 +49,7 @@ fn work_area(window: HWND) -> (i32, i32, i32, i32) {
     }
 }
 
-fn place(window: HWND, (x, y, w, h): (i32, i32, i32, i32)) {
+fn place(window: HWND, (x, y, w, h): Place) {
     // SAFETY: KINO's own window.
     unsafe {
         SetWindowPos(
