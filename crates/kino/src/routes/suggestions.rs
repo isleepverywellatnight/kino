@@ -30,6 +30,7 @@ pub fn router() -> Router<Shared> {
         .route("/api/related", get(related))
         .route("/api/for-you/not-for-me", post(not_for_me))
         .route("/api/for-you/reset", post(reset))
+        .route("/api/for-you/status", get(status))
 }
 
 fn text(value: &Value) -> String {
@@ -332,4 +333,11 @@ async fn tmdb_related(
         })
         .await?;
     Ok(found.as_array().cloned().unwrap_or_default())
+}
+
+async fn status(State(s): State<Shared>) -> Response {
+    let (count, age) = s.suggestions.pool_age(&s.db, now());
+    let updated = age.map(|a| now() - a);
+    Json(json!({"pool": count, "updated_at": updated, "not_for_me": Store::not_for_me(&s.db).len(), "building": recommender::building()}))
+        .into_response()
 }

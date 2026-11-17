@@ -13,7 +13,13 @@ const SCHEMA: &str = include_str!("schema.sql");
 
 pub struct Db {
     conn: Mutex<Connection>,
+    /// When expired cache rows were last removed.
+    last_purge: Mutex<f64>,
 }
+
+/// Expired cache rows go every six hours: they were only removed when their exact
+/// key was read again, so every past search stayed in the database.
+const PURGE_EVERY: f64 = 6.0 * 3600.0;
 
 pub fn now() -> f64 {
     SystemTime::now()
@@ -35,6 +41,7 @@ impl Db {
         conn.execute_batch(SCHEMA)?;
         Ok(Self {
             conn: Mutex::new(conn),
+            last_purge: Mutex::new(0.0),
         })
     }
 
@@ -99,7 +106,32 @@ impl Db {
         json.and_then(|s| serde_json::from_str(&s).ok())
     }
 
+    /// Removes the expired cache rows; with `compact`, gives back the space when a
+    /// quarter of the file is free. Returns how many rows went.
+    pub fn purge_expired(&self, compact: bool) -> usize {
+        let at = now();
+        *self.last_purge.lock().unwrap_or_else(|e| e.into_inner()) = at;
+        self.with(|c| {
+            let removed = c.execute(
+                "DELETE FROM persistent_cache WHERE expires_at IS NOT NULL AND expires_at < ?",
+                [at],
+            )?;
+            if compact && removed > 0 {
+                let pages: f64 = c.query_row("PRAGMA page_count", [], |r| r.get(0))?;
+                let free: f64 = c.query_row("PRAGMA freelist_count", [], |r| r.get(0))?;
+                if pages > 0.0 && free / pages > 0.25 {
+                    c.execute_batch("VACUUM")?;
+                }
+            }
+            Ok(removed)
+        })
+        .unwrap_or(0)
+    }
+
     pub fn cache_set(&self, key: &str, value: &Value, ttl_secs: f64) -> Result<()> {
+        if now() - *self.last_purge.lock().unwrap_or_else(|e| e.into_inner()) > PURGE_EVERY {
+            self.purge_expired(false);
+        }
         let json = serde_json::to_string(value)?;
         let expires = (ttl_secs > 0.0).then(|| now() + ttl_secs);
         self.with(|c| {

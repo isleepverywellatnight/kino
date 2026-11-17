@@ -62,6 +62,9 @@ async fn main() -> Result<()> {
         notifications: flag("KINO_NOTIFICATIONS"),
         sites: kino::manga::sources::Sites::default(),
     });
+    if flag("KINO_STARTUP_TASKS") {
+        kino::startup::run(state.clone());
+    }
     // Every interface: the phone remote reaches KINO from the local network.
     let listener = match tokio::net::TcpListener::bind(("0.0.0.0", port)).await {
         Ok(l) => l,
