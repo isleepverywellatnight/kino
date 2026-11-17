@@ -1,0 +1,232 @@
+// Sources without a debrid service: add-ons the user adds by their address
+// (more sources, and their catalogues in Explorer; they speak the Stremio add-on
+// protocol), and the torrents KINO reads itself, peer to peer, once the user has
+// agreed to what it means.
+
+let stremioAddons = [];
+let stremioCatalogs = [];
+let p2pState = { available: false, accepted: false, upload: 'minimum', download: 'none', encrypted: false, port: 0, cache_bytes: 0 };
+let p2pConsentAnswer = null;
+
+// ---------- The consent, asked once ----------
+
+// Resolves true once the user agreed (and KINO saved it), false otherwise.
+function askP2PConsent() {
+  const dialog = document.getElementById('p2pConsent');
+  if (!dialog) return Promise.resolve(false);
+  const upload = document.getElementById('p2pConsentUpload');
+  if (upload) upload.value = p2pState.upload || 'minimum';
+  if (typeof dialog.showModal === 'function' && !dialog.open) dialog.showModal();
+  return new Promise(resolve => { p2pConsentAnswer = resolve; });
+}
+
+async function answerP2PConsent(accepted) {
+  const dialog = document.getElementById('p2pConsent');
+  const resolve = p2pConsentAnswer;
+  p2pConsentAnswer = null;
+  if (dialog?.open) dialog.close();
+  if (!accepted) {
+    renderP2PSettings();
+    if (resolve) resolve(false);
+    return;
+  }
+  try {
+    const upload = document.getElementById('p2pConsentUpload')?.value || 'minimum';
+    p2pState = await api('/api/p2p/consent', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accept: true, upload }) });
+  } catch (error) {
+    alert(`La lecture P2P n'a pas pu être activée : ${error.message}`);
+    if (resolve) resolve(false);
+    return;
+  }
+  renderP2PSettings();
+  if (resolve) resolve(true);
+}
+
+// ---------- Paramètres → Compte ----------
+
+async function loadSourcesSettings() {
+  try {
+    const [p2p, addons] = await Promise.all([api('/api/p2p'), api('/api/stremio-addons')]);
+    p2pState = p2p || p2pState;
+    stremioAddons = addons?.addons || [];
+    stremioCatalogs = addons?.catalogs || [];
+  } catch (error) {
+    // The rows keep what they showed.
+  }
+  renderP2PSettings();
+  renderStremioAddons();
+}
+
+function renderP2PSettings() {
+  const toggle = document.getElementById('cfgP2P');
+  const status = document.getElementById('cfgP2PStatus');
+  if (toggle) {
+    toggle.checked = Boolean(p2pState.accepted);
+    toggle.disabled = !p2pState.available;
+  }
+  // The choices can be made before agreeing: they apply once P2P is on.
+  const fields = { cfgP2PUpload: p2pState.upload || 'minimum', cfgP2PDownload: p2pState.download || 'none',
+    cfgP2PPort: p2pState.port ? String(p2pState.port) : '' };
+  for (const [id, value] of Object.entries(fields)) {
+    const field = document.getElementById(id);
+    if (field) {
+      field.value = value;
+      field.disabled = !p2pState.available;
+    }
+  }
+  const encrypted = document.getElementById('cfgP2PEncrypted');
+  if (encrypted) {
+    encrypted.checked = Boolean(p2pState.encrypted);
+    encrypted.disabled = !p2pState.available;
+  }
+  const cache = document.getElementById('cfgP2PCache');
+  const clear = document.getElementById('cfgP2PClear');
+  const bytes = Number(p2pState.cache_bytes) || 0;
+  if (cache) {
+    cache.textContent = bytes > 0 ? `${offlineSize(bytes)} sur cet ordinateur. KINO garde les deux derniers torrents lus et efface le reste au démarrage.`
+      : 'Aucun fichier pour l’instant.';
+  }
+  if (clear) clear.disabled = bytes <= 0;
+  if (status) {
+    status.textContent = !p2pState.available ? 'Indisponible dans cette version de KINO.'
+      : p2pState.accepted ? 'Activée : sans service de débridage, KINO lit les torrents lui-même.'
+        : 'Désactivée : sans service de débridage, seuls les liens directs des addons sont lus.';
+  }
+}
+
+async function setP2PEnabled(input) {
+  if (input.checked) {
+    input.checked = false;
+    if (await askP2PConsent()) input.checked = true;
+    return;
+  }
+  try {
+    p2pState = await api('/api/p2p/consent', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accept: false }) });
+  } catch (error) {
+    input.checked = true;
+  }
+  renderP2PSettings();
+}
+
+async function setP2PSetting(name, value) {
+  const port = Number(value);
+  if (name === 'port' && value !== '' && !(Number.isInteger(port) && port >= 1024 && port <= 65535)) {
+    alert('Choisissez un port entre 1024 et 65535, ou laissez vide.');
+    renderP2PSettings();
+    return;
+  }
+  try {
+    p2pState = await api('/api/p2p/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [name]: value }) });
+  } catch (error) {
+    alert(`Réglage non enregistré : ${error.message}`);
+  }
+  renderP2PSettings();
+}
+
+async function clearP2PCache() {
+  if (!confirm('Vider les fichiers temporaires ? Une lecture P2P en cours s’arrête.')) return;
+  try {
+    p2pState = await api('/api/p2p/clear', { method: 'POST' });
+  } catch (error) {
+    alert(error.message);
+  }
+  renderP2PSettings();
+}
+
+function stremioAddonHtml(addon) {
+  const offers = [addon.streams ? 'Sources' : '', addon.catalogs?.length ? `${addon.catalogs.length} catalogue${addon.catalogs.length > 1 ? 's' : ''}` : '']
+    .filter(Boolean).join(' · ');
+  const id = attrJson(addon.id);
+  return `<li class="addon-row${addon.enabled ? '' : ' is-off'}">
+      <div class="addon-text">
+        <strong>${escapeHtml(addon.name)}</strong>
+        <span>${escapeHtml([offers, addon.version ? `v${addon.version}` : ''].filter(Boolean).join(' · '))}</span>
+      </div>
+      <label class="k-switch" title="${addon.enabled ? 'Désactiver cet addon' : 'Activer cet addon'}"><input type="checkbox" role="switch" aria-label="${escapeHtml(addon.name)} actif"${addon.enabled ? ' checked' : ''} onchange="toggleStremioAddon(${id}, this.checked)"><span aria-hidden="true"></span></label>
+      <button type="button" class="btn btn-secondary btn-small" onclick="removeStremioAddon(${id})" aria-label="Retirer ${escapeHtml(addon.name)}">Retirer</button>
+    </li>`;
+}
+
+function renderStremioAddons() {
+  const list = document.getElementById('stremioAddonList');
+  if (!list) return;
+  list.innerHTML = stremioAddons.length ? stremioAddons.map(stremioAddonHtml).join('')
+    : '<li class="addon-empty">Aucun addon pour l’instant. Collez l’adresse d’un addon : elle finit par manifest.json.</li>';
+}
+
+async function changeStremioAddons(payload) {
+  const data = await api('/api/stremio-addons', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload) });
+  stremioAddons = data?.addons || [];
+  stremioCatalogs = data?.catalogs || [];
+  renderStremioAddons();
+}
+
+async function addStremioAddon(event) {
+  if (event) event.preventDefault();
+  const input = document.getElementById('stremioAddonUrl');
+  const button = document.getElementById('stremioAddonAdd');
+  const url = input?.value.trim();
+  if (!url) return;
+  if (button) button.disabled = true;
+  try {
+    await changeStremioAddons({ action: 'add', url });
+    input.value = '';
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function toggleStremioAddon(id, enabled) {
+  try { await changeStremioAddons({ action: 'enable', id, enabled }); } catch (error) { alert(error.message); }
+}
+
+async function removeStremioAddon(id) {
+  const addon = stremioAddons.find(a => a.id === id);
+  if (!confirm(`Retirer l’addon « ${addon?.name || id} » ?`)) return;
+  try { await changeStremioAddons({ action: 'remove', id }); } catch (error) { alert(error.message); }
+}
+
+// ---------- Explorer: the add-ons' catalogues ----------
+
+async function renderAddonCatalogs() {
+  const box = document.getElementById('addonCatalogs');
+  if (!box) return;
+  try {
+    const data = await api('/api/stremio-addons');
+    stremioCatalogs = data?.catalogs || [];
+  } catch (error) {
+    stremioCatalogs = [];
+  }
+  box.hidden = !stremioCatalogs.length;
+  if (!stremioCatalogs.length) {
+    box.innerHTML = '';
+    return;
+  }
+  box.innerHTML = stremioCatalogs.map((catalog, index) => `
+    <section class="list-shelf" aria-label="${escapeHtml(catalog.name)}">
+      <div class="list-shelf-head">
+        <div class="list-shelf-info">
+          <h3 class="list-shelf-title">${escapeHtml(catalog.name)}</h3>
+          <div class="list-shelf-meta">${escapeHtml(catalog.addon_name)} · ${catalog.type === 'series' ? 'Séries' : 'Films'}</div>
+        </div>
+      </div>
+      <div class="list-shelf-row" data-addon-catalog="${index}"><p class="list-shelf-empty">Chargement…</p></div>
+    </section>`).join('');
+  await Promise.all(stremioCatalogs.map(async (catalog, index) => {
+    const row = box.querySelector(`[data-addon-catalog="${index}"]`);
+    try {
+      const data = await api(`/api/stremio-addons/catalog?addon=${encodeURIComponent(catalog.addon)}&type=${encodeURIComponent(catalog.type)}&id=${encodeURIComponent(catalog.id)}`);
+      const items = data?.items || [];
+      if (row) row.innerHTML = items.length ? items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, catalog.type)).join('')
+        : '<p class="list-shelf-empty">Ce catalogue est vide.</p>';
+    } catch (error) {
+      if (row) row.innerHTML = '<p class="list-shelf-empty">Ce catalogue ne répond pas pour le moment.</p>';
+    }
+  }));
+}

@@ -1,0 +1,405 @@
+//! /api/one-click-play with KINO's own player, and /api/auto-stream, which
+//! the player calls for the next episodes. Without a debrid key (P2P) or with
+//! mpv, the Python server still answers.
+
+use std::collections::{HashMap, HashSet};
+use std::sync::LazyLock;
+
+use axum::body::Bytes;
+use axum::extract::{Query, State};
+use axum::http::{HeaderMap, Method, StatusCode, Uri, header};
+use axum::response::{IntoResponse, Response};
+use axum::routing::{get, post};
+use axum::{Json, Router};
+use regex::Regex;
+use serde_json::{Map, Value, json};
+
+use crate::play::{self, Episode, Found, text};
+use crate::resolve::Resolver;
+use crate::server::{Shared, delegate};
+use crate::sources::search::{self, Search};
+
+const NO_SOURCE: &str = "Aucune autre source prête à lire. Vous pouvez réessayer les sources écartées ou ouvrir la fiche.";
+const WRONG_FILE: &str = "La source préparée ne contient pas le fichier attendu. Choisissez une autre source dans la fiche.";
+static DIGITS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\d+").unwrap());
+
+pub fn router() -> Router<Shared> {
+    Router::new()
+        .route("/api/one-click-play", post(one_click_play))
+        .route("/api/auto-stream", get(auto_stream))
+        .route("/api/playback-feedback", post(feedback))
+}
+
+fn error(status: StatusCode, message: &str, code: Option<&str>) -> Response {
+    let mut body = json!({"error": message});
+    if let Some(code) = code {
+        body["code"] = json!(code);
+    }
+    (status, Json(body)).into_response()
+}
+
+/// What the page asked for, with KINO's defaults.
+struct Play {
+    imdb_id: String,
+    kind: String,
+    is_series: bool,
+    season: Value,
+    episode: Value,
+    series_name: String,
+    year: String,
+    poster: String,
+    built_in: bool,
+}
+
+impl Play {
+    fn new(body: &Map<String, Value>, cfg: &Map<String, Value>) -> Self {
+        let get = |k: &str| body.get(k).cloned().unwrap_or(Value::Null);
+        let title = body.get("title").map(text).unwrap_or_else(|| "KINO".into());
+        let kind = body.get("type").map(text).unwrap_or_else(|| "movie".into());
+        let default_player = if cfg!(target_os = "macos") {
+            "integrated"
+        } else {
+            "kino"
+        };
+        let mode = [
+            get("player_mode"),
+            cfg.get("player_mode").cloned().unwrap_or(Value::Null),
+        ]
+        .into_iter()
+        .map(|v| text(&v))
+        .find(|v| !v.is_empty())
+        .unwrap_or_else(|| default_player.into())
+        .to_lowercase();
+        let name = text(&get("name"));
+        Self {
+            imdb_id: text(&get("imdb_id")),
+            is_series: ["series", "anime", "tv"].contains(&kind.as_str()),
+            kind,
+            season: body.get("season").cloned().unwrap_or(json!(1)),
+            episode: body.get("episode").cloned().unwrap_or(json!(1)),
+            series_name: if name.is_empty() {
+                title.split(" — ").next().unwrap_or("").to_string()
+            } else {
+                name
+            },
+            year: text(&get("year")),
+            poster: text(&get("poster")),
+            built_in: mode == "integrated" || (cfg!(target_os = "macos") && mode != "external"),
+        }
+    }
+
+    fn number(value: &Value) -> i64 {
+        match value {
+            Value::String(s) => s.trim().parse().unwrap_or(1),
+            other => other
+                .as_i64()
+                .or_else(|| other.as_f64().map(|f| f as i64))
+                .unwrap_or(1),
+        }
+    }
+
+    fn episode(&self) -> Option<(i64, i64)> {
+        self.is_series
+            .then(|| (Self::number(&self.season), Self::number(&self.episode)))
+    }
+}
+
+async fn one_click_play(
+    State(s): State<Shared>,
+    method: Method,
+    uri: Uri,
+    headers: HeaderMap,
+    raw: Bytes,
+) -> Response {
+    let Ok(Value::Object(body)) =
+        serde_json::from_slice::<Value>(if raw.is_empty() { b"{}" } else { &raw })
+    else {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "Requête invalide : un objet JSON est attendu.",
+            None,
+        );
+    };
+    let cfg = tokio::task::spawn_blocking(search::load_settings)
+        .await
+        .unwrap_or_default();
+    let (provider, token) = search::provider_and_token(&cfg);
+    let play = Play::new(&body, &cfg);
+    if token.is_empty() || !play.built_in {
+        return delegate(&s, method, &uri, &headers, raw).await;
+    }
+    let mut film = Value::Null;
+    let mut runtime = 0;
+    if !play.imdb_id.is_empty()
+        && play.kind == "movie"
+        && let Ok(found) = s.meta.media(&play.imdb_id, "movie").await
+    {
+        runtime = DIGITS
+            .find(&text(&found["runtime"]))
+            .and_then(|m| m.as_str().parse().ok())
+            .unwrap_or(0);
+        film = found;
+    }
+    let params: HashMap<String, String> = body.iter().map(|(k, v)| (k.clone(), text(v))).collect();
+    let mut query = search::Query::from_params(&params, &cfg);
+    if runtime != 0 && query.runtime_minutes.is_none() {
+        query.runtime_minutes = Some(runtime);
+    }
+    let mut sources = Search { meta: &s.meta }
+        .streams(&query, &provider, &token, false)
+        .await;
+    if sources.is_empty() {
+        return error(StatusCode::INTERNAL_SERVER_ERROR, play::NO_STREAM, None);
+    }
+    let quality_first = cfg.get("source_priority").and_then(Value::as_str) == Some("quality");
+    if quality_first {
+        sources.sort_by_key(|s| s["is_instant"].as_bool() != Some(true));
+    }
+    let body = Value::Object(body);
+    let asked_aside = play::set_aside(&body);
+    let mut skip = asked_aside.clone();
+    if !play.imdb_id.is_empty() {
+        skip.extend(play::excluded(&s.db, &body));
+    }
+    let resolver = Resolver {
+        net: &s.net,
+        provider,
+        token,
+        hosts: Default::default(),
+    };
+    let aliases_for = |c: &Value| play::file_aliases(play.is_series, &film, c);
+    let tried = |keys: &[String]| {
+        let mut all: Vec<String> = asked_aside
+            .iter()
+            .cloned()
+            .chain(keys.iter().cloned())
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+        all.sort();
+        all
+    };
+
+    // « La qualité choisie d'abord »: the source the page waited for, or the one to prepare.
+    if let Some((torrent_id, key)) = play::prepared(&body) {
+        let empty = json!({});
+        let candidate = sources
+            .iter()
+            .find(|c| play::candidate_key(c) == key)
+            .unwrap_or(&empty);
+        let episode = play.episode();
+        let answer = match resolver
+            .check(&torrent_id, episode.map(|e| e.0), episode.map(|e| e.1))
+            .await
+        {
+            Ok(a) => a,
+            Err(e) => return error(StatusCode::INTERNAL_SERVER_ERROR, &e.0, None),
+        };
+        if answer["ready"] != json!(true) || answer["files"].as_array().is_none_or(|f| f.is_empty())
+        {
+            return (
+                StatusCode::ACCEPTED,
+                Json(play::preparing(&answer, candidate, &key, &sources)),
+            )
+                .into_response();
+        }
+        let files = answer["files"].as_array().cloned().unwrap_or_default();
+        let Some(file) = play::select_file(&s.meta, &query, &files, &aliases_for(candidate)).await
+        else {
+            return error(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                WRONG_FILE,
+                Some("prepared_wrong_file"),
+            );
+        };
+        let found = Found {
+            candidate: candidate.clone(),
+            answer,
+            file,
+            key: key.clone(),
+        };
+        return Json(start(&s, &play, &cfg, found, vec![key]).await).into_response();
+    }
+    if quality_first && !truthy(&body["prefer_ready"]) {
+        let chosen: Vec<&Value> = sources
+            .iter()
+            .filter(|c| truthy(&c["score_parts"]["priority_points"]))
+            .collect();
+        if !chosen.is_empty()
+            && !chosen
+                .iter()
+                .any(|c| c["is_instant"].as_bool() == Some(true))
+            && let Some(best) = chosen
+                .into_iter()
+                .find(|c| !skip.contains(&play::candidate_key(c)))
+        {
+            let attempts = play::try_sources(
+                &s.meta,
+                &resolver,
+                std::slice::from_ref(best),
+                &query,
+                play.episode(),
+                aliases_for,
+                &HashSet::new(),
+            )
+            .await;
+            if let Some(found) = attempts.found {
+                let keys = tried(&attempts.tried);
+                return Json(start(&s, &play, &cfg, found, keys).await).into_response();
+            }
+            if let Some(pending) = attempts.pending.filter(|p| truthy(&p["torrent_id"])) {
+                let preparing =
+                    play::preparing(&pending, best, &play::candidate_key(best), &sources);
+                return (StatusCode::ACCEPTED, Json(preparing)).into_response();
+            }
+        }
+    }
+    let attempts = play::try_sources(
+        &s.meta,
+        &resolver,
+        &sources,
+        &query,
+        play.episode(),
+        aliases_for,
+        &skip,
+    )
+    .await;
+    match attempts.found {
+        Some(found) => {
+            let keys = tried(&attempts.tried);
+            Json(start(&s, &play, &cfg, found, keys).await).into_response()
+        }
+        None => error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            NO_SOURCE,
+            Some("no_source"),
+        ),
+    }
+}
+
+use play::truthy;
+
+/// Once a source and its file are found: the season's playlist, the next
+/// episode in the background, the resume point.
+async fn start(
+    s: &Shared,
+    play: &Play,
+    cfg: &Map<String, Value>,
+    found: Found,
+    tried: Vec<String>,
+) -> Value {
+    let Found {
+        candidate,
+        answer,
+        file,
+        key,
+    } = found;
+    let download = text(&file["download"]);
+    let pref_hash = text(&candidate["info_hash"]);
+    let episode = play.episode();
+    let mut playlist = vec![];
+    if let Some((season, number)) = episode
+        && !play.imdb_id.is_empty()
+    {
+        playlist = play::season_playlist(
+            &s.meta,
+            &s.links,
+            s.port,
+            &play.imdb_id,
+            season,
+            number,
+            &download,
+            &play.series_name,
+            &play.year,
+            &play.poster,
+            &pref_hash,
+            &text(&file["filename"]),
+        )
+        .await;
+        let next = Episode {
+            imdb_id: play.imdb_id.clone(),
+            season,
+            episode: number + 1,
+            name: "Série".into(),
+            year: String::new(),
+            poster: String::new(),
+        };
+        play::prefetch_next(
+            s.meta.clone(),
+            s.links.clone(),
+            next,
+            pref_hash.clone(),
+            cfg.clone(),
+        );
+    }
+    let resume = if play.imdb_id.is_empty() {
+        0
+    } else {
+        play::resume_position(
+            &crate::library::history(&s.db),
+            &play.imdb_id,
+            episode.map(|e| e.0),
+            episode.map(|e| e.1),
+        )
+    };
+    let count = if playlist.is_empty() {
+        1
+    } else {
+        playlist.len()
+    };
+    json!({"ok": true, "source_key": key, "attempted_source_keys": tried, "chosen_torrent": play::chosen_label(&candidate),
+           "debrid": answer, "file": file, "stream_url": download, "playlist": playlist,
+           "mpv": {"mode": "integrated", "playlist_count": count}, "resume_sec": resume})
+}
+
+/// « Signaler un problème » on a source, or every source of a title given back.
+async fn feedback(
+    State(s): State<Shared>,
+    crate::body::JsonBody(body): crate::body::JsonBody,
+) -> Response {
+    let context = if play::truthy(&body["context"]) {
+        body["context"].clone()
+    } else {
+        json!({})
+    };
+    let done = match body.get("action").map(text).as_deref() {
+        None | Some("report") => {
+            play::report_source(&s.db, &context, &body["source_key"], &body["reason"])
+        }
+        Some("clear") => play::clear_sources(&s.db, &context),
+        Some(_) => Err("action"),
+    };
+    match done {
+        Ok(()) => Json(json!({"ok": true})).into_response(),
+        Err(_) => error(
+            StatusCode::BAD_REQUEST,
+            "Contenu, source ou action invalide.",
+            None,
+        ),
+    }
+}
+
+async fn auto_stream(
+    State(s): State<Shared>,
+    Query(p): Query<HashMap<String, String>>,
+) -> Response {
+    let cfg = tokio::task::spawn_blocking(search::load_settings)
+        .await
+        .unwrap_or_default();
+    let ep = Episode::from_params(&p);
+    let pref_hash = p
+        .get("pref_hash")
+        .map(|h| h.trim().to_lowercase())
+        .unwrap_or_default();
+    match play::resolve_episode(&s.meta, &s.links, &ep, &pref_hash, &cfg, true).await {
+        Ok(link) => (
+            StatusCode::FOUND,
+            [
+                (header::LOCATION, link),
+                (header::CACHE_CONTROL, "no-store".to_string()),
+            ],
+        )
+            .into_response(),
+        Err(e) => error(StatusCode::INTERNAL_SERVER_ERROR, &e.0, None),
+    }
+}
