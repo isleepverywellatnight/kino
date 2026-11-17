@@ -837,6 +837,7 @@ fn main() -> Result<()> {
     {
         use tao::platform::windows::WindowExtWindows;
         win_frame::frameless(window.hwnd());
+        win_frame::watch_presses();
     }
     let builder = WebViewBuilder::new();
     // Windows: WebView2's DevTools port, for the window test (tests/windows_ui.py).
@@ -937,9 +938,10 @@ fn main() -> Result<()> {
             #[cfg(windows)]
             Event::UserEvent(UserEvent::Call(id, name, _)) if name == "start_window_drag" => {
                 let _ = webview.evaluate_script(&format!("window.__kinoReply({id}, true, true)"));
-                if win_frame::button_down()
-                    && let Ok(origin) = window.outer_position()
-                {
+                if win_frame::take_double() {
+                    // The press came late, after its double was complete.
+                    let _ = replies.send_event(UserEvent::Action("maximize".into()));
+                } else if let Ok(origin) = window.outer_position() {
                     let replies = replies.clone();
                     let start = win_frame::cursor();
                     std::thread::spawn(move || match win_frame::follow_press(start) {
