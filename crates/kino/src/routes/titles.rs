@@ -29,6 +29,9 @@ pub fn router() -> Router<Shared> {
         .route("/api/search-suggest", get(suggest))
         .route("/api/search", get(search))
         .route("/api/people", get(people))
+        .route("/api/french-titles", post(french_titles))
+        .route("/api/original-titles", post(original_titles))
+        .route("/api/episodes-fr", get(episodes_fr))
         .route("/api/person", get(person))
         .route("/api/history-record", post(history_record))
         .route("/api/watched-toggle", post(watched_toggle))
@@ -420,4 +423,46 @@ async fn person(State(s): State<Shared>, Query(p): Query<HashMap<String, String>
             .into_response();
     }
     Json(crate::people::page(&s.meta, &name).await).into_response()
+}
+
+fn items_of(body: &Value) -> Vec<Value> {
+    body["items"].as_array().cloned().unwrap_or_default()
+}
+
+async fn french_titles(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
+    Json(json!({"titles": crate::titles::french_titles(&s.meta, &items_of(&body)).await}))
+        .into_response()
+}
+
+async fn original_titles(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
+    Json(json!({"titles": crate::titles::original_titles(&s.meta, &items_of(&body)).await}))
+        .into_response()
+}
+
+/// French summaries of one season's episodes.
+async fn episodes_fr(
+    State(s): State<Shared>,
+    Query(p): Query<HashMap<String, String>>,
+) -> Response {
+    let id = p
+        .get("imdb_id")
+        .map(|i| i.trim().to_string())
+        .unwrap_or_default();
+    let season = p.get("season").cloned().unwrap_or_default();
+    let valid_season =
+        !season.is_empty() && season.len() <= 3 && season.chars().all(|c| c.is_ascii_digit());
+    let imdb = id.len() > 2
+        && id.len() <= 14
+        && id.starts_with("tt")
+        && id[2..].chars().all(|c| c.is_ascii_digit());
+    if !imdb || !valid_season {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "Série ou saison invalide."})),
+        )
+            .into_response();
+    }
+    let overviews =
+        crate::titles::episode_overviews_fr(&s.meta, &id, season.parse().unwrap_or(0)).await;
+    Json(json!({"overviews": overviews})).into_response()
 }

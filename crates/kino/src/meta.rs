@@ -349,7 +349,9 @@ impl Meta {
                 }
                 let short: String = text.chars().take(480).collect();
                 let memory = format!("https://api.mymemory.translated.net/get?langpair=en|fr&q={}", urlencode(&short));
-                if let Ok(answer) = self.net.get_json(&memory, "Mozilla/5.0", quick).await {
+                // MyMemory takes close to two seconds: a shorter wait made the fallback useless.
+                let patient = Duration::from_secs(4);
+                if let Ok(answer) = self.net.get_json(&memory, "Mozilla/5.0", patient).await {
                     let out = answer["responseData"]["translatedText"].as_str().unwrap_or("").trim().to_string();
                     if !out.is_empty() && !out.to_uppercase().contains("MYMEMORY WARNING") {
                         return Ok(json!(out));
