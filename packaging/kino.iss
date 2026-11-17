@@ -56,8 +56,8 @@ Type: filesandordirs; Name: "{app}\_internal"
 Source: "..\dist\KINO\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\KINO"; Filename: "{app}\KINO.exe"
-Name: "{autodesktop}\KINO"; Filename: "{app}\KINO.exe"
+Name: "{autoprograms}\KINO"; Filename: "{app}\KINO.exe"; IconFilename: "{app}\assets\kino.ico"
+Name: "{autodesktop}\KINO"; Filename: "{app}\KINO.exe"; IconFilename: "{app}\assets\kino.ico"
 
 [Run]
 ; KINO starts once installed; a silent install only restarts it for an update

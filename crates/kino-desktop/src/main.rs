@@ -1,10 +1,11 @@
-//! KINO's window in Rust (opt-in while it grows): the page in a web view, the
-//! bridge it calls (window.pywebview.api, as with the Python window), KINO's
-//! server in this same process, and the Python server behind it, headless,
-//! for what is not in Rust yet (players, P2P, TV, remote, updates).
+#![cfg_attr(windows, windows_subsystem = "windows")]
+//! KINO: the window (the page in a web view and the bridge it calls,
+//! window.pywebview.api), KINO's server in this same process, and what the
+//! desktop gives the server: the players, notifications, media keys, the
+//! menu bar, updates, one instance at a time.
 
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
@@ -26,6 +27,8 @@ mod mac_mpv;
 mod mac_notify;
 #[cfg(target_os = "macos")]
 mod mac_window;
+#[cfg(windows)]
+mod win_dock;
 
 /// What the page may call; each returns a promise, as pywebview's do.
 const BRIDGE: [&str; 21] = [
@@ -84,6 +87,11 @@ enum UserEvent {
     Reply(u64, Result<Value, String>),
     /// A window action the page asked through the server (/api/window/action).
     Action(String),
+    /// Windows: mpv's window (a handle) to hold inside KINO's, then let go.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    Dock(isize),
+    #[cfg_attr(not(windows), allow(dead_code))]
+    Undock,
     /// A notification was clicked: KINO comes to the front and opens the series.
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Notification(Value),
@@ -120,6 +128,23 @@ impl kino::player::WindowHooks for Hooks {
     fn action(&self, name: &str) {
         if let Ok(p) = self.proxy.lock() {
             let _ = p.send_event(UserEvent::Action(name.to_string()));
+        }
+    }
+    fn can_dock(&self) -> bool {
+        cfg!(windows)
+    }
+    #[cfg(windows)]
+    fn dock(&self, pid: u32) {
+        let proxy = self.proxy.lock().ok().map(|p| (*p).clone());
+        std::thread::spawn(move || {
+            if let (Some(player), Some(p)) = (win_dock::find(pid), proxy) {
+                let _ = p.send_event(UserEvent::Dock(player));
+            }
+        });
+    }
+    fn undock(&self) {
+        if let Ok(p) = self.proxy.lock() {
+            let _ = p.send_event(UserEvent::Undock);
         }
     }
 }
@@ -177,25 +202,6 @@ fn free_port(start: u16) -> u16 {
     (start..start + 10)
         .find(|p| std::net::TcpListener::bind(("127.0.0.1", *p)).is_ok())
         .unwrap_or(start)
-}
-
-/// The Python server, headless, behind this one (KINO_PYTHON and src/app.py in
-/// a checkout). It ends when its input closes, with this process.
-fn start_python(private_port: u16, front_port: u16, token: &str) -> Option<Child> {
-    let python = std::env::var_os("KINO_PYTHON").map(PathBuf::from)?;
-    let script = std::env::var_os("KINO_PYTHON_APP")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("src/app.py"));
-    Command::new(python)
-        .arg(script)
-        .env("KINO_SIDECAR_PORT", private_port.to_string())
-        .env("KINO_PORT", front_port.to_string())
-        .env("KINO_PAIRING_TOKEN", token)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .ok()
 }
 
 fn direction(name: &str) -> Option<ResizeDirection> {
@@ -494,6 +500,97 @@ fn fetch_poster(url: &str) -> Option<Vec<u8>> {
     })
 }
 
+/// Whether this program runs from an installed KINO (an app bundle or an
+/// installation folder), not from a build in the repository.
+fn packaged() -> bool {
+    let exe = std::env::current_exe().unwrap_or_default();
+    !exe.components().any(|c| c.as_os_str() == "target")
+}
+
+/// The interface, the update key, FFmpeg and the player, as shipped.
+fn self_check() -> Result<Value, String> {
+    let web = kino::paths::web_root();
+    for file in [
+        "index.html",
+        "remote.html",
+        "js/vendor/qrcode.min.js",
+        "js/playback-help.js",
+        "js/vendor/peerjs.min.js",
+        "js/i18n.js",
+        "js/i18n/en.js",
+    ] {
+        if !web.join(file).is_file() {
+            return Err(format!("The interface is incomplete: {file} is missing"));
+        }
+    }
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let contents = if cfg!(target_os = "macos") {
+        exe.parent().and_then(std::path::Path::parent)
+    } else {
+        exe.parent()
+    }
+    .map(std::path::Path::to_path_buf)
+    .unwrap_or_default();
+    let inside = |path: &std::path::Path| {
+        path.canonicalize()
+            .is_ok_and(|p| contents.canonicalize().is_ok_and(|c| p.starts_with(c)))
+    };
+    let ffmpeg = kino::intro::find_tool("ffmpeg").ok_or("FFmpeg is missing")?;
+    if packaged() && !inside(&ffmpeg) {
+        return Err("FFmpeg is outside the application".into());
+    }
+    let runs = |program: &std::path::Path, flag: &str| {
+        let mut command = Command::new(program);
+        command
+            .arg(flag)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        #[cfg(windows)]
+        std::os::windows::process::CommandExt::creation_flags(&mut command, 0x0800_0000);
+        command.status().is_ok_and(|s| s.success())
+    };
+    if !runs(&ffmpeg, "-version") {
+        return Err("FFmpeg does not run".into());
+    }
+    let mut result = json!({"ok": true, "version": kino::backup::app_version(), "packaged": packaged(), "platform": std::env::consts::OS,
+                            "ffmpeg": ffmpeg.display().to_string(), "web": web.display().to_string()});
+    let key = [
+        exe.parent()
+            .map(|d| d.join("../Resources/assets/update_public_key.hex")),
+        exe.parent().map(|d| d.join("assets/update_public_key.hex")),
+    ];
+    if packaged() && !key.iter().flatten().any(|k| k.is_file()) {
+        return Err("The update key is missing".into());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let mpv = mac_mpv::version();
+        if packaged() && mpv.is_none() {
+            return Err("libmpv is missing from the application".into());
+        }
+        result["libmpv"] = json!(mpv);
+        let helper = contents.join("Resources/kino-update-helper");
+        if packaged() && !helper.is_file() {
+            return Err("The update helper is missing".into());
+        }
+    }
+    #[cfg(windows)]
+    {
+        let mpv = contents.join("mpv").join("mpv.exe");
+        if packaged() && !(mpv.is_file() && runs(&mpv, "--version")) {
+            return Err("mpv is missing from the installation folder".into());
+        }
+        result["mpv"] = json!(mpv.display().to_string());
+    }
+    // KINO's data opens, in a throwaway folder.
+    let scratch = std::env::temp_dir().join(format!("kino-self-check-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&scratch);
+    let opened = kino::db::Db::open(&scratch.join("kino.db")).map(|_| ());
+    let _ = std::fs::remove_dir_all(&scratch);
+    opened.map_err(|e| format!("The database does not open: {e}"))?;
+    Ok(result)
+}
+
 /// One KINO at a time: a second launch brings the first one forward and quits.
 /// Returns the held lock (kept for the process's life), or None to quit.
 #[cfg(unix)]
@@ -581,28 +678,28 @@ fn single_instance() -> Option<()> {
 }
 
 fn main() -> Result<()> {
-    // The build's self-check: KINO's version and the bundled libmpv.
-    if std::env::args().any(|a| a == "--self-check") {
-        #[cfg(target_os = "macos")]
-        let mpv = mac_mpv::version();
-        #[cfg(not(target_os = "macos"))]
-        let mpv: Option<String> = None;
-        println!(
-            "{}",
-            json!({"version": kino::backup::app_version(), "libmpv": mpv})
-        );
-        return Ok(());
+    // The build's self-check: what KINO ships, checked before a release or an update.
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--self-check") {
+        let report = args
+            .iter()
+            .position(|a| a == "--self-check-report")
+            .and_then(|i| args.get(i + 1))
+            .map(PathBuf::from);
+        let result = self_check();
+        let ok = result.is_ok();
+        let answer = result.unwrap_or_else(|e| json!({"ok": false, "error": e}));
+        println!("{answer}");
+        if let Some(path) = report {
+            let _ = std::fs::write(path, answer.to_string());
+        }
+        std::process::exit(if ok { 0 } else { 1 });
     }
     let Some(_instance) = single_instance() else {
         return Ok(());
     };
     let port = free_port(8080);
-    let private_port = free_port(port + 1);
     let token = kino::launch::new_token();
-    let mut python = start_python(private_port, port, &token);
-    let legacy = python
-        .as_ref()
-        .map(|_| format!("http://127.0.0.1:{private_port}"));
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     let proxy: EventLoopProxy<UserEvent> = event_loop.create_proxy();
     let bounds: Bounds = Default::default();
@@ -635,7 +732,7 @@ fn main() -> Result<()> {
     let options = kino::launch::Options {
         port,
         pairing_token: token,
-        legacy,
+        legacy: None,
         native_player: false,
         notifications: false,
         startup_tasks: true,
@@ -720,6 +817,9 @@ fn main() -> Result<()> {
         .build(&window)?;
 
     let replies = event_loop.create_proxy();
+    // Windows: the mpv window held inside KINO's, if any.
+    #[cfg(windows)]
+    let mut docked: Option<isize> = None;
     #[cfg(target_os = "macos")]
     let mut now_playing = {
         let posters = Mutex::new(event_loop.create_proxy());
@@ -789,8 +889,16 @@ fn main() -> Result<()> {
                     webview.evaluate_script(&format!("window.__kinoReply({id}, {ok}, {value})"));
             }
             Event::UserEvent(UserEvent::Action(name)) => {
+                if let Some(on) = match name.as_str() {
+                    "maximized_on" => Some(true),
+                    "maximized_off" => Some(false),
+                    _ => None,
+                } {
+                    window.set_maximized(on);
+                }
                 let name = match name.as_str() {
                     "maximize" => "toggle_maximize",
+                    "maximized_on" | "maximized_off" => "",
                     "fullscreen" => "toggle_fullscreen",
                     "hide" | "show" => {
                         window.set_visible(name == "show");
@@ -825,6 +933,25 @@ fn main() -> Result<()> {
                     center.poster(url, bytes);
                 }
             }
+            #[cfg(windows)]
+            Event::UserEvent(UserEvent::Dock(player)) => {
+                use tao::platform::windows::WindowExtWindows;
+                win_dock::dock(window.hwnd(), player);
+                docked = Some(player);
+            }
+            Event::UserEvent(UserEvent::Undock) => {
+                #[cfg(windows)]
+                {
+                    docked = None;
+                }
+                // The player's full screen ends with it.
+                window.set_fullscreen(None);
+                #[cfg(windows)]
+                {
+                    use tao::platform::windows::WindowExtWindows;
+                    win_dock::refresh(window.hwnd());
+                }
+            }
             Event::UserEvent(UserEvent::Hide) => window.set_visible(false),
             Event::UserEvent(UserEvent::Show) => {
                 window.set_visible(true);
@@ -833,7 +960,14 @@ fn main() -> Result<()> {
             Event::WindowEvent {
                 event: WindowEvent::Moved(_) | WindowEvent::Resized(_),
                 ..
-            } => *bounds.lock().unwrap_or_else(|e| e.into_inner()) = bounds_of(&window),
+            } => {
+                *bounds.lock().unwrap_or_else(|e| e.into_inner()) = bounds_of(&window);
+                #[cfg(windows)]
+                if let Some(player) = docked {
+                    use tao::platform::windows::WindowExtWindows;
+                    win_dock::fit(window.hwnd(), player);
+                }
+            }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
@@ -842,10 +976,6 @@ fn main() -> Result<()> {
         }
         if quit {
             save_bounds(&window);
-            if let Some(mut child) = python.take() {
-                drop(child.stdin.take());
-                let _ = child.wait();
-            }
             *control_flow = ControlFlow::Exit;
         }
     });
