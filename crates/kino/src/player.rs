@@ -37,6 +37,14 @@ pub trait WindowHooks: Send + Sync {
     /// A window action asked by the page: minimize, maximize, fullscreen,
     /// enter_fullscreen, exit_fullscreen, close, hide, show.
     fn action(&self, _name: &str) {}
+    /// Windows: whether KINO's window can hold the player inside it.
+    fn can_dock(&self) -> bool {
+        false
+    }
+    /// Holds the player's window (process `pid`) inside KINO's window.
+    fn dock(&self, _pid: u32) {}
+    /// The docked player closed: KINO's window as before.
+    fn undock(&self) {}
 }
 
 /// What the history and the Discord card are told about the title.
@@ -359,6 +367,63 @@ async fn connect() -> Option<tokio::net::windows::named_pipe::NamedPipeClient> {
         .ok()
 }
 
+/// mpv's bridge script for a docked player (Windows), shipped in assets/.
+fn bridge_script() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+    [
+        dir.join("assets/kino_bridge.lua"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/kino_bridge.lua"),
+    ]
+    .into_iter()
+    .find(|p| p.is_file())
+}
+
+/// A docked player's full screen, maximize and minimize, passed on to KINO's window.
+async fn window_events(window: Arc<dyn WindowHooks>) {
+    tokio::time::sleep(Duration::from_millis(350)).await;
+    let Some(stream) = connect().await else {
+        return;
+    };
+    let mut stream = BufReader::new(stream);
+    for (id, name) in [
+        (1, "fullscreen"),
+        (2, "window-maximized"),
+        (3, "window-minimized"),
+    ] {
+        let line = json!({"command": ["observe_property", id, name]}).to_string() + "\n";
+        if stream.get_mut().write_all(line.as_bytes()).await.is_err() {
+            return;
+        }
+    }
+    // The first three changes are the current values, not the user's.
+    let mut initial = 3;
+    let mut line = String::new();
+    while stream.read_line(&mut line).await.is_ok_and(|n| n > 0) {
+        if let Ok(message) = serde_json::from_str::<Value>(&line)
+            && message["event"] == "property-change"
+        {
+            if initial > 0 {
+                initial -= 1;
+            } else {
+                match (message["name"].as_str(), message["data"].as_bool()) {
+                    (Some("fullscreen"), Some(on)) => window.action(if on {
+                        "enter_fullscreen"
+                    } else {
+                        "exit_fullscreen"
+                    }),
+                    (Some("window-maximized"), Some(on)) => {
+                        window.action(if on { "maximized_on" } else { "maximized_off" })
+                    }
+                    (Some("window-minimized"), Some(true)) => window.action("minimize"),
+                    _ => {}
+                }
+            }
+        }
+        line.clear();
+    }
+}
+
 /// One property of the running player, through its IPC socket.
 pub async fn query(property: &str) -> Option<Value> {
     let work = async {
@@ -477,15 +542,30 @@ impl Player {
             target: target.clone(),
         };
         let name = bin.to_string_lossy().to_lowercase();
+        let is_mpv = !name.contains("iina") && !name.contains("vlc");
+        let docked = cfg!(windows) && is_mpv && self.window.as_ref().is_some_and(|w| w.can_dock());
         let (program, args) = if name.contains("iina") {
             iina_command(&bin, &plan)
         } else if name.contains("vlc") {
             (bin.clone(), vec![target])
+        } else if docked {
+            // Inside KINO's window: a title to find it by, and the bridge that
+            // passes full screen and resizing on to KINO's window.
+            let mut args = mpv_command(&bin, &plan, None);
+            let at = args.len() - 1;
+            let stamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis());
+            args.insert(at, format!("--title=KINO_PLAYER_{stamp}"));
+            if let Some(bridge) = bridge_script() {
+                args.insert(at, format!("--scripts={}", bridge.display()));
+            }
+            (bin.clone(), args)
         } else {
             let geometry = self.window.as_ref().and_then(|w| w.geometry());
             (bin.clone(), mpv_command(&bin, &plan, geometry))
         };
-        if let Some(window) = &self.window {
+        if let Some(window) = self.window.as_ref().filter(|_| !docked) {
             window.hide();
         }
         if let Some(media) = &request.media {
@@ -506,7 +586,7 @@ impl Player {
                 year: None,
             });
         }
-        let pid = match self.start(&program, &args, request.media) {
+        let pid = match self.start(&program, &args, request.media, docked) {
             Ok(pid) => pid,
             Err(e) => {
                 if let Some(window) = &self.window {
@@ -530,6 +610,7 @@ impl Player {
         program: &Path,
         args: &[String],
         media: Option<Media>,
+        docked: bool,
     ) -> std::io::Result<u32> {
         if cfg!(windows) {
             // One player at a time.
@@ -555,6 +636,10 @@ impl Player {
         if let Some(media) = media.clone().filter(|m| !m.id.is_empty()) {
             self.add_subtitles(media);
         }
+        if docked && let Some(window) = self.window.clone() {
+            window.dock(pid);
+            tokio::spawn(window_events(window));
+        }
         let me = self.clone();
         tokio::spawn(async move {
             me.follow(&mut child, media).await;
@@ -562,7 +647,11 @@ impl Player {
             if *me.current.lock().unwrap_or_else(|e| e.into_inner()) == pid
                 && let Some(window) = &me.window
             {
-                window.show();
+                if docked {
+                    window.undock()
+                } else {
+                    window.show()
+                }
             }
         });
         Ok(pid)

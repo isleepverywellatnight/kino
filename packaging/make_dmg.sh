@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 APP=dist/KINO.app
-[ -d "$APP" ] || { echo "dist/KINO.app est absent : lancez d'abord pyinstaller packaging/kino_macos.spec" >&2; exit 1; }
+[ -d "$APP" ] || { echo "dist/KINO.app est absent : lancez d'abord packaging/build_macos_app.sh" >&2; exit 1; }
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist")
 OUTPUT=${1:-dist/KINO-macOS.dmg}
 
