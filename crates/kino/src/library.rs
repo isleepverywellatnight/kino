@@ -4,6 +4,7 @@
 //! `app_config`): Google Drive sync exports it, and it wins over any older
 //! version of the item; a later addition or play wins over it.
 
+use std::collections::HashSet;
 use std::sync::LazyLock;
 
 use regex::Regex;
@@ -409,6 +410,151 @@ pub fn rating_patch(
         return Err("Rien à enregistrer.");
     }
     Ok(fields)
+}
+
+/// Films a Letterboxd import added by mistake (a wrong match), removed while
+/// still as imported, never played; the removal reaches the other devices.
+pub fn drop_wrong_imports(db: &Db, ids: &[String]) -> Vec<String> {
+    let ids: Vec<&String> = ids.iter().filter(|i| !i.is_empty()).collect();
+    if ids.is_empty() {
+        return vec![];
+    }
+    db.with(|c| {
+        let tx = c.unchecked_transaction()?;
+        let mut dropped: Vec<(String, f64)> = Vec::new();
+        for id in ids {
+            let row: Option<(Option<String>, Value)> = tx
+                .query_row(
+                    "SELECT data_json, last_watched FROM watch_history WHERE id = ?",
+                    [id],
+                    |r| {
+                        let written: Option<f64> = r.get(1).ok();
+                        Ok((r.get(0)?, written.map(Value::from).unwrap_or(Value::Null)))
+                    },
+                )
+                .optional()?;
+            let Some((data, written)) = row else { continue };
+            let Ok(data) = serde_json::from_str::<Value>(data.as_deref().unwrap_or("{}")) else {
+                continue;
+            };
+            let imported = &data["imported_watched"];
+            if matches!(imported, Value::Null | Value::Bool(false))
+                || imported == &json!(0)
+                || imported == &json!("")
+            {
+                continue;
+            }
+            tx.execute("DELETE FROM watch_history WHERE id = ?", [id])?;
+            dropped.push((id.clone(), stamp(&written)));
+        }
+        mark_deleted(&tx, "history", &dropped)?;
+        tx.commit()?;
+        Ok(dropped.into_iter().map(|(id, _)| id).collect())
+    })
+    .unwrap_or_default()
+}
+
+/// Adds the imported titles still missing from Ma Liste and the history; a
+/// title already there is left as it is. A title removed in KINO is skipped
+/// unless `restore`. Imported films seen are dated before any real viewing.
+/// Returns {"watchlist": [ids], "history": [ids], "removed": {...}}.
+pub fn import_user_lists(
+    db: &Db,
+    watchlist_items: &[Value],
+    history_entries: &[Value],
+    restore: bool,
+) -> Value {
+    const IMPORTED_BEFORE: f64 = 946_684_800.0;
+    let at = now();
+    db.with(|c| {
+        let tx = c.unchecked_transaction()?;
+        let mut deletions = load_deletions(&tx);
+        let mut restored = false;
+        let (mut added_wl, mut added_hist, mut removed_wl, mut removed_hist) = (vec![], vec![], vec![], vec![]);
+        let id_of = |v: &Value| match &v["id"] {
+            Value::Null | Value::Bool(false) => String::new(),
+            Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let field = |v: &Value| match v {
+            Value::Null | Value::Bool(false) => String::new(),
+            Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let mut present: HashSet<String> = {
+            let mut s = tx.prepare("SELECT id FROM watchlist")?;
+            s.query_map([], |r| r.get::<_, String>(0))?.collect::<rusqlite::Result<_>>()?
+        };
+        for item in watchlist_items.iter().filter(|i| i.is_object()) {
+            let id = id_of(item);
+            if id.is_empty() || present.contains(&id) {
+                continue;
+            }
+            if let Some(marks) = deletions.get_mut("watchlist").and_then(Value::as_object_mut)
+                && marks.contains_key(&id)
+            {
+                if !restore {
+                    removed_wl.push(id);
+                    continue;
+                }
+                marks.remove(&id);
+                restored = true;
+            }
+            present.insert(id.clone());
+            let kind = match field(&item["type"]) {
+                k if k.is_empty() => "movie".to_string(),
+                k => k,
+            };
+            tx.execute(
+                "INSERT INTO watchlist (id, name, type, year, poster, imdb_rating, added_at, user_rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                params![id, field(&item["name"]), kind, field(&item["year"]), field(&item["poster"]), field(&item["imdbRating"]),
+                        at - 0.001 * added_wl.len() as f64, field(&item["user_rating"])],
+            )?;
+            added_wl.push(id);
+        }
+        let rows: Vec<(String, Value)> = {
+            let mut s = tx.prepare("SELECT id, last_watched FROM watch_history")?;
+            s.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, Option<f64>>(1)?.map(Value::from).unwrap_or(Value::Null))))?
+                .collect::<rusqlite::Result<_>>()?
+        };
+        let mut present: HashSet<String> = rows.iter().map(|r| r.0.clone()).collect();
+        let oldest = rows.iter().map(|r| stamp(&r.1)).filter(|s| *s > 0.0).fold(IMPORTED_BEFORE, f64::min);
+        for entry in history_entries.iter().filter(|e| e.is_object()) {
+            let id = id_of(entry);
+            if id.is_empty() || present.contains(&id) {
+                continue;
+            }
+            let mut data = entry.as_object().cloned().unwrap_or_default();
+            if let Some(marks) = deletions.get_mut("history").and_then(Value::as_object_mut)
+                && marks.contains_key(&id)
+            {
+                if !restore {
+                    removed_hist.push(id);
+                    continue;
+                }
+                marks.remove(&id);
+                restored = true;
+                data.insert("id".into(), json!(id));
+                data.insert("last_watched".into(), Value::Null);
+                data.insert("reimported_at".into(), json!(at));
+            }
+            present.insert(id.clone());
+            let written = (oldest - 1.0 - 0.001 * added_hist.len() as f64).max(1.0);
+            data.insert("id".into(), json!(id));
+            data.insert("last_watched".into(), json!(written));
+            tx.execute(
+                "INSERT INTO watch_history (id, data_json, last_watched) VALUES (?, ?, ?)",
+                params![id, Value::Object(data).to_string(), written],
+            )?;
+            added_hist.push(id);
+        }
+        if restored {
+            save_deletions(&tx, &deletions)?;
+        }
+        tx.commit()?;
+        Ok(json!({"watchlist": added_wl, "history": added_hist, "removed": {"watchlist": removed_wl, "history": removed_hist}}))
+    })
+    .unwrap_or_else(|_| json!({"watchlist": [], "history": [], "removed": {"watchlist": [], "history": []}}))
 }
 
 #[cfg(test)]
