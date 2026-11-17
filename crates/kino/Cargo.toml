@@ -28,8 +28,13 @@ futures-util = "0.3"
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
 indexmap = "2.14.2"
 csv = "1"
+fs4 = "1.1.0"
+tokio-util = { version = "0.7.20", features = ["io"] }
 
 [dev-dependencies]
 flate2 = "1"
 tempfile = "3"
 wiremock = "0.6"
+
+[target."cfg(unix)".dependencies]
+libc = "0.2"

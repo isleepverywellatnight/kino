@@ -32,6 +32,8 @@ pub struct AppState {
     pub accounts: crate::debrid::Accounts,
     /// Episode links already found, for the player's next episodes.
     pub links: Arc<crate::play::EpisodeLinks>,
+    /// The offline library and its downloads.
+    pub offline: Arc<crate::offline::Library>,
     /// The suggestion pool, read again when it changes.
     pub suggestions: crate::recommender::Store,
     /// What the window offers (set by the desktop app): the native player, notifications.

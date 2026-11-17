@@ -22,6 +22,7 @@ pub mod manga;
 pub mod meta;
 pub mod net;
 pub mod network;
+pub mod offline;
 pub mod paths;
 pub mod people;
 pub mod play;

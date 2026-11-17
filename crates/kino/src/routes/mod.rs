@@ -3,6 +3,7 @@
 pub mod anime;
 pub mod library;
 pub mod manga;
+pub mod offline;
 pub mod play;
 pub mod series;
 pub mod settings;
@@ -25,4 +26,5 @@ pub fn router() -> Router<Shared> {
         .merge(series::router())
         .merge(suggestions::router())
         .merge(anime::router())
+        .merge(offline::router())
 }
