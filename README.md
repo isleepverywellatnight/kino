@@ -25,9 +25,11 @@ their country.
 - **Without a debrid service**: add add-ons (more sources, and their
   catalogues in Explore), and play torrents peer to peer once you have agreed
   to what it means (your IP address is visible, and you share while you watch).
-- **Manga**: read series from MangaDex (translated by volunteer groups) and your
-  own CBZ files and image folders, page by page or as one long scroll, in the
-  Japanese reading direction if you like; KINO remembers where you stopped.
+- **Manga**: the whole catalogue and the series coming out now, with every
+  chapter gathered from several sites (in your language when there is one, else
+  in English), complete HD volumes by torrent, and your own CBZ files and image
+  folders; read page by page or as one long scroll, in the Japanese direction if
+  you like. KINO remembers where you stopped.
 - **Playback**: built-in video player based on mpv (HDR, subtitles, audio
   tracks, intro skipping).
 - **Tracking**: My List, in progress, watched, my series, release calendar,

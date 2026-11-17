@@ -67,6 +67,8 @@ import torrent_engine
 import p2p_engine
 import stremio_addons
 import manga
+import manga_sources
+import manga_volumes
 import stream_engine
 from stream_engine import StreamQuery, get_available_streams, resolve_playable_stream, DebridResolutionError
 import remote_controller
@@ -1057,13 +1059,37 @@ class CatalogueRoutes:
         return
 
     def _manga(self, read):
-        """Answers a manga request; MangaDex down or a refused request become a message."""
+        """Answers a manga request; a site down or a refused request become a message."""
         try:
             self.send_json(read())
         except manga.MangaError as error:
             self.send_json({"error": str(error)}, status=400)
-        except (urllib.error.URLError, TimeoutError, OSError, ValueError):
-            self.send_json({"error": "MangaDex ne répond pas pour le moment."}, status=502)
+        except p2p_engine.P2PConsentNeeded:
+            self.send_json(one_click.P2P_CONSENT, status=409)
+        except p2p_engine.P2PUnavailable as error:
+            self.send_json({"error": str(error)}, status=400)
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError, RuntimeError, manga_sources.SourceError):
+            self.send_json({"error": "Les sources manga ne répondent pas pour le moment."}, status=502)
+
+    def get_manga_row(self, parsed, params):
+        """GET /api/manga/row: « trending », « popular » or « webtoon »."""
+        self._manga(lambda: {"series": manga.row(params.get("name", ""))})
+
+    def get_manga_volumes(self, parsed, params):
+        """GET /api/manga/volumes: torrents of whole volumes for a series."""
+        self._manga(lambda: {"torrents": manga_sources.nyaa_volumes(manga.details(params.get("id", ""), "en")["titles"])})
+
+    def get_manga_volume_files(self, parsed, params):
+        """GET /api/manga/volume/files: the archives of one torrent."""
+        self._manga(lambda: {"files": manga_volumes.files(params.get("hash", ""), params.get("name", ""))})
+
+    def get_manga_volume_status(self, parsed, params):
+        """GET /api/manga/volume/status"""
+        self._manga(lambda: manga_volumes.status(params.get("hash", ""), params.get("index", "")))
+
+    def post_manga_volume(self, parsed, params, body):
+        """POST /api/manga/volume: downloads one archive into the manga folder."""
+        self._manga(lambda: manga_volumes.start(body.get("hash", ""), body.get("index", -1), body.get("series", "")))
 
     def get_manga_search(self, parsed, params):
         """GET /api/manga/search"""
@@ -1948,6 +1974,10 @@ class RequestHandler(PlaybackRoutes, CatalogueRoutes, LibraryRoutes, DebridRoute
         "/api/manga/local/chapters": "get_manga_local_chapters",
         "/api/manga/local/page": "get_manga_local_page",
         "/api/manga/progress": "get_manga_progress",
+        "/api/manga/row": "get_manga_row",
+        "/api/manga/volumes": "get_manga_volumes",
+        "/api/manga/volume/files": "get_manga_volume_files",
+        "/api/manga/volume/status": "get_manga_volume_status",
         "/api/anime/week": "get_anime_week",
         # LibraryRoutes
         "/api/my-series": "get_my_series",
@@ -2039,6 +2069,7 @@ class RequestHandler(PlaybackRoutes, CatalogueRoutes, LibraryRoutes, DebridRoute
         "/api/p2p/clear": "post_p2p_clear",
         "/api/manga/progress": "post_manga_progress",
         "/api/manga/folder": "post_manga_folder",
+        "/api/manga/volume": "post_manga_volume",
         "/api/stremio-addons": "post_stremio_addons",
         "/api/notifications/test": "post_notifications_test",
         # AppRoutes
