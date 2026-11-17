@@ -2,6 +2,7 @@
 
 pub mod access;
 pub mod addons;
+pub mod alerts;
 pub mod anime;
 pub mod anime_home;
 pub mod anime_journey;

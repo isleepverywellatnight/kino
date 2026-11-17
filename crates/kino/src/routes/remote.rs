@@ -103,7 +103,7 @@ async fn diagnostic(State(s): State<Shared>, request: Request) -> Response {
     }
     let window = crate::diagnostic::Window {
         native_player: s.native_player,
-        notifications: None,
+        notifications: s.notifier.as_ref().map(|n| n.status()),
     };
     Json(crate::diagnostic::run(&s, &window).await).into_response()
 }

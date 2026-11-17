@@ -24,6 +24,7 @@ pub fn router() -> Router<Shared> {
         .route("/api/open-folder", post(open_folder))
         .route("/api/save-screenshot", post(save_screenshot))
         .route("/api/probe-media", post(probe_media))
+        .route("/api/notifications/test", post(notifications_test))
         .route("/api/remux", get(remux))
 }
 
@@ -198,6 +199,38 @@ async fn save_screenshot(State(s): State<Shared>, request: Request) -> Response 
         )
             .into_response(),
     }
+}
+
+/// « Tester » in Paramètres: permission asked if needed, then one notification.
+async fn notifications_test(State(s): State<Shared>, request: Request) -> Response {
+    if s.player.is_none() {
+        return python(&s, request).await;
+    }
+    let Some(notifier) = s.notifier.clone() else {
+        return Json(json!({"ok": false, "status": "unavailable"})).into_response();
+    };
+    let status = tokio::task::spawn_blocking(move || {
+        let mut status = notifier.status();
+        if status == "not_determined" {
+            notifier.request_permission();
+            status = notifier.status();
+        }
+        let granted = crate::alerts::GRANTED.contains(&status.as_str());
+        if granted {
+            let id = format!("kino-test-{}", crate::db::now() as i64);
+            notifier.send(
+                &id,
+                "KINO",
+                "Les notifications des nouveaux épisodes fonctionnent.",
+                &Default::default(),
+            );
+        }
+        status
+    })
+    .await
+    .unwrap_or_else(|_| "unknown".into());
+    let ok = crate::alerts::GRANTED.contains(&status.as_str());
+    Json(json!({"ok": ok, "status": status})).into_response()
 }
 
 /// A stream's video and audio tracks, and the audio track KINO would pick.

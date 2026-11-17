@@ -22,6 +22,8 @@ pub struct Options {
     pub startup_tasks: bool,
     /// The window, when it runs in this process: the external player is then started here.
     pub window: Option<Arc<dyn crate::player::WindowHooks>>,
+    /// The system's notifications, when the window can send them.
+    pub notifier: Option<Arc<dyn crate::alerts::Notifier>>,
 }
 
 /// A new random pairing token, as the Python server makes them.
@@ -89,12 +91,16 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
         offline,
         suggestions: Default::default(),
         native_player: options.native_player,
-        notifications: options.notifications,
+        notifications: options.notifications || options.notifier.is_some(),
+        notifier: options.notifier.clone(),
         player,
         remote,
         tv,
         sites: crate::manga::sources::Sites::default(),
     });
+    if let Some(notifier) = options.notifier {
+        crate::alerts::watch(db.clone(), state.meta.clone(), notifier);
+    }
     if options.startup_tasks {
         crate::startup::run(state.clone());
     }

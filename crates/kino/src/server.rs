@@ -45,6 +45,8 @@ pub struct AppState {
     pub remote: Arc<crate::remote::Remote>,
     /// « Lire sur la TV », when the window runs in this process.
     pub tv: Option<Arc<crate::tv::Cast>>,
+    /// The system's notifications (new episodes), when the window gives them.
+    pub notifier: Option<Arc<dyn crate::alerts::Notifier>>,
 }
 
 pub type Shared = Arc<AppState>;

@@ -15,6 +15,9 @@ use tao::event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy};
 use tao::window::{Fullscreen, ResizeDirection, Window, WindowBuilder};
 use wry::WebViewBuilder;
 
+#[cfg(target_os = "macos")]
+mod mac_notify;
+
 /// What the page may call; each returns a promise, as pywebview's do.
 const BRIDGE: [&str; 21] = [
     "minimize",
@@ -70,6 +73,8 @@ enum UserEvent {
     Show,
     /// A window action the page asked through the server (/api/window/action).
     Action(String),
+    /// A notification was clicked: KINO comes to the front and opens the series.
+    Notification(Value),
 }
 
 type Bounds = Arc<Mutex<Option<(i32, i32, u32, u32)>>>;
@@ -334,6 +339,18 @@ fn main() -> Result<()> {
         proxy: Mutex::new(event_loop.create_proxy()),
         bounds: bounds.clone(),
     });
+    #[cfg(target_os = "macos")]
+    let notifier: Option<Arc<dyn kino::alerts::Notifier>> = {
+        let clicks = Mutex::new(event_loop.create_proxy());
+        mac_notify::create(Box::new(move |info| {
+            if let Ok(p) = clicks.lock() {
+                let _ = p.send_event(UserEvent::Notification(Value::Object(info)));
+            }
+        }))
+        .map(|n| Arc::new(n) as Arc<dyn kino::alerts::Notifier>)
+    };
+    #[cfg(not(target_os = "macos"))]
+    let notifier: Option<Arc<dyn kino::alerts::Notifier>> = None;
     let options = kino::launch::Options {
         port,
         pairing_token: token,
@@ -342,6 +359,7 @@ fn main() -> Result<()> {
         notifications: false,
         startup_tasks: true,
         window: Some(hooks),
+        notifier,
     };
     let (ready_tx, ready_rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
@@ -426,6 +444,13 @@ fn main() -> Result<()> {
                 };
                 if !name.is_empty() {
                     let _ = call(&window, name, &[], &mut quit);
+                }
+            }
+            Event::UserEvent(UserEvent::Notification(info)) => {
+                window.set_visible(true);
+                window.set_focus();
+                if info["id"].is_string() {
+                    let _ = webview.evaluate_script(&format!("openFromNotification({info})"));
                 }
             }
             Event::UserEvent(UserEvent::Hide) => window.set_visible(false),
