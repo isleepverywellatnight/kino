@@ -17,6 +17,7 @@ async fn main() -> Result<()> {
         .map(char::from)
         .collect();
     let db = Arc::new(Db::open(&paths::database())?);
+    let net = Arc::new(kino::net::Net::new(db.clone()));
     let state = Arc::new(server::AppState {
         db: db.clone(),
         port,
@@ -24,7 +25,12 @@ async fn main() -> Result<()> {
         web_root: paths::web_root(),
         legacy: std::env::var("KINO_LEGACY").ok().filter(|s| !s.is_empty()),
         http: reqwest::Client::builder().build()?,
-        net: Arc::new(kino::net::Net::new(db)),
+        net: net.clone(),
+        meta: kino::meta::Meta {
+            net: net.clone(),
+            cinemeta: kino::meta::CINEMETA.into(),
+            translate: true,
+        },
         sites: kino::manga::sources::Sites::default(),
     });
     // Every interface: the phone remote reaches KINO from the local network.

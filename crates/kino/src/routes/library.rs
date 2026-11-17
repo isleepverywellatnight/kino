@@ -1,6 +1,5 @@
 //! Ma Liste, the history and small per-series preferences.
-//! Recording a play (/api/history-record, /api/watched-toggle) still goes to
-//! the Python server: it needs the next episode from the metadata engine.
+//! Marking as watched (/api/watched-toggle) still goes to the Python server.
 
 use std::collections::HashMap;
 

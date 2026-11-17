@@ -28,6 +28,7 @@ pub struct AppState {
     pub http: reqwest::Client,
     pub net: Arc<Net>,
     pub sites: Sites,
+    pub meta: crate::meta::Meta,
 }
 
 pub type Shared = Arc<AppState>;
@@ -135,6 +136,24 @@ fn is_static(path: &str) -> bool {
         || ["/css/", "/js/", "/static/", "/web/"]
             .iter()
             .any(|p| path.starts_with(p))
+}
+
+/// For a route ported only in part: the cases Rust does not answer yet go to Python.
+pub async fn delegate(
+    state: &AppState,
+    method: Method,
+    uri: &Uri,
+    headers: &HeaderMap,
+    body: Bytes,
+) -> Response {
+    match &state.legacy {
+        Some(base) => forward(state, base, method, uri, headers, body).await,
+        None => (
+            StatusCode::NOT_IMPLEMENTED,
+            Json(json!({"error": "Pas encore disponible."})),
+        )
+            .into_response(),
+    }
 }
 
 async fn fallback(
