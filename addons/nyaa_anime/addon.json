@@ -1,0 +1,10 @@
+{
+  "id": "nyaa_anime",
+  "name": "Nyaa Anime (VOSTFR & Fansubs)",
+  "version": "1.0.0",
+  "description": "Indexeur spécialisé pour les animes japonais en haute qualité (VOSTFR, 1080p Fansubs, Nyaa.si)",
+  "author": "KINO Community",
+  "type": "scraper",
+  "enabled": true,
+  "entry_point": "scraper.py"
+}
