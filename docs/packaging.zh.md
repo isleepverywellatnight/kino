@@ -10,7 +10,7 @@
 
 要让 KINO 自动安装新版本，CI 会用 `KINO_UPDATE_SIGNING_KEY` 机密（Settings → Secrets and variables → Actions）为更新签名：其内容是 `tools/build_update_package.py --init-key` 生成的私钥，对应的公钥是 `assets/update_public_key.hex`。没有这个机密时，KINO 只会提示有新版本并提供下载。
 
-本仓库为私有：版本发布在公开仓库 [kino-releases](https://github.com/isleepverywellatnight/kino-releases)，KINO 的下载、安装脚本和更新都使用它。CI 通过 `KINORELEASE` 机密写入：一个仅限 kino-releases、Contents 读写权限的细粒度令牌。
+版本发布在本仓库中，KINO 的下载、安装脚本和更新都使用它们。CI 使用自身的 `GITHUB_TOKEN` 发布，无需其他机密。
 
 ## 在本机构建
 

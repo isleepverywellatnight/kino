@@ -30,8 +30,8 @@ KINO 不托管、不提供也不分发任何内容。它查询用户自选的来
 
 | 系统 | 下载 |
 |---|---|
-| **macOS** — Apple 芯片 Mac（M1 或更新），macOS 14 或更新 | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/KINO-macOS.dmg) |
-| **Windows** — Windows 10 或 11，64 位 | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/KINO-Windows.exe) |
+| **macOS** — Apple 芯片 Mac（M1 或更新），macOS 14 或更新 | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
+| **Windows** — Windows 10 或 11，64 位 | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
 
 KINO 自带所需的一切：视频播放器、FFmpeg、界面。无需另外安装任何东西。之后在设置中粘贴你的 Debrid 服务密钥即可。
 
@@ -47,13 +47,13 @@ KINO 自带所需的一切：视频播放器、FFmpeg、界面。无需另外安
 macOS（“终端”应用）：
 
 ```bash
-curl -fsSL https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/isleepverywellatnight/kino/releases/latest/download/install.sh | bash
 ```
 
 Windows（PowerShell）：
 
 ```powershell
-irm https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/install.ps1 | iex
+irm https://github.com/isleepverywellatnight/kino/releases/latest/download/install.ps1 | iex
 ```
 
 ### 如果系统阻止首次启动

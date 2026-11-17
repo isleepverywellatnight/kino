@@ -1,11 +1,11 @@
 #!/bin/bash
 # Install or update KINO on a Mac (Apple Silicon, macOS 14 or newer):
-#   curl -fsSL https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/install.sh | bash
+#   curl -fsSL https://github.com/isleepverywellatnight/kino/releases/latest/download/install.sh | bash
 # Downloads the latest release, checks its SHA-256, copies KINO into
 # /Applications and opens it. Nothing else to install.
 set -euo pipefail
 
-REPO="isleepverywellatnight/kino-releases"
+REPO="isleepverywellatnight/kino"
 BASE="https://github.com/$REPO/releases/latest/download"
 APP="/Applications/KINO.app"
 

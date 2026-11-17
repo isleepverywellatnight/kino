@@ -33,8 +33,8 @@ KINO hostet, liefert und verbreitet keine Inhalte. Es fragt Quellen ab, die der 
 
 | System | Download |
 |---|---|
-| **macOS** — Mac mit Apple Silicon (M1 oder neuer), macOS 14 oder neuer | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/KINO-macOS.dmg) |
-| **Windows** — Windows 10 oder 11, 64 Bit | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/KINO-Windows.exe) |
+| **macOS** — Mac mit Apple Silicon (M1 oder neuer), macOS 14 oder neuer | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
+| **Windows** — Windows 10 oder 11, 64 Bit | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
 
 KINO enthält alles, was es braucht: Videoplayer, FFmpeg, Oberfläche. Es muss nichts weiter installiert werden. Danach fügst du den Schlüssel deines Debrid-Dienstes in den Einstellungen ein.
 
@@ -50,13 +50,13 @@ Dieser Befehl lädt die neueste Version herunter, prüft die Datei, installiert 
 macOS (Terminal-App):
 
 ```bash
-curl -fsSL https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/isleepverywellatnight/kino/releases/latest/download/install.sh | bash
 ```
 
 Windows (PowerShell):
 
 ```powershell
-irm https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/install.ps1 | iex
+irm https://github.com/isleepverywellatnight/kino/releases/latest/download/install.ps1 | iex
 ```
 
 ### Wenn das System den ersten Start blockiert

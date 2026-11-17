@@ -10,7 +10,7 @@ Diese Schritte betreffen die Entwicklung. Um KINO zu nutzen, lade es einfach her
 
 Damit KINO neue Versionen selbst installiert, signiert die CI die Updates mit dem Secret `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables → Actions): dem Inhalt des privaten Schlüssels, den `tools/build_update_package.py --init-key` erzeugt und dessen öffentlicher Teil `assets/update_public_key.hex` ist. Ohne dieses Secret kündigt KINO die neue Version an und bietet den Download an.
 
-Dieses Repository ist privat: Releases erscheinen im öffentlichen Repository [kino-releases](https://github.com/isleepverywellatnight/kino-releases), das Downloads, Installationsskripte und Updates von KINO nutzen. Die CI schreibt dorthin mit dem Secret `KINORELEASE`: ein Fine-grained-Token nur für kino-releases, mit Contents lesen und schreiben.
+Releases erscheinen in diesem Repository; Downloads, Installationsskripte und Updates von KINO nutzen sie. Die CI veröffentlicht mit ihrem eigenen `GITHUB_TOKEN`: kein weiteres Secret nötig.
 
 ## Auf dem eigenen Rechner bauen
 
