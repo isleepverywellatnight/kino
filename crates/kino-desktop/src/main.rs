@@ -85,6 +85,10 @@ enum UserEvent {
     /// The external player started or ended: the window steps aside, then comes back.
     Hide,
     Show,
+    /// Windows: the mouse moved on KINO's bar with the button held — the
+    /// window's place and the cursor's at the press.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    Drag(i32, i32, i32, i32),
     /// The answer to a bridge call finished off the main thread.
     Reply(u64, Result<Value, String>),
     /// A window action the page asked through the server (/api/window/action).
@@ -927,6 +931,35 @@ fn main() -> Result<()> {
                 let done = updates(&name, &updater, &runtime, &remote, &replies, id);
                 if let Some(result) = done {
                     let _ = replies.send_event(UserEvent::Reply(id, result));
+                }
+            }
+            // Windows: a press on the bar becomes a drag only when the mouse moves.
+            #[cfg(windows)]
+            Event::UserEvent(UserEvent::Call(id, name, _)) if name == "start_window_drag" => {
+                let _ = webview.evaluate_script(&format!("window.__kinoReply({id}, true, true)"));
+                if win_frame::button_down()
+                    && let Ok(origin) = window.outer_position()
+                {
+                    let replies = replies.clone();
+                    let start = win_frame::cursor();
+                    std::thread::spawn(move || {
+                        if win_frame::wait_for_drag(start) {
+                            let _ = replies
+                                .send_event(UserEvent::Drag(origin.x, origin.y, start.0, start.1));
+                        }
+                    });
+                }
+            }
+            // The window catches up with the cursor, then Windows moves it (and snaps it).
+            #[cfg(windows)]
+            Event::UserEvent(UserEvent::Drag(x, y, cursor_x, cursor_y)) => {
+                let (now_x, now_y) = win_frame::cursor();
+                window.set_outer_position(tao::dpi::PhysicalPosition::new(
+                    x + now_x - cursor_x,
+                    y + now_y - cursor_y,
+                ));
+                if win_frame::button_down() {
+                    let _ = window.drag_window();
                 }
             }
             Event::UserEvent(UserEvent::Reply(id, result)) => {
