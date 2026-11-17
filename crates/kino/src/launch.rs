@@ -79,6 +79,7 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
         native_player: options.native_player,
         notifications: options.notifications,
         player,
+        remote: Default::default(),
         sites: crate::manga::sources::Sites::default(),
     });
     if options.startup_tasks {

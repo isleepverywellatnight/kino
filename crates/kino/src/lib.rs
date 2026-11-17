@@ -31,6 +31,7 @@ pub mod play;
 pub mod player;
 pub mod prefs;
 pub mod recommender;
+pub mod remote;
 pub mod resolve;
 pub mod routes;
 pub mod series;

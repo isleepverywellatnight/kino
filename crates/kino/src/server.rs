@@ -41,6 +41,8 @@ pub struct AppState {
     pub notifications: bool,
     /// The external player (mpv, IINA, VLC), when this process has the window.
     pub player: Option<Arc<crate::player::Player>>,
+    /// The phone remote: the player's state and the commands waiting for it.
+    pub remote: Arc<crate::remote::Remote>,
 }
 
 pub type Shared = Arc<AppState>;
