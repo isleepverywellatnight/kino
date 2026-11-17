@@ -21,6 +21,15 @@ pub fn router() -> Router<Shared> {
         )
         .route("/api/stremio-addons/catalog", get(stremio_catalog))
         .route("/api/addons", get(addons))
+        .route("/api/trakt/status", get(trakt_status))
+        .route("/api/trakt/auth/start", axum::routing::post(trakt_start))
+        .route("/api/trakt/auth/poll", axum::routing::post(trakt_poll))
+        .route(
+            "/api/trakt/disconnect",
+            axum::routing::post(trakt_disconnect),
+        )
+        .route("/api/trakt/scrobble", axum::routing::post(trakt_scrobble))
+        .route("/api/trakt/sync", axum::routing::post(trakt_sync))
         .route("/api/addons/toggle", axum::routing::post(toggle_addon))
 }
 
@@ -218,4 +227,46 @@ async fn toggle_addon(State(s): State<Shared>, JsonBody(body): JsonBody) -> Resp
     };
     crate::addons::toggle_builtin(&s.db, &field(&body, "id"), enabled);
     Json(json!({"ok": true, "addons": crate::addons::builtin(&s.db)})).into_response()
+}
+
+fn trakt(s: &Shared) -> crate::trakt::Trakt<'_> {
+    crate::trakt::Trakt {
+        db: &s.db,
+        client: &s.http,
+        base: crate::trakt::API.into(),
+    }
+}
+
+async fn trakt_status(State(s): State<Shared>) -> Response {
+    Json(trakt(&s).status()).into_response()
+}
+
+async fn trakt_start(State(s): State<Shared>) -> Response {
+    Json(trakt(&s).start().await).into_response()
+}
+
+async fn trakt_poll(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
+    Json(trakt(&s).poll(&field(&body, "device_code")).await).into_response()
+}
+
+async fn trakt_disconnect(State(s): State<Shared>) -> Response {
+    Json(trakt(&s).disconnect()).into_response()
+}
+
+async fn trakt_scrobble(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
+    let action = body
+        .get("action")
+        .map(|a| field(&json!({"v": a}), "v"))
+        .unwrap_or_else(|| "start".into());
+    let media = body.get("media").cloned().unwrap_or(json!({}));
+    let progress = match &body["progress"] {
+        Value::Number(n) => n.as_f64().unwrap_or(0.0),
+        Value::String(t) => t.trim().parse().unwrap_or(0.0),
+        _ => 0.0,
+    };
+    Json(trakt(&s).scrobble(&action, &media, progress).await).into_response()
+}
+
+async fn trakt_sync(State(s): State<Shared>) -> Response {
+    Json(trakt(&s).sync().await).into_response()
 }
