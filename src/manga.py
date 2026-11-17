@@ -1,12 +1,13 @@
-"""Manga: series from MangaDex and from the user's own files, and where the
-user stopped reading.
+"""Manga: the catalogue, the chapters of a series gathered from several sites,
+the user's own files, and where the user stopped reading.
 
-MangaDex (api.mangadex.org) is a public catalogue of series translated by
-volunteer groups; KINO reads its JSON and shows the group with each chapter.
-Its pages load straight from MangaDex's image servers. The user's own files
-are .cbz archives and folders of images in one folder they choose: a series
-is a sub-folder (its chapters are .cbz files or folders of images inside), or
-a single .cbz at the top.
+The catalogue is AniList's: every series, the ones being published now, their
+covers and authors. The chapters of one series come from the sites in
+manga_sources.py; for each chapter number KINO keeps one copy, in the reading
+language when a site has it, else in English. The user's own files are .cbz
+archives and folders of images in one folder they choose: a series is a
+sub-folder (its chapters are .cbz files or folders of images inside), or a
+single .cbz at the top. Volumes downloaded by torrent go there too.
 """
 import hashlib
 import re
@@ -17,16 +18,13 @@ import zipfile
 from pathlib import Path
 
 import kino_db
+import manga_sources
 from config import cached_get, http_json
 
 API = "https://api.mangadex.org"
-# MangaDex's own covers sit behind a check meant for browsers, which an image in
-# KINO cannot pass: covers come from AniList, through the AniList number each
-# MangaDex series gives (links.al).
 ANILIST = "https://graphql.anilist.co"
-_COVERS_QUERY = "query ($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: MANGA) { id coverImage { large } } } }"
 HEADERS = {"User-Agent": "KINO-Desktop (https://github.com/isleepverywellatnight/kino)"}
-# Series shown and read: MangaDex's « safe » and « suggestive » ratings; never its adult ones.
+# Series shown and read: never AniList's adult ones, nor MangaDex's adult ratings.
 CONTENT = ("safe", "suggestive")
 LANGUAGES = ("fr", "en", "es", "es-la", "de", "it", "pt-br", "ru", "ja", "zh")
 FOLDER_KEY = "manga_folder_v1"
@@ -35,6 +33,14 @@ PROGRESS_KEEP = 200
 IMAGES = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif")
 _ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _LOCK = threading.Lock()
+_FIELDS = ("id title { romaji english native } synonyms coverImage { extraLarge large } startDate { year } "
+           "status chapters volumes countryOfOrigin format genres")
+_ROWS = {
+    # « Tendances »: what is being read now, among the series still coming out.
+    "trending": "sort: TRENDING_DESC, status: RELEASING",
+    "popular": "sort: POPULARITY_DESC",
+    "webtoon": "sort: TRENDING_DESC, countryOfOrigin: KR",
+}
 
 
 class MangaError(ValueError):
@@ -47,6 +53,12 @@ def _id(value, what="Manga"):
     return str(value)
 
 
+def _anilist_number(value):
+    if not re.fullmatch(r"\d{1,9}", str(value or "")):
+        raise MangaError("Manga inconnu.")
+    return int(value)
+
+
 def _lang(value):
     return value if value in LANGUAGES else "en"
 
@@ -57,91 +69,98 @@ def _get(path, params, ttl):
     return cached_get(f"mangadex:{url}", ttl, lambda: http_json(url, headers=HEADERS, timeout=12, retries=1))
 
 
-# ---------- MangaDex ----------
-
-def _title(attributes, lang):
-    titles = attributes.get("title") or {}
-    alt = {k: v for item in attributes.get("altTitles") or [] for k, v in item.items()}
-    for key in (lang, "en", "ja-ro", "ja"):
-        if titles.get(key) or alt.get(key):
-            return titles.get(key) or alt.get(key)
-    return next(iter(titles.values()), "Sans titre")
+def _anilist(query, variables, ttl):
+    key = f"anilist-manga:{query}:{sorted(variables.items())}"
+    data = cached_get(key, ttl, lambda: http_json(ANILIST, method="POST", json_data={"query": query, "variables": variables},
+                                                  headers=HEADERS, timeout=12, retries=1))
+    return (data or {}).get("data") or {}
 
 
-def _anilist_id(manga):
-    value = str(((manga.get("attributes") or {}).get("links") or {}).get("al") or "")
-    return int(value) if value.isdigit() else None
+# ---------- The catalogue (AniList) ----------
+
+def _titles(media):
+    title = media.get("title") or {}
+    latin = [t for t in media.get("synonyms") or [] if t and t.isascii()]
+    return [t for t in (title.get("english"), title.get("romaji"), *latin) if t]
 
 
-def _covers(mangas):
-    """{AniList number: cover address} for these series, in one request."""
-    ids = sorted({i for i in map(_anilist_id, mangas) if i})
-    if not ids:
-        return {}
-    try:
-        data = cached_get(f"manga-covers:{ids}", 7 * 86400, lambda: http_json(
-            ANILIST, method="POST", json_data={"query": _COVERS_QUERY, "variables": {"ids": ids}}, headers=HEADERS, timeout=10, retries=1))
-    except Exception:
-        return {}
-    media = (((data or {}).get("data") or {}).get("Page") or {}).get("media") or []
-    return {m["id"]: (m.get("coverImage") or {}).get("large") or "" for m in media if m.get("id")}
-
-
-def _series(manga, lang, covers=None):
-    attributes = manga.get("attributes") or {}
-    covers = _covers([manga]) if covers is None else covers
+def _series(media):
+    title = media.get("title") or {}
+    cover = media.get("coverImage") or {}
     return {
-        "id": manga["id"], "source": "mangadex", "title": _title(attributes, lang), "cover": covers.get(_anilist_id(manga), ""),
-        "year": attributes.get("year") or "", "status": attributes.get("status") or "",
-        "languages": [l for l in attributes.get("availableTranslatedLanguages") or [] if l],
+        "id": str(media["id"]), "source": "anilist", "title": title.get("english") or title.get("romaji") or "Sans titre",
+        "cover": cover.get("extraLarge") or cover.get("large") or "", "year": (media.get("startDate") or {}).get("year") or "",
+        "status": (media.get("status") or "").lower(), "kind": media.get("countryOfOrigin") or "",
     }
-
-
-def _list(params, lang, ttl=3600, content=CONTENT):
-    data = _get("/manga", {"limit": 24, "contentRating[]": list(content), "hasAvailableChapters": "true", **params}, ttl)
-    found = [m for m in data.get("data") or [] if m.get("id")]
-    covers = _covers(found)
-    return [_series(m, lang, covers) for m in found]
 
 
 def search(query, lang="fr"):
     query = str(query or "").strip()[:100]
     if not query:
         return []
-    # Most followed first: « frieren » gives the series before its spin-offs.
-    return _list({"title": query, "order[followedCount]": "desc"}, _lang(lang), ttl=600)
+    data = _anilist(f"query ($q: String) {{ Page(perPage: 30) {{ media(search: $q, type: MANGA, isAdult: false, "
+                    f"sort: [SEARCH_MATCH, POPULARITY_DESC]) {{ {_FIELDS} }} }} }}", {"q": query}, 600)
+    return [_series(m) for m in (data.get("Page") or {}).get("media") or []]
+
+
+def row(name):
+    """One row of the tab: « trending », « popular » or « webtoon »."""
+    if name not in _ROWS:
+        raise MangaError("Rangée inconnue.")
+    data = _anilist(f"{{ Page(perPage: 30) {{ media(type: MANGA, isAdult: false, {_ROWS[name]}) {{ {_FIELDS} }} }} }}", {}, 6 * 3600)
+    return [_series(m) for m in (data.get("Page") or {}).get("media") or []]
 
 
 def popular(lang="fr"):
-    """The most followed series that have chapters in the user's language."""
-    lang = _lang(lang)
-    # The first page of the tab shows « safe » series only; a search finds the others.
-    return _list({"order[followedCount]": "desc", "availableTranslatedLanguage[]": [lang]}, lang, ttl=6 * 3600,
-                 content=("safe",))
+    return row("trending")
 
 
-def details(manga_id, lang="fr"):
-    manga_id, lang = _id(manga_id), _lang(lang)
-    manga = (_get(f"/manga/{manga_id}", {"includes[]": ["author"]}, 3600) or {}).get("data") or {}
-    if not manga or (manga.get("attributes") or {}).get("contentRating") not in CONTENT:
+def _media(anilist_id):
+    data = _anilist(f"query ($id: Int) {{ Media(id: $id, type: MANGA) {{ {_FIELDS} isAdult description(asHtml: false) "
+                    "staff(perPage: 6) { edges { role node { name { full } } } } } }", {"id": anilist_id}, 6 * 3600)
+    media = data.get("Media")
+    if not media or media.get("isAdult"):
         raise MangaError("Ce manga n'est pas disponible dans KINO.")
-    attributes = manga["attributes"]
-    descriptions = attributes.get("description") or {}
-    authors = [(r.get("attributes") or {}).get("name") for r in manga.get("relationships") or [] if r.get("type") == "author"]
-    tags = [((t.get("attributes") or {}).get("name") or {}).get("en") for t in attributes.get("tags") or []]
-    return {
-        **_series(manga, lang),
-        "description": descriptions.get(lang) or descriptions.get("en") or "",
-        "authors": [a for a in authors if a][:3],
-        "tags": [t for t in tags if t][:8],
-    }
+    return media
 
 
-def chapters(manga_id, lang="fr"):
-    """The chapters in one language, in reading order; one copy per chapter number."""
-    manga_id, lang = _id(manga_id), _lang(lang)
+def _from_mangadex(manga_id):
+    """A series opened before the catalogue moved to AniList: its AniList number."""
+    manga = (_get(f"/manga/{_id(manga_id)}", {}, 86400) or {}).get("data") or {}
+    number = str(((manga.get("attributes") or {}).get("links") or {}).get("al") or "")
+    if not number.isdigit():
+        raise MangaError("Ce manga n'est plus dans le catalogue de KINO.")
+    return int(number)
+
+
+def details(series_id, lang="fr"):
+    series_id = str(series_id or "")
+    anilist_id = _from_mangadex(series_id) if _ID.fullmatch(series_id) else _anilist_number(series_id)
+    media, lang = _media(anilist_id), _lang(lang)
+    authors = [((e.get("node") or {}).get("name") or {}).get("full") for e in (media.get("staff") or {}).get("edges") or []
+               if re.search(r"story|art", e.get("role") or "", re.I)]
+    description = re.sub(r"<[^>]+>|\(Source:[^)]*\)", "", media.get("description") or "").strip()
+    if lang != "en":
+        found = _mangadex_series(anilist_id, _titles(media))
+        description = ((found or {}).get("attributes") or {}).get("description", {}).get(lang) or description
+    return {**_series(media), "description": description, "authors": list(dict.fromkeys(a for a in authors if a))[:3],
+            "tags": (media.get("genres") or [])[:6], "chapters_total": media.get("chapters") or 0,
+            "volumes_total": media.get("volumes") or 0, "titles": _titles(media)}
+
+
+# ---------- The chapters, from every site ----------
+
+def _mangadex_series(anilist_id, titles):
+    try:
+        return manga_sources.mangadex_match(anilist_id, titles, _get)
+    except Exception:
+        return None
+
+
+def _mangadex_chapters(manga_id, lang):
+    """The readable chapters of a MangaDex series in one language, one copy per number."""
     found, seen, offset = [], set(), 0
-    while offset < 2000:
+    while offset < 3000:
         page = _get(f"/manga/{manga_id}/feed", {
             "translatedLanguage[]": [lang], "limit": 500, "offset": offset, "order[volume]": "asc",
             "order[chapter]": "asc", "includes[]": "scanlation_group", "contentRating[]": list(CONTENT)}, 1800)
@@ -153,9 +172,9 @@ def chapters(manga_id, lang="fr"):
             seen.add(number)
             groups = [(r.get("attributes") or {}).get("name") for r in chapter.get("relationships") or [] if r.get("type") == "scanlation_group"]
             found.append({
-                "id": chapter["id"], "number": number, "volume": attributes.get("volume") or "",
-                "title": attributes.get("title") or "", "pages": attributes.get("pages") or 0,
-                "group": next((g for g in groups if g), ""),
+                "id": f"md:{chapter['id']}", "number": number, "volume": attributes.get("volume") or "",
+                "title": attributes.get("title") or "", "pages": attributes.get("pages") or 0, "lang": lang,
+                "group": next((g for g in groups if g), ""), "source": "MangaDex",
                 # Hosted by its publisher (MangaPlus…): it opens there, not in KINO.
                 "external": attributes.get("externalUrl") or "",
             })
@@ -165,9 +184,55 @@ def chapters(manga_id, lang="fr"):
     return found
 
 
+def _weebcentral_chapters(titles):
+    def fetch():
+        series_id = manga_sources.weebcentral_match(titles)
+        return manga_sources.weebcentral_chapters(series_id) if series_id else []
+    return [{**c, "title": "", "volume": "", "pages": 0, "lang": "en", "group": "", "source": "WeebCentral", "external": ""}
+            for c in manga_sources.cached(f"wc:{titles[:3]}", 1800, fetch)]
+
+
+def chapters(series_id, lang="fr"):
+    """Every chapter once, in reading order: in the reading language when a site has it, else in English."""
+    lang = _lang(lang)
+    series_id = str(series_id or "")
+    anilist_id = _from_mangadex(series_id) if _ID.fullmatch(series_id) else _anilist_number(series_id)
+    titles = _titles(_media(anilist_id))
+    md = _mangadex_series(anilist_id, titles)
+    lists, failed = {}, []
+    for name, read in (("wc", lambda: _weebcentral_chapters(titles)),
+                       ("md-en", lambda: _mangadex_chapters(md["id"], "en") if md else []),
+                       ("md-lang", lambda: _mangadex_chapters(md["id"], lang) if md and lang != "en" else [])):
+        try:
+            lists[name] = read()
+        except Exception:
+            lists[name], failed = [], failed + [name]
+    if failed and not any(lists.values()):
+        raise OSError("Les sources de chapitres ne répondent pas.")
+    order = ["md-lang", "wc", "md-en"] if lang != "en" else ["wc", "md-en"]
+    chosen = {}
+    for name in order:
+        for chapter in lists[name]:
+            key = manga_sources.number_key(chapter["number"]) or f"x:{chapter['id']}"
+            current = chosen.get(key)
+            # A chapter hosted elsewhere gives way to one KINO can show.
+            if current is None or (current["external"] and not chapter["external"]):
+                chosen[key] = chapter
+    return sorted(chosen.values(), key=lambda c: (float(manga_sources.number_key(c["number"]) or 1e9), c["id"]))
+
+
 def pages(chapter_id):
-    """The image addresses of a chapter, from the MangaDex server it is given to read from."""
-    chapter_id = _id(chapter_id, "Chapitre")
+    """The image addresses of a chapter, from the site it comes from."""
+    chapter_id = str(chapter_id or "")
+    if chapter_id.startswith("wc:"):
+        try:
+            found = manga_sources.weebcentral_pages(chapter_id[3:])
+        except manga_sources.SourceError as error:
+            raise MangaError(str(error)) from None
+        if not found:
+            raise MangaError("Ce chapitre ne se lit pas dans KINO.")
+        return found
+    chapter_id = _id(chapter_id[3:] if chapter_id.startswith("md:") else chapter_id, "Chapitre")
     data = _get(f"/at-home/server/{chapter_id}", {}, 300) or {}
     chapter = data.get("chapter") or {}
     base, digest = data.get("baseUrl"), chapter.get("hash")
@@ -279,10 +344,14 @@ def progress():
 
 def save_progress(entry):
     source = entry.get("source")
-    if source not in ("mangadex", "local"):
+    if source not in ("anilist", "mangadex", "local"):
         raise MangaError("Source inconnue.")
-    series = _id(entry.get("series")) if source == "mangadex" else str(entry.get("series") or "")
-    if source == "local" and not re.fullmatch(r"[0-9a-f]{20}", series):
+    series = str(entry.get("series") or "")
+    if source == "mangadex":
+        series = _id(series)
+    elif source == "anilist":
+        series = str(_anilist_number(series))
+    elif not re.fullmatch(r"[0-9a-f]{20}", series):
         raise MangaError("Série inconnue.")
     record = {
         "source": source, "series": series, "title": str(entry.get("title") or "")[:200], "cover": str(entry.get("cover") or "")[:500],

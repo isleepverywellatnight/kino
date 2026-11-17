@@ -16,10 +16,11 @@ KINO hostet, liefert und verbreitet keine Inhalte. Es fragt Quellen ab, die der 
 - **Ohne Debrid-Dienst**: Add-ons hinzufügen (mehr Quellen und ihre
   Kataloge unter Entdecken) und Torrents per P2P abspielen, nachdem du zugestimmt
   hast, was das bedeutet (deine IP-Adresse ist sichtbar, du teilst beim Schauen).
-- **Manga**: Lies Serien von MangaDex (von ehrenamtlichen Gruppen übersetzt) und
-  deine eigenen CBZ-Dateien oder Bildordner, Seite für Seite oder durchgehend
-  scrollend, auf Wunsch in japanischer Leserichtung; KINO merkt sich, wo du
-  aufgehört hast.
+- **Manga**: der ganze Katalog und die laufenden Serien, jedes Kapitel aus
+  mehreren Seiten zusammengeführt (in deiner Sprache, wenn es sie gibt, sonst
+  auf Englisch), komplette HD-Bände per Torrent und deine eigenen CBZ-Dateien
+  und Bildordner; Seite für Seite oder als langes Scrollen, auf Wunsch in
+  japanischer Leserichtung. KINO merkt sich, wo du aufgehört hast.
 - **Wiedergabe**: integrierter Videoplayer auf Basis von mpv (HDR, Untertitel, Tonspuren, Intro überspringen).
 - **Verfolgen**: Meine Liste, laufende Titel, Gesehen, Meine Serien, Veröffentlichungskalender, Bewertung mit einem Klick.
 - **Vorschläge**: „Für dich“ und „Wenn dir gefallen hat“, auf deinem Computer berechnet aus dem, was du gesehen und bewertet hast.
