@@ -23,6 +23,8 @@ pub fn router() -> Router<Shared> {
         .route("/api/window/action", post(window_action))
         .route("/api/open-folder", post(open_folder))
         .route("/api/save-screenshot", post(save_screenshot))
+        .route("/api/probe-media", post(probe_media))
+        .route("/api/remux", get(remux))
 }
 
 async fn python(s: &Shared, request: Request) -> Response {
@@ -196,6 +198,151 @@ async fn save_screenshot(State(s): State<Shared>, request: Request) -> Response 
         )
             .into_response(),
     }
+}
+
+/// A stream's video and audio tracks, and the audio track KINO would pick.
+async fn probe_media(State(s): State<Shared>, request: Request) -> Response {
+    if s.player.is_none() {
+        return python(&s, request).await;
+    }
+    let source = text(&json_body(request).await["url"]);
+    let source = crate::routes::play::offline_media_file(&s, &source)
+        .or_else(|| crate::media::is_web_stream(&source).then_some(source));
+    let Some(source) = source else {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "Adresse du flux invalide"})),
+        )
+            .into_response();
+    };
+    let Some(info) = crate::media::inspect(&source, std::time::Duration::from_secs(8)).await else {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": "Impossible d’analyser ce flux"})),
+        )
+            .into_response();
+    };
+    let preference = tokio::task::spawn_blocking(crate::config::load)
+        .await
+        .ok()
+        .and_then(|c| c.get("pref_lang").map(text))
+        .unwrap_or_else(|| "vf".into());
+    let audio = info["audio"].as_array().cloned().unwrap_or_default();
+    let selected = crate::media::select_audio(&audio, &preference);
+    Json(json!({"ok": true, "media": info, "selected_audio": selected})).into_response()
+}
+
+/// FFmpeg's output, and the FFmpeg that makes it: ended when the page stops reading.
+struct Converting {
+    output: tokio_util::io::ReaderStream<tokio::process::ChildStdout>,
+    _ffmpeg: tokio::process::Child,
+}
+
+impl futures_util::Stream for Converting {
+    type Item = std::io::Result<axum::body::Bytes>;
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        std::pin::Pin::new(&mut self.output).poll_next(cx)
+    }
+}
+
+/// A file the page's player cannot read, converted on the fly into a fragmented MP4.
+async fn remux(
+    State(s): State<Shared>,
+    axum::extract::Query(p): axum::extract::Query<std::collections::HashMap<String, String>>,
+    request: Request,
+) -> Response {
+    if s.player.is_none() {
+        return python(&s, request).await;
+    }
+    let failure = |status: StatusCode, body: Value| (status, Json(body)).into_response();
+    let raw = p.get("url").cloned().unwrap_or_default();
+    if raw.is_empty() {
+        return failure(
+            StatusCode::BAD_REQUEST,
+            json!({"error": "Paramètre url manquant"}),
+        );
+    }
+    let source = crate::routes::play::offline_media_file(&s, &raw)
+        .or_else(|| crate::media::is_web_stream(&raw).then(|| raw.clone()));
+    let Some(source) = source else {
+        return failure(
+            StatusCode::BAD_REQUEST,
+            json!({"error": "Adresse du flux invalide", "code": "source_unavailable"}),
+        );
+    };
+    let Some(ffmpeg) = crate::intro::find_tool("ffmpeg") else {
+        return failure(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": "FFmpeg introuvable sur le système"}),
+        );
+    };
+    let start = p
+        .get("ss")
+        .and_then(|v| v.trim().parse::<f64>().ok())
+        .filter(|v| v.is_finite())
+        .unwrap_or(0.0)
+        .max(0.0);
+    let audio_index = match p.get("audio").map(|a| a.trim().parse::<u32>()) {
+        None => None,
+        Some(Ok(i)) if i <= 1024 => Some(i),
+        Some(_) => {
+            return failure(
+                StatusCode::BAD_REQUEST,
+                json!({"error": "Piste audio invalide"}),
+            );
+        }
+    };
+    let args = crate::media::remux_args(&crate::media::Remux {
+        source: &source,
+        start,
+        transcode_video: p.get("video").map(String::as_str) == Some("h264"),
+        audio_index,
+        transcode_audio: p.get("acopy").map(String::as_str) != Some("1"),
+        hevc_tag: p.get("hvc1").map(String::as_str) == Some("1"),
+    });
+    let spawned = tokio::process::Command::new(ffmpeg)
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true)
+        .spawn();
+    let Ok(mut ffmpeg) = spawned else {
+        return failure(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": "FFmpeg introuvable sur le système"}),
+        );
+    };
+    let Some(stdout) = ffmpeg.stdout.take() else {
+        return failure(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": "FFmpeg introuvable sur le système"}),
+        );
+    };
+    let mut output = tokio_util::io::ReaderStream::with_capacity(stdout, 65536);
+    // Nothing at all: the link expired or cannot be reached.
+    let first = futures_util::StreamExt::next(&mut output).await;
+    let Some(Ok(first)) = first.filter(|f| f.as_ref().is_ok_and(|b| !b.is_empty())) else {
+        return failure(
+            StatusCode::BAD_GATEWAY,
+            json!({"error": "Ce lien de lecture est expiré ou inaccessible. Essayez une autre source.", "code": "source_unavailable"}),
+        );
+    };
+    let rest = Converting {
+        output,
+        _ffmpeg: ffmpeg,
+    };
+    let body =
+        futures_util::StreamExt::chain(futures_util::stream::once(async move { Ok(first) }), rest);
+    Response::builder()
+        .header("Content-Type", "video/mp4")
+        .header("Accept-Ranges", "none")
+        .header("Cache-Control", "no-cache, no-store, must-revalidate")
+        .body(axum::body::Body::from_stream(body))
+        .unwrap_or_else(|_| StatusCode::BAD_GATEWAY.into_response())
 }
 
 #[cfg(test)]

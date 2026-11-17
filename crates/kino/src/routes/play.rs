@@ -575,6 +575,14 @@ async fn trailer(State(s): State<Shared>, Query(p): Query<HashMap<String, String
 static OFFLINE_MEDIA: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^/api/offline/media/([0-9a-f]{32})$").unwrap());
 
+/// The file of a completed offline download addressed by its KINO route
+/// (« /api/offline/media/<id> »): FFmpeg, ffprobe and mpv need the file itself.
+pub fn offline_media_file(s: &Shared, source: &str) -> Option<String> {
+    let id = OFFLINE_MEDIA.captures(source.trim())?[1].to_string();
+    let path = s.offline.asset(&id, "media").filter(|p| p.is_file())?;
+    Some(path.display().to_string())
+}
+
 /// « Lire dans mpv / VLC » from a source list: the file (or a pack's files, or
 /// the season from this episode on) in the external player, from the resume point.
 async fn external_player(
@@ -588,12 +596,8 @@ async fn external_player(
         return delegate(&s, method, &uri, &headers, raw).await;
     };
     let body: Value = serde_json::from_slice(&raw).unwrap_or_else(|_| json!({}));
-    let mut url = text(&body["url"]);
-    if let Some(id) = OFFLINE_MEDIA.captures(url.trim()).map(|c| c[1].to_string())
-        && let Some(path) = s.offline.asset(&id, "media").filter(|p| p.is_file())
-    {
-        url = path.display().to_string();
-    }
+    let url = text(&body["url"]);
+    let url = offline_media_file(&s, &url).unwrap_or(url);
     let filename = text(&body["filename"]);
     let media = body["media"].as_object().cloned().unwrap_or_default();
     let get = |k: &str| media.get(k).map(text).unwrap_or_default();

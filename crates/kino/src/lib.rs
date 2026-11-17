@@ -22,6 +22,7 @@ pub mod launch;
 pub mod letterboxd;
 pub mod library;
 pub mod manga;
+pub mod media;
 pub mod meta;
 pub mod net;
 pub mod network;
