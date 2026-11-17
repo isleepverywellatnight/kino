@@ -1,0 +1,30 @@
+//! The API routes ported to Rust, by subject.
+
+pub mod anime;
+pub mod library;
+pub mod manga;
+pub mod offline;
+pub mod play;
+pub mod series;
+pub mod settings;
+pub mod sources;
+pub mod suggestions;
+pub mod titles;
+
+use axum::Router;
+
+use crate::server::Shared;
+
+pub fn router() -> Router<Shared> {
+    Router::new()
+        .merge(manga::router())
+        .merge(library::router())
+        .merge(titles::router())
+        .merge(settings::router())
+        .merge(sources::router())
+        .merge(play::router())
+        .merge(series::router())
+        .merge(suggestions::router())
+        .merge(anime::router())
+        .merge(offline::router())
+}

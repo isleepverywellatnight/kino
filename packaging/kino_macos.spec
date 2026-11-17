@@ -25,6 +25,11 @@ if not any(path.name == "libmpv.2.dylib" for path in libmpv_files):
 # At the top level: PyInstaller collects libmpv's dependencies there anyway, so a
 # subfolder would hold a second copy of every library (45 MB).
 binaries += [(str(path), ".") for path in libmpv_files]
+# KINO's server in Rust (crates/kino), in front of the Python one: src/rust_front.py.
+rust_server = project / "target" / "release" / "kino-server"
+if not rust_server.is_file():
+    raise SystemExit("target/release/kino-server is missing: run cargo build --release --bin kino-server")
+binaries += [(str(rust_server), ".")]
 
 a = Analysis(
     [str(source / "desktop.py")],

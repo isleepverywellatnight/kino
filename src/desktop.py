@@ -49,6 +49,7 @@ else:
 import app
 import kino_update
 import paths
+import rust_front
 
 _single_instance_mutex = None
 _single_instance_fd = None
@@ -130,6 +131,7 @@ if not ICON_PATH.exists():
     ICON_PATH = paths.resource("assets", "kino.ico")
 
 server_instance = None
+rust_process = None
 desktop_window = None
 
 HIT_TEST_MAP = {
@@ -152,32 +154,59 @@ HIT_TEST_MAP = {
 SERVER_READY = threading.Event()
 
 
+def start_rust_front():
+    """kino-server on KINO's port, this server behind it on a private local port; False without it."""
+    global server_instance, rust_process
+    program = rust_front.locate()
+    if program is None:
+        return False
+    legacy_port = find_available_port(PORT + 1)
+    if legacy_port == PORT:
+        return False
+    try:
+        server_instance = app.ThreadingHTTPServer(("127.0.0.1", legacy_port), app.RequestHandler)
+    except OSError:
+        return False
+    rust_process = rust_front.start(program, PORT, legacy_port, app.get_web_root(), app.REMOTE_PAIRING_TOKEN,
+                                    native_player=app.NATIVE_PLAYER is not None, notifications=app.NOTIFIER is not None,
+                                    log_dir=app.error_log.default_dir())
+    if rust_process is None:
+        server_instance.server_close()
+        server_instance = None
+        return False
+    app.RUST_FRONT = True
+    return True
+
+
 def run_server():
     global server_instance
     try:
-        try:
-            server_instance = app.ThreadingHTTPServer(("0.0.0.0", PORT), app.RequestHandler)
-        except Exception:
-            server_instance = app.ThreadingHTTPServer(("127.0.0.1", PORT), app.RequestHandler)
+        if not start_rust_front():
+            try:
+                server_instance = app.ThreadingHTTPServer(("0.0.0.0", PORT), app.RequestHandler)
+            except Exception:
+                server_instance = app.ThreadingHTTPServer(("127.0.0.1", PORT), app.RequestHandler)
     except OSError:
         return
     finally:
         SERVER_READY.set()
     # Requests wait in the socket queue until serve_forever: the offline library
-    # is reconciled before the first one is answered.
-    app.offline_library.library.reconcile()
-    # After the single-instance check: a second window must not compact the database
-    # or synchronise Google Drive alongside the running app.
-    app.kino_db.start_background_maintenance()
+    # is reconciled before the first one is answered. With kino-server in front,
+    # it runs the downloads and reconciles them itself.
+    if not app.RUST_FRONT:
+        app.offline_library.library.reconcile()
+        # After the single-instance check: a second window must not compact the database
+        # or synchronise Google Drive alongside the running app.
+        app.kino_db.start_background_maintenance()
+        threading.Thread(target=app.refresh_finished_series, daemon=True).start()
+        threading.Thread(target=app.api_service.warm_account, daemon=True).start()
+        threading.Thread(target=app.network_state.warm, daemon=True).start()
+        # KINO's own suggestions: the public catalogues read again once a month.
+        threading.Thread(target=app.refresh_suggestion_pool, daemon=True, name="suggestions").start()
+        app.backups().start()
     threading.Thread(target=kino_update.prune_installed_update_leftovers, daemon=True).start()
     threading.Thread(target=kino_update.manager.check_latest_quietly, daemon=True, name="update-check").start()
-    threading.Thread(target=app.refresh_finished_series, daemon=True).start()
-    threading.Thread(target=app.api_service.warm_account, daemon=True).start()
-    threading.Thread(target=app.network_state.warm, daemon=True).start()
     threading.Thread(target=watch_new_episodes, daemon=True).start()
-    # KINO's own suggestions: the public catalogues read again once a month.
-    threading.Thread(target=app.refresh_suggestion_pool, daemon=True, name="suggestions").start()
-    app.backups().start()
     server_instance.serve_forever()
 
 
@@ -194,6 +223,7 @@ def on_closed():
             server_instance.shutdown()
         except Exception:
             pass
+    rust_front.stop(rust_process)
 
 
 def run_on_ui(form, fn):
@@ -1317,7 +1347,7 @@ def main():
             # tests/windows_ui.py drives the real window through this port.
             webview.settings["REMOTE_DEBUGGING_PORT"] = int(os.environ["KINO_DEVTOOLS_PORT"])
 
-    SERVER_READY.wait(2.0)
+    SERVER_READY.wait(6.0)
 
     api = WindowApi(lambda: desktop_window)
     window_api_instance = api
@@ -1396,6 +1426,17 @@ def self_check():
     subprocess.run([str(ffmpeg), "-version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                    creationflags=no_window)
     result = {"ok": True, "frozen": frozen, "platform": sys.platform, "ffmpeg": str(ffmpeg)}
+    # The Rust server in front of this one (rust_front.py): shipped, runs, same version.
+    server = rust_front.locate()
+    if frozen and (not server or not server.resolve().is_relative_to(bundle_contents)):
+        raise RuntimeError("kino-server is missing from the application bundle")
+    if server:
+        from kino_version import APP_VERSION
+        answer = subprocess.run([str(server), "--version"], check=True, capture_output=True, text=True, timeout=30,
+                                creationflags=no_window).stdout.strip()
+        if answer != f"kino-server {APP_VERSION}":
+            raise RuntimeError(f"kino-server answers {answer!r}, expected version {APP_VERSION}")
+        result["server"] = answer
     if IS_WIN:
         import player_engine
         mpv = player_engine.bundled_mpv()

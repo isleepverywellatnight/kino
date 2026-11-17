@@ -28,6 +28,11 @@ if not (mpv_dir / "mpv.exe").is_file():
     raise SystemExit("vendor/mpv-windows is missing: run tools/fetch_mpv_windows.py")
 # As data: copied byte for byte, without PyInstaller's analysis of the executable.
 datas += [(str(path), "mpv") for path in sorted(mpv_dir.iterdir()) if path.is_file()]
+# KINO's server in Rust (crates/kino), in front of the Python one: src/rust_front.py.
+rust_server = project / "target" / "release" / "kino-server.exe"
+if not rust_server.is_file():
+    raise SystemExit("target/release/kino-server.exe is missing: run cargo build --release --bin kino-server")
+binaries += [(str(rust_server), ".")]
 
 version_info = VSVersionInfo(
     ffi=FixedFileInfo(filevers=version_parts, prodvers=version_parts, mask=0x3F, flags=0x0, OS=0x40004,

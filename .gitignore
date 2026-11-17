@@ -16,3 +16,6 @@ vendor/libmpv/
 vendor/mpv-windows/
 
 .DS_Store
+
+# Rust
+/target/
