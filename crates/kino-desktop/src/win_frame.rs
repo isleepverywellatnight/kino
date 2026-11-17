@@ -113,3 +113,22 @@ pub fn set_maximized(window: isize, on: bool) {
         place(handle, previous);
     }
 }
+
+/// Whether the main mouse button is still down: a drag starts only then, or
+/// Windows' move loop would wait for a release that already happened (and
+/// swallow the next press, the second half of a double press).
+pub fn button_down() -> bool {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON,
+    };
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_SWAPBUTTON};
+    // SAFETY: plain Win32 queries.
+    unsafe {
+        let button = if GetSystemMetrics(SM_SWAPBUTTON) != 0 {
+            VK_RBUTTON
+        } else {
+            VK_LBUTTON
+        };
+        (GetAsyncKeyState(button as i32) as u16 & 0x8000) != 0
+    }
+}
