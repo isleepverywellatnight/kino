@@ -10,7 +10,7 @@ Mude `APP_VERSION` em `src/kino_version.py` e faça push na `main`: só isso. Qu
 
 Para que o KINO instale sozinho as novas versões, a CI assina as atualizações com o secret `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables → Actions): o conteúdo da chave privada criada por `tools/build_update_package.py --init-key`, cuja parte pública é `assets/update_public_key.hex`. Sem esse secret, o KINO anuncia a nova versão e oferece o download.
 
-Este repositório é privado: as versões são publicadas no repositório público [kino-releases](https://github.com/isleepverywellatnight/kino-releases), usado pelos downloads, scripts de instalação e atualizações do KINO. A CI escreve lá com o secret `KINORELEASE`: um token fine-grained limitado ao kino-releases, com Contents de leitura e escrita.
+As versões são publicadas neste repositório; os downloads, scripts de instalação e atualizações do KINO as usam. A CI publica com o próprio `GITHUB_TOKEN`: nenhum outro secret é necessário.
 
 ## Compilar na sua máquina
 

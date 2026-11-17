@@ -23,7 +23,7 @@ concurrency:
 env:
   PYTHON_VERSION: "3.12"
   # Releases (downloads, updates, install scripts) are published in this repository.
-  RELEASES_REPO: isleepverywellatnight/kino-releases
+  RELEASES_REPO: ${{ github.repository }}
 
 jobs:
   checks:
@@ -31,6 +31,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       publish: ${{ steps.version.outputs.publish }}
+      released: ${{ steps.version.outputs.released }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -55,6 +56,9 @@ jobs:
             fi
           fi
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          # Whether a release exists yet, for verify-release on a push that publishes nothing.
+          if gh release view --repo "$RELEASES_REPO" >/dev/null 2>&1; then released=true; else released=false; fi
+          echo "released=$released" >> "$GITHUB_OUTPUT"
           echo "Version $version, publication : $publish"
       - name: Compile
         run: python -m compileall -q src tools tests
@@ -245,8 +249,7 @@ jobs:
       contents: write
     env:
       VERSION: ${{ needs.checks.outputs.version }}
-      # A token that may write releases to RELEASES_REPO (this workflow's own token cannot).
-      GH_TOKEN: ${{ secrets.KINORELEASE }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -254,23 +257,13 @@ jobs:
           pattern: kino-*
           path: release
           merge-multiple: true
-      - name: Public page
-        # Also gives an empty RELEASES_REPO the commit a release needs.
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::Secret KINORELEASE absent : impossible de publier dans $RELEASES_REPO."
-            exit 1
-          fi
-          sha=$(gh api "repos/$RELEASES_REPO/contents/README.md" --jq .sha 2>/dev/null || true)
-          gh api -X PUT "repos/$RELEASES_REPO/contents/README.md" -f message="KINO $VERSION" \
-            -f content="$(base64 -w0 packaging/releases-README.md)" ${sha:+-f sha="$sha"} >/dev/null
       - name: Publish
         run: |
           cp packaging/install.sh packaging/install.ps1 release/
           cd release
           sha256sum * > SHA256SUMS.txt
           sed "s/{{VERSION}}/$VERSION/g" ../.github/release-notes.md > "$RUNNER_TEMP/notes.md"
-          gh release create "v$VERSION" * --repo "$RELEASES_REPO" \
+          gh release create "v$VERSION" * --repo "$RELEASES_REPO" --target "$GITHUB_SHA" \
             --title "KINO $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
 
   # The latest release, installed the way users do: the install scripts of the
@@ -279,7 +272,7 @@ jobs:
     needs: [checks, release]
     if: >-
       always() && needs.checks.result == 'success' && (needs.release.result == 'success' ||
-      (needs.release.result == 'skipped' && github.event_name == 'push'))
+      (needs.release.result == 'skipped' && github.event_name == 'push' && needs.checks.outputs.released == 'true'))
     strategy:
       fail-fast: false
       matrix:

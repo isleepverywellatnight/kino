@@ -10,7 +10,7 @@
 
 Чтобы KINO сам устанавливал новые версии, CI подписывает обновления секретом `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables → Actions): это содержимое закрытого ключа, созданного `tools/build_update_package.py --init-key`; его открытая часть — `assets/update_public_key.hex`. Без этого секрета KINO сообщает о новой версии и предлагает её скачать.
 
-Этот репозиторий приватный: релизы публикуются в публичном репозитории [kino-releases](https://github.com/isleepverywellatnight/kino-releases), которым пользуются загрузки, скрипты установки и обновления KINO. CI пишет туда с секретом `KINORELEASE`: fine-grained токен только для kino-releases с правом Contents на чтение и запись.
+Релизы публикуются в этом репозитории; ими пользуются загрузки, скрипты установки и обновления KINO. CI публикует со своим `GITHUB_TOKEN`: другие секреты не нужны.
 
 ## Сборка на своём компьютере
 

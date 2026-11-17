@@ -25,7 +25,7 @@ API = "https://api.mangadex.org"
 # MangaDex series gives (links.al).
 ANILIST = "https://graphql.anilist.co"
 _COVERS_QUERY = "query ($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: MANGA) { id coverImage { large } } } }"
-HEADERS = {"User-Agent": "KINO-Desktop (https://github.com/isleepverywellatnight/kino-releases)"}
+HEADERS = {"User-Agent": "KINO-Desktop (https://github.com/isleepverywellatnight/kino)"}
 # Series shown and read: MangaDex's « safe » and « suggestive » ratings; never its adult ones.
 CONTENT = ("safe", "suggestive")
 LANGUAGES = ("fr", "en", "es", "es-la", "de", "it", "pt-br", "ru", "ja", "zh")

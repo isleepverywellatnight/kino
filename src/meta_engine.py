@@ -834,7 +834,7 @@ def french_titles(items):
 # (Japanese, Korean…) is not shown: the catalogue's international name stays.
 ORIGINAL_TITLE_TTL = 180 * 86400
 WIKIDATA_SPARQL = "https://query.wikidata.org/sparql"
-_WIKIDATA_AGENT = "KINO (https://github.com/isleepverywellatnight/kino-releases)"
+_WIKIDATA_AGENT = "KINO (https://github.com/isleepverywellatnight/kino)"
 
 
 def is_latin_title(title):

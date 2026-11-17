@@ -34,8 +34,8 @@ KINO n'héberge, ne fournit et ne distribue aucun contenu. Il interroge des sour
 
 | Système | Télécharger |
 |---|---|
-| **macOS** — Mac Apple Silicon (M1 ou plus récent), macOS 14 ou plus récent | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/KINO-macOS.dmg) |
-| **Windows** — Windows 10 ou 11, 64 bits | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/KINO-Windows.exe) |
+| **macOS** — Mac Apple Silicon (M1 ou plus récent), macOS 14 ou plus récent | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
+| **Windows** — Windows 10 ou 11, 64 bits | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
 
 KINO contient tout ce qu'il lui faut : lecteur vidéo, FFmpeg, interface. Il n'y a rien d'autre à installer. Il suffit ensuite de coller la clé de votre service de débridage dans Paramètres.
 
@@ -51,13 +51,13 @@ Cette commande télécharge la dernière version, vérifie le fichier, installe 
 macOS (app Terminal) :
 
 ```bash
-curl -fsSL https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/isleepverywellatnight/kino/releases/latest/download/install.sh | bash
 ```
 
 Windows (PowerShell) :
 
 ```powershell
-irm https://github.com/isleepverywellatnight/kino-releases/releases/latest/download/install.ps1 | iex
+irm https://github.com/isleepverywellatnight/kino/releases/latest/download/install.ps1 | iex
 ```
 
 ### Si le système bloque le premier lancement
