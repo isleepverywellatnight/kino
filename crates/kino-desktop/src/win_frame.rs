@@ -133,18 +133,42 @@ pub fn button_down() -> bool {
     }
 }
 
-/// After a press on KINO's bar: true once the mouse moved 4 px with the button
-/// held (a drag), false when the button is released first (a click, maybe
-/// half of a double press, which must reach the page).
-pub fn wait_for_drag(start: (i32, i32)) -> bool {
+/// What a press on KINO's bar turned out to be.
+pub enum Press {
+    /// The mouse moved 4 px with the button held.
+    Drag,
+    /// A second press at the same spot within the double-click time.
+    Double,
+    Click,
+}
+
+/// Follows a press on KINO's bar. Windows may keep a double press's second
+/// half from the page, so it is told apart here.
+pub fn follow_press(start: (i32, i32)) -> Press {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::GetDoubleClickTime;
+    let near = |p: (i32, i32), limit: i32| {
+        (p.0 - start.0).abs() <= limit && (p.1 - start.1).abs() <= limit
+    };
     while button_down() {
-        let now = cursor();
-        if (now.0 - start.0).abs() > 3 || (now.1 - start.1).abs() > 3 {
-            return true;
+        if !near(cursor(), 3) {
+            return Press::Drag;
         }
         std::thread::sleep(std::time::Duration::from_millis(8));
     }
-    false
+    // SAFETY: a plain Win32 query.
+    let double = std::time::Duration::from_millis(u64::from(unsafe { GetDoubleClickTime() }));
+    let released = std::time::Instant::now();
+    while released.elapsed() < double {
+        if button_down() {
+            return if near(cursor(), 5) {
+                Press::Double
+            } else {
+                Press::Click
+            };
+        }
+        std::thread::sleep(std::time::Duration::from_millis(8));
+    }
+    Press::Click
 }
 
 /// The cursor on screen, in pixels.
