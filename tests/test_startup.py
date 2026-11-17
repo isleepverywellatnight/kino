@@ -109,8 +109,8 @@ class LaunchTests(unittest.TestCase):
         main = self.function("main")
         self.assertNotIn("time.sleep(0.3)", main)
         self.assertLess(main.index("t.start()"), main.index("install_macos_hooks()"), "the server starts while the hooks load")
-        self.assertLess(main.index("install_macos_hooks()"), main.index("SERVER_READY.wait(2.0)"))
-        self.assertLess(main.index("SERVER_READY.wait(2.0)"), main.index("webview.create_window("))
+        self.assertLess(main.index("install_macos_hooks()"), main.index("SERVER_READY.wait(6.0)"))
+        self.assertLess(main.index("SERVER_READY.wait(6.0)"), main.index("webview.create_window("))
 
 
 if __name__ == "__main__":
