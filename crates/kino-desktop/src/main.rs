@@ -5,6 +5,7 @@
 
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use serde_json::{Value, json};
@@ -64,6 +65,50 @@ fn bridge_script() -> String {
 
 enum UserEvent {
     Call(u64, String, Vec<Value>),
+    /// The external player started or ended: the window steps aside, then comes back.
+    Hide,
+    Show,
+}
+
+type Bounds = Arc<Mutex<Option<(i32, i32, u32, u32)>>>;
+
+/// What the external player asks of the window, from the server's threads.
+struct Hooks {
+    proxy: Mutex<EventLoopProxy<UserEvent>>,
+    bounds: Bounds,
+}
+
+impl kino::player::WindowHooks for Hooks {
+    fn hide(&self) {
+        if let Ok(p) = self.proxy.lock() {
+            let _ = p.send_event(UserEvent::Hide);
+        }
+    }
+    fn show(&self) {
+        if let Ok(p) = self.proxy.lock() {
+            let _ = p.send_event(UserEvent::Show);
+        }
+    }
+    fn geometry(&self) -> Option<(i32, i32, u32, u32)> {
+        self.bounds.lock().ok().and_then(|b| *b)
+    }
+}
+
+/// The window's place for mpv's --geometry: points on a Mac, pixels elsewhere.
+fn bounds_of(window: &Window) -> Option<(i32, i32, u32, u32)> {
+    let at = window.outer_position().ok()?;
+    let size = window.inner_size();
+    let scale = if cfg!(target_os = "macos") {
+        window.scale_factor()
+    } else {
+        1.0
+    };
+    Some((
+        (at.x as f64 / scale) as i32,
+        (at.y as f64 / scale) as i32,
+        (size.width as f64 / scale) as u32,
+        (size.height as f64 / scale) as u32,
+    ))
 }
 
 /// Remembered between launches, as the Python window does (`window_bounds`).
@@ -275,6 +320,13 @@ fn main() -> Result<()> {
     let legacy = python
         .as_ref()
         .map(|_| format!("http://127.0.0.1:{private_port}"));
+    let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
+    let proxy: EventLoopProxy<UserEvent> = event_loop.create_proxy();
+    let bounds: Bounds = Default::default();
+    let hooks: Arc<dyn kino::player::WindowHooks> = Arc::new(Hooks {
+        proxy: Mutex::new(event_loop.create_proxy()),
+        bounds: bounds.clone(),
+    });
     let options = kino::launch::Options {
         port,
         pairing_token: token,
@@ -282,6 +334,7 @@ fn main() -> Result<()> {
         native_player: false,
         notifications: false,
         startup_tasks: true,
+        window: Some(hooks),
     };
     let (ready_tx, ready_rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
@@ -304,8 +357,6 @@ fn main() -> Result<()> {
         anyhow::bail!("KINO's port is taken");
     }
 
-    let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
-    let proxy: EventLoopProxy<UserEvent> = event_loop.create_proxy();
     let (width, height, at) = saved_bounds();
     let mut builder = WindowBuilder::new()
         .with_title("KINO")
@@ -328,6 +379,7 @@ fn main() -> Result<()> {
         builder = builder.with_decorations(false);
     }
     let window = builder.build(&event_loop)?;
+    *bounds.lock().unwrap_or_else(|e| e.into_inner()) = bounds_of(&window);
     let webview = WebViewBuilder::new()
         .with_url(format!("http://127.0.0.1:{port}/"))
         .with_initialization_script(bridge_script())
@@ -355,6 +407,15 @@ fn main() -> Result<()> {
                 let _ =
                     webview.evaluate_script(&format!("window.__kinoReply({id}, {ok}, {value})"));
             }
+            Event::UserEvent(UserEvent::Hide) => window.set_visible(false),
+            Event::UserEvent(UserEvent::Show) => {
+                window.set_visible(true);
+                window.set_focus();
+            }
+            Event::WindowEvent {
+                event: WindowEvent::Moved(_) | WindowEvent::Resized(_),
+                ..
+            } => *bounds.lock().unwrap_or_else(|e| e.into_inner()) = bounds_of(&window),
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..

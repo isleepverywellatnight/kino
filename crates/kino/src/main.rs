@@ -27,6 +27,7 @@ async fn main() -> Result<()> {
         native_player: flag("KINO_NATIVE_PLAYER"),
         notifications: flag("KINO_NOTIFICATIONS"),
         startup_tasks: flag("KINO_STARTUP_TASKS"),
+        window: None,
     };
     launch::serve(launch::bind(port).await?, options).await
 }

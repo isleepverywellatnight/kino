@@ -20,6 +20,8 @@ pub struct Options {
     pub notifications: bool,
     /// The launch work (startup.rs): only for the app's own server.
     pub startup_tasks: bool,
+    /// The window, when it runs in this process: the external player is then started here.
+    pub window: Option<Arc<dyn crate::player::WindowHooks>>,
 }
 
 /// A new random pairing token, as the Python server makes them.
@@ -58,6 +60,9 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
     } else {
         new_token()
     };
+    let player = options
+        .window
+        .map(|w| crate::player::Player::new(db.clone(), meta.clone(), Some(w)));
     let state = Arc::new(server::AppState {
         db: db.clone(),
         port: options.port,
@@ -73,6 +78,7 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
         suggestions: Default::default(),
         native_player: options.native_player,
         notifications: options.notifications,
+        player,
         sites: crate::manga::sources::Sites::default(),
     });
     if options.startup_tasks {

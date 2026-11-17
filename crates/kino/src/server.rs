@@ -39,6 +39,8 @@ pub struct AppState {
     /// What the window offers (set by the desktop app): the native player, notifications.
     pub native_player: bool,
     pub notifications: bool,
+    /// The external player (mpv, IINA, VLC), when this process has the window.
+    pub player: Option<Arc<crate::player::Player>>,
 }
 
 pub type Shared = Arc<AppState>;

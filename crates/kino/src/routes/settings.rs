@@ -87,6 +87,9 @@ async fn save(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
         .iter()
         .filter_map(|k| body.get(*k).map(|v| (k.to_string(), v.clone())))
         .collect();
+    if let (Some(player), Some(on)) = (&s.player, body.get("discord_rpc")) {
+        player.discord.set_enabled(crate::play::truthy(on));
+    }
     let _ = tokio::task::spawn_blocking(move || config::save(&body)).await;
     if let Some(legacy) = s.legacy.clone().filter(|_| !discord.is_empty()) {
         let http = s.http.clone();
