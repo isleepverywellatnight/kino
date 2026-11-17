@@ -1,5 +1,4 @@
 //! Ma Liste, the history and small per-series preferences.
-//! Marking as watched (/api/watched-toggle) still goes to the Python server.
 
 use std::collections::HashMap;
 

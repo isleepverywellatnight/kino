@@ -28,6 +28,7 @@ pub fn router() -> Router<Shared> {
         .route("/api/series-meta", get(series_meta))
         .route("/api/search-suggest", get(suggest))
         .route("/api/history-record", post(history_record))
+        .route("/api/watched-toggle", post(watched_toggle))
 }
 
 fn refused(text: &str) -> Response {
@@ -197,5 +198,174 @@ async fn history_record(State(s): State<Shared>, Json(body): Json<Value>) -> Res
     let history = tokio::task::spawn_blocking(move || library::record_history(db.db(), &entry))
         .await
         .unwrap_or_default();
+    Json(json!({"ok": true, "history": history})).into_response()
+}
+
+fn get_or(payload: &Value, key: &str, default: Value) -> Value {
+    payload
+        .as_object()
+        .and_then(|o| o.get(key))
+        .cloned()
+        .unwrap_or(default)
+}
+
+/// Marks a film, an episode or a whole season as watched, or not watched any more.
+pub async fn toggle_watched(s: &Shared, payload: &Value) -> Vec<Value> {
+    let db = s.net.db();
+    let history = library::history(db);
+    let id = payload["id"].as_str().unwrap_or("").trim().to_string();
+    if id.is_empty() {
+        return history;
+    }
+    let kind = get_or(payload, "type", json!("movie"));
+    let force = truthy(payload.get("force_watched"));
+    let existing = history
+        .iter()
+        .find(|x| x["id"].as_str() == Some(&id))
+        .cloned();
+    let series = kind == json!("series");
+    let season_all = series && truthy(payload.get("season")) && truthy(payload.get("season_all"));
+    let one_episode = series && truthy(payload.get("season")) && truthy(payload.get("episode"));
+    if season_all || one_episode {
+        let s_num = whole(payload.get("season"));
+        let mut episodes: Vec<i64> = if season_all {
+            payload["episodes"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|x| whole(Some(x)))
+                .filter(|e| *e > 0)
+                .collect()
+        } else {
+            vec![whole(payload.get("episode"))]
+        };
+        if season_all && episodes.is_empty() {
+            episodes = (1..=10).collect();
+        }
+        let mut sorted = episodes.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        let codes: Vec<String> = sorted
+            .iter()
+            .map(|e| format!("S{s_num:02}E{e:02}"))
+            .collect();
+        let mut merged: Map<String, Value> = match &existing {
+            Some(found) => found.as_object().cloned().unwrap_or_default(),
+            None => {
+                let mut m = Map::new();
+                m.insert("id".into(), json!(id));
+                m.insert("name".into(), get_or(payload, "name", json!("")));
+                m.insert("type".into(), json!("series"));
+                m.insert("year".into(), get_or(payload, "year", json!("")));
+                m.insert("poster".into(), get_or(payload, "poster", json!("")));
+                m
+            }
+        };
+        let mut watched: Vec<String> = Vec::new();
+        for code in merged
+            .get("watched_episodes")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let code = library::normalize_episode_code(code.as_str().unwrap_or(&code.to_string()));
+            if !watched.contains(&code) {
+                watched.push(code);
+            }
+        }
+        let mut positions: Map<String, Value> = merged
+            .get("ep_positions")
+            .and_then(Value::as_object)
+            .map(|o| {
+                o.iter()
+                    .map(|(k, v)| (library::normalize_episode_code(k), v.clone()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let all_watched = codes.iter().all(|c| watched.contains(c));
+        let same_place = if season_all {
+            merged.get("season").and_then(Value::as_i64) == Some(s_num)
+        } else {
+            merged.get("season").and_then(Value::as_i64) == Some(s_num)
+                && merged.get("episode").and_then(Value::as_i64) == Some(episodes[0])
+        };
+        if all_watched && !force {
+            watched.retain(|c| !codes.contains(c));
+            for c in &codes {
+                positions.remove(c);
+            }
+            if same_place {
+                merged.insert("completed".into(), json!(false));
+                merged.insert("progress_pct".into(), json!(0));
+                merged.insert("position".into(), json!(0));
+                merged.insert("series_finished".into(), json!(false));
+            }
+        } else {
+            for c in &codes {
+                if !watched.contains(c) {
+                    watched.push(c.clone());
+                }
+                positions.insert(c.clone(), json!({"pos": 2700, "dur": 2700, "pct": 100.0}));
+            }
+            let last = *episodes.iter().max().unwrap_or(&1);
+            merged.insert("season".into(), json!(s_num));
+            merged.insert("episode".into(), json!(last));
+            merged.insert("completed".into(), json!(true));
+            merged.insert("progress_pct".into(), json!(100.0));
+            merged.insert("position".into(), json!(2700));
+            merged.insert("duration".into(), json!(2700));
+            let (next_season, next_episode, done) =
+                s.meta.next_episode(&id, s_num, last, true).await;
+            merged.insert("next_season".into(), json!(next_season));
+            merged.insert("next_episode".into(), json!(next_episode));
+            merged.insert("series_finished".into(), json!(done));
+        }
+        let keep = watched.len().saturating_sub(300);
+        merged.insert("watched_episodes".into(), json!(watched[keep..]));
+        merged.insert("ep_positions".into(), Value::Object(positions));
+        merged.insert("updated_at".into(), json!(crate::db::now() as i64));
+        return library::record_history(db, &merged);
+    }
+    // A film, or a whole series.
+    let done = existing.as_ref().is_some_and(|x| {
+        truthy(x.get("completed"))
+            || x.get("progress_pct")
+                .and_then(|p| {
+                    p.as_f64()
+                        .or_else(|| p.as_str().and_then(|s| s.parse().ok()))
+                })
+                .unwrap_or(0.0)
+                >= 85.0
+    });
+    if done && !force {
+        return library::remove_history(db, &id);
+    }
+    let mut entry = Map::new();
+    entry.insert("id".into(), json!(id));
+    for key in ["name", "year", "poster", "imdbRating"] {
+        entry.insert(key.into(), get_or(payload, key, json!("")));
+    }
+    entry.insert("type".into(), kind);
+    entry.insert("position".into(), json!(7200.0));
+    entry.insert("duration".into(), json!(7200.0));
+    // Same order of keys as the Python version.
+    let ordered: Map<String, Value> = [
+        "id",
+        "name",
+        "type",
+        "year",
+        "poster",
+        "imdbRating",
+        "position",
+        "duration",
+    ]
+    .iter()
+    .filter_map(|k| entry.get(*k).map(|v| (k.to_string(), v.clone())))
+    .collect();
+    library::record_history(db, &ordered)
+}
+
+async fn watched_toggle(State(s): State<Shared>, Json(body): Json<Value>) -> Response {
+    let history = toggle_watched(&s, &body).await;
     Json(json!({"ok": true, "history": history})).into_response()
 }
