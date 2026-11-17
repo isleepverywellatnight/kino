@@ -552,6 +552,8 @@ fn self_check() -> Result<Value, String> {
     if !runs(&ffmpeg, "-version") {
         return Err("FFmpeg does not run".into());
     }
+    // Completed below on macOS (libmpv) and Windows (mpv).
+    #[cfg_attr(not(any(target_os = "macos", windows)), allow(unused_mut))]
     let mut result = json!({"ok": true, "version": kino::backup::app_version(), "packaged": packaged(), "platform": std::env::consts::OS,
                             "ffmpeg": ffmpeg.display().to_string(), "web": web.display().to_string()});
     let key = [
