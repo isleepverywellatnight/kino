@@ -254,16 +254,18 @@ pub fn card(media: &Value, kino: Value) -> Value {
     })
 }
 
-async fn cards(meta: &Meta, medias: &[Value]) -> Vec<Value> {
-    let medias: Vec<&Value> = medias
+/// The works to pair with playback ids: (AniList id, format).
+fn works(medias: &[Value]) -> Vec<(Value, Value)> {
+    medias
         .iter()
         .filter(|m| m.is_object() && truthy(&m["id"]))
-        .collect();
-    let works: Vec<(Value, Value)> = medias
-        .iter()
         .map(|m| (m["id"].clone(), m["format"].clone()))
-        .collect();
-    let paired = meta.playback_ids(&works).await;
+        .collect()
+}
+
+/// One row's cards, each once, with the ids already paired.
+fn cards(medias: &[Value], paired: &HashMap<i64, Value>) -> Vec<Value> {
+    let medias = medias.iter().filter(|m| m.is_object() && truthy(&m["id"]));
     let mut seen = std::collections::HashSet::new();
     let mut out = Vec::new();
     for media in medias {
@@ -350,16 +352,15 @@ pub async fn home(meta: &Meta, force: bool) -> Value {
                     ("top", "Les mieux notés".to_string(), ""),
                     ("movies", "Films".to_string(), "Les plus populaires"),
                 ];
+                let list = |key: &str| -> Vec<Value> {
+                    data[key]["media"].as_array().cloned().unwrap_or_default()
+                };
+                // Every row's titles paired in one go, not one row after another.
+                let all: Vec<Value> = plan.iter().flat_map(|(key, ..)| list(key)).collect();
+                let paired = meta.playback_ids(&works(&all)).await;
                 let mut rows = Vec::new();
                 for (key, title, note) in plan {
-                    let items = cards(
-                        meta,
-                        data[key]["media"]
-                            .as_array()
-                            .map(Vec::as_slice)
-                            .unwrap_or(&[]),
-                    )
-                    .await;
+                    let items = cards(&list(key), &paired);
                     if !items.is_empty() {
                         rows.push(
                             json!({"key": key, "title": title, "note": note, "items": items}),
