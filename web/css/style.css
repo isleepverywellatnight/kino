@@ -1,13 +1,5 @@
   :root {
     color-scheme: dark;
-    --bg: #09090b;
-    --surface: #111113;
-    --surface-2: #18181b;
-    --border: #27272a;
-    --border-hover: #52525b;
-    --text: #fafafa;
-    --muted: #a1a1aa;
-    --dim: #71717a;
   }
 
   select, input, textarea {
@@ -56,7 +48,6 @@
   html, body {
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
-    overflow-y: auto;
   }
   *::-webkit-scrollbar, ::-webkit-scrollbar {
     display: none !important;
@@ -75,10 +66,7 @@
   }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
     min-height: 100vh;
-    padding-bottom: 64px;
     -webkit-font-smoothing: antialiased;
     border: none !important;
     outline: none !important;
@@ -103,21 +91,14 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  
-
-  .container { max-width: 1200px; margin: 18px auto 28px auto; padding: 0 20px; }
-
   .btn {
     cursor: pointer;
-    font-weight: 500;
     background: var(--text);
     color: var(--bg);
     border: 1px solid var(--text);
-    padding: 8px 14px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
     text-decoration: none;
     white-space: nowrap;
   }
@@ -125,28 +106,16 @@
   .btn:disabled { opacity: 0.5; cursor: default; }
 
   .btn-secondary {
-    background: var(--surface-2);
-    color: var(--text);
     border: 1px solid var(--border);
   }
-  .btn-secondary:hover {
-    background: var(--border);
-    border-color: var(--border-hover);
-  }
+  
 /* Suggestions de recherche instantanée FTS5 */
 
   /* Torrent recommandé & Filtres rapides */
-  .torrent-item.is-recommended {
-    border-color: rgba(124, 58, 237, 0.5) !important;
-    background: linear-gradient(90deg, rgba(124, 58, 237, 0.07), transparent) !important;
-    box-shadow: 0 0 16px rgba(124, 58, 237, 0.12);
-  }
+  
   .badge-recommended {
-    background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
-    color: #ffffff !important;
     font-weight: 700 !important;
     border: none !important;
-    box-shadow: 0 0 10px rgba(124, 58, 237, 0.45);
   }
   .torrent-quick-chips {
     display: flex;
@@ -228,39 +197,12 @@
   .section-header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    margin-top: 22px;
-    margin-bottom: 12px;
   }
-  .section-title {
-    font-size: 0.88rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .resume-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-    gap: 16px;
-    margin-top: 14px;
-  }
+  
   .resume-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    display: flex;
     flex-direction: column;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.22s;
   }
-  .resume-card:hover {
-    transform: translateY(-3px);
-    border-color: var(--border-hover);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
-  }
+  
   .resume-thumb-wrap {
     position: relative;
     width: 100%;
@@ -328,42 +270,14 @@
     z-index: 2;
   }
   .resume-dismiss-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: var(--dim);
     font-size: 0.82rem;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     backdrop-filter: blur(6px);
-    transition: background 0.15s, color 0.15s;
-    z-index: 2;
   }
-  .resume-dismiss-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
-  }
-  .resume-progress-bar {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.2);
-    z-index: 2;
-  }
-  .resume-progress-fill {
-    height: 100%;
-    background: #ffffff;
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
-  }
+  
   .resume-card-body {
     padding: 12px 14px 14px 14px;
     display: flex;
@@ -371,23 +285,7 @@
     gap: 4px;
     flex: 1;
   }
-  .resume-title {
-    font-weight: 600;
-    font-size: 0.88rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--text);
-    cursor: pointer;
-  }
-  .resume-subinfo {
-    color: var(--dim);
-    font-size: 0.76rem;
-    margin-top: 1px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  
   .resume-actions-row {
     display: flex;
     gap: 8px;
@@ -398,39 +296,24 @@
 
   .posters-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
     margin-top: 14px;
   }
   .poster-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
     cursor: pointer;
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.25s;
     display: flex;
     flex-direction: column;
     position: relative;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
   }
-  .poster-card:hover {
-    transform: translateY(-4px) scale(1.02);
-    border-color: var(--border-hover);
-    box-shadow: 0 14px 32px rgba(0,0,0,0.55);
-  }
+  
   .poster-card img {
     width: 100%;
     aspect-ratio: 2/3;
     object-fit: cover;
     background: var(--surface-2);
     display: block;
-    filter: saturate(0.92);
     transition: filter 0.25s, transform 0.3s;
   }
-  .poster-card:hover img {
-    filter: saturate(1.08);
-  }
+  
   .poster-card .poster-play-bubble {
     position: absolute;
     top: 50%;
@@ -442,7 +325,6 @@
     background: rgba(10, 10, 14, 0.75);
     border: 1px solid rgba(255, 255, 255, 0.3);
     backdrop-filter: blur(8px);
-    display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0;
@@ -462,15 +344,6 @@
   }
   .wl-btn {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 28px;
-    height: 28px;
-    border-radius: 5px;
-    background: rgba(9, 9, 11, 0.82);
-    border: 1px solid var(--border-hover);
-    color: var(--text);
-    font-size: 0.85rem;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -479,27 +352,16 @@
     padding: 0;
     z-index: 3;
   }
-  .wl-btn:hover, .wl-btn.in-list {
-    background: var(--text);
-    color: var(--bg);
-    border-color: var(--text);
-  }
+  
   .poster-info {
-    padding: 10px;
     display: flex;
     flex-direction: column;
     flex: 1;
-    gap: 4px;
   }
   .poster-title {
-    font-weight: 500;
-    font-size: 0.85rem;
-    line-height: 1.3;
     color: var(--text);
   }
   .poster-year {
-    color: var(--dim);
-    font-size: 0.75rem;
     margin-bottom: 6px;
   }
 
@@ -507,9 +369,7 @@
      Unified Media Cards (Anime, Tendances Communauté, Custom Letterboxd Lists)
      ========================================================================== */
   .card {
-    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
     transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
@@ -519,9 +379,7 @@
     user-select: none;
   }
   .card:hover {
-    border-color: var(--border-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
   .card-poster-wrap,
   .card-thumb {
@@ -558,7 +416,6 @@
     border-radius: 4px;
     background: rgba(9, 9, 11, 0.85);
     backdrop-filter: blur(6px);
-    color: #eab308;
     border: 1px solid rgba(255, 255, 255, 0.12);
     z-index: 2;
     display: inline-flex;
@@ -594,7 +451,6 @@
     border-radius: 4px;
     background: rgba(9, 9, 11, 0.85);
     backdrop-filter: blur(6px);
-    color: #eab308;
     border: 1px solid rgba(255, 255, 255, 0.12);
     z-index: 2;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
@@ -717,9 +573,7 @@
 
   .panel {
     margin-top: 20px;
-    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
     padding: 20px;
   }
   .panel h3 {
@@ -730,14 +584,6 @@
 
   /* Fiche Detail Cinematique */
   #detailPanel {
-    position: relative;
-    padding: 0;
-    overflow: hidden;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    box-shadow: 0 16px 40px rgba(0,0,0,0.5);
-    margin-top: 20px;
     animation: fadeInDetail 0.25s ease-out;
   }
   @keyframes fadeInDetail {
@@ -781,9 +627,6 @@
   .detail-backdrop-gradient {
     position: absolute;
     inset: 0;
-    background:
-      linear-gradient(to top, var(--surface) 0%, rgba(12,12,15,0.85) 45%, rgba(12,12,15,0.3) 100%),
-      linear-gradient(to right, rgba(9,9,11,0.95) 0%, rgba(9,9,11,0.7) 48%, rgba(9,9,11,0.2) 100%);
     pointer-events: none;
   }
   .detail-close-btn {
@@ -883,23 +726,13 @@
     border-top: 1px solid var(--border);
   }
   .season-pill {
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
     cursor: pointer;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--muted);
     transition: 0.15s;
   }
   .season-pill:hover {
     border-color: var(--border-hover);
-    color: var(--text);
   }
   .season-pill.active {
-    background: var(--text);
-    color: var(--bg);
     border-color: var(--text);
     font-weight: 600;
   }
@@ -997,43 +830,23 @@
     align-items: center;
   }
   .chip {
-    padding: 5px 12px;
-    border-radius: 5px;
-    font-size: 0.8rem;
     cursor: pointer;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    transition: 0.15s;
   }
-  .chip:hover { border-color: var(--border-hover); color: var(--text); }
-  .chip.active {
-    background: var(--text);
-    color: var(--bg);
-    border-color: var(--text);
-    font-weight: 500;
-  }
-  .torrent-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  
+  .torrent-list { display: flex; flex-direction: column; gap: 8px; }
   .torrent-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 14px;
     padding: 12px 16px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
     flex-wrap: wrap;
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
   .torrent-item:hover {
     border-color: var(--border-hover);
-    background: rgba(25, 25, 32, 0.6);
   }
   .torrent-item.is-recommended {
-    background: rgba(255, 255, 255, 0.035);
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
     position: relative;
   }
   .torrent-title {
@@ -1071,17 +884,12 @@
     font-weight: 600;
   }
   .badge-recommended {
-    background: #ffffff;
-    color: #000000;
     border: 1px solid #ffffff;
     font-weight: 700;
     padding: 2px 8px;
     border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.25);
   }
   .badge-cached {
-    background: rgba(34, 197, 94, 0.15);
-    color: #4ade80;
     border: 1px solid rgba(34, 197, 94, 0.4);
     font-weight: 600;
   }
@@ -1098,14 +906,10 @@
     font-weight: 600;
   }
   .badge-codec-dv {
-    background: rgba(168, 85, 247, 0.18);
-    color: #c084fc;
     border: 1px solid rgba(168, 85, 247, 0.45);
     font-weight: 600;
   }
   .badge-codec-hdr {
-    background: rgba(245, 158, 11, 0.18);
-    color: #fbbf24;
     border: 1px solid rgba(245, 158, 11, 0.45);
     font-weight: 600;
   }
@@ -1116,8 +920,6 @@
     font-weight: 600;
   }
   .badge-codec-audio {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
     border: 1px solid rgba(59, 130, 246, 0.35);
     font-weight: 500;
   }
@@ -1139,9 +941,7 @@
     box-sizing: border-box;
   }
   .modal {
-    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
     padding: 22px;
     width: 92%;
     max-width: 480px;
@@ -1152,39 +952,22 @@
 
   /* Page de Parametres Dediee & Ergonomique */
   .settings-page {
-    margin-top: 14px;
     margin-bottom: 40px;
     animation: fadeIn 0.16s ease-in-out;
   }
   .settings-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     flex-wrap: wrap;
-    gap: 14px;
-    padding: 16px 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    margin-bottom: 20px;
   }
   .settings-header-title {
-    font-size: 1.25rem;
-    font-weight: 700;
     color: var(--text);
-    display: flex;
     align-items: center;
     gap: 10px;
   }
   .settings-header-desc {
-    font-size: 0.82rem;
-    color: var(--muted);
     margin-top: 3px;
   }
   .settings-grid {
-    display: grid;
     grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-    gap: 18px;
   }
   @media (max-width: 768px) {
     .settings-grid {
@@ -1202,7 +985,6 @@
     font-weight: 600;
   }
 
-  
   .settings-label {
     font-size: 0.8rem;
     font-weight: 500;
@@ -1456,10 +1238,7 @@
   body.is-mac-native .win-controls {
     display: none !important;
   }
-  body.is-mac-native header {
-    padding-left: 96px;
-    min-height: 52px;
-  }
+  
   body.is-mac-native .inapp-hud-top {
     padding-left: 96px;
   }
@@ -1486,15 +1265,10 @@
   /* Hero Spotlight Banner */
   .hero-spotlight {
     position: relative;
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid var(--border);
     background: #09090b;
-    min-height: 280px;
     margin-bottom: 20px;
     display: flex;
     align-items: flex-end;
-    padding: 24px 26px;
     background-size: cover;
     background-position: center 22%;
     transition: background-image 0.35s ease;
@@ -1503,44 +1277,23 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, rgba(9,9,11,0.96) 0%, rgba(9,9,11,0.82) 46%, rgba(9,9,11,0.28) 100%),
-                linear-gradient(0deg, rgba(9,9,11,0.95) 0%, rgba(9,9,11,0.2) 60%, rgba(9,9,11,0.5) 100%);
     pointer-events: none;
   }
   .hero-content {
     position: relative;
-    z-index: 2;
-    max-width: 620px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
   }
-  .hero-kicker {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-    font-weight: 600;
-  }
+  
   .hero-title {
-    font-size: 1.75rem;
-    font-weight: 700;
     color: #fafafa;
-    letter-spacing: -0.02em;
-    line-height: 1.15;
   }
   .hero-meta {
-    font-size: 0.8rem;
-    color: var(--muted);
     display: flex;
-    gap: 10px;
     align-items: center;
     flex-wrap: wrap;
   }
   .hero-desc {
-    font-size: 0.84rem;
-    color: #d4d4d8;
-    line-height: 1.48;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -1548,28 +1301,17 @@
   }
   .hero-dots {
     position: absolute;
-    right: 22px;
-    bottom: 22px;
     z-index: 3;
     display: flex;
-    gap: 6px;
     align-items: center;
   }
   .hero-dot {
-    width: 22px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255,255,255,0.22);
     cursor: pointer;
     border: none;
     padding: 0;
     transition: background 0.2s, width 0.2s;
   }
-  .hero-dot.active {
-    background: #fafafa;
-    width: 32px;
-  }
-
+  
   /* Drag & Drop .torrent / Magnet Overlay */
   .drop-zone-overlay {
     position: fixed;
