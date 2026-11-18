@@ -1,3 +1,4 @@
+// @ts-check
 // The Manga tab: AniList's catalogue and the user's own files (src/manga.py), a
 // page per series with its chapters gathered from several sites and its whole
 // volumes by torrent (manga_volumes.py), and a reader (page by page, or one long
@@ -26,7 +27,7 @@ function mangaStore(key, value) {
 
 function initMangaLang() {
   mangaLang = mangaStored(MANGA_LANG_KEY, MANGA_FROM_UI[window.KINO_LANG] || 'en');
-  const select = document.getElementById('mangaLang');
+  const select = /** @type {HTMLSelectElement | null} */ (document.getElementById('mangaLang'));
   if (select) select.value = mangaLang;
 }
 
@@ -57,6 +58,7 @@ function mangaShelf(title, meta, body, actions = '') {
     </section>`;
 }
 
+/** @param {(item: any) => string} [extra] */
 function mangaRow(items, empty, extra = () => '') {
   return items.length ? `<div class="list-shelf-row">${items.map(item => mangaCardHtml(item, extra(item))).join('')}</div>`
     : `<p class="list-shelf-empty">${escapeHtml(empty)}</p>`;
@@ -92,7 +94,7 @@ async function renderMangaTab() {
 }
 
 async function searchManga() {
-  const query = document.getElementById('mangaSearchInput')?.value.trim();
+  const query = /** @type {HTMLInputElement | null} */ (document.getElementById('mangaSearchInput'))?.value.trim();
   const home = document.getElementById('mangaHome');
   if (!query || !home) return renderMangaTab();
   document.getElementById('mangaSeries').hidden = true;
@@ -344,7 +346,7 @@ function renderMangaReader() {
     const current = box.querySelector(`[data-page="${page}"]`);
     if (current && typeof current.scrollIntoView === 'function') current.scrollIntoView({ block: 'start' });
     box.onscroll = () => {
-      const seen = [...box.querySelectorAll('img[data-page]')].filter(img => img.getBoundingClientRect().top < innerHeight / 2).pop();
+      const seen = [.../** @type {NodeListOf<HTMLImageElement>} */ (box.querySelectorAll('img[data-page]'))].filter(img => img.getBoundingClientRect().top < innerHeight / 2).pop();
       if (seen) setMangaPage(Number(seen.dataset.page), false);
     };
   } else {

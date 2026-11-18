@@ -1,3 +1,4 @@
+// @ts-check
 // The Anime tab: « À la une » in rows (what is on, from AniList),
 // the week's planning in lines, and the catalogue. Every work opens KINO's own
 // fiche: the server pairs it with the fiche KINO can play (anime_home.py).
@@ -212,8 +213,8 @@ function loadAnimeHome(force = false) {
 
 // A search by title, for the rare work without a fiche KINO can check.
 async function searchAnimeTitle(title) {
-  const input = document.getElementById('searchInput');
-  const mode = document.getElementById('searchType');
+  const input = /** @type {HTMLInputElement | null} */ (document.getElementById('searchInput'));
+  const mode = /** @type {HTMLSelectElement | null} */ (document.getElementById('searchType'));
   if (!input || !mode || !title) return;
   input.value = title;
   mode.value = 'anime';
@@ -339,7 +340,7 @@ function renderAnimeWeek() {
   const list = document.getElementById('animeScheduleGrid');
   const daysBar = document.getElementById('animeScheduleDays');
   const summary = document.getElementById('animeScheduleSummary');
-  const filter = document.getElementById('animeScheduleFilter');
+  const filter = /** @type {HTMLSelectElement | null} */ (document.getElementById('animeScheduleFilter'));
   if (!list || !daysBar) return;
   if (filter) filter.value = animeWeekFilter;
   const data = animeWeekData;

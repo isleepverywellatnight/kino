@@ -1,3 +1,4 @@
+// @ts-check
 // Mes statistiques (Bibliothèque → Plus). Loaded after the app parts (app-*.js), whose helpers
 // it uses: api, escapeHtml, titleAttrs, displayTitle, GENRE_FR, CLOUD_MONTHS.
 'use strict';

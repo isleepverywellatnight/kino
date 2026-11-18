@@ -1,3 +1,4 @@
+// @ts-check
 // The phone remote (/remote): the player's state, polled, and its commands.
 // Loaded by remote.html; its controls are declared actions run by actions.js.
 const remoteToken = new URLSearchParams(location.search).get('token') || '';
@@ -93,14 +94,14 @@ async function pollState() {
     // Barre de temps
     if (!isUserSeeking && state.duration > 0) {
       const pct = (state.current_time / state.duration) * 100;
-      document.getElementById('seekSlider').value = pct;
+      /** @type {HTMLInputElement} */ (document.getElementById('seekSlider')).value = String(pct);
       document.getElementById('currentTime').textContent = formatTime(state.current_time);
       document.getElementById('duration').textContent = formatTime(state.duration);
     }
 
     // Volume
     if (document.activeElement !== document.getElementById('volumeSlider')) {
-      document.getElementById('volumeSlider').value = state.volume != null ? state.volume : 1;
+      /** @type {HTMLInputElement} */ (document.getElementById('volumeSlider')).value = String(state.volume != null ? state.volume : 1);
     }
 
   } catch (e) {
