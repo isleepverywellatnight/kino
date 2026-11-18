@@ -44,8 +44,10 @@ function episodeName(video, epNum) {
 }
 
 function episodeTileHtml(v, ctx) {
-  const { seasonNum, seriesId, epPosMap, today, fr } = ctx;
-  const epNum = v.episode || v.number || 1;
+  const { seriesId, epPosMap, today, fr } = ctx;
+  // Numbers only: they go into handlers and attributes as they are.
+  const seasonNum = Number(ctx.seasonNum) || 0;
+  const epNum = Number(v.episode || v.number) || 1;
   const code = `S${String(seasonNum).padStart(2, '0')}E${String(epNum).padStart(2, '0')}`;
   const hidden = spoilerConcealed(seriesId, seasonNum, epNum);
   const upcoming = episodeIsUpcoming(v, today);
@@ -603,10 +605,12 @@ async function debridCandidates(candidates) {
 function renderDebridState(res, season, episode, chosenTorrentTitle = '', playlistCount = 1) {
   const box = document.getElementById('debridResultPanel');
   if (!res.ready) {
+    // The service's words are shown as text; its progress, as a number.
+    const progress = Math.min(100, Math.max(0, Number.parseFloat(res.progress) || 0));
     box.innerHTML = `
-      <h3>Mise en cache Real-Debrid (${res.progress}%)</h3>
-      <p style="color:var(--muted); font-size:0.82rem; margin-top:4px;">Statut : ${res.status} • Vitesse : ${res.speed} • Pairs : ${res.seeders || 0}</p>
-      <div class="progress-bar"><div class="progress-fill" style="width:${res.progress}%"></div></div>
+      <h3>Mise en cache Real-Debrid (${progress}%)</h3>
+      <p style="color:var(--muted); font-size:0.82rem; margin-top:4px;">Statut : ${escapeHtml(res.status)} • Vitesse : ${escapeHtml(res.speed)} • Pairs : ${Number(res.seeders) || 0}</p>
+      <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
     `;
     setTimeout(async () => {
       try {

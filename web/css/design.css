@@ -1603,7 +1603,6 @@ div.cloud-poster { cursor: default; }
   .week-row .offline-actions { padding-left: 132px; }
 }
 
-
 /* Windows: KINO's own title bar, no native one (src/win_window.py). The window
    buttons sit at the right edge, Windows 11 style; the macOS dots are not shown. */
 .win-controls { display: none; }

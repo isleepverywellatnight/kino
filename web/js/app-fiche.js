@@ -1142,7 +1142,8 @@ function buildDetailHtml(media, meta, isPreview) {
       `;
     } else {
       seriesMetaVideos = (meta.videos || []).filter(v => v.season > 0);
-      const seasons = [...new Set(seriesMetaVideos.map(v => v.season))].sort((a,b) => a - b);
+      // Numbers only: they go into handlers as they are.
+      const seasons = [...new Set(seriesMetaVideos.map(v => Number(v.season)))].sort((a,b) => a - b);
       if (seasons.length) {
         if (!seasons.includes(targetSeason)) targetSeason = seasons[0];
         episodesHtml = `
@@ -1532,7 +1533,7 @@ function applyMediaDetails(media, meta) {
     media.type = 'series';
     currentMedia.type = 'series';
     const sSel = document.getElementById('seasonSelect');
-    const seasons = [...new Set(seriesMetaVideos.map(v => v.season))].sort((a,b) => a - b);
+    const seasons = [...new Set(seriesMetaVideos.map(v => Number(v.season)))].sort((a,b) => a - b);
     // The episode row of the fiche is the one season and episode chooser;
     // the menus above the sources stay for a series without its episode list.
     sc.style.display = seasons.length ? 'none' : 'flex';
