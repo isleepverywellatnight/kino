@@ -249,8 +249,10 @@ Test bloquant en CI : chaque catalogue a exactement les clés de `fr.js`
 (focus clavier volé, course au démarrage, fenêtre d'un autre processus comme
 enfant) viennent de ce reparentage inter-processus.
 
-Cible : **libmpv dans le processus, dessinant dans une fenêtre enfant que KINO
-crée lui-même** (`wid`). C'est le mode d'intégration documenté de mpv sous
+Cible : **libmpv dans le processus, dessinant dans la fenêtre de KINO**
+(`wid`). Un essai (18/11/2026) a montré que la page WebView2, au fond
+transparent, s'affiche bien par-dessus la vidéo que libmpv dessine dans la
+fenêtre principale : les contrôles de la page restent ceux du Mac. C'est le mode d'intégration documenté de mpv sous
 Windows ; il évite l'API de rendu.
 
 Pourquoi pas une swapchain DirectX ou WGL avec l'API de rendu de mpv, comme
@@ -565,7 +567,7 @@ Ordre choisi pour que chaque phase rende la suivante plus sûre, et que les
 | **P2** Modules ES | `main.js`, registre d'actions, imports/exports, `@ts-check` fichier par fichier, `bridge.d.ts` + test de cohérence | P1 | `index.html` et `remote.html` : un seul `type="module"` ; 0 accès `window.*` hors pont ; `tsc` bloquant ; CSP inchangée ; vraie fenêtre Windows UI verte |
 | **P3** i18n | clés sémantiques, conversion des 8 catalogues, `t()`/`data-i18n` écran par écran, retrait de l'observateur | P2 | 0 texte traduit par l'observateur ; catalogues complets (test) ; captures FR/EN/JA identiques à avant, sans clignotement |
 | **P4** Journal & SQLite | tri des `let _`, `eprintln!` → `errorlog`, correction des accès lents signalés par P0 | P0 + quelques jours d'usage réel | plus d'entrée « Base lente » en usage normal ; aucune erreur ignorée sans commentaire |
-| **P5** Lecteur Windows | `mpv_api.rs` commun, `win_mpv.rs` (`wid`), `libmpv-2.dll`, option lecteur externe | — | Windows UI : lecture, redimensionnement, plein écran, Échap, fermeture ; essai manuel ; `win_dock.rs` retiré à la version suivante |
+| **P5** Lecteur Windows (en cours) | `mpv.rs` commun (client libmpv + contrôleur), `mac_mpv.rs` = rendu OpenGL seul, `win_mpv.rs` (`wid` dans la fenêtre KINO, WebView2 transparente) ; `libmpv-2.dll` livrée ; `mpv.exe` reste en lecteur externe | — | Windows UI : lecture native, vidéo visible sous la page, vrai clic sur Pause, fermeture ; essai par l'utilisateur ; `win_dock.rs` et `mpv.exe` retirés à la version suivante |
 | ~~P6~~ Signature | **Reportée** (pas de comptes payants pour l'instant). Developer ID + notarisation, Trusted Signing | comptes de l'utilisateur | `spctl --assess` accepte l'app ; installeur Windows sans avertissement SmartScreen « éditeur inconnu » |
 | **P7** Secrets, expand | `secrets.rs`, double écriture, migration idempotente, Diagnostic. **Windows (Credential Manager) et Linux (Secret Service) seulement** ; macOS garde le fichier chmod 600 tant que P6 n'est pas faite | — | clés lues depuis le trousseau sous Windows et Linux ; macOS inchangé ; retour à N-1 fonctionne ; tests sur magasin en mémoire |
 | **P8** Distribution | Linux AppImage puis Flatpak ; Windows ARM64 | P5 | artefacts publiés par la CI, `--self-check` OK sur chaque cible |

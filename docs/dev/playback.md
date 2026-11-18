@@ -158,7 +158,8 @@ Dans la fiche (`app-sources.js`) :
 
 ## Rendu HDR sur un écran standard
 
-Le lecteur natif (libmpv, sortie OpenGL) ne fixe aucun réglage d'image : il
+Le lecteur natif (libmpv : sortie OpenGL sur Mac, `gpu-next` dans la fenêtre
+KINO sur Windows) ne fixe aucun réglage d'image : il
 laisse mpv convertir le HDR selon ses réglages par défaut (`tone-mapping=auto`,
 `target-trc=auto`). Les options du lecteur natif (`crates/kino/src/native.rs`)
 n'en ajoutent aucun : un réglage n'y entre qu'avec une nouvelle mesure.
@@ -221,7 +222,8 @@ lues à l'écran, sur 255 :
    - VLC : le média seul ;
    - `mpv_command` : sans bordure, titré KINO, placé à l'endroit de la
      fenêtre. Sur Windows, mpv est ancré dans la fenêtre KINO
-     (`crates/kino-desktop/src/win_dock.rs`).
+     (`crates/kino-desktop/src/win_dock.rs`) ; c'est le lecteur externe, le
+     lecteur natif passe par libmpv sans autre processus.
    - Son, image HDR et reprise sont communs à mpv et à IINA :
      `shared_options`.
 4. La fenêtre KINO se cache (sauf mpv ancré), et Discord affiche le titre.
@@ -231,3 +233,24 @@ lues à l'écran, sur 255 :
 Ces deux parties sont fixées par `crates/kino/tests/resolve.rs` et
 `crates/kino/tests/player.rs`.
 
+
+## Le lecteur natif (« Lecteur natif »)
+
+Le même sur Mac et sur Windows : libmpv chargé par l'app
+(`crates/kino-desktop/src/mpv.rs`), piloté par le serveur à travers
+`NativePlayer` (`crates/kino/src/native.rs`, routes `/api/native-player/*`),
+avec les contrôles de la page par-dessus la vidéo (`web/js/native-player.js`,
+`html.native-playing`). Seul l'affichage diffère :
+
+- Mac (`mac_mpv.rs`) : une vue OpenGL sous la WKWebView, rendue par l'API de
+  rendu de libmpv ; la WebView cesse de peindre son fond.
+- Windows (`win_mpv.rs`) : libmpv dessine dans la fenêtre KINO (`wid`), avec
+  `hwdec=auto-safe` ; le fond de WebView2 devient transparent pendant la
+  lecture et redevient opaque à la fermeture. Le clavier et la souris restent
+  à la page.
+
+`libmpv-2.dll` est livrée à côté de `KINO.exe` (`tools/fetch_mpv_windows.ps1`,
+`packaging/build_windows_app.ps1`) ; `--self-check` vérifie qu'elle se charge.
+Le test en vraie fenêtre (`tests/windows-ui`) ouvre un film hors ligne dans le
+lecteur natif, vérifie à l'écran que la vidéo passe sous la page, et clique
+sur Pause avec la vraie souris.

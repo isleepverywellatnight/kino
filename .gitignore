@@ -14,6 +14,7 @@ dist/
 *.kinoupdate
 vendor/libmpv/
 vendor/mpv-windows/
+vendor/libmpv-windows/
 
 .DS_Store
 

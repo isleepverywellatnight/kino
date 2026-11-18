@@ -193,7 +193,7 @@ jobs:
           $p = Start-Process -FilePath $setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Installation failed ($($p.ExitCode))" }
           $app = Join-Path $env:LOCALAPPDATA "Programs\KINO"
-          foreach ($f in "KINO.exe", "unins000.exe", "mpv\mpv.exe", "ffmpeg.exe", "web\index.html") {
+          foreach ($f in "KINO.exe", "unins000.exe", "libmpv-2.dll", "mpv\mpv.exe", "ffmpeg.exe", "web\index.html") {
             if (-not (Test-Path (Join-Path $app $f))) { throw "$f manquant après installation" }
           }
           $report = Join-Path $env:RUNNER_TEMP "installed-self-check.json"
