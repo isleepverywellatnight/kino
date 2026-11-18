@@ -612,7 +612,7 @@ async function surpriseMeMedia(poolArg = null) {
 
   strip.innerHTML = slots.map((m, idx) => {
     const ratingVal = parseFloat(m.imdbRating || '0') || 0;
-    const ratingBadge = ratingVal > 0 ? `<span class="case-slot-rating">★ ${m.imdbRating}</span>` : '';
+    const ratingBadge = ratingVal > 0 ? `<span class="case-slot-rating">★ ${escapeHtml(m.imdbRating)}</span>` : '';
     const yearTxt = m.releaseInfo || m.year || (m.type === 'series' ? 'Série' : 'Film');
     const poster = m.poster || '';
     const safeName = escapeHtml(m.name || 'Titre');

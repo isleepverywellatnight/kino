@@ -7,6 +7,8 @@ const vm = require('node:vm');
 
 const source = require('../tools/interface_source.js').appSource();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
+// The stylesheet loaded last, whose preview timing is the one that applies.
+const designCss = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const between = (start, end) => start + source.split(start, 2)[1].split(end, 1)[0];
 
 function renderCards(metas, history = []) {
@@ -81,7 +83,8 @@ test('the synopsis is fetched once after a pause, then reused by the fiche cache
 });
 
 test('the preview shows on hover after a pause and on keyboard focus; never on touch screens', () => {
-  assert.match(css, /\.poster-card:hover \.poster-preview, \.poster-card:focus-visible \.poster-preview \{\s*opacity: 1; transform: none; transition-delay: \.35s;/);
+  assert.match(designCss, /\.poster-card:hover \.poster-preview, \.poster-card:focus-within \.poster-preview, \.poster-card:focus-visible \.poster-preview \{\s*opacity: 1;\s*transform: none;\s*transition-delay: \.25s;/);
+  assert.match(designCss, /\.poster-card:focus-within \.poster-preview \{ transition-delay: 0s; \}/, 'at once on keyboard focus');
   assert.match(css, /@media \(hover: none\) \{ \.poster-preview \{ display: none; \} \}/);
   assert.match(source, /initPosterPreviews\(\);/);
 });
