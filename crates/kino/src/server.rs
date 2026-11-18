@@ -103,7 +103,7 @@ fn no_cache(mut response: Response) -> Response {
 /// The page runs only KINO's own scripts: no inline code, no plug-in, no
 /// other base address. Text from a site that slipped into the page as markup
 /// still could not run.
-const PAGE_POLICY: &str = "script-src 'self'; object-src 'none'; base-uri 'self'";
+pub(crate) const PAGE_POLICY: &str = "script-src 'self'; object-src 'none'; base-uri 'self'";
 
 async fn index(State(state): State<Shared>) -> Response {
     let mut page = tokio::fs::read_to_string(state.web_root.join("index.html"))
