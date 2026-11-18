@@ -11,7 +11,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
-const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
+const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
 const exploreCode = slice('// --- Explorer: imported Letterboxd lists and curated selections, as shelves ---', 'async function importCustomLetterboxdFromInput() {');
 const progressCode = slice('function customListProgress(items) {', 'function customListShelfHtml(list) {');

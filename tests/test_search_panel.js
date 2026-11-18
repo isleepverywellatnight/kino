@@ -11,7 +11,8 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
-const oldCss = ['style.css', 'redesign.css'].map(f => fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css', f), 'utf8')).join('\n');
+// The part of design.css folded in from the earlier sheets (style.css, redesign.css).
+const oldCss = css.slice(css.indexOf('The earlier sheets, folded in'), css.indexOf('\nbody {\n  background: radial-gradient'));
 const start = source.indexOf('function updateSearchClearBtn() {');
 const code = source.slice(start, source.indexOf('async function runSearch() {', start));
 const runCode = source.slice(source.indexOf('async function runSearch() {'), source.indexOf('async function oneClickCard('));

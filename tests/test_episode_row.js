@@ -9,7 +9,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const Spoilers = require('../web/js/spoilers.js');
 
 const source = require('../tools/interface_source.js').appSource();
-const css = fs.readFileSync('./web/css/redesign.css', 'utf8');
+const css = fs.readFileSync('./web/css/design.css', 'utf8');
 const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;')
   .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 const slice = source.slice(source.indexOf('function renderDetailEpisodes('), source.indexOf('function pickSeriesEpisodeSources('));

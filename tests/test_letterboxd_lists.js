@@ -9,7 +9,7 @@ const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
-const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
+const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const listsCode = source.slice(source.indexOf('function renderCustomListsTab() {'), source.indexOf('// The Anime tab (rows, planning) lives in anime-home.js.'));
 const listToolsCode = source.slice(source.indexOf('function surpriseMeFromCurrentList() {'), source.indexOf('async function surpriseMeMedia(poolArg = null) {'));
 const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');

@@ -10,7 +10,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 
 const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
 const app = require('../tools/interface_source.js').appSource();
-const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
+const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 
 // A small DOM: elements are created on first lookup once the overlay exists.
 function loadNative(state, extra = {}) {

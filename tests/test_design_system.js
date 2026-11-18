@@ -12,9 +12,12 @@ const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const source = require('../tools/interface_source.js').appSource();
 
-test('design.css comes after the two older sheets', () => {
+test('design.css is the only sheet; the two older ones are gone', () => {
   const sheets = [...html.matchAll(/<link rel="stylesheet" href="\/css\/([a-z]+\.css)">/g)].map(m => m[1]);
-  assert.deepEqual(sheets, ['style.css', 'redesign.css', 'design.css']);
+  assert.deepEqual(sheets, ['design.css']);
+  for (const old of ['style.css', 'redesign.css']) {
+    assert.equal(fs.existsSync(path.join(__dirname, '..', 'web/css', old)), false, old);
+  }
 });
 
 test('one scale of greys, sizes, corners and motion, read by the older names too', () => {

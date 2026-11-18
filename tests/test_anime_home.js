@@ -323,5 +323,6 @@ test('the styles speak the shared language, and the older sheets hold no plannin
   const sizes = [...own.matchAll(/font-size: ([^;]+);/g)].map(match => match[1]);
   assert.ok(sizes.length > 4 && sizes.every(size => size.startsWith('var(--k-fs-')), `sizes from the scale: ${[...new Set(sizes)]}`);
   assert.match(own, /\.anime-card\.is-opening \{ opacity: \.55; pointer-events: none; \}/);
-  assert.doesNotMatch(read('web/css/style.css') + read('web/css/redesign.css'), /schedule-|badge-status|SIMULCAST/i);
+  // The part folded in from the earlier sheets holds no planning rule.
+  assert.doesNotMatch(css.slice(css.indexOf('The earlier sheets, folded in'), css.indexOf('\nbody {\n  background: radial-gradient')), /schedule-|badge-status|SIMULCAST/i);
 });
