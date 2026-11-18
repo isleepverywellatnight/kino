@@ -19,7 +19,7 @@ const { chromium } = require('playwright-core');
 
 const PROJECT = path.resolve(__dirname, '..', '..');
 const PORT = 9333;
-const EXPECTED_CHECKS = 31;
+const EXPECTED_CHECKS = 33;
 const FFMPEG = process.env.KINO_FFMPEG || path.join(PROJECT, 'vendor', 'ffmpeg', 'ffmpeg.exe');
 // The mpv KINO bundles (tools/fetch_mpv_windows.ps1), set as the test home's player.
 const MPV = path.join(PROJECT, 'vendor', 'mpv-windows', 'mpv.exe');
@@ -47,6 +47,8 @@ const win = {
   GetWindowLongW: user32.func('int32 __stdcall GetWindowLongW(intptr_t hwnd, int index)'),
   FindWindowExW: user32.func('intptr_t __stdcall FindWindowExW(intptr_t parent, intptr_t after, const char16_t *cls, const char16_t *name)'),
   GetParent: user32.func('intptr_t __stdcall GetParent(intptr_t hwnd)'),
+  GetWindow: user32.func('intptr_t __stdcall GetWindow(intptr_t hwnd, uint32 cmd)'),
+  GetClassNameW: user32.func('int __stdcall GetClassNameW(intptr_t hwnd, _Out_ char16_t *buf, int max)'),
   IsWindow: user32.func('bool __stdcall IsWindow(intptr_t hwnd)'),
 };
 
@@ -72,6 +74,17 @@ function check(name, ok, detail = '') {
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 const show = r => `(${r.join(', ')})`;
+
+// KINO's child windows, the top of the z-order first (their window classes).
+function childClasses(hwnd) {
+  const out = [];
+  for (let child = win.GetWindow(hwnd, 5); child; child = win.GetWindow(child, 2)) { // GW_CHILD, GW_HWNDNEXT
+    const buf = Buffer.alloc(512);
+    const n = win.GetClassNameW(child, buf, 256);
+    out.push(buf.toString('utf16le', 0, n * 2));
+  }
+  return out;
+}
 
 function windowRect(hwnd) {
   const r = {};
@@ -449,6 +462,11 @@ async function run(hwnd, videoUrl) {
   const state0 = playing && (playing.state || playing);
   check('native player plays', state0 && state0.open && state0.time > 1, JSON.stringify({ native, state: state0 }));
   await page.waitForTimeout(800);
+  const order = childClasses(hwnd);
+  check('page stays above the native video', order.indexOf('mpv') > order.indexOf('WRY_WEBVIEW') && order.indexOf('WRY_WEBVIEW') >= 0,
+    JSON.stringify(order));
+  await move(...await centerOf(page, hwnd, '#nativePlayer'));
+  await page.waitForTimeout(300);
   screenshot('native-player', hwnd);
   // The video shows through the page: points of the upper half are the test pattern, not the page's black.
   const [ox, oy] = clientOrigin(hwnd);
@@ -472,6 +490,10 @@ async function run(hwnd, videoUrl) {
   const page0 = await page.evaluate(() => document.documentElement.classList.contains('native-playing'));
   check('native player closes back to the page', closed && !(closed.state || closed).open && !page0,
     JSON.stringify({ closed, page_transparent: page0 }));
+  // The page is on screen again: the same points are no longer the test pattern.
+  const after = pixels([0.2, 0.35, 0.5, 0.65, 0.8].map(f => [ox + area.w * f, oy + area.h * 0.3]));
+  const still = after.filter(([r, g, b]) => r + g + b > 120).length;
+  check('page shows again after native', still <= 1, JSON.stringify({ after, children: childClasses(hwnd) }));
   screenshot('after-native', hwnd);
 
   // mpv, the external player, docked inside KINO's window.
