@@ -77,7 +77,7 @@ async fn user_lists(State(s): State<Shared>) -> Response {
     let cfg = tokio::task::spawn_blocking(crate::config::load)
         .await
         .unwrap_or_default();
-    let user = cfg.get("letterboxd_user").cloned().unwrap_or(json!(""));
+    let user = cfg.letterboxd_user.unwrap_or_default();
     Json(json!({"watchlist": watchlist, "history": history, "letterboxd_user": user}))
         .into_response()
 }

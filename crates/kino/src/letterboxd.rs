@@ -680,9 +680,9 @@ pub async fn import(meta: &Meta, db: &Db, payload: &Value) -> Result<Value, NetE
 
 fn custom_lists() -> Vec<Value> {
     crate::config::load()
-        .get("custom_lists")
-        .and_then(Value::as_array)
-        .cloned()
+        .custom_lists
+        .and_then(|lists| serde_json::to_value(lists).ok())
+        .and_then(|v| v.as_array().cloned())
         .unwrap_or_default()
 }
 
