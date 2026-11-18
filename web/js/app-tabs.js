@@ -470,7 +470,7 @@ function posterCardHtml(m, fallbackType) {
     const isMovieWatched = Boolean(histItem && mtype !== 'series' && (histItem.completed || Number(histItem.progress_pct || 0) >= 85));
     const watchedEpsCount = (histItem && mtype === 'series' && Array.isArray(histItem.watched_episodes)) ? histItem.watched_episodes.length : 0;
     const watchedPill = isMovieWatched
-      ? `<button type="button" class="poster-watched" onclick='toggleCardWatched(event, ${payload})' title="Cliquer pour retirer des Déjà vus">✓ Vu</button>`
+      ? `<button type="button" class="poster-watched" ${act('toggleCardWatched', EVENT, mediaObj)} title="Cliquer pour retirer des Déjà vus">✓ Vu</button>`
       : (watchedEpsCount > 0 ? `<span class="poster-watched is-static">✓ ${watchedEpsCount} ép.</span>` : '');
     let btnLabel = 'Lancer';
     if (histItem && mtype === 'series' && histItem.season && histItem.episode) {
@@ -493,8 +493,8 @@ function posterCardHtml(m, fallbackType) {
         ${previewMeta ? `<div class="poster-preview-meta">${escapeHtml(previewMeta)}</div>` : ''}
         <p class="poster-preview-desc" data-preview-id="${escapeHtml(m.id)}" data-preview-type="${mtype}"></p>
         <div class="poster-preview-actions">
-          <button type="button" class="poster-preview-play" onclick='oneClickCard(event, this, ${payload})'>▶ ${btnLabel}</button>
-          ${mtype !== 'series' ? `<button type="button" onclick='toggleCardWatched(event, ${payload})'>${isMovieWatched ? '✓ Vu' : 'Marquer vu'}</button>` : ''}
+          <button type="button" class="poster-preview-play" ${act('oneClickCard', EVENT, THIS, mediaObj)}>▶ ${btnLabel}</button>
+          ${mtype !== 'series' ? `<button type="button" ${act('toggleCardWatched', EVENT, mediaObj)}>${isMovieWatched ? '✓ Vu' : 'Marquer vu'}</button>` : ''}
         </div>
       </div>`;
     const ratingBadges = [];
@@ -506,11 +506,11 @@ function posterCardHtml(m, fallbackType) {
     }
     const ratingLine = ratingBadges.length ? ' • ' + ratingBadges.join(' ') : '';
     return `
-      <div class="poster-card" onclick='selectMedia(${payload})'>
+      <div class="poster-card" ${act('selectMedia', mediaObj)}>
         ${watchedPill}
-        <button class="wl-btn ${inList ? 'in-list' : ''}" data-wl-id="${escapeHtml(m.id)}" title="${inList ? 'Retirer de Ma Liste' : 'Ajouter à Ma Liste'}" onclick='toggleWatchlist(event, ${payload})'>${inList ? '✓' : '+'}</button>
+        <button class="wl-btn ${inList ? 'in-list' : ''}" data-wl-id="${escapeHtml(m.id)}" title="${inList ? 'Retirer de Ma Liste' : 'Ajouter à Ma Liste'}" ${act('toggleWatchlist', EVENT, mediaObj)}>${inList ? '✓' : '+'}</button>
         <div class="poster-art">
-          <img src="${escapeHtml(m.poster || '')}" alt="${escapeHtml(displayTitle(m))}" loading="lazy" onload="this.classList.add('is-loaded')" onerror="this.classList.add('is-loaded'); handlePosterCardError(this, '${escapeHtml(escapeJsString(m.id))}')">
+          <img src="${escapeHtml(m.poster || '')}" alt="${escapeHtml(displayTitle(m))}" loading="lazy" ${actOn('load', 'kinoLoaded', THIS)} ${actOn('error', 'kinoPosterFailed', THIS, m.id)}>
           ${cardProg}
           ${previewHtml}
         </div>
@@ -533,9 +533,9 @@ function renderPosterCards(metas, fallbackType) {
   }
   if (!displayList.length) {
     if (activeTab === 'watchlist') {
-      grid.innerHTML = '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">＋</span><h3>Votre liste commence ici</h3><p>Ajoutez un film ou une série depuis sa fiche pour le retrouver facilement.</p><button class="btn" onclick="switchTab(\'movies\')">Découvrir les films</button></div>';
+      grid.innerHTML = '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">＋</span><h3>Votre liste commence ici</h3><p>Ajoutez un film ou une série depuis sa fiche pour le retrouver facilement.</p><button class="btn" ' + act('switchTab', 'movies') + '>Découvrir les films</button></div>';
     } else if (activeTab === 'watched') {
-      grid.innerHTML = '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">✓</span><h3>Aucun titre terminé</h3><p>Les films et épisodes que vous avez vus apparaîtront ici.</p><button class="btn" onclick="switchTab(\'movies\')">Découvrir les films</button></div>';
+      grid.innerHTML = '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">✓</span><h3>Aucun titre terminé</h3><p>Les films et épisodes que vous avez vus apparaîtront ici.</p><button class="btn" ' + act('switchTab', 'movies') + '>Découvrir les films</button></div>';
     } else {
       grid.innerHTML = '<div class="library-empty"><h3>Aucun résultat</h3><p>Essayez un autre filtre ou une autre recherche.</p></div>';
     }

@@ -56,7 +56,8 @@ test('films and series in their groups, seen ones marked on their cards', async 
   const out = grid(page);
   assert.ok(out.indexOf('Films <span class="list-count">2</span>') < out.indexOf('Séries <span class="list-count">1</span>'));
   assert.ok(out.indexOf('Dune: Part Two') < out.indexOf('Doctor Sleep'), 'the server order, newest first');
-  const card = id => out.slice(out.indexOf(`selectMedia({"id":"${id}"`), out.indexOf('<div class="poster-card"', out.indexOf(`selectMedia({"id":"${id}"`)));
+  const shown = withCalls(out);
+  const card = id => shown.slice(shown.indexOf(`selectMedia({ id: '${id}'`), shown.indexOf('<div class="poster-card"', shown.indexOf(`selectMedia({ id: '${id}'`)));
   assert.match(card('tt2'), /class="poster-watched"[^>]*>✓ Vu<\/button>/);
   assert.doesNotMatch(card('tt1'), /class="poster-watched"/);
   assert.match(withCalls(out), /setPersonFilter\('all'\)">Tout <span class="list-count">3<\/span>[\s\S]*setPersonFilter\('movie'\)">Films[\s\S]*setPersonFilter\('series'\)">Séries[\s\S]*setPersonFilter\('unseen'\)">Pas encore vus <span class="list-count">2<\/span>/);

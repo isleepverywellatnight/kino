@@ -95,7 +95,7 @@ test('posters and catalogue titles come after the list, once', async () => {
   assert.equal(asked.length, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(asked[0][1].titles.map(t => t.key))), ['series:the bear', 'movie:the count of monte cristo:2024']);
   const out = cloud.elements.rdCloudList.innerHTML;
-  assert.match(withCalls(out), /<button type="button" class="cloud-poster" onclick="openCloudFiche\(&quot;series:the bear&quot;\)" aria-label="Ouvrir la fiche de The Bear">/);
+  assert.match(withCalls(out), /<button type="button" class="cloud-poster" onclick="openCloudFiche\('series:the bear'\)" aria-label="Ouvrir la fiche de The Bear">/);
   assert.match(out, /<img src="https:\/\/img\.example\/bear\.jpg" alt="" loading="lazy"/);
   assert.match(out, /<span data-title-id="tt26446278">Le Comte de Monte-Cristo<\/span> <span class="cloud-group-year">2024<\/span>/);
   cloud.openCloudFiche('series:the bear');
@@ -111,7 +111,7 @@ test('a series starts at its first episode not seen, and plays under its title',
   await settle();
   const row = cloud.elements.rdCloudList.innerHTML.split('<article')[1];
   assert.match(row, /Série · 3 épisodes · 1 vu · saisons 1 et 3/);
-  assert.match(withCalls(row), /onclick="playCloudFile\(&quot;series:the bear&quot;, 1, this\)">Lancer S03E01<\/button>/);
+  assert.match(withCalls(row), /onclick="playCloudFile\('series:the bear', 1, this\)">Lancer S03E01<\/button>/);
   cloud.playCloudFile('series:the bear', 1, null);
   const [, url, title, options] = cloud.calls.find(call => call[0] === 'play');
   assert.equal(url, 'https://cloud.example/b2');

@@ -61,14 +61,14 @@ test('imported lists first, then the selections, each a shelf', async () => {
   assert.ok(out.indexOf('Mon été') < out.indexOf('>Sélections<'));
   const [mine, top, empty] = out.split('<section').slice(1);
   assert.match(mine, /<div class="list-shelf-meta">3 titres · 2 vus<\/div>/);
-  assert.match(withCalls(mine), /onclick="openImportedList\(&quot;u_list_l&#39;été&quot;\)">Tout voir<\/button>/, 'the id is passed as data');
+  assert.match(withCalls(mine), /onclick="openImportedList\('u_list_l\\'été'\)">Tout voir<\/button>/, 'the id is passed as data');
   assert.match(top, /class="list-shelf" aria-label="Top &lt;250&gt;"/);
   assert.match(top, /<div class="list-shelf-meta">20 titres · 2 vus · par Communauté Letterboxd<\/div>/);
   assert.match(top, /aria-valuenow="10"><span style="width:10%"><\/span>/);
   assert.match(top, /<p class="list-shelf-desc">Les « meilleurs » &amp; plus<\/p>/);
   assert.equal((top.match(/<card /g) || []).length, 12, 'twelve posters on the shelf');
-  assert.match(withCalls(top), /onclick="openCommunityList\(&quot;top&quot;\)">Voir les 20 titres<\/button>/);
-  assert.match(withCalls(top), /onclick="surpriseMeFromCommunityList\(&quot;top&quot;\)"/);
+  assert.match(withCalls(top), /onclick="openCommunityList\('top'\)">Voir les 20 titres<\/button>/);
+  assert.match(withCalls(top), /onclick="surpriseMeFromCommunityList\('top'\)"/);
   assert.match(empty, /Cette sélection est vide\./);
   assert.equal(page.elements.communityListsGrid.hidden, false);
   assert.equal(page.elements.communityActiveListSection.hidden, true);

@@ -71,7 +71,7 @@ test('the tab: rows of the catalogue, and an invitation for the user\'s own file
   assert.deepEqual(lib.calls.map(([url]) => url).filter(url => url.startsWith('/api/manga/row')),
     ['/api/manga/row?name=trending', '/api/manga/row?name=popular', '/api/manga/row?name=webtoon']);
   const home = lib.elements.mangaHome.innerHTML;
-  assert.match(withCalls(home), /Tendances[\s\S]*class="manga-card" onclick="openMangaSeries\(&quot;anilist&quot;, &quot;118586&quot;\)"[\s\S]*Les plus populaires[\s\S]*Manhwa et webtoons/);
+  assert.match(withCalls(home), /Tendances[\s\S]*class="manga-card" onclick="openMangaSeries\('anilist', '118586'\)"[\s\S]*Les plus populaires[\s\S]*Manhwa et webtoons/);
   assert.match(withCalls(home), /Sur ce Mac[\s\S]*onclick="chooseMangaFolder\(\)">Choisir un dossier[\s\S]*Choisissez le dossier qui contient vos mangas\./);
   assert.doesNotMatch(home, /Continuer la lecture/, 'nothing read yet');
   const hostile = lib.mangaCardHtml({ ...SERIES, title: '<img src=x onerror=alert(1)>' });
@@ -156,7 +156,7 @@ test('whole volumes: the torrents, the consent asked once, then the download unt
   assert.deepEqual(JSON.parse(JSON.stringify(lib.calls.find(([url]) => url === '/api/manga/volume')[1])), { hash: 'a'.repeat(40), index: 4, series: 'Frieren' });
   assert.match(lib.elements['q:[data-volume="4"]'].innerHTML, /25 %/);
   await lib.timers.at(-1)();
-  assert.match(withCalls(lib.elements['q:[data-volume="4"]'].innerHTML), /onclick="openMangaSeries\('local', &quot;b{20}&quot;\)">Lire/);
+  assert.match(withCalls(lib.elements['q:[data-volume="4"]'].innerHTML), /onclick="openMangaSeries\('local', 'b{20}'\)">Lire/);
 });
 
 test('a series opened before the catalogue moved comes back under its AniList number', async () => {

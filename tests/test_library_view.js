@@ -150,7 +150,7 @@ test('offline files show the French title, the episode, the real file name and t
   }, used_bytes: 21});`, context);
   const out = grid.innerHTML;
   assert.match(out, /<strong data-title-id="tt1">Les Évadés<\/strong><span class="offline-kind">Film · 1994 · ✓ Vu<\/span><span class="offline-file">Shawshank\.1994\.1080p\.mkv<\/span>/);
-  assert.match(withCalls(out), /<img src="https:\/\/img\/p\.jpg" alt="" loading="lazy" onerror="this\.remove\(\)">/, 'the catalogue poster when no local one');
+  assert.match(withCalls(out), /<img src="https:\/\/img\/p\.jpg" alt="" loading="lazy" onerror="kinoRemove\(this\)">/, 'the catalogue poster when no local one');
   assert.match(out, /<strong data-title-id="tt3">Black Doves<\/strong><span class="offline-kind">Série · S02E04 · 40 % vu<\/span><span class="offline-file">Black\.Doves\.S02E04\.mkv<\/span>/);
   assert.match(out, /<img src="\/api\/offline\/poster\/bbbb2222"/);
   assert.match(out, /<strong>home\.mp4<\/strong><span class="offline-kind">Film<\/span><span class="offline-file">home\.mp4<\/span>/);

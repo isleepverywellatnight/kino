@@ -298,20 +298,20 @@ function renderOfflineLibraryData(data) {
       const id = item.id;
       const status = escapeHtml(offlineStatus(item));
       const actions = item.available
-        ? `<button class="btn" onclick="playOfflineDownload('${id}')">Lancer</button>`
+        ? `<button class="btn" ${act('playOfflineDownload', String(id))}>Lancer</button>`
         : ['queued', 'downloading', 'waiting'].includes(item.status)
-          ? `<button class="btn btn-secondary" onclick="downloadAction('${id}', 'pause')">Pause</button>`
-          : `<button class="btn btn-secondary" onclick="downloadAction('${id}', 'resume')">Reprendre</button><button class="btn btn-secondary" onclick="downloadAction('${id}', 'restart')">Recommencer</button>`;
+          ? `<button class="btn btn-secondary" ${act('downloadAction', String(id), 'pause')}>Pause</button>`
+          : `<button class="btn btn-secondary" ${act('downloadAction', String(id), 'resume')}>Reprendre</button><button class="btn btn-secondary" ${act('downloadAction', String(id), 'restart')}>Recommencer</button>`;
       const canRemove = !['queued', 'downloading'].includes(item.status);
       const shown = offlineDisplay(item);
       return `<article class="offline-item">
-        <div class="offline-poster">${shown.poster ? `<img src="${escapeHtml(shown.poster)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<span aria-hidden="true">▷</span></div>
+        <div class="offline-poster">${shown.poster ? `<img src="${escapeHtml(shown.poster)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span aria-hidden="true">▷</span></div>
         <div class="offline-info"><strong${shown.titleAttrs}>${escapeHtml(shown.title)}</strong><span class="offline-kind">${escapeHtml(shown.kind)}${shown.watch ? ` · ${escapeHtml(shown.watch)}` : ''}</span><span class="offline-file">${escapeHtml(shown.filename)}</span>
           <span class="offline-state">${status}${item.has_subtitles ? ' · Sous-titres sauvegardés' : ''}</span>
           <span>${offlineSize(item.bytes_done)}${item.bytes_total ? ' / ' + offlineSize(item.bytes_total) : ''}</span>
           ${item.status === 'downloading' ? `<div class="progress-bar"><div class="progress-fill" style="width:${Math.max(0, Math.min(100, item.progress || 0))}%"></div></div>` : ''}
         </div>
-        <div class="offline-actions">${actions}${canRemove ? `<button class="btn btn-secondary" onclick="removeOfflineDownload('${id}')">Retirer</button>` : ''}</div>
+        <div class="offline-actions">${actions}${canRemove ? `<button class="btn btn-secondary" ${act('removeOfflineDownload', String(id))}>Retirer</button>` : ''}</div>
       </article>`;
     }).join('') : (networkOnline
       ? '<div class="library-empty"><h3>Aucun fichier hors ligne</h3><p>Depuis une source prête à lire ou le lecteur, choisissez « Garder hors ligne ». Les fichiers terminés apparaîtront ici.</p></div>'
@@ -429,7 +429,7 @@ async function pollDownloads() {
   const panel = document.getElementById('downloadsPanel');
   if (panel) panel.style.display = active.length && activeTab !== 'offline' ? 'block' : 'none';
   const list = document.getElementById('downloadsList');
-  if (list) list.innerHTML = active.map(item => `<div class="offline-active-row"><strong>${escapeHtml(item.title || item.filename)}</strong><span>${offlineSize(item.bytes_done)}${item.bytes_total ? ' / ' + offlineSize(item.bytes_total) : ''} · ${Math.round(item.progress || 0)}%</span><button class="btn btn-secondary" onclick="downloadAction('${item.id}', 'pause')">Pause</button></div>`).join('');
+  if (list) list.innerHTML = active.map(item => `<div class="offline-active-row"><strong>${escapeHtml(item.title || item.filename)}</strong><span>${offlineSize(item.bytes_done)}${item.bytes_total ? ' / ' + offlineSize(item.bytes_total) : ''} · ${Math.round(item.progress || 0)}%</span><button class="btn btn-secondary" ${act('downloadAction', String(item.id), 'pause')}>Pause</button></div>`).join('');
   renderOfflineLibraryData(data);
   if (active.length) downloadPollTimer = setTimeout(pollDownloads, 1000);
 }
@@ -961,7 +961,7 @@ function networkCameBack() {
 }
 
 function needsInternetHtml(what) {
-  return `<div class="library-empty"><h3>${escapeHtml(what)} a besoin d’internet</h3><p>Vos fichiers hors ligne restent disponibles sur ce Mac.</p><button type="button" class="btn" onclick="switchTab('offline')">Voir mes fichiers hors ligne</button></div>`;
+  return `<div class="library-empty"><h3>${escapeHtml(what)} a besoin d’internet</h3><p>Vos fichiers hors ligne restent disponibles sur ce Mac.</p><button type="button" class="btn" ${act('switchTab', 'offline')}>Voir mes fichiers hors ligne</button></div>`;
 }
 
 function showOfflineCatalogue() {
@@ -982,7 +982,7 @@ function offlineSearchHtml(q) {
   if (!found.length) return needsInternetHtml('La recherche');
   return `<div class="network-results"><h3>Sans internet : dans vos fichiers hors ligne</h3>${found.map(([id, item]) => {
     const shown = offlineDisplay(item);
-    return `<article class="offline-item"><div class="offline-info"><strong${shown.titleAttrs}>${escapeHtml(shown.title)}</strong><span class="offline-kind">${escapeHtml(shown.kind)}</span></div><div class="offline-actions"><button class="btn" onclick="playOfflineDownload('${id}')">Lancer</button></div></article>`;
+    return `<article class="offline-item"><div class="offline-info"><strong${shown.titleAttrs}>${escapeHtml(shown.title)}</strong><span class="offline-kind">${escapeHtml(shown.kind)}</span></div><div class="offline-actions"><button class="btn" ${act('playOfflineDownload', String(id))}>Lancer</button></div></article>`;
   }).join('')}</div>`;
 }
 

@@ -33,7 +33,7 @@ const AnimeJourneyView = (() => {
     const nextId = observations.find(entry => !entry.progress.done)?.work.id;
     const customOrder = journey.order_label === 'Ordre personnalisé';
     const header = `<div class="journey-header"><div><h3>Parcours de la saga</h3><p>${escape(journey.order_label)} · Relations : AniList</p></div>`
-      + (journey.order_label === 'Ordre personnalisé' ? '<button class="btn btn-secondary" onclick="resetJourneyOrder()">Rétablir l’ordre de sortie</button>' : '')
+      + (journey.order_label === 'Ordre personnalisé' ? '<button class="btn btn-secondary" ' + act('resetJourneyOrder') + '>Rétablir l’ordre de sortie</button>' : '')
       + '</div>';
     const note = !journey.relations_known
       ? '<p class="journey-note">AniList ne renseigne pas de relation pour cette œuvre. Aucun autre élément de saga n’est déduit de son titre.</p>'
@@ -53,10 +53,10 @@ const AnimeJourneyView = (() => {
           ${message}
         </div>
         <div class="journey-actions">
-          ${hidden ? `<button class="btn btn-secondary" onclick="revealJourneyTitle(${Number(work.id)})">Afficher le titre</button>` : ''}
+          ${hidden ? `<button class="btn btn-secondary" ${act('revealJourneyTitle', Number(work.id))}>Afficher le titre</button>` : ''}
           ${notPlayable ? `<a class="btn btn-secondary" href="https://anilist.co/anime/${Number(work.id)}" target="_blank" rel="noopener noreferrer">Voir sur AniList</a>`
-            : `<button class="btn btn-secondary" onclick="openJourneyWork(${Number(work.id)})">${match?.reason === 'unavailable' ? 'Réessayer' : 'Ouvrir'}</button><button class="btn" onclick="playJourneyWork(${Number(work.id)}, this)">Lancer</button>`}
-          <div class="journey-move"><button aria-label="Monter l’œuvre ${index + 1}" title="Monter" onclick="moveJourneyWork(${Number(work.id)}, -1)" ${index === 0 ? 'disabled' : ''}>↑</button><button aria-label="Descendre l’œuvre ${index + 1}" title="Descendre" onclick="moveJourneyWork(${Number(work.id)}, 1)" ${index === works.length - 1 ? 'disabled' : ''}>↓</button></div>
+            : `<button class="btn btn-secondary" ${act('openJourneyWork', Number(work.id))}>${match?.reason === 'unavailable' ? 'Réessayer' : 'Ouvrir'}</button><button class="btn" ${act('playJourneyWork', Number(work.id), THIS)}>Lancer</button>`}
+          <div class="journey-move"><button aria-label="Monter l’œuvre ${index + 1}" title="Monter" ${act('moveJourneyWork', Number(work.id), -1)} ${index === 0 ? 'disabled' : ''}>↑</button><button aria-label="Descendre l’œuvre ${index + 1}" title="Descendre" ${act('moveJourneyWork', Number(work.id), 1)} ${index === works.length - 1 ? 'disabled' : ''}>↓</button></div>
         </div>
       </li>`;
     }).join('');

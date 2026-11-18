@@ -71,7 +71,7 @@ test('each episode says where it stands, and only the next one to watch can be p
   assert.match(card(out, 'Nocturne'), /S1 · É1 · Première[\s\S]*Dans Ma Liste/);
   assert.doesNotMatch(card(out, 'Nocturne'), /playCalendarEpisode/, 'not out yet');
   const later = between(out, 'Plus tard');
-  assert.match(later, /S3 · É1 · Nouvelle saison[\s\S]*Le 4 févr\. 2027[\s\S]*openCalendarSeries\('tt1'\)/);
+  assert.match(withCalls(later), /S3 · É1 · Nouvelle saison[\s\S]*Le 4 févr\. 2027[\s\S]*openCalendarSeries\('tt1'\)/);
   assert.doesNotMatch(later, /playCalendarEpisode/);
 });
 
