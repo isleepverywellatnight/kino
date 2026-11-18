@@ -339,13 +339,13 @@ impl Meta {
         let found = self
             .net
             .cached(&key, 604_800.0, || async {
-                let quick = Duration::from_millis(1500);
-                let google = format!("https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=fr&dt=t&q={}", urlencode(&text));
-                if let Ok(answer) = self.net.get_json(&google, "Mozilla/5.0", quick).await {
-                    let out: String = answer[0].as_array().into_iter().flatten().filter_map(|seg| seg[0].as_str()).collect();
-                    if !out.trim().is_empty() {
-                        return Ok(json!(out.trim()));
-                    }
+                // Google's « gtx » address refuses KINO's TLS client (429); this one answers it.
+                let quick = Duration::from_secs(3);
+                let google = format!("https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=en&tl=fr&q={}", urlencode(&text));
+                if let Ok(answer) = self.net.get_json(&google, "Mozilla/5.0", quick).await
+                    && let Some(out) = google_translation(&answer)
+                {
+                    return Ok(json!(out));
                 }
                 let short: String = text.chars().take(480).collect();
                 let memory = format!("https://api.mymemory.translated.net/get?langpair=en|fr&q={}", urlencode(&short));
@@ -466,38 +466,18 @@ impl Meta {
                 .collect();
             meta.insert("genres_fr".into(), Value::Array(fr));
         }
-        let mut similar = catalog::similar(self.net.db(), id, kind, &genre_names, 8);
-        if similar.len() < 4
-            && let Some(first) = genre_names.first()
-            && let Ok(pool) = Box::pin(self.catalog_top(kind, first, 0, "top")).await
-        {
-            let mut seen: HashSet<String> = similar
-                .iter()
-                .filter_map(|s| s["id"].as_str().map(str::to_string))
-                .collect();
-            seen.insert(id.to_string());
-            for candidate in pool {
-                let cid = text(&candidate["id"]);
-                if !cid.is_empty() && !seen.contains(&cid) && !text(&candidate["poster"]).is_empty()
-                {
-                    seen.insert(cid.clone());
-                    let kind_of = text(&candidate["type"]);
-                    similar.push(json!({"id": cid, "name": candidate.get("name").cloned().unwrap_or(json!("")),
-                        "type": if kind_of.is_empty() { kind.to_string() } else { kind_of }, "year": released(&candidate),
-                        "poster": candidate.get("poster").cloned().unwrap_or(json!("")), "imdbRating": text(&candidate["imdbRating"])}));
-                    if similar.len() >= 8 {
-                        break;
-                    }
-                }
+        // The summary's translation and the similar titles are fetched at the same time.
+        let description = meta.get("description").map(text).filter(|d| !d.is_empty());
+        let translated = async {
+            match &description {
+                Some(d) => Some(self.translate_fr(d).await),
+                None => None,
             }
-        }
-        similar.truncate(8);
+        };
+        let (similar, translated) = tokio::join!(self.similar(id, kind, &genre_names), translated);
         meta.insert("similar".into(), Value::Array(similar));
-        if let Some(description) = meta.get("description").map(text).filter(|d| !d.is_empty()) {
-            meta.insert(
-                "description_fr".into(),
-                json!(self.translate_fr(&description).await),
-            );
+        if let Some(description_fr) = translated {
+            meta.insert("description_fr".into(), json!(description_fr));
         }
         let meta_value = Value::Object(meta.clone());
         self.index_later(vec![meta_value]);
@@ -532,6 +512,38 @@ impl Meta {
             }
         }
         Ok(Value::Object(meta))
+    }
+
+    /// Up to eight titles like this one: from the local catalogue, completed
+    /// by the top of its first genre when the catalogue knows too few.
+    async fn similar(&self, id: &str, kind: &str, genre_names: &[String]) -> Vec<Value> {
+        let mut similar = catalog::similar(self.net.db(), id, kind, genre_names, 8);
+        if similar.len() < 4
+            && let Some(first) = genre_names.first()
+            && let Ok(pool) = Box::pin(self.catalog_top(kind, first, 0, "top")).await
+        {
+            let mut seen: HashSet<String> = similar
+                .iter()
+                .filter_map(|s| s["id"].as_str().map(str::to_string))
+                .collect();
+            seen.insert(id.to_string());
+            for candidate in pool {
+                let cid = text(&candidate["id"]);
+                if !cid.is_empty() && !seen.contains(&cid) && !text(&candidate["poster"]).is_empty()
+                {
+                    seen.insert(cid.clone());
+                    let kind_of = text(&candidate["type"]);
+                    similar.push(json!({"id": cid, "name": candidate.get("name").cloned().unwrap_or(json!("")),
+                        "type": if kind_of.is_empty() { kind.to_string() } else { kind_of }, "year": released(&candidate),
+                        "poster": candidate.get("poster").cloned().unwrap_or(json!("")), "imdbRating": text(&candidate["imdbRating"])}));
+                    if similar.len() >= 8 {
+                        break;
+                    }
+                }
+            }
+        }
+        similar.truncate(8);
+        similar
     }
 
     /// Episode numbers of a series: from the cached title page, else (if allowed) a light fetch.
@@ -694,6 +706,17 @@ pub fn is_imdb_id(value: &str) -> bool {
         && value[2..].chars().all(|c| c.is_ascii_digit())
 }
 
+/// The text in Google's dict-chrome-ex answer: `["…"]`, or `[["…", "en"]]` when
+/// it names the source language.
+fn google_translation(answer: &Value) -> Option<String> {
+    let first = &answer[0];
+    first
+        .as_str()
+        .or_else(|| first[0].as_str())
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty())
+}
+
 pub fn urlencode(text: &str) -> String {
     form_urlencoded::byte_serialize(text.as_bytes())
         .collect::<String>()
@@ -719,6 +742,21 @@ pub fn is_already_french(text: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_google_translations() {
+        assert_eq!(
+            google_translation(&json!(["Bonjour le monde"])).as_deref(),
+            Some("Bonjour le monde")
+        );
+        assert_eq!(
+            google_translation(&json!([["Bonjour", "en"]])).as_deref(),
+            Some("Bonjour")
+        );
+        assert_eq!(google_translation(&json!([" "])), None);
+        assert_eq!(google_translation(&json!({"error": 429})), None);
+        assert_eq!(google_translation(&json!([])), None);
+    }
 
     #[test]
     fn tables_and_helpers() {
