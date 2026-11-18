@@ -575,7 +575,7 @@ Ordre choisi pour que chaque phase rende la suivante plus sûre, et que les
 
 | Phase | Contenu | Dépend de | Définition de « fini » |
 |---|---|---|---|
-| **R** Fin de la refonte | Bibliothèque, fenêtres/messages/états vides, lecteurs, retrait de `style.css` et `redesign.css` | — | chaque écran livré et essayé par l'utilisateur avant le suivant ; plus aucune règle dans les anciennes feuilles |
+| **R** Fin de la refonte ✅ | Bibliothèque (ancienne session), fenêtres/messages/états vides (étape 7), puis une seule feuille : `style.css` et `redesign.css` fondues dans `design.css` dans leur ordre d'origine, 57 règles mortes retirées, 34 tailles sous 12 px remontées (étape 8) | — | page chargée avec `design.css` seule ; styles calculés identiques sur ~8 000 éléments (accueil, Bibliothèque, réglages, fenêtre, lecteur) hormis les tailles remontées |
 | **P0** Socle ✅ | `jsconfig.json` + `tsc` **bloquant** en CI sur les fichiers marqués `// @ts-check` (9 fichiers au départ) ; types partagés dans `web/types/globals.d.ts` ; mesure des accès SQLite lents (5.1) ; `PRAGMA user_version` à 1 sans changement de tables | — | CI verte ; base existante passée à `user_version = 1` sans ligne modifiée (test) ; accès lents signalés dans le journal |
 | **P1** Rendu sûr | `html.js`, `safeUrl`, migration des 208 injections, règle `frontend_check` | P0, R | 0 `innerHTML =` hors `html.js` ; tests interface verts ; test : un titre `<img onerror>` s'affiche en texte |
 | **P2** Modules ES | `main.js`, registre d'actions, imports/exports, `@ts-check` fichier par fichier, `bridge.d.ts` + test de cohérence | P1 | `index.html` et `remote.html` : un seul `type="module"` ; 0 accès `window.*` hors pont ; `tsc` bloquant ; CSP inchangée ; vraie fenêtre Windows UI verte |

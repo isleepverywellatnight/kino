@@ -10,7 +10,7 @@ const { withCalls } = require('../tools/interface_source.js');
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
-const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
+const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
 const homeCode = slice('// --- Accueil: personal rows first', 'function renderHomeResume() {');
 const historyCode = slice('function getInProgressHistory() {', 'function getWatchedHistory() {') + slice('function getWatchedHistory() {', '\n}\n') + '\n}\n';

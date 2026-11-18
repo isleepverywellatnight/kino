@@ -8,7 +8,7 @@ const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
-const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
+const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const module_ = "const KEYBOARD_CARD_SELECTOR" + source.split('const KEYBOARD_CARD_SELECTOR', 2)[1].split('function initKeyboardCards()', 1)[0];
 
 function fakeCard(className, { onclick = true, title = 'Le Parrain' } = {}) {

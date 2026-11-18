@@ -12,7 +12,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const { loadPage, settle, shown } = require('../tools/page_harness.js');
 
 const source = require('../tools/interface_source.js').appSource();
-const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
+const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const title = (id, name, type, year, roles = ['cast']) => ({ id, imdb_id: id, type, name, year, releaseInfo: year, poster: '', roles });
 const PAGE = {
   name: 'Rebecca Ferguson', photo: 'https://upload.wikimedia.org/rf.jpg', description: 'actrice suédoise',

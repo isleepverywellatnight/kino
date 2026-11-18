@@ -115,6 +115,7 @@ test('this step uses the shared values only', () => {
 });
 
 test('the older sheets hold no library rule any more', () => {
-  const old = read('web/css/style.css') + read('web/css/redesign.css');
+  // The part folded in from the earlier sheets.
+  const old = css.slice(css.indexOf('The earlier sheets, folded in'), css.indexOf('\nbody {\n  background: radial-gradient'));
   assert.doesNotMatch(old, /\.library-subnav|\.lib-subtab|\.library-more|\.list-filter|\.offline-|\.myseries-|\.calendar-|\.cloud-|\.stats-|\.lists-title|\.btn-surprise|\.catalog-sort/);
 });

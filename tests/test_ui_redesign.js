@@ -8,7 +8,9 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 
 const source = require('../tools/interface_source.js').appSource();
 const markup = require('../tools/interface_source.js').indexHtml();
-const redesign = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
+// What came from redesign.css, now folded into design.css.
+const designCss = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
+const redesign = designCss.slice(designCss.indexOf('From redesign.css'), designCss.indexOf('\nbody {\n  background: radial-gradient'));
 const icons = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/icons.svg'), 'utf8');
 const resumeFunction = 'const FRENCH_MONTHS' + source
   .split('const FRENCH_MONTHS', 2)[1]

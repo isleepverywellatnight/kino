@@ -13,7 +13,7 @@ const { loadPage, settle } = require('../tools/page_harness.js');
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
-const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
+const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const settings = html.slice(html.indexOf('<div id="settingsPanel"'), html.indexOf('id="settings-shortcuts"'));
 const card = id => settings.slice(settings.indexOf(`id="${id}"`), settings.indexOf('</section>', settings.indexOf(`id="${id}"`)));
 
