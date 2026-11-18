@@ -565,13 +565,31 @@ fn pick<'a>(
     mut scored: Vec<(f64, &'a Value)>,
     limit: usize,
 ) -> Vec<(f64, &'a Value)> {
+    struct Candidate<'a> {
+        score: f64,
+        entry: &'a Value,
+        vector: Arc<Vector>,
+        people: Vec<String>,
+        /// The highest likeness to a title already chosen.
+        closest: Option<f64>,
+    }
     scored.sort_by(|a, b| b.0.total_cmp(&a.0));
-    let mut remaining: Vec<(f64, &Value)> = scored.into_iter().take(limit * 8).collect();
+    let mut remaining: Vec<Candidate> = scored
+        .into_iter()
+        .take(limit * 8)
+        .map(|(score, entry)| Candidate {
+            score,
+            entry,
+            vector: space.vector(entry),
+            people: people(entry),
+            closest: None,
+        })
+        .collect();
     let mut chosen: Vec<(f64, &Value)> = Vec::new();
     let mut counts: HashMap<String, i64> = HashMap::new();
     while !remaining.is_empty() && chosen.len() < limit {
-        remaining.retain(|(_, e)| {
-            people(e)
+        remaining.retain(|c| {
+            c.people
                 .iter()
                 .all(|p| counts.get(p).copied().unwrap_or(0) < PER_PERSON)
         });
@@ -579,25 +597,25 @@ fn pick<'a>(
             break;
         }
         let mut best: Option<(usize, f64)> = None;
-        for (index, (score, entry)) in remaining.iter().enumerate() {
-            let vec = space.vector(entry);
-            let closest = chosen
-                .iter()
-                .map(|(_, other)| cosine(&vec, &space.vector(other)))
-                .fold(None, |m: Option<f64>, c| {
-                    Some(m.map_or(c, |m| if c > m { c } else { m }))
-                })
-                .unwrap_or(0.0);
-            let value = (1.0 - DIVERSITY) * score - DIVERSITY * closest;
+        for (index, c) in remaining.iter().enumerate() {
+            let value = (1.0 - DIVERSITY) * c.score - DIVERSITY * c.closest.unwrap_or(0.0);
             if best.is_none_or(|(_, b)| value > b) {
                 best = Some((index, value));
             }
         }
         let picked = remaining.remove(best.map(|b| b.0).unwrap_or(0));
-        for person in people(picked.1) {
+        // Each likeness is measured once, against the title just chosen.
+        for c in &mut remaining {
+            let likeness = cosine(&c.vector, &picked.vector);
+            c.closest = Some(
+                c.closest
+                    .map_or(likeness, |m| if likeness > m { likeness } else { m }),
+            );
+        }
+        for person in picked.people {
             *counts.entry(person).or_default() += 1;
         }
-        chosen.push(picked);
+        chosen.push((picked.score, picked.entry));
     }
     chosen
 }
@@ -752,6 +770,14 @@ impl Store {
         ));
         *cached = Some((stamp, space.clone()));
         space
+    }
+
+    /// Reads the pool and measures each title's traits, ahead of the first ask.
+    pub fn warm(&self, db: &Db) {
+        let space = self.space(db);
+        for entry in space.entries.values() {
+            space.vector(entry);
+        }
     }
 
     /// Titles fetched one by one (watched titles missing from the pool).
@@ -976,5 +1002,104 @@ mod tests {
         let b = json!({"genres": ["Sci-Fi"], "year": "1999", "director": ["Y"], "cast": ["C"]});
         assert_eq!(why_close(&a, &b), "Science-fiction des années 90");
         assert_eq!(format!("{:.1}", 7.25), "7.2", "ties to even, as Python");
+    }
+
+    /// The choice as first written: every likeness measured again each round.
+    fn pick_reference<'a>(
+        space: &Space,
+        mut scored: Vec<(f64, &'a Value)>,
+        limit: usize,
+    ) -> Vec<(f64, &'a Value)> {
+        scored.sort_by(|a, b| b.0.total_cmp(&a.0));
+        let mut remaining: Vec<(f64, &Value)> = scored.into_iter().take(limit * 8).collect();
+        let mut chosen: Vec<(f64, &Value)> = Vec::new();
+        let mut counts: HashMap<String, i64> = HashMap::new();
+        while !remaining.is_empty() && chosen.len() < limit {
+            remaining.retain(|(_, e)| {
+                people(e)
+                    .iter()
+                    .all(|p| counts.get(p).copied().unwrap_or(0) < PER_PERSON)
+            });
+            if remaining.is_empty() {
+                break;
+            }
+            let mut best: Option<(usize, f64)> = None;
+            for (index, (score, entry)) in remaining.iter().enumerate() {
+                let vec = space.vector(entry);
+                let closest = chosen
+                    .iter()
+                    .map(|(_, other)| cosine(&vec, &space.vector(other)))
+                    .fold(None, |m: Option<f64>, c| {
+                        Some(m.map_or(c, |m| if c > m { c } else { m }))
+                    })
+                    .unwrap_or(0.0);
+                let value = (1.0 - DIVERSITY) * score - DIVERSITY * closest;
+                if best.is_none_or(|(_, b)| value > b) {
+                    best = Some((index, value));
+                }
+            }
+            let picked = remaining.remove(best.map(|b| b.0).unwrap_or(0));
+            for person in people(picked.1) {
+                *counts.entry(person).or_default() += 1;
+            }
+            chosen.push(picked);
+        }
+        chosen
+    }
+
+    #[test]
+    fn pick_chooses_as_the_reference() {
+        let genres = [
+            "Drama",
+            "Comedy",
+            "Sci-Fi",
+            "Horror",
+            "Romance",
+            "Thriller",
+            "Animation",
+        ];
+        let people = [
+            "Ana", "Ben", "Chloé", "Dario", "Emi", "Farid", "Gus", "Hana",
+        ];
+        let mut seed: u64 = 7;
+        let mut next = |n: usize| {
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (seed >> 33) as usize % n
+        };
+        let titles: Vec<Value> = (0..600)
+            .map(|i| {
+                json!({
+                    "id": format!("tt{i:07}"),
+                    "type": "movie",
+                    "genres": [genres[next(genres.len())], genres[next(genres.len())]],
+                    "director": [people[next(people.len())]],
+                    "cast": [people[next(people.len())], people[next(people.len())], people[next(people.len())]],
+                    "year": format!("{}", 1960 + next(60)),
+                    "rating": format!("{}.{}", 5 + next(4), next(10)),
+                })
+            })
+            .collect();
+        let space = Space::new(titles.clone());
+        for limit in [1, 5, 20, 40] {
+            let scored: Vec<(f64, &Value)> = space
+                .entries
+                .values()
+                .enumerate()
+                .map(|(i, e)| (((i * 37) % 101) as f64 / 101.0, e))
+                .collect();
+            let ids = |chosen: Vec<(f64, &Value)>| -> Vec<String> {
+                chosen
+                    .iter()
+                    .map(|(s, e)| format!("{s} {}", e["id"]))
+                    .collect()
+            };
+            assert_eq!(
+                ids(pick(&space, scored.clone(), limit)),
+                ids(pick_reference(&space, scored, limit)),
+                "limit {limit}"
+            );
+        }
     }
 }

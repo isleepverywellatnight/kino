@@ -30,7 +30,30 @@ impl std::error::Error for NetError {}
 
 impl From<reqwest::Error> for NetError {
     fn from(error: reqwest::Error) -> Self {
-        NetError(error.to_string())
+        NetError(describe(&error))
+    }
+}
+
+/// What went wrong, for the user: the site's name, never its address (a
+/// debrid key or a token travels in the query).
+pub fn describe(error: &reqwest::Error) -> String {
+    let site = error
+        .url()
+        .and_then(|u| u.host_str())
+        .map(str::to_string)
+        .unwrap_or_else(|| "Le service".into());
+    if error.is_builder() {
+        "Adresse invalide.".into()
+    } else if error.is_timeout() {
+        format!("{site} ne répond pas (délai dépassé).")
+    } else if error.is_connect() || error.is_request() {
+        format!("Connexion impossible à {site}.")
+    } else if let Some(status) = error.status() {
+        format!("{site} a répondu {}.", status.as_u16())
+    } else if error.is_decode() || error.is_body() {
+        format!("Réponse illisible de {site}.")
+    } else {
+        format!("Échange interrompu avec {site}.")
     }
 }
 
@@ -306,5 +329,24 @@ impl Net {
             memory.clear();
         }
         memory.insert(key.to_string(), (at, value.clone()));
+    }
+}
+
+#[cfg(test)]
+mod describe_tests {
+    #[tokio::test]
+    async fn an_error_names_the_site_never_the_address() {
+        let client = reqwest::Client::builder().no_proxy().build().unwrap();
+        // Port 9 on this computer: nothing listens there.
+        let error = client
+            .get("http://127.0.0.1:9/v4/link/unlock?apikey=SECRETKEY123")
+            .send()
+            .await
+            .unwrap_err();
+        let text = super::describe(&error);
+        assert_eq!(text, "Connexion impossible à 127.0.0.1.");
+        assert!(!super::NetError::from(error).0.contains("SECRETKEY123"));
+        let error = client.get("http://[::1").send().await.unwrap_err();
+        assert_eq!(super::describe(&error), "Adresse invalide.");
     }
 }

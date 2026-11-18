@@ -6,7 +6,7 @@
 // « CHECK name: PASS|FAIL detail »; screenshots go to the log as base64 JPEG
 // (« SCREENSHOT name » … « END SCREENSHOT »). Exit code 1 when a check fails.
 //
-// Run: cargo build --release -p kino-desktop, tools/fetch_ffmpeg.ps1, then
+// Run: cargo build --release -p kino-desktop, tools/fetch_ffmpeg.ps1, tools/fetch_mpv_windows.ps1, then
 //   npm ci --prefix tests/windows-ui && node tests/windows-ui/windows_ui.js   (Windows only)
 'use strict';
 const fs = require('fs');
@@ -19,8 +19,10 @@ const { chromium } = require('playwright-core');
 
 const PROJECT = path.resolve(__dirname, '..', '..');
 const PORT = 9333;
-const EXPECTED_CHECKS = 22;
+const EXPECTED_CHECKS = 26;
 const FFMPEG = process.env.KINO_FFMPEG || path.join(PROJECT, 'vendor', 'ffmpeg', 'ffmpeg.exe');
+// The mpv KINO bundles (tools/fetch_mpv_windows.ps1), set as the test home's player.
+const MPV = path.join(PROJECT, 'vendor', 'mpv-windows', 'mpv.exe');
 
 const user32 = koffi.load('user32.dll');
 try {
@@ -41,6 +43,9 @@ const win = {
   mouse_event: user32.func('void __stdcall mouse_event(uint32 flags, uint32 dx, uint32 dy, uint32 data, uintptr_t extra)'),
   FindWindowW: user32.func('intptr_t __stdcall FindWindowW(const char16_t *cls, const char16_t *name)'),
   GetWindowLongW: user32.func('int32 __stdcall GetWindowLongW(intptr_t hwnd, int index)'),
+  FindWindowExW: user32.func('intptr_t __stdcall FindWindowExW(intptr_t parent, intptr_t after, const char16_t *cls, const char16_t *name)'),
+  GetParent: user32.func('intptr_t __stdcall GetParent(intptr_t hwnd)'),
+  IsWindow: user32.func('bool __stdcall IsWindow(intptr_t hwnd)'),
 };
 
 // Synchronous output: the log stays whole even when the test ends with process.exit
@@ -393,6 +398,49 @@ async function run(hwnd, videoUrl) {
   screenshot('fullscreen-after-move', hwnd);
   await page.evaluate(() => toggleInAppFullscreen());
   await page.waitForTimeout(800);
+
+  // mpv, the external player, docked inside KINO's window.
+  await smallWindow();
+  await page.waitForTimeout(500);
+  const started = await page.evaluate(url => fetch('/api/mpv', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, filename: 'test.mp4' }),
+  }).then(r => r.json()), videoUrl);
+  let mpv = 0;
+  for (let i = 0; i < 150 && !mpv; i++) {
+    mpv = win.FindWindowExW(hwnd, 0, 'mpv', null);
+    if (!mpv) await sleep(100);
+  }
+  check('mpv starts docked in KINO', mpv && win.GetParent(mpv) === hwnd,
+    JSON.stringify({ started, mpv: fs.existsSync(MPV) }));
+  if (mpv) {
+    // mpv's window covers KINO's client area exactly.
+    const fits = () => {
+      const [ox, oy] = clientOrigin(hwnd);
+      const [cw, ch] = clientSize(hwnd);
+      const r = windowRect(mpv);
+      return { ok: same(r, [ox, oy, cw, ch]), mpv: r, client: [ox, oy, cw, ch] };
+    };
+    await sleep(800);
+    let fit = fits();
+    check('mpv fills the window', fit.ok, JSON.stringify(fit));
+    screenshot('mpv-docked', hwnd);
+    await page.evaluate(() => pywebview.api.set_bounds(40, 40, 760, 520));
+    await sleep(800);
+    fit = fits();
+    check('mpv follows a resize', fit.ok, JSON.stringify(fit));
+    execFileSync('taskkill', ['/IM', 'mpv.exe', '/F'], { stdio: 'ignore' });
+    let gone = false;
+    for (let i = 0; i < 50 && !gone; i++) {
+      gone = !win.IsWindow(mpv);
+      if (!gone) await sleep(100);
+    }
+    await sleep(500);
+    const answers = await page.evaluate(() => fetch('/api/stats').then(r => r.ok)).catch(() => false);
+    check('KINO stays after mpv closes', gone && win.IsWindow(hwnd) && answers,
+      JSON.stringify({ gone, window: win.IsWindow(hwnd), answers }));
+    screenshot('after-mpv', hwnd);
+  }
   await browser.close();
 }
 
@@ -402,6 +450,7 @@ async function main() {
   // A home of its own: the test never touches the runner user's KINO data.
   const home = path.join(work, 'home');
   fs.mkdirSync(home);
+  fs.writeFileSync(path.join(home, '.rd_cinehub_config.json'), JSON.stringify({ mpv_path: MPV }));
   const env = { ...process.env, KINO_DEVTOOLS_PORT: String(PORT), USERPROFILE: home, HOME: home };
   const kino = spawn(path.join(PROJECT, 'target', 'release', 'kino-desktop.exe'), [], { env, cwd: PROJECT, stdio: 'inherit' });
   let exitCode = null;
