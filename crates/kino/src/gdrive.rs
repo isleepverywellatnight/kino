@@ -13,6 +13,11 @@ use crate::db::{Db, now};
 use crate::library::{KINDS, load_deletions, save_deletions, stamp};
 
 /// The KINO folder of Google Drive on this computer, if there is one.
+/// `app_config` rows that stay on this computer: the sync's own bookkeeping,
+/// and Trakt's tokens (the Drive file is plain text; each computer connects
+/// to Trakt on its own).
+const NOT_SHARED: [&str; 3] = ["sync_deletions", "trakt_tokens", "trakt_pending_device"];
+
 pub fn find_dir() -> Option<PathBuf> {
     if let Ok(exe) = std::env::current_exe() {
         let shown = exe.to_string_lossy().to_lowercase();
@@ -205,7 +210,7 @@ pub fn sync(db: &Db, dir: Option<PathBuf>) -> Value {
                 }
             }
             for (key, value) in remote["config"].as_object().into_iter().flatten() {
-                if key == "sync_deletions" {
+                if NOT_SHARED.contains(&key.as_str()) {
                     continue;
                 }
                 let current: Option<Option<String>> = tx.query_row("SELECT value_json FROM app_config WHERE key = ?", [key], |r| r.get(0)).optional()?;
@@ -251,13 +256,15 @@ pub fn sync(db: &Db, dir: Option<PathBuf>) -> Value {
             .collect::<rusqlite::Result<_>>()?
         };
         let config: Map<String, Value> = {
-            let mut s = c.prepare("SELECT key, value_json FROM app_config WHERE key != 'sync_deletions'")?;
-            s.query_map([], |r| {
-                let raw: Option<String> = r.get(1)?;
-                let value = raw.as_deref().and_then(|v| serde_json::from_str(v).ok()).unwrap_or_else(|| raw.map(Value::from).unwrap_or(Value::Null));
-                Ok((r.get::<_, String>(0)?, value))
-            })?
-            .collect::<rusqlite::Result<_>>()?
+            let mut s = c.prepare("SELECT key, value_json FROM app_config")?;
+            let rows: Vec<(String, Value)> = s
+                .query_map([], |r| {
+                    let raw: Option<String> = r.get(1)?;
+                    let value = raw.as_deref().and_then(|v| serde_json::from_str(v).ok()).unwrap_or_else(|| raw.map(Value::from).unwrap_or(Value::Null));
+                    Ok((r.get::<_, String>(0)?, value))
+                })?
+                .collect::<rusqlite::Result<_>>()?;
+            rows.into_iter().filter(|(key, _)| !NOT_SHARED.contains(&key.as_str())).collect()
         };
         Ok((watchlist, history, config, deletions))
     });
@@ -313,5 +320,38 @@ mod tests {
             "an unreadable file is never overwritten"
         );
         assert_eq!(sync(&a, None)["status"], "disabled");
+    }
+
+    #[test]
+    fn trakt_tokens_stay_on_their_computer() {
+        let drive = tempfile::tempdir().unwrap();
+        let (a_dir, b_dir) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let a = Db::open(&a_dir.path().join("k.db")).unwrap();
+        let b = Db::open(&b_dir.path().join("k.db")).unwrap();
+        a.save_config(
+            "trakt_tokens",
+            &json!({"access_token": "SECRET-A", "refresh_token": "SECRET-R"}),
+        )
+        .unwrap();
+        a.save_config("letterboxd_user", &json!("kino")).unwrap();
+        sync(&a, Some(drive.path().to_path_buf()));
+        let file = std::fs::read_to_string(drive.path().join("kino_sync.json")).unwrap();
+        assert!(!file.contains("SECRET"), "never written to the Drive file");
+        assert!(
+            file.contains("letterboxd_user"),
+            "other settings still travel"
+        );
+        // A file written by an older KINO, tokens included: they are not taken.
+        let mut old: Value = serde_json::from_str(&file).unwrap();
+        old["config"]["trakt_tokens"] = json!({"access_token": "SECRET-OLD"});
+        std::fs::write(drive.path().join("kino_sync.json"), old.to_string()).unwrap();
+        sync(&b, Some(drive.path().to_path_buf()));
+        assert_eq!(b.get_config("trakt_tokens"), None);
+        assert_eq!(b.get_config("letterboxd_user"), Some(json!("kino")));
+        let rewritten = std::fs::read_to_string(drive.path().join("kino_sync.json")).unwrap();
+        assert!(
+            !rewritten.contains("SECRET"),
+            "the next sync drops them from the file"
+        );
     }
 }
