@@ -50,8 +50,8 @@ function newEpisodeCardHtml(item, today) {
   const name = displayTitle(item);
   return `
     <article class="resume-card is-new${kind === 'season' ? ' opens-fiche' : ''}" role="listitem">
-      <button class="resume-main" onclick="openResumeCard(this, ${attrJson(play)}, ${attrJson(media)})" aria-label="${kind === 'season' ? `Voir la fiche : ${escapeHtml(name)}, saison ${item.season} disponible` : `${item.in_progress ? 'Reprendre' : 'Lancer'} ${code} : ${escapeHtml(name)}`}">
-        <span class="resume-still">${image ? `<img class="resume-still-img" src="${escapeHtml(image)}" data-fallback="${escapeHtml(still && backdrop !== still ? backdrop : '')}" data-poster="${escapeHtml(item.poster || '')}" alt="" onerror="resumeImageFallback(this)">` : ''}</span>
+      <button class="resume-main" ${act('openResumeCard', THIS, play, media)} aria-label="${kind === 'season' ? `Voir la fiche : ${escapeHtml(name)}, saison ${item.season} disponible` : `${item.in_progress ? 'Reprendre' : 'Lancer'} ${code} : ${escapeHtml(name)}`}">
+        <span class="resume-still">${image ? `<img class="resume-still-img" src="${escapeHtml(image)}" data-fallback="${escapeHtml(still && backdrop !== still ? backdrop : '')}" data-poster="${escapeHtml(item.poster || '')}" alt="" ${actOn('error', 'resumeImageFallback', THIS)}>` : ''}</span>
         <span class="resume-new-badge">${escapeHtml(badge)}</span>
         ${kind === 'season' ? '' : '<span class="resume-play" aria-hidden="true">▶</span>'}
         <span class="resume-info">
@@ -108,7 +108,7 @@ function renderHomeList() {
   const count = document.getElementById('homeListCount');
   if (count) count.textContent = String(items.length);
   row.innerHTML = items.slice(0, HOME_SHELF_SIZE).map(m => posterCardHtml(m, kind)).join('')
-    + (items.length > HOME_SHELF_SIZE ? `<button type="button" class="list-shelf-more" onclick="switchTab('watchlist')">Voir les ${items.length} titres</button>` : '');
+    + (items.length > HOME_SHELF_SIZE ? `<button type="button" class="list-shelf-more" ${act('switchTab', 'watchlist')}>Voir les ${items.length} titres</button>` : '');
 }
 
 // The last title of the tab's type seen to the end.
@@ -171,7 +171,7 @@ function renderHomeForYou() {
   if (sec.hidden) { row.innerHTML = ''; return; }
   row.innerHTML = items.map(m => `<div class="foryou-item" data-foryou="${escapeHtml(m.id)}">${posterCardHtml(m, kind)}`
     + `<p class="foryou-why">${escapeHtml(m.why || '')}</p>`
-    + `<button type="button" class="foryou-no" onclick='notForMe(event, ${JSON.stringify(m.id)})'>Pas pour moi</button></div>`).join('');
+    + `<button type="button" class="foryou-no" ${act('notForMe', EVENT, m.id)}>Pas pour moi</button></div>`).join('');
 }
 
 async function notForMe(event, id) {
@@ -240,7 +240,7 @@ function renderHomeResume() {
   if (!items.length) {
     if (isHistoryPage) {
       sec.style.display = 'block';
-      grid.innerHTML = '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>Rien en cours de lecture</h3><p>Commencez un film ou une série, et retrouvez-le ici pour continuer plus tard.</p><button class="btn" onclick="switchTab(\'movies\')">Découvrir les films</button></div>';
+      grid.innerHTML = '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>Rien en cours de lecture</h3><p>Commencez un film ou une série, et retrouvez-le ici pour continuer plus tard.</p><button class="btn" ' + act('switchTab', 'movies') + '>Découvrir les films</button></div>';
     } else {
       sec.style.display = 'none';
     }
@@ -253,8 +253,8 @@ function renderHomeResume() {
     const name = displayTitle(h);
     return `
       <article class="resume-card${view.upcoming ? ' is-upcoming' : ''}">
-        <button class="resume-main" onclick="openResumeCard(this, ${attrJson(view.play)}, ${attrJson(view.media)})" aria-label="${escapeHtml(view.action)} : ${escapeHtml(name)}">
-          <span class="resume-still">${view.image ? `<img class="resume-still-img" src="${escapeHtml(view.image)}" data-fallback="${escapeHtml(view.fallback)}" data-poster="${escapeHtml(view.poster)}" alt=""${isHistoryPage ? ' loading="lazy"' : ''} onerror="resumeImageFallback(this)">` : ''}</span>
+        <button class="resume-main" ${act('openResumeCard', THIS, view.play, view.media)} aria-label="${escapeHtml(view.action)} : ${escapeHtml(name)}">
+          <span class="resume-still">${view.image ? `<img class="resume-still-img" src="${escapeHtml(view.image)}" data-fallback="${escapeHtml(view.fallback)}" data-poster="${escapeHtml(view.poster)}" alt=""${isHistoryPage ? ' loading="lazy"' : ''} ${actOn('error', 'resumeImageFallback', THIS)}>` : ''}</span>
           <span class="resume-play" aria-hidden="true">▶</span>
           <span class="resume-info">
             <span class="resume-kicker">${escapeHtml(view.kicker)}</span>
@@ -263,7 +263,7 @@ function renderHomeResume() {
           </span>
           ${view.progress ? `<span class="resume-progress-bar"><span class="resume-progress-fill" style="width:${view.progress}%;"></span></span>` : ''}
         </button>
-        <button class="resume-dismiss-btn" onclick="removeHistoryItem(${attrJson(h.id)})" title="Retirer des lectures en cours" aria-label="Retirer ${escapeHtml(name)} des lectures en cours">×</button>
+        <button class="resume-dismiss-btn" ${act('removeHistoryItem', h.id)} title="Retirer des lectures en cours" aria-label="Retirer ${escapeHtml(name)} des lectures en cours">×</button>
       </article>
     `;
   }).join('');
@@ -315,50 +315,50 @@ function renderGenreChipsForTab(tab) {
   if (!gf) return;
   if (tab === 'anime') {
     gf.innerHTML = `
-      <span class="chip active" data-genre="" onclick="selectGenre('', this)">Tous</span>
-      <span class="chip" data-genre="Action" onclick="selectGenre('Action', this)">Action &amp; combats</span>
-      <span class="chip" data-genre="Fantasy" onclick="selectGenre('Fantasy', this)">Fantasy &amp; magie</span>
-      <span class="chip" data-genre="Isekai" onclick="selectGenre('Isekai', this)">Isekai</span>
-      <span class="chip" data-genre="Sci-Fi" onclick="selectGenre('Sci-Fi', this)">SF &amp; mecha</span>
-      <span class="chip" data-genre="Slice of Life" onclick="selectGenre('Slice of Life', this)">Tranche de vie</span>
-      <span class="chip" data-genre="Romance" onclick="selectGenre('Romance', this)">Romance</span>
-      <span class="chip" data-genre="Comedy" onclick="selectGenre('Comedy', this)">Comédie</span>
-      <span class="chip" data-genre="Sport" onclick="selectGenre('Sport', this)">Sport</span>
-      <span class="chip" data-genre="Films d'Animation" onclick="selectGenre('Films d\\'Animation', this)">Films anime</span>
+      <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>Tous</span>
+      <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>Action &amp; combats</span>
+      <span class="chip" data-genre="Fantasy" ${act('selectGenre', 'Fantasy', THIS)}>Fantasy &amp; magie</span>
+      <span class="chip" data-genre="Isekai" ${act('selectGenre', 'Isekai', THIS)}>Isekai</span>
+      <span class="chip" data-genre="Sci-Fi" ${act('selectGenre', 'Sci-Fi', THIS)}>SF &amp; mecha</span>
+      <span class="chip" data-genre="Slice of Life" ${act('selectGenre', 'Slice of Life', THIS)}>Tranche de vie</span>
+      <span class="chip" data-genre="Romance" ${act('selectGenre', 'Romance', THIS)}>Romance</span>
+      <span class="chip" data-genre="Comedy" ${act('selectGenre', 'Comedy', THIS)}>Comédie</span>
+      <span class="chip" data-genre="Sport" ${act('selectGenre', 'Sport', THIS)}>Sport</span>
+      <span class="chip" data-genre="Films d'Animation" ${act('selectGenre', 'Films d\'Animation', THIS)}>Films anime</span>
     `;
   } else if (tab === 'series') {
     gf.innerHTML = `
-      <span class="chip active" data-genre="" onclick="selectGenre('', this)">Toutes</span>
-      <span class="chip" data-genre="Drama" onclick="selectGenre('Drama', this)">Drame</span>
-      <span class="chip" data-genre="Crime" onclick="selectGenre('Crime', this)">Policier</span>
-      <span class="chip" data-genre="Thriller" onclick="selectGenre('Thriller', this)">Thriller</span>
-      <span class="chip" data-genre="Action" onclick="selectGenre('Action', this)">Action</span>
-      <span class="chip" data-genre="Sci-Fi" onclick="selectGenre('Sci-Fi', this)">Sci-Fi</span>
-      <span class="chip" data-genre="Comedy" onclick="selectGenre('Comedy', this)">Comédie</span>
-      <span class="chip" data-genre="Adventure" onclick="selectGenre('Adventure', this)">Aventure</span>
-      <span class="chip" data-genre="Fantasy" onclick="selectGenre('Fantasy', this)">Fantastique</span>
-      <span class="chip" data-genre="Horror" onclick="selectGenre('Horror', this)">Horreur</span>
-      <span class="chip" data-genre="Mystery" onclick="selectGenre('Mystery', this)">Mystère</span>
-      <span class="chip" data-genre="War" onclick="selectGenre('War', this)">Guerre</span>
-      <span class="chip" data-genre="Western" onclick="selectGenre('Western', this)">Western</span>
-      <span class="chip" data-genre="Documentary" onclick="selectGenre('Documentary', this)">Documentaire</span>
+      <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>Toutes</span>
+      <span class="chip" data-genre="Drama" ${act('selectGenre', 'Drama', THIS)}>Drame</span>
+      <span class="chip" data-genre="Crime" ${act('selectGenre', 'Crime', THIS)}>Policier</span>
+      <span class="chip" data-genre="Thriller" ${act('selectGenre', 'Thriller', THIS)}>Thriller</span>
+      <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>Action</span>
+      <span class="chip" data-genre="Sci-Fi" ${act('selectGenre', 'Sci-Fi', THIS)}>Sci-Fi</span>
+      <span class="chip" data-genre="Comedy" ${act('selectGenre', 'Comedy', THIS)}>Comédie</span>
+      <span class="chip" data-genre="Adventure" ${act('selectGenre', 'Adventure', THIS)}>Aventure</span>
+      <span class="chip" data-genre="Fantasy" ${act('selectGenre', 'Fantasy', THIS)}>Fantastique</span>
+      <span class="chip" data-genre="Horror" ${act('selectGenre', 'Horror', THIS)}>Horreur</span>
+      <span class="chip" data-genre="Mystery" ${act('selectGenre', 'Mystery', THIS)}>Mystère</span>
+      <span class="chip" data-genre="War" ${act('selectGenre', 'War', THIS)}>Guerre</span>
+      <span class="chip" data-genre="Western" ${act('selectGenre', 'Western', THIS)}>Western</span>
+      <span class="chip" data-genre="Documentary" ${act('selectGenre', 'Documentary', THIS)}>Documentaire</span>
     `;
   } else {
     gf.innerHTML = `
-      <span class="chip active" data-genre="" onclick="selectGenre('', this)">Tous</span>
-      <span class="chip" data-genre="Action" onclick="selectGenre('Action', this)">Action</span>
-      <span class="chip" data-genre="Sci-Fi" onclick="selectGenre('Sci-Fi', this)">Sci-Fi</span>
-      <span class="chip" data-genre="Thriller" onclick="selectGenre('Thriller', this)">Thriller</span>
-      <span class="chip" data-genre="Crime" onclick="selectGenre('Crime', this)">Policier</span>
-      <span class="chip" data-genre="Adventure" onclick="selectGenre('Adventure', this)">Aventure</span>
-      <span class="chip" data-genre="Animation" onclick="selectGenre('Animation', this)">Animation</span>
-      <span class="chip" data-genre="Comedy" onclick="selectGenre('Comedy', this)">Comédie</span>
-      <span class="chip" data-genre="Drama" onclick="selectGenre('Drama', this)">Drame</span>
-      <span class="chip" data-genre="Fantasy" onclick="selectGenre('Fantasy', this)">Fantastique</span>
-      <span class="chip" data-genre="Horror" onclick="selectGenre('Horror', this)">Horreur</span>
-      <span class="chip" data-genre="War" onclick="selectGenre('War', this)">Guerre</span>
-      <span class="chip" data-genre="Western" onclick="selectGenre('Western', this)">Western</span>
-      <span class="chip" data-genre="Documentary" onclick="selectGenre('Documentary', this)">Documentaire</span>
+      <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>Tous</span>
+      <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>Action</span>
+      <span class="chip" data-genre="Sci-Fi" ${act('selectGenre', 'Sci-Fi', THIS)}>Sci-Fi</span>
+      <span class="chip" data-genre="Thriller" ${act('selectGenre', 'Thriller', THIS)}>Thriller</span>
+      <span class="chip" data-genre="Crime" ${act('selectGenre', 'Crime', THIS)}>Policier</span>
+      <span class="chip" data-genre="Adventure" ${act('selectGenre', 'Adventure', THIS)}>Aventure</span>
+      <span class="chip" data-genre="Animation" ${act('selectGenre', 'Animation', THIS)}>Animation</span>
+      <span class="chip" data-genre="Comedy" ${act('selectGenre', 'Comedy', THIS)}>Comédie</span>
+      <span class="chip" data-genre="Drama" ${act('selectGenre', 'Drama', THIS)}>Drame</span>
+      <span class="chip" data-genre="Fantasy" ${act('selectGenre', 'Fantasy', THIS)}>Fantastique</span>
+      <span class="chip" data-genre="Horror" ${act('selectGenre', 'Horror', THIS)}>Horreur</span>
+      <span class="chip" data-genre="War" ${act('selectGenre', 'War', THIS)}>Guerre</span>
+      <span class="chip" data-genre="Western" ${act('selectGenre', 'Western', THIS)}>Western</span>
+      <span class="chip" data-genre="Documentary" ${act('selectGenre', 'Documentary', THIS)}>Documentaire</span>
     `;
   }
 }
@@ -538,9 +538,6 @@ function drawHeroSpotlightSlide() {
     poster: item.poster || '',
     imdbRating: String(rating)
   };
-  const payload = JSON.stringify(mediaObj).replace(/'/g, "&#39;");
-  const safeNameJs = JSON.stringify(item.name || 'KINO').replace(/'/g, "&#39;");
-  const safeYearJs = JSON.stringify(year).replace(/'/g, "&#39;");
   const kickerTxt = activeTab === 'classics' ? 'Classique incontournable'
     : (activeTab === 'anime' ? 'Animation japonaise · Populaire' : `À la une · ${mtype === 'series' ? 'Série' : 'Film'}`);
 
@@ -583,13 +580,13 @@ function drawHeroSpotlightSlide() {
       </div>
       ${desc ? `<div class="hero-desc">${escapeHtml(desc)}</div>` : ''}
       <div class="hero-actions">
-        <button class="btn" onclick='oneClickCard(event, this, ${payload})'>Regarder</button>
-        <button class="btn btn-secondary" onclick='selectMedia(${payload})'>Voir la fiche</button>
-        <button class="btn btn-secondary" onclick='openTrailerModal("", ${safeNameJs}, ${safeYearJs}, "vf")'><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>Bande-annonce</button>
+        <button class="btn" ${act('oneClickCard', EVENT, THIS, mediaObj)}>Regarder</button>
+        <button class="btn btn-secondary" ${act('selectMedia', mediaObj)}>Voir la fiche</button>
+        <button class="btn btn-secondary" ${act('openTrailerModal', '', item.name || 'KINO', year, 'vf')}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>Bande-annonce</button>
       </div>
     </div>
     <div class="hero-dots">
-      ${heroSpotlightItems.map((_, i) => `<button class="hero-dot ${i === heroSpotlightIdx ? 'active' : ''}" onclick="setHeroSpotlightIdx(${i})" title="Titre ${i + 1}"></button>`).join('')}
+      ${heroSpotlightItems.map((_, i) => `<button class="hero-dot ${i === heroSpotlightIdx ? 'active' : ''}" ${act('setHeroSpotlightIdx', i)} title="Titre ${i + 1}"></button>`).join('')}
     </div>
   `;
   ensureHeroFrenchDescription(item);
