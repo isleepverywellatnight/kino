@@ -114,7 +114,7 @@ async fn one_click_play(State(s): State<Shared>, raw: Bytes) -> Response {
             None,
         );
     };
-    let cfg = tokio::task::spawn_blocking(search::load_settings)
+    let cfg = crate::db::spawn_blocking(search::load_settings)
         .await
         .unwrap_or_default();
     let (provider, token) = search::provider_and_token(&cfg);
@@ -460,7 +460,7 @@ async fn auto_stream(
     State(s): State<Shared>,
     Query(p): Query<HashMap<String, String>>,
 ) -> Response {
-    let cfg = tokio::task::spawn_blocking(search::load_settings)
+    let cfg = crate::db::spawn_blocking(search::load_settings)
         .await
         .unwrap_or_default();
     let ep = Episode::from_params(&p);
@@ -658,7 +658,7 @@ async fn external_player(State(s): State<Shared>, raw: Bytes) -> Response {
             })
             .collect();
     } else if get("type") == "series" && !get("id").is_empty() {
-        let cfg = tokio::task::spawn_blocking(search::load_settings)
+        let cfg = crate::db::spawn_blocking(search::load_settings)
             .await
             .unwrap_or_default();
         let (season, episode) = (
@@ -731,7 +731,7 @@ async fn external_player(State(s): State<Shared>, raw: Bytes) -> Response {
         Ok(answer) => {
             if let Some(m) = context {
                 let db = s.db.clone();
-                let _ = tokio::task::spawn_blocking(move || {
+                let _ = crate::db::spawn_blocking(move || {
                     crate::library::record_history(&db, &m.start_entry())
                 })
                 .await;

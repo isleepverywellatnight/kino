@@ -389,7 +389,7 @@ fn updates(
     let later = |work: Box<dyn FnOnce() -> Result<Value, String> + Send>, close_after: bool| {
         let replies = replies.clone();
         runtime.spawn_blocking(move || {
-            let result = work();
+            let result = kino::db::blocking(work);
             let done = result.is_ok();
             let _ = replies.send_event(UserEvent::Reply(id, result));
             if done && close_after {

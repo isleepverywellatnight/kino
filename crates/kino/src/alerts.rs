@@ -172,7 +172,7 @@ pub async fn check(
     meta: &crate::meta::Meta,
     notifier: &dyn Notifier,
 ) -> Vec<Value> {
-    let cfg = tokio::task::spawn_blocking(crate::config::load)
+    let cfg = crate::db::spawn_blocking(crate::config::load)
         .await
         .unwrap_or_default();
     if cfg.episode_notifications == Some(false) {
@@ -185,7 +185,7 @@ pub async fn check(
     let (alerts, remembered) = pending(&items, seen.as_deref());
     if Some(&remembered) != seen.as_ref() {
         let change = json!({"notified_episodes": remembered});
-        let _ = tokio::task::spawn_blocking(move || crate::config::save(&change)).await;
+        let _ = crate::db::spawn_blocking(move || crate::config::save(&change)).await;
     }
     for note in notifications(&alerts) {
         let item = &note["item"];
@@ -211,14 +211,14 @@ pub fn watch(
     notifier: std::sync::Arc<dyn Notifier>,
 ) {
     tokio::spawn(async move {
-        let on = tokio::task::spawn_blocking(crate::config::load)
+        let on = crate::db::spawn_blocking(crate::config::load)
             .await
             .ok()
             .and_then(|c| c.episode_notifications)
             != Some(false);
         if on {
             let asking = notifier.clone();
-            let _ = tokio::task::spawn_blocking(move || asking.request_permission()).await;
+            let _ = crate::db::spawn_blocking(move || asking.request_permission()).await;
         }
         let mut wait = WATCH_FIRST;
         loop {

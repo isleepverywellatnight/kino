@@ -847,7 +847,7 @@ impl Library {
             year: media["year"].as_str().unwrap_or("").to_string(),
             poster: String::new(),
         };
-        let cfg = tokio::task::spawn_blocking(crate::config::load)
+        let cfg = crate::db::spawn_blocking(crate::config::load)
             .await
             .unwrap_or_default();
         let url = crate::play::resolve_episode(meta, links, &ep, "", &cfg, false)

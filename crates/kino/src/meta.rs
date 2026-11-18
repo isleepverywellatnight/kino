@@ -214,7 +214,7 @@ impl Meta {
             return;
         }
         let net = self.net.clone();
-        tokio::task::spawn_blocking(move || catalog::index_media(net.db(), &items));
+        crate::db::spawn_blocking(move || catalog::index_media(net.db(), &items));
     }
 
     /// One page of a catalogue: films, series or the classics (anime: anime.rs).
