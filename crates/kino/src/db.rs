@@ -2,17 +2,22 @@
 //! version (schema.sql is what it creates), so the two share one file.
 
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, MutexGuard, TryLockError};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use serde_json::Value;
 
 const SCHEMA: &str = include_str!("schema.sql");
 
+/// One connection writes; a few read-only ones answer reads meanwhile (WAL
+/// lets readers and the writer work at the same time).
 pub struct Db {
     conn: Mutex<Connection>,
+    readers: Vec<Mutex<Connection>>,
+    next_reader: AtomicUsize,
     /// When expired cache rows were last removed.
     last_purge: Mutex<f64>,
 }
@@ -20,6 +25,28 @@ pub struct Db {
 /// Expired cache rows go every six hours: they were only removed when their exact
 /// key was read again, so every past search stayed in the database.
 const PURGE_EVERY: f64 = 6.0 * 3600.0;
+
+/// Read-only connections beside the writer.
+const READERS: usize = 4;
+
+/// Applied to every connection.
+const PRAGMAS: &str = "PRAGMA synchronous = NORMAL;
+     PRAGMA cache_size = -32000;
+     PRAGMA temp_store = MEMORY;
+     PRAGMA busy_timeout = 10000;";
+
+fn reader(path: &Path) -> rusqlite::Result<Connection> {
+    let conn = Connection::open_with_flags(
+        path,
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )?;
+    conn.execute_batch(PRAGMAS)?;
+    Ok(conn)
+}
+
+fn locked(mutex: &Mutex<Connection>) -> MutexGuard<'_, Connection> {
+    mutex.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 pub fn now() -> f64 {
     SystemTime::now()
@@ -31,29 +58,49 @@ pub fn now() -> f64 {
 impl Db {
     pub fn open(path: &Path) -> Result<Self> {
         let conn = Connection::open(path)?;
-        conn.execute_batch(
-            "PRAGMA journal_mode = WAL;
-             PRAGMA synchronous = NORMAL;
-             PRAGMA cache_size = -32000;
-             PRAGMA temp_store = MEMORY;
-             PRAGMA busy_timeout = 10000;",
-        )?;
+        conn.execute_batch("PRAGMA journal_mode = WAL;")?;
+        conn.execute_batch(PRAGMAS)?;
         conn.execute_batch(SCHEMA)?;
+        // Opened once the tables exist; without them, reads go to the writer.
+        let readers = (0..READERS)
+            .map_while(|_| reader(path).ok())
+            .map(Mutex::new)
+            .collect();
         Ok(Self {
             conn: Mutex::new(conn),
+            readers,
+            next_reader: AtomicUsize::new(0),
             last_purge: Mutex::new(0.0),
         })
     }
 
+    /// Runs `f` on the writing connection (also for reads that must follow a write).
     pub fn with<T>(&self, f: impl FnOnce(&Connection) -> rusqlite::Result<T>) -> Result<T> {
-        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
-        Ok(f(&conn)?)
+        Ok(f(&locked(&self.conn))?)
+    }
+
+    /// Runs `f` on a read-only connection: a free one, else the next in turn.
+    /// It sees every committed write; a statement that writes fails there.
+    pub fn read<T>(&self, f: impl FnOnce(&Connection) -> rusqlite::Result<T>) -> Result<T> {
+        let count = self.readers.len();
+        if count == 0 {
+            return self.with(f);
+        }
+        let start = self.next_reader.fetch_add(1, Ordering::Relaxed);
+        for i in 0..count {
+            match self.readers[(start + i) % count].try_lock() {
+                Ok(conn) => return Ok(f(&conn)?),
+                Err(TryLockError::Poisoned(p)) => return Ok(f(&p.into_inner())?),
+                Err(TryLockError::WouldBlock) => {}
+            }
+        }
+        Ok(f(&locked(&self.readers[start % count]))?)
     }
 
     /// A value of `app_config`, or None when missing or unreadable.
     pub fn get_config(&self, key: &str) -> Option<Value> {
         let raw: Option<String> = self
-            .with(|c| {
+            .read(|c| {
                 c.query_row(
                     "SELECT value_json FROM app_config WHERE key = ?",
                     [key],
@@ -87,7 +134,7 @@ impl Db {
     /// A cached value that has not expired.
     pub fn cache_get(&self, key: &str) -> Option<Value> {
         let row: Option<(Option<String>, Option<f64>)> = self
-            .with(|c| {
+            .read(|c| {
                 c.query_row(
                     "SELECT value_json, expires_at FROM persistent_cache WHERE cache_key = ?",
                     [key],
@@ -149,6 +196,52 @@ impl Db {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn reads_go_on_while_a_write_is_under_way() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = std::sync::Arc::new(Db::open(&dir.path().join("kino.db")).unwrap());
+        assert_eq!(db.readers.len(), READERS);
+        db.save_config("seen", &json!(1)).unwrap();
+        assert_eq!(
+            db.get_config("seen"),
+            Some(json!(1)),
+            "a read sees the write"
+        );
+        let writer = db.clone();
+        let (started, wait) = std::sync::mpsc::channel();
+        let long = std::thread::spawn(move || {
+            writer
+                .with(|c| {
+                    c.execute_batch("BEGIN IMMEDIATE")?;
+                    c.execute(
+                        "INSERT INTO app_config (key, value_json) VALUES ('later', '2')",
+                        [],
+                    )?;
+                    started.send(()).unwrap();
+                    std::thread::sleep(std::time::Duration::from_millis(400));
+                    c.execute_batch("COMMIT")
+                })
+                .unwrap();
+        });
+        wait.recv().unwrap();
+        let at = std::time::Instant::now();
+        assert_eq!(db.get_config("seen"), Some(json!(1)));
+        assert_eq!(db.get_config("later"), None, "not committed yet");
+        assert!(
+            at.elapsed() < std::time::Duration::from_millis(200),
+            "reads did not wait for the writer: {:?}",
+            at.elapsed()
+        );
+        long.join().unwrap();
+        assert_eq!(
+            db.get_config("later"),
+            Some(json!(2)),
+            "committed, then seen"
+        );
+        let refused = db.read(|c| c.execute("DELETE FROM app_config", []));
+        assert!(refused.is_err(), "a reader cannot write");
+    }
 
     #[test]
     fn config_and_cache_round_trip() {
