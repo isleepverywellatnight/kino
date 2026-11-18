@@ -19,7 +19,7 @@ const { chromium } = require('playwright-core');
 
 const PROJECT = path.resolve(__dirname, '..', '..');
 const PORT = 9333;
-const EXPECTED_CHECKS = 33;
+const EXPECTED_CHECKS = 34;
 const FFMPEG = process.env.KINO_FFMPEG || path.join(PROJECT, 'vendor', 'ffmpeg', 'ffmpeg.exe');
 // The mpv KINO bundles (tools/fetch_mpv_windows.ps1), set as the test home's player.
 const MPV = path.join(PROJECT, 'vendor', 'mpv-windows', 'mpv.exe');
@@ -448,6 +448,9 @@ async function run(hwnd, videoUrl) {
   await page.waitForTimeout(800);
 
   // The native player: libmpv draws in KINO's window, the page's controls stay over it.
+  // KINO's own player closes first: its video must not be what shows through.
+  await page.evaluate(() => closeInAppPlayer());
+  await page.waitForTimeout(500);
   await smallWindow();
   const available = await page.evaluate(() => window.NativePlayer.available === true);
   check('native player available', available);
@@ -467,6 +470,13 @@ async function run(hwnd, videoUrl) {
     JSON.stringify(order));
   await move(...await centerOf(page, hwnd, '#nativePlayer'));
   await page.waitForTimeout(300);
+  const winButtons = await page.evaluate(() => [...document.querySelectorAll('#nativePlayer .inapp-hud-top .win-btn')].map(el => {
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    return { cls: el.className, w: Math.round(r.width), top: hit === el || el.contains(hit) };
+  }));
+  check('native player shows the three Windows buttons', winButtons.length === 3 && winButtons.every(b => b.top && b.w > 0),
+    JSON.stringify(winButtons));
   screenshot('native-player', hwnd);
   // The video shows through the page: points of the upper half are the test pattern, not the page's black.
   const [ox, oy] = clientOrigin(hwnd);
