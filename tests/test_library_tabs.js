@@ -9,7 +9,7 @@ const vm = require('node:vm');
 
 const read = name => fs.readFileSync(path.join(path.join(__dirname, '..'), name), 'utf8');
 const source = require('../tools/interface_source.js').appSource();
-const html = read('web/index.html');
+const html = require('../tools/interface_source.js').indexHtml();
 const css = read('web/css/design.css');
 const step = css.slice(css.indexOf('/* ---------- The Bibliothèque ----------'));
 

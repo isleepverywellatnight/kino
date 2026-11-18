@@ -8,7 +8,7 @@ const vm = require('node:vm');
 
 const read = name => fs.readFileSync(path.join(path.join(__dirname, '..'), name), 'utf8');
 const code = read('web/js/ratings.js');
-const html = read('web/index.html');
+const html = require('../tools/interface_source.js').indexHtml();
 const plain = value => JSON.parse(JSON.stringify(value));
 
 function element(id) {

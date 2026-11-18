@@ -8,7 +8,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = require('../tools/interface_source.js').appSource();
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
 const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
 const exploreCode = slice('// --- Explorer: imported Letterboxd lists and curated selections, as shelves ---', 'async function importCustomLetterboxdFromInput() {');
@@ -134,7 +134,7 @@ test('an error is shown as text', async () => {
 
 test('the page: a form to import, shelves, one selection in full, monochrome', () => {
   const panel = html.slice(html.indexOf('<div id="communityPanel"'), html.indexOf('<!-- Panneau Planning Simulcast Anime -->'));
-  assert.match(panel, /<form class="explore-import" onsubmit="event\.preventDefault\(\); importCustomLetterboxdFromInput\(\);">/);
+  assert.match(panel, /<form class="explore-import" onsubmit="kinoSubmit\(event, 'importCustomLetterboxdFromInput'\)">/);
   assert.match(panel, /<button type="submit" class="btn">Importer<\/button>/);
   assert.match(panel, /<div id="communityListsGrid" class="explore-shelves"><\/div>/);
   assert.match(panel, /<section id="communityActiveListSection" class="explore-open" hidden>/);

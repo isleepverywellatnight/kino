@@ -161,7 +161,7 @@ test('native buttons are left alone', () => {
 test('cast names, the logo and the account pill are marked as keyboard controls', () => {
   // Since the immersive fiche (step 50), cast and crew are native buttons.
   assert.match(source, /<button type="button" class="detail-person" data-person="\$\{escapeHtml\(person\.name\)\}" onclick='openPerson\(/);
-  const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+  const html = require('../tools/interface_source.js').indexHtml();
   assert.match(html, /class="logo no-drag" onclick="switchTab\('movies'\)" aria-label="Accueil KINO"/);
   assert.match(html, /id="userBadge"/);
   assert.match(css, /\.person-link:focus-visible, #userBadge:focus-visible/);

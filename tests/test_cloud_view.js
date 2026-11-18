@@ -7,7 +7,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = require('../tools/interface_source.js').appSource();
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
 const cloudCode = slice('async function loadRdCloud() {', 'async function onChangeRdRetention(daysStr) {');

@@ -9,7 +9,7 @@ const vm = require('node:vm');
 const { loadPage, settle, shown } = require('../tools/page_harness.js');
 
 const source = require('../tools/interface_source.js').appSource();
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const FILM = { id: 'tt1', name: 'Dune: Part Two', name_fr: 'Dune : Deuxième partie', type: 'movie', year: '2024' };
 const OTHER = { id: 'tt2', name: 'Doctor Sleep', type: 'movie', year: '2019' };

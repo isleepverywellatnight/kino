@@ -8,7 +8,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 const { loadPage, settle } = require('../tools/page_harness.js');
 
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const RESULT = {
   items: [
     { id: 'internet', label: 'Internet', state: 'ok', summary: 'Internet répond.', advice: '' },
@@ -30,7 +30,7 @@ test('Paramètres has a Diagnostic card and the Outils menu leads to it', () => 
   // The Diagnostic is a block of « Application », reached by its id.
   assert.match(html, /<div class="set-block" id="settings-diagnostic" aria-labelledby="settings-diagnostic-title">\s*<h3 class="set-block-title" id="settings-diagnostic-title">Diagnostic<\/h3>/);
   assert.match(html, /Rien n’est modifié\./);
-  assert.match(html, /onclick="openDiagnostic\(\); closeHeaderMenu\(\);"[\s\S]{0,300}<span class="hdi-title">Diagnostic<\/span>/);
+  assert.match(html, /onclick="kinoMenuAction\('openDiagnostic'\)"[\s\S]{0,300}<span class="hdi-title">Diagnostic<\/span>/);
   assert.match(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/icons.svg'), 'utf8'), /<symbol id="check" /);
 });
 

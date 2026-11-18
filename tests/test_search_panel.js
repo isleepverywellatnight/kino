@@ -7,7 +7,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = require('../tools/interface_source.js').appSource();
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const oldCss = ['style.css', 'redesign.css'].map(f => fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css', f), 'utf8')).join('\n');
 const start = source.indexOf('function updateSearchClearBtn() {');
@@ -57,9 +57,9 @@ test('the search sits in the top bar, « Torrent » in « Outils »', () => {
   assert.ok(header.indexOf('class="search-box no-drag"') < header.indexOf('class="header-right'));
   assert.doesNotMatch(html.slice(html.indexOf('<div class="container">')), /class="search-box/, 'no second search box in the page');
   assert.doesNotMatch(html, /header-btn-torrent|btn-search-bar/);
-  assert.match(html, /<div id="headerDropdownMenu" class="header-dropdown-menu">\s*<div class="header-dropdown-item" onclick="openTorrentFile\(\); closeHeaderMenu\(\);">/);
+  assert.match(html, /<div id="headerDropdownMenu" class="header-dropdown-menu">\s*<div class="header-dropdown-item" onclick="kinoMenuAction\('openTorrentFile'\)">/);
   assert.match(html, /onfocus="openSearchPanel\(\)"/);
-  assert.match(html, /ondblclick="if \(!event\.target\.closest\('\.no-drag'\)\) windowAction\('maximize'\)"/, 'a double click in the field does not zoom the window');
+  assert.match(html, /ondblclick="kinoBarDoubleClick\(event\)"/, 'a double click in the field does not zoom the window');
   assert.doesNotMatch(oldCss, /^\s*(header|\.nav-tabs?|\.search-box|\.header-[\w-]+|\.logo[\w-]*)\s*[,{]/m, 'the old sheets hold no navigation rule');
   assert.match(css, /grid-template-columns: var\(--k-sidebar-w\) minmax\(0, 1fr\) auto;/);
   assert.match(css, /body\.is-mac-native \.header-left \{ padding-left: 86px; \}/, 'room for the Mac\'s own window buttons');
