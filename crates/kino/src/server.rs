@@ -100,6 +100,11 @@ fn no_cache(mut response: Response) -> Response {
     response
 }
 
+/// The page runs only KINO's own scripts: no inline code, no plug-in, no
+/// other base address. Text from a site that slipped into the page as markup
+/// still could not run.
+const PAGE_POLICY: &str = "script-src 'self'; object-src 'none'; base-uri 'self'";
+
 async fn index(State(state): State<Shared>) -> Response {
     let mut page = tokio::fs::read_to_string(state.web_root.join("index.html"))
         .await
@@ -108,15 +113,25 @@ async fn index(State(state): State<Shared>) -> Response {
                 .to_string()
         });
     // The language chosen in Paramètres, known before web/js/i18n.js runs
-    // (Windows' WebView does not keep localStorage between launches).
+    // (Windows' WebView does not keep localStorage between launches): data,
+    // not code, as the page runs no inline script.
     if let Some(lang) = config::ui_language() {
         page = page.replacen(
             "<head>",
-            &format!("<head><script>window.KINO_UI_LANGUAGE=\"{lang}\";</script>"),
+            &format!("<head><meta name=\"kino-ui-language\" content=\"{lang}\">"),
             1,
         );
     }
-    no_cache(([(header::CONTENT_TYPE, "text/html; charset=utf-8")], page).into_response())
+    no_cache(
+        (
+            [
+                (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+                (header::CONTENT_SECURITY_POLICY, PAGE_POLICY),
+            ],
+            page,
+        )
+            .into_response(),
+    )
 }
 
 fn content_type(path: &str) -> &'static str {
