@@ -3,7 +3,7 @@
 //! still read from Cinemeta by the Python side at startup.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use axum::extract::{Query, State};
@@ -105,9 +105,19 @@ fn user_kinds(history: &[Value], watchlist: &[Value]) -> HashMap<String, &'stati
         .collect()
 }
 
+/// The pool, read on a blocking thread: its first read parses thousands of titles.
+async fn pool(s: &Shared) -> Option<Arc<Space>> {
+    let s = s.clone();
+    tokio::task::spawn_blocking(move || s.suggestions.space(&s.db))
+        .await
+        .ok()
+}
+
 async fn for_you(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
     let kind = kind_of(p.get("type").map(String::as_str).unwrap_or(""));
-    let space = s.suggestions.space(&s.db);
+    let Some(space) = pool(&s).await else {
+        return Json(json!({"ready": false, "items": [], "pool": 0})).into_response();
+    };
     if space.entries.len() < POOL_READY {
         return Json(json!({"ready": false, "items": [], "pool": space.entries.len()}))
             .into_response();
@@ -120,14 +130,24 @@ async fn for_you(State(s): State<Shared>, Query(p): Query<HashMap<String, String
         recommender::taste_signals(&history, &watchlist, &Store::not_for_me(&s.db), now());
     let ids: Vec<String> = signals.keys().cloned().collect();
     let known = known_titles(&s, &space, &ids, &user_kinds(&history, &watchlist)).await;
-    let space = s.suggestions.space(&s.db);
-    let items = recommender::for_you(&space, &signals, &known, kind, 20);
-    Json(json!({"ready": true, "items": items, "pool": space.entries.len()})).into_response()
+    let Some(space) = pool(&s).await else {
+        return Json(json!({"ready": false, "items": [], "pool": 0})).into_response();
+    };
+    let count = space.entries.len();
+    // The ranking takes milliseconds of computing: off the threads that answer requests.
+    let items = tokio::task::spawn_blocking(move || {
+        recommender::for_you(&space, &signals, &known, kind, 20)
+    })
+    .await
+    .unwrap_or_default();
+    Json(json!({"ready": true, "items": items, "pool": count})).into_response()
 }
 
 /// Titles close to one title by KINO's own traits; none until the pool is ready.
 async fn kino_related(s: &Shared, imdb_id: &str, kind: &'static str) -> Vec<Value> {
-    let space = s.suggestions.space(&s.db);
+    let Some(space) = pool(s).await else {
+        return vec![];
+    };
     if space.entries.len() < POOL_READY {
         return vec![];
     }
@@ -143,13 +163,15 @@ async fn kino_related(s: &Shared, imdb_id: &str, kind: &'static str) -> Vec<Valu
         .map(|e| text(&e["id"]))
         .collect();
     exclude.extend(Store::not_for_me(&s.db));
-    recommender::related(
-        &s.suggestions.space(&s.db),
-        known.get(imdb_id),
-        kind,
-        &exclude,
-        12,
-    )
+    let Some(space) = pool(s).await else {
+        return vec![];
+    };
+    let source = known.get(imdb_id).cloned();
+    tokio::task::spawn_blocking(move || {
+        recommender::related(&space, source.as_ref(), kind, &exclude, 12)
+    })
+    .await
+    .unwrap_or_default()
 }
 
 async fn related(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
