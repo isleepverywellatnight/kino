@@ -36,4 +36,29 @@ function interfaceScripts(root = ROOT) {
   return [...html.matchAll(/<script src="\/js\/([\w-]+\.js)"><\/script>/g)].map(match => match[1]);
 }
 
-module.exports = { appParts, appSource, interfaceScripts, inFrench, FRENCH_MONTHS };
+// index.html declares what its controls do as data attributes read by
+// web/js/actions.js (data-on-click="switchTab" data-click-args='["movies", {"$": "this"}]').
+// Tests read each one as the call it makes: onclick="switchTab('movies', this)".
+const TOKENS = { this: 'this', event: 'event', value: 'this.value', checked: 'this.checked', files: 'this.files' };
+function asCall(name, args) {
+  const js = arg => {
+    if (arg && typeof arg === 'object' && !Array.isArray(arg) && '$' in arg) return TOKENS[arg.$];
+    if (typeof arg === 'string') return `'${arg.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+    if (arg && typeof arg === 'object') return `{ ${Object.entries(arg).map(([k, v]) => `${k}: ${js(v)}`).join(', ')} }`;
+    return String(arg);
+  };
+  return `${name}(${args.map(js).join(', ')})`;
+}
+
+function withCalls(html) {
+  return html.replace(/ data-on-([a-z]+)="([^"]+)"(?: data-\1-args='([^']*)')?( data-\1-stop)?/g, (_, type, name, args, stop) => {
+    const call = asCall(name, args ? JSON.parse(args) : []);
+    return ` on${type}="${(stop ? 'event.stopPropagation(); ' : '') + call.replace(/"/g, '&quot;')}"`;
+  });
+}
+
+function indexHtml(root = ROOT) {
+  return withCalls(fs.readFileSync(path.join(root, 'web', 'index.html'), 'utf8'));
+}
+
+module.exports = { appParts, appSource, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls };

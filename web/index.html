@@ -6,6 +6,7 @@
 <meta name="color-scheme" content="dark">
 <title>KINO</title>
 <script src="/js/i18n.js"></script>
+<script src="/js/actions.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22100 100 824 824%22%3E%3Crect x=%22100%22 y=%22100%22 width=%22824%22 height=%22824%22 rx=%22185%22 fill=%22%23141417%22/%3E%3Crect x=%22176%22 y=%22176%22 width=%22672%22 height=%22672%22 rx=%22150%22 fill=%22none%22 stroke=%22%23fafafa%22 stroke-width=%2276%22/%3E%3CclipPath id=%22k%22%3E%3Crect x=%220%22 y=%22342.4%22 width=%221024%22 height=%22339.2%22/%3E%3C/clipPath%3E%3Cpath d=%22M398.4 310.4L398.4 713.6M398.4 590.4L683.2 264M497.6 481.6L692.8 758.4%22 clip-path=%22url(%23k)%22 fill=%22none%22 stroke=%22%23fafafa%22 stroke-width=%2283.2%22/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/redesign.css">
@@ -35,27 +36,27 @@
   <div class="win-resize-handle rh-bottomright" data-dir="bottomright"></div>
 </div>
 
-<header class="pywebview-drag-region" ondblclick="if (!event.target.closest('.no-drag')) windowAction('maximize')">
+<header class="pywebview-drag-region" data-on-dblclick="kinoBarDoubleClick" data-dblclick-args='[{"$":"event"}]'>
   <div class="header-left">
     <div class="mac-controls no-drag">
-      <button class="mac-btn mac-close" onclick="windowAction('close')" title="Fermer (Alt+F4)">
+      <button class="mac-btn mac-close" data-on-click="windowAction" data-click-args='["close"]' title="Fermer (Alt+F4)">
         <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
           <path d="M2.2 2.2l7.6 7.6M9.8 2.2l-7.6 7.6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
         </svg>
       </button>
-      <button class="mac-btn mac-min" onclick="windowAction('minimize')" title="Réduire (Ctrl+M)">
+      <button class="mac-btn mac-min" data-on-click="windowAction" data-click-args='["minimize"]' title="Réduire (Ctrl+M)">
         <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
           <line x1="2" y1="6" x2="10" y2="6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
         </svg>
       </button>
-      <button class="mac-btn mac-max" onclick="windowAction('maximize')" title="Agrandir / Plein écran (F11)">
+      <button class="mac-btn mac-max" data-on-click="windowAction" data-click-args='["maximize"]' title="Agrandir / Plein écran (F11)">
         <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
           <polygon points="2.2,7.5 2.2,2.2 7.5,2.2" fill="rgba(0,0,0,0.65)"/>
           <polygon points="9.8,4.5 9.8,9.8 4.5,9.8" fill="rgba(0,0,0,0.65)"/>
         </svg>
       </button>
     </div>
-    <div class="logo no-drag" onclick="switchTab('movies')" aria-label="Accueil KINO">
+    <div class="logo no-drag" data-on-click="switchTab" data-click-args='["movies"]' aria-label="Accueil KINO">
       <svg class="logo-mark" viewBox="130 130 764 764" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="176" y="176" width="672" height="672" rx="150" fill="none" stroke="#fafafa" stroke-width="76"/><clipPath id="kinoLogoClip"><rect x="0" y="342.4" width="1024" height="339.2"/></clipPath><path d="M398.4 310.4L398.4 713.6M398.4 590.4L683.2 264M497.6 481.6L692.8 758.4" clip-path="url(#kinoLogoClip)" fill="none" stroke="#fafafa" stroke-width="83.2"/></svg>
       <span class="logo-wordmark">KINO</span>
       <span class="logo-divider"></span>
@@ -65,7 +66,7 @@
   <!-- Recherche : un champ dans la barre du haut ; ⌘K ouvre ses suggestions. -->
   <div class="header-center">
     <div class="search-box no-drag" role="search">
-      <button type="button" id="navBackBtn" class="nav-back-btn" onclick="goBack()" hidden aria-label="Retour">
+      <button type="button" id="navBackBtn" class="nav-back-btn" data-on-click="goBack" hidden aria-label="Retour">
         <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#chevron-left"></use></svg>
         <span>Retour</span>
       </button>
@@ -73,12 +74,12 @@
         <span class="search-icon-svg">
           <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#search"></use></svg>
         </span>
-        <input type="text" id="searchInput" placeholder="Rechercher un film, une série…" oninput="onSearchInput()" onkeydown="onSearchKeyDown(event)" onfocus="openSearchPanel()" onclick="openSearchPanel()" autocomplete="off" spellcheck="false" aria-label="Rechercher" aria-controls="searchDropdown" aria-autocomplete="list">
+        <input type="text" id="searchInput" placeholder="Rechercher un film, une série…" data-on-input="onSearchInput" data-on-keydown="onSearchKeyDown" data-keydown-args='[{"$":"event"}]' data-on-focus="openSearchPanel" data-on-click="openSearchPanel" autocomplete="off" spellcheck="false" aria-label="Rechercher" aria-controls="searchDropdown" aria-autocomplete="list">
         <div class="search-right-controls">
-          <button id="searchClearBtn" class="search-clear-btn" style="display:none;" onclick="clearSearchInput()" title="Effacer la recherche">
+          <button id="searchClearBtn" class="search-clear-btn" style="display:none;" data-on-click="clearSearchInput" title="Effacer la recherche">
             <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#close"></use></svg>
           </button>
-          <select id="searchType" class="search-type-select" onchange="toggleSearchMode()" aria-label="Chercher dans">
+          <select id="searchType" class="search-type-select" data-on-change="toggleSearchMode" aria-label="Chercher dans">
             <option value="all">Tout</option>
             <option value="movie">Films</option>
             <option value="series">Séries</option>
@@ -94,45 +95,45 @@
   </div>
   <div class="header-right no-drag">
     <!-- Badge Utilisateur interactif / statut -->
-    <div id="userBadge" class="header-user-pill" onclick="openConfig()" title="Gérer le compte et la configuration">
+    <div id="userBadge" class="header-user-pill" data-on-click="openConfig" title="Gérer le compte et la configuration">
       <span class="user-status-dot"></span>
       <span style="color:var(--muted); font-size:0.75rem;">Chargement...</span>
     </div>
 
-    <input type="file" id="torrentFileInput" accept=".torrent" style="display:none;" onchange="handleTorrentFileSelect(this.files)">
+    <input type="file" id="torrentFileInput" accept=".torrent" style="display:none;" data-on-change="handleTorrentFileSelect" data-change-args='[{"$":"files"}]'>
 
     <!-- Les outils secondaires restent accessibles sans encombrer la navigation principale. -->
     <div class="header-menu-wrap">
-      <button id="headerSettingsBtn" class="header-tool-btn header-btn-settings" onclick="toggleHeaderMenu(event)" title="Plus d’outils" aria-label="Plus d’outils" aria-expanded="false">
+      <button id="headerSettingsBtn" class="header-tool-btn header-btn-settings" data-on-click="toggleHeaderMenu" data-click-args='[{"$":"event"}]' title="Plus d’outils" aria-label="Plus d’outils" aria-expanded="false">
         <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#grid"></use></svg>
         <span class="btn-text">Outils</span>
         <svg class="ui-icon ui-icon-xs chevron-icon" aria-hidden="true"><use href="/icons.svg#chevron-down"></use></svg>
       </button>
 
       <div id="headerDropdownMenu" class="header-dropdown-menu">
-        <div class="header-dropdown-item" onclick="openTorrentFile(); closeHeaderMenu();">
+        <div class="header-dropdown-item" data-on-click="kinoMenuAction" data-click-args='["openTorrentFile"]'>
           <span class="hdi-icon"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#plus"></use></svg></span>
           <div class="hdi-content"><span class="hdi-title">Ouvrir un fichier .torrent</span><span class="hdi-desc">Ou le glisser dans la fenêtre</span></div>
         </div>
         <div class="header-dropdown-divider"></div>
-        <div class="header-dropdown-item" onclick="openRemoteModal(); closeHeaderMenu();">
+        <div class="header-dropdown-item" data-on-click="kinoMenuAction" data-click-args='["openRemoteModal"]'>
           <span class="hdi-icon"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#remote"></use></svg></span>
           <div class="hdi-content"><span class="hdi-title">Télécommande</span><span class="hdi-desc">Piloter KINO depuis un téléphone</span></div>
         </div>
-        <div class="header-dropdown-item" onclick="openWatchPartyModal(); closeHeaderMenu();">
+        <div class="header-dropdown-item" data-on-click="kinoMenuAction" data-click-args='["openWatchPartyModal"]'>
           <span class="hdi-icon"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#users"></use></svg></span>
           <div class="hdi-content"><span class="hdi-title">Watch Party</span><span class="hdi-desc">Regarder ensemble à distance</span></div>
         </div>
-        <div class="header-dropdown-item" onclick="openAddonsModal(); closeHeaderMenu();">
+        <div class="header-dropdown-item" data-on-click="kinoMenuAction" data-click-args='["openAddonsModal"]'>
           <span class="hdi-icon"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#puzzle"></use></svg></span>
           <div class="hdi-content"><span class="hdi-title">Extensions</span><span class="hdi-desc">Sources et modules de la communauté</span></div>
         </div>
-        <div class="header-dropdown-item" onclick="openDiagnostic(); closeHeaderMenu();">
+        <div class="header-dropdown-item" data-on-click="kinoMenuAction" data-click-args='["openDiagnostic"]'>
           <span class="hdi-icon"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#pulse"></use></svg></span>
           <div class="hdi-content"><span class="hdi-title">Diagnostic</span><span class="hdi-desc">Vérifier que tout fonctionne</span></div>
         </div>
         <div class="header-dropdown-divider"></div>
-        <div class="header-dropdown-item" onclick="openConfig(); closeHeaderMenu();">
+        <div class="header-dropdown-item" data-on-click="kinoMenuAction" data-click-args='["openConfig"]'>
           <span class="hdi-icon">
             <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#settings"></use></svg>
           </span>
@@ -141,7 +142,7 @@
             <span class="hdi-desc">Lecture, comptes, connexions</span>
           </div>
         </div>
-        <div class="header-dropdown-item" onclick="openFolder(); closeHeaderMenu();">
+        <div class="header-dropdown-item" data-on-click="kinoMenuAction" data-click-args='["openFolder"]'>
           <span class="hdi-icon">
             <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#folder"></use></svg>
           </span>
@@ -150,7 +151,7 @@
             <span class="hdi-desc">Les vidéos gardées sur ce Mac</span>
           </div>
         </div>
-        <div class="header-dropdown-item" onclick="triggerGdriveSync(); closeHeaderMenu();">
+        <div class="header-dropdown-item" data-on-click="kinoMenuAction" data-click-args='["triggerGdriveSync"]'>
           <span class="hdi-icon">
             <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#sync"></use></svg>
           </span>
@@ -160,7 +161,7 @@
           </div>
         </div>
         <div class="header-dropdown-divider"></div>
-        <div class="header-dropdown-item" onclick="toggleShortcutsModal(); closeHeaderMenu();">
+        <div class="header-dropdown-item" data-on-click="kinoMenuAction" data-click-args='["toggleShortcutsModal"]'>
           <span class="hdi-icon">
             <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#keyboard"></use></svg>
           </span>
@@ -172,9 +173,9 @@
       </div>
     </div>
     <div class="win-controls no-drag" role="group" aria-label="Fenêtre">
-      <button type="button" class="win-btn" onclick="windowAction('minimize')" title="Réduire" aria-label="Réduire"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
-      <button type="button" class="win-btn win-max" onclick="windowAction('maximize')" title="Agrandir" aria-label="Agrandir"><svg class="win-icon-max" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg><svg class="win-icon-restore" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="2.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><path d="M2.5 2.5V1.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
-      <button type="button" class="win-btn win-close" onclick="windowAction('close')" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
+      <button type="button" class="win-btn" data-on-click="windowAction" data-click-args='["minimize"]' title="Réduire" aria-label="Réduire"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
+      <button type="button" class="win-btn win-max" data-on-click="windowAction" data-click-args='["maximize"]' title="Agrandir" aria-label="Agrandir"><svg class="win-icon-max" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg><svg class="win-icon-restore" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="2.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><path d="M2.5 2.5V1.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
+      <button type="button" class="win-btn win-close" data-on-click="windowAction" data-click-args='["close"]' title="Fermer" aria-label="Fermer"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
     </div>
   </div>
 </header>
@@ -182,18 +183,18 @@
 <nav class="nav-tabs" aria-label="Navigation principale">
   <div class="nav-tabs-primary">
     <span class="nav-section-label">Découvrir</span>
-    <button class="nav-tab active" id="tab-movies" onclick="switchTab('movies')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#film"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#film-fill"></use></svg></span>Films</button>
-    <button class="nav-tab" id="tab-series" onclick="switchTab('series')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#series"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#series-fill"></use></svg></span>Séries</button>
-    <button class="nav-tab" id="tab-anime" onclick="switchTab('anime')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#anime"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#anime-fill"></use></svg></span>Anime</button>
-    <button class="nav-tab" id="tab-manga" onclick="switchTab('manga')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#manga"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#manga-fill"></use></svg></span>Manga</button>
-    <button class="nav-tab" id="tonightOpenButton" type="button" onclick="openTonightModal()"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#tonight"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#tonight-fill"></use></svg></span>Ce soir</button>
-    <button class="nav-tab" id="tab-community" onclick="switchTab('community')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#explore"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#explore-fill"></use></svg></span>Explorer</button>
+    <button class="nav-tab active" id="tab-movies" data-on-click="switchTab" data-click-args='["movies"]'><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#film"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#film-fill"></use></svg></span>Films</button>
+    <button class="nav-tab" id="tab-series" data-on-click="switchTab" data-click-args='["series"]'><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#series"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#series-fill"></use></svg></span>Séries</button>
+    <button class="nav-tab" id="tab-anime" data-on-click="switchTab" data-click-args='["anime"]'><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#anime"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#anime-fill"></use></svg></span>Anime</button>
+    <button class="nav-tab" id="tab-manga" data-on-click="switchTab" data-click-args='["manga"]'><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#manga"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#manga-fill"></use></svg></span>Manga</button>
+    <button class="nav-tab" id="tonightOpenButton" type="button" data-on-click="openTonightModal"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#tonight"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#tonight-fill"></use></svg></span>Ce soir</button>
+    <button class="nav-tab" id="tab-community" data-on-click="switchTab" data-click-args='["community"]'><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#explore"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#explore-fill"></use></svg></span>Explorer</button>
     <span class="nav-section-label nav-section-library">Personnel</span>
-    <button class="nav-tab" id="tab-library" onclick="switchTab('library')">
+    <button class="nav-tab" id="tab-library" data-on-click="switchTab" data-click-args='["library"]'>
       <span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#library"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#library-fill"></use></svg></span><span>Bibliothèque</span><span id="libraryTotalBadge" class="nav-badge"></span>
     </button>
   </div>
-  <button class="nav-tab nav-settings" id="tab-settings" onclick="switchTab('settings')"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#settings"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#settings-fill"></use></svg></span>Paramètres</button>
+  <button class="nav-tab nav-settings" id="tab-settings" data-on-click="switchTab" data-click-args='["settings"]'><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#settings"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#settings-fill"></use></svg></span>Paramètres</button>
 </nav>
 
 <div class="container">
@@ -204,29 +205,29 @@
       <span id="networkBannerText"></span>
     </div>
     <div class="network-banner-actions">
-      <button type="button" class="btn btn-secondary" onclick="switchTab('offline')">Mes fichiers hors ligne</button>
-      <button type="button" class="btn btn-secondary" id="networkRetryButton" onclick="retryNetwork()">Réessayer</button>
+      <button type="button" class="btn btn-secondary" data-on-click="switchTab" data-click-args='["offline"]'>Mes fichiers hors ligne</button>
+      <button type="button" class="btn btn-secondary" id="networkRetryButton" data-on-click="retryNetwork">Réessayer</button>
     </div>
   </div>
 
   <!-- Bibliothèque : une ligne d'onglets, tous visibles ; l'onglet est le titre de la page. -->
   <nav id="librarySubNav" class="library-subnav" aria-label="Bibliothèque" style="display:none;">
-    <button class="lib-subtab active" id="subtab-watchlist" onclick="switchTab('watchlist')">Ma Liste <span id="wlCount" class="lib-count"></span></button>
-    <button class="lib-subtab" id="subtab-history" onclick="switchTab('history')">En cours <span id="histCount" class="lib-count"></span></button>
-    <button class="lib-subtab" id="subtab-myseries" onclick="switchTab('myseries')">Mes séries</button>
-    <button class="lib-subtab" id="subtab-calendar" onclick="switchTab('calendar')">Calendrier</button>
-    <button class="lib-subtab" id="subtab-watched" onclick="switchTab('watched')">Déjà vus <span id="watchedCount" class="lib-count"></span></button>
-    <button class="lib-subtab" id="subtab-offline" onclick="switchTab('offline')">Hors ligne <span id="offlineCount" class="lib-count"></span></button>
-    <button class="lib-subtab" id="subtab-customlists" onclick="switchTab('customlists')">Listes <span id="customListsCount" class="lib-count"></span></button>
-    <button class="lib-subtab" id="subtab-rdcloud" onclick="switchTab('rdcloud')">Cloud</button>
-    <button class="lib-subtab" id="subtab-stats" onclick="switchTab('stats')">Statistiques</button>
+    <button class="lib-subtab active" id="subtab-watchlist" data-on-click="switchTab" data-click-args='["watchlist"]'>Ma Liste <span id="wlCount" class="lib-count"></span></button>
+    <button class="lib-subtab" id="subtab-history" data-on-click="switchTab" data-click-args='["history"]'>En cours <span id="histCount" class="lib-count"></span></button>
+    <button class="lib-subtab" id="subtab-myseries" data-on-click="switchTab" data-click-args='["myseries"]'>Mes séries</button>
+    <button class="lib-subtab" id="subtab-calendar" data-on-click="switchTab" data-click-args='["calendar"]'>Calendrier</button>
+    <button class="lib-subtab" id="subtab-watched" data-on-click="switchTab" data-click-args='["watched"]'>Déjà vus <span id="watchedCount" class="lib-count"></span></button>
+    <button class="lib-subtab" id="subtab-offline" data-on-click="switchTab" data-click-args='["offline"]'>Hors ligne <span id="offlineCount" class="lib-count"></span></button>
+    <button class="lib-subtab" id="subtab-customlists" data-on-click="switchTab" data-click-args='["customlists"]'>Listes <span id="customListsCount" class="lib-count"></span></button>
+    <button class="lib-subtab" id="subtab-rdcloud" data-on-click="switchTab" data-click-args='["rdcloud"]'>Cloud</button>
+    <button class="lib-subtab" id="subtab-stats" data-on-click="switchTab" data-click-args='["stats"]'>Statistiques</button>
   </nav>
 
   <!-- Téléchargements PC actifs -->
   <div id="downloadsPanel" class="panel" style="display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
       <h3>Téléchargements</h3>
-      <button class="btn btn-secondary" style="padding:5px 10px; font-size:0.78rem;" onclick="openFolder()">Ouvrir le dossier</button>
+      <button class="btn btn-secondary" style="padding:5px 10px; font-size:0.78rem;" data-on-click="openFolder">Ouvrir le dossier</button>
     </div>
     <div id="downloadsList"></div>
   </div>
@@ -246,29 +247,29 @@
       </div>
       <div id="seriesControls" style="display:none; gap:8px; align-items:center; flex-wrap:wrap;">
         <label style="font-size:0.8rem; color:var(--muted);">Saison</label>
-        <select id="seasonSelect" onchange="onSeasonChange()" style="min-width:95px;"></select>
-        <button class="btn btn-secondary" id="markSeasonWatchedBtn" onclick="toggleWatchedWholeSeason()" title="Marquer ou démarquer tous les épisodes de cette saison comme vus" style="padding:6px 10px; font-size:0.76rem;">✓ Saison vue</button>
+        <select id="seasonSelect" data-on-change="onSeasonChange" style="min-width:95px;"></select>
+        <button class="btn btn-secondary" id="markSeasonWatchedBtn" data-on-click="toggleWatchedWholeSeason" title="Marquer ou démarquer tous les épisodes de cette saison comme vus" style="padding:6px 10px; font-size:0.76rem;">✓ Saison vue</button>
         <label style="font-size:0.8rem; color:var(--muted);">Épisode</label>
-        <select id="episodeSelect" onchange="reloadSeriesEpisode()" style="min-width:190px;"></select>
-        <button class="btn btn-secondary" onclick="reloadSeriesEpisode()">Sources</button>
-        <button class="btn" onclick="oneClickSeriesEpisode(this)">Lancer</button>
+        <select id="episodeSelect" data-on-change="reloadSeriesEpisode" style="min-width:190px;"></select>
+        <button class="btn btn-secondary" data-on-click="reloadSeriesEpisode">Sources</button>
+        <button class="btn" data-on-click="oneClickSeriesEpisode" data-click-args='[{"$":"this"}]'>Lancer</button>
       </div>
     </div>
 
     <div class="filters" id="sourcesFilters" style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
-      <span class="chip active" onclick="setFilter('', this)">Tous</span>
-      <span class="chip" onclick="setFilter('fr', this)">VF / MULTI / VOSTFR</span>
-      <span class="chip" onclick="setFilter('sdr', this)" title="Afficher uniquement les sources SDR">SDR</span>
-      <span class="chip" onclick="setFilter('4k', this)">4K</span>
-      <span class="chip" onclick="setFilter('1080p', this)">1080p</span>
+      <span class="chip active" data-on-click="setFilter" data-click-args='["",{"$":"this"}]'>Tous</span>
+      <span class="chip" data-on-click="setFilter" data-click-args='["fr",{"$":"this"}]'>VF / MULTI / VOSTFR</span>
+      <span class="chip" data-on-click="setFilter" data-click-args='["sdr",{"$":"this"}]' title="Afficher uniquement les sources SDR">SDR</span>
+      <span class="chip" data-on-click="setFilter" data-click-args='["4k",{"$":"this"}]'>4K</span>
+      <span class="chip" data-on-click="setFilter" data-click-args='["1080p",{"$":"this"}]'>1080p</span>
       <div style="margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-        <select id="torrentSortSelect" onchange="renderTorrents()" style="padding:5px 9px; font-size:0.78rem; width:auto; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--text); cursor:pointer;">
+        <select id="torrentSortSelect" data-on-change="renderTorrents" style="padding:5px 9px; font-size:0.78rem; width:auto; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--text); cursor:pointer;">
           <option value="default">Tri : Recommandé</option>
           <option value="seeds">Tri : Seeders (Max)</option>
           <option value="size_desc">Tri : Taille (Plus grand)</option>
           <option value="size_asc">Tri : Taille (Plus léger)</option>
         </select>
-        <input type="text" id="customFilter" placeholder="Filtrer (ex: multi, hevc...)" oninput="renderTorrents()" style="padding:5px 10px; font-size:0.78rem; min-width:180px;">
+        <input type="text" id="customFilter" placeholder="Filtrer (ex: multi, hevc...)" data-on-input="renderTorrents" style="padding:5px 10px; font-size:0.78rem; min-width:180px;">
       </div>
     </div>
 
@@ -278,14 +279,14 @@
   <!-- « Lire sur la TV » : ce que joue la TV, et ses commandes. -->
   <!-- « Vous avez aimé … ? » après un film ou une saison (ratings.js). -->
   <div id="ratePrompt" class="rate-prompt" role="region" aria-labelledby="ratePromptTitle" hidden>
-    <img id="ratePromptPoster" class="rate-prompt-poster" alt="" onerror="this.hidden = true">
+    <img id="ratePromptPoster" class="rate-prompt-poster" alt="" data-on-error="kinoHideImage" data-error-args='[{"$":"this"}]'>
     <div class="rate-prompt-body">
       <p class="rate-prompt-kicker" id="ratePromptKicker"></p>
       <p class="rate-prompt-title" id="ratePromptTitle"></p>
       <div id="ratePromptGestures"></div>
       <p class="rate-status" role="status"></p>
     </div>
-    <button type="button" class="rate-prompt-close" onclick="closeRatePrompt()" title="Plus tard" aria-label="Plus tard">
+    <button type="button" class="rate-prompt-close" data-on-click="closeRatePrompt" title="Plus tard" aria-label="Plus tard">
       <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#close"></use></svg>
     </button>
   </div>
@@ -294,10 +295,10 @@
     <svg class="ui-icon tv-bar-icon" aria-hidden="true"><use href="/icons.svg#cast"></use></svg>
     <div class="tv-bar-text"><strong id="tvBarTitle"></strong><span id="tvBarSub"></span></div>
     <div class="tv-bar-actions">
-      <button type="button" class="btn btn-secondary btn-small tv-seek" onclick="tvControl('seek_rel', -10)" aria-label="Reculer de 10 secondes">−10 s</button>
-      <button type="button" class="btn btn-icon" id="tvBarToggle" onclick="tvControl('toggle_play')" aria-label="Mettre en pause sur la TV"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#pause"></use></svg></button>
-      <button type="button" class="btn btn-secondary btn-small tv-seek" onclick="tvControl('seek_rel', 10)" aria-label="Avancer de 10 secondes">+10 s</button>
-      <button type="button" class="btn btn-secondary btn-small" id="tvBarStop" onclick="tvControl('stop')">Arrêter</button>
+      <button type="button" class="btn btn-secondary btn-small tv-seek" data-on-click="tvControl" data-click-args='["seek_rel",-10]' aria-label="Reculer de 10 secondes">−10 s</button>
+      <button type="button" class="btn btn-icon" id="tvBarToggle" data-on-click="tvControl" data-click-args='["toggle_play"]' aria-label="Mettre en pause sur la TV"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#pause"></use></svg></button>
+      <button type="button" class="btn btn-secondary btn-small tv-seek" data-on-click="tvControl" data-click-args='["seek_rel",10]' aria-label="Avancer de 10 secondes">+10 s</button>
+      <button type="button" class="btn btn-secondary btn-small" id="tvBarStop" data-on-click="tvControl" data-click-args='["stop"]'>Arrêter</button>
     </div>
   </div>
 
@@ -307,17 +308,17 @@
   <!-- Accueil : d'abord ce qui se regarde maintenant, puis la découverte. -->
   <!-- Anime : trois pages sur une ligne d'onglets ; l'onglet est le titre. -->
   <nav id="animeSubNav" class="library-subnav" aria-label="Anime" style="display:none;">
-    <button class="lib-subtab active" id="animeSubTabHome" onclick="switchAnimeSubTab('home')">À la une</button>
-    <button class="lib-subtab" id="animeSubTabSchedule" onclick="switchAnimeSubTab('schedule')">Planning</button>
-    <button class="lib-subtab" id="animeSubTabCatalog" onclick="switchAnimeSubTab('catalog')">Catalogue</button>
+    <button class="lib-subtab active" id="animeSubTabHome" data-on-click="switchAnimeSubTab" data-click-args='["home"]'>À la une</button>
+    <button class="lib-subtab" id="animeSubTabSchedule" data-on-click="switchAnimeSubTab" data-click-args='["schedule"]'>Planning</button>
+    <button class="lib-subtab" id="animeSubTabCatalog" data-on-click="switchAnimeSubTab" data-click-args='["catalog"]'>Catalogue</button>
   </nav>
 
   <div id="homeResumeSection" style="display:none;">
     <div class="section-header">
       <span class="section-title" id="resumeSectionTitle">À continuer</span>
       <div class="resume-section-actions">
-        <button id="homeResumeAll" class="btn btn-secondary" style="display:none;" onclick="switchTab('history')">Toutes mes lectures</button>
-        <button id="homeResumeClear" class="btn btn-secondary" style="display:none;" onclick="clearAllHistory()">Effacer l’historique</button>
+        <button id="homeResumeAll" class="btn btn-secondary" style="display:none;" data-on-click="switchTab" data-click-args='["history"]'>Toutes mes lectures</button>
+        <button id="homeResumeClear" class="btn btn-secondary" style="display:none;" data-on-click="clearAllHistory">Effacer l’historique</button>
       </div>
     </div>
     <div id="homeResumeGrid" class="resume-grid"></div>
@@ -336,8 +337,8 @@
     <div class="section-header">
       <span class="section-title" id="homeListTitle">Dans Ma Liste <span id="homeListCount" class="list-count"></span></span>
       <div class="resume-section-actions">
-        <button type="button" class="btn btn-secondary" onclick="openTonightModal()">Une idée pour ce soir</button>
-        <button type="button" class="btn btn-secondary" onclick="switchTab('watchlist')">Ma Liste</button>
+        <button type="button" class="btn btn-secondary" data-on-click="openTonightModal">Une idée pour ce soir</button>
+        <button type="button" class="btn btn-secondary" data-on-click="switchTab" data-click-args='["watchlist"]'>Ma Liste</button>
       </div>
     </div>
     <div id="homeListRow" class="list-shelf-row"></div>
@@ -356,9 +357,9 @@
         <h2 class="explore-title">Manga</h2>
         <p class="explore-sub">Tout le catalogue, les sorties en cours, des volumes en haute qualité et vos propres fichiers.</p>
       </div>
-      <form class="manga-search" onsubmit="event.preventDefault(); searchManga();">
+      <form class="manga-search" data-on-submit="kinoSubmit" data-submit-args='[{"$":"event"},"searchManga"]'>
         <input type="search" id="mangaSearchInput" placeholder="Rechercher un manga" aria-label="Rechercher un manga" autocomplete="off" spellcheck="false">
-        <select id="mangaLang" aria-label="Langue des chapitres" onchange="setMangaLang(this.value)">
+        <select id="mangaLang" aria-label="Langue des chapitres" data-on-change="setMangaLang" data-change-args='[{"$":"value"}]'>
           <option value="fr">Français</option>
           <option value="en">English</option>
           <option value="es">Español</option>
@@ -409,12 +410,12 @@
         <span id="listStatsBadge" class="lib-summary" style="display:none;"></span>
       </div>
       <div id="catalogSortWrap" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <button class="btn-surprise" onclick="surpriseMeMedia(activeTab === 'classics' ? 'classics' : 'catalog')" title="Lancer la roulette KINO et tirer un titre non encore vu">
+        <button class="btn-surprise" data-on-click="kinoSurprise" title="Lancer la roulette KINO et tirer un titre non encore vu">
           <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#dice"></use></svg>
           <span>Surprends-moi</span>
         </button>
-        <button id="hideWatchedChip" type="button" class="chip" onclick="toggleHideWatchedCatalog()" title="Masquer du catalogue les films que vous avez déjà vus">Masquer déjà vus</button>
-        <select id="catalogSortSelect" class="catalog-sort" aria-label="Trier le catalogue" onchange="onChangeCatalogSort(this.value)">
+        <button id="hideWatchedChip" type="button" class="chip" data-on-click="toggleHideWatchedCatalog" title="Masquer du catalogue les films que vous avez déjà vus">Masquer déjà vus</button>
+        <select id="catalogSortSelect" class="catalog-sort" aria-label="Trier le catalogue" data-on-change="onChangeCatalogSort" data-change-args='[{"$":"value"}]'>
           <option value="top">Tendances</option>
           <option value="imdbRating">Mieux notés</option>
           <option value="recent">Plus récents</option>
@@ -422,8 +423,8 @@
         </select>
       </div>
       <div id="watchlistActionsWrap" class="lib-tools" style="display:none;">
-        <input type="search" id="listFilterInput" placeholder="Filtrer par titre ou année…" aria-label="Filtrer la liste par titre ou année" oninput="renderActiveListTab()">
-        <select id="listSortSelect" class="catalog-sort" aria-label="Trier la liste" onchange="onChangeListSort(this.value)">
+        <input type="search" id="listFilterInput" placeholder="Filtrer par titre ou année…" aria-label="Filtrer la liste par titre ou année" data-on-input="renderActiveListTab">
+        <select id="listSortSelect" class="catalog-sort" aria-label="Trier la liste" data-on-change="onChangeListSort" data-change-args='[{"$":"value"}]'>
           <option value="added">Ajout récent</option>
           <option value="user_rating_desc">Ma note</option>
           <option value="rating">Note IMDb</option>
@@ -431,11 +432,11 @@
           <option value="year_asc">Plus anciens</option>
           <option value="alpha">A → Z</option>
         </select>
-        <button id="listSurpriseBtn" class="btn-surprise" onclick="surpriseMeFromCurrentList()" title="Lancer la roulette parmi les films de cette liste">
+        <button id="listSurpriseBtn" class="btn-surprise" data-on-click="surpriseMeFromCurrentList" title="Lancer la roulette parmi les films de cette liste">
           <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#dice"></use></svg>
           <span id="listSurpriseBtnLabel">Tirage sur Ma Liste</span>
         </button>
-        <button class="btn-surprise" onclick="openLetterboxdModal()" title="Importer vos films vus, vos notes ou une liste depuis Letterboxd">
+        <button class="btn-surprise" data-on-click="openLetterboxdModal" title="Importer vos films vus, vos notes ou une liste depuis Letterboxd">
           <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#upload"></use></svg>
           <span>Importer Letterboxd</span>
         </button>
@@ -443,29 +444,29 @@
     </div>
     <div id="listFilters" class="list-filters" hidden></div>
     <div class="genre-strip" id="genreStrip">
-      <button type="button" class="genre-scroll genre-scroll-prev" aria-label="Genres précédents" onclick="scrollGenres(-1)" hidden>‹</button>
+      <button type="button" class="genre-scroll genre-scroll-prev" aria-label="Genres précédents" data-on-click="scrollGenres" data-click-args='[-1]' hidden>‹</button>
       <div id="genreFilters" class="genre-row" role="group" aria-label="Genres">
-      <span class="chip active" data-genre="" onclick="selectGenre('', this)">Tous</span>
-      <span class="chip" data-genre="Action" onclick="selectGenre('Action', this)">Action</span>
-      <span class="chip" data-genre="Sci-Fi" onclick="selectGenre('Sci-Fi', this)">Sci-Fi</span>
-      <span class="chip" data-genre="Thriller" onclick="selectGenre('Thriller', this)">Thriller</span>
-      <span class="chip" data-genre="Crime" onclick="selectGenre('Crime', this)">Policier</span>
-      <span class="chip" data-genre="Adventure" onclick="selectGenre('Adventure', this)">Aventure</span>
-      <span class="chip" data-genre="Animation" onclick="selectGenre('Animation', this)">Animation</span>
-      <span class="chip" data-genre="Comedy" onclick="selectGenre('Comedy', this)">Comédie</span>
-      <span class="chip" data-genre="Drama" onclick="selectGenre('Drama', this)">Drame</span>
-      <span class="chip" data-genre="Fantasy" onclick="selectGenre('Fantasy', this)">Fantastique</span>
-      <span class="chip" data-genre="Horror" onclick="selectGenre('Horror', this)">Horreur</span>
-      <span class="chip" data-genre="War" onclick="selectGenre('War', this)">Guerre</span>
-      <span class="chip" data-genre="Western" onclick="selectGenre('Western', this)">Western</span>
-      <span class="chip" data-genre="Documentary" onclick="selectGenre('Documentary', this)">Documentaire</span>
+      <span class="chip active" data-genre="" data-on-click="selectGenre" data-click-args='["",{"$":"this"}]'>Tous</span>
+      <span class="chip" data-genre="Action" data-on-click="selectGenre" data-click-args='["Action",{"$":"this"}]'>Action</span>
+      <span class="chip" data-genre="Sci-Fi" data-on-click="selectGenre" data-click-args='["Sci-Fi",{"$":"this"}]'>Sci-Fi</span>
+      <span class="chip" data-genre="Thriller" data-on-click="selectGenre" data-click-args='["Thriller",{"$":"this"}]'>Thriller</span>
+      <span class="chip" data-genre="Crime" data-on-click="selectGenre" data-click-args='["Crime",{"$":"this"}]'>Policier</span>
+      <span class="chip" data-genre="Adventure" data-on-click="selectGenre" data-click-args='["Adventure",{"$":"this"}]'>Aventure</span>
+      <span class="chip" data-genre="Animation" data-on-click="selectGenre" data-click-args='["Animation",{"$":"this"}]'>Animation</span>
+      <span class="chip" data-genre="Comedy" data-on-click="selectGenre" data-click-args='["Comedy",{"$":"this"}]'>Comédie</span>
+      <span class="chip" data-genre="Drama" data-on-click="selectGenre" data-click-args='["Drama",{"$":"this"}]'>Drame</span>
+      <span class="chip" data-genre="Fantasy" data-on-click="selectGenre" data-click-args='["Fantasy",{"$":"this"}]'>Fantastique</span>
+      <span class="chip" data-genre="Horror" data-on-click="selectGenre" data-click-args='["Horror",{"$":"this"}]'>Horreur</span>
+      <span class="chip" data-genre="War" data-on-click="selectGenre" data-click-args='["War",{"$":"this"}]'>Guerre</span>
+      <span class="chip" data-genre="Western" data-on-click="selectGenre" data-click-args='["Western",{"$":"this"}]'>Western</span>
+      <span class="chip" data-genre="Documentary" data-on-click="selectGenre" data-click-args='["Documentary",{"$":"this"}]'>Documentaire</span>
     </div>
-      <button type="button" class="genre-scroll genre-scroll-next" aria-label="Genres suivants" onclick="scrollGenres(1)" hidden>›</button>
+      <button type="button" class="genre-scroll genre-scroll-next" aria-label="Genres suivants" data-on-click="scrollGenres" data-click-args='[1]' hidden>›</button>
     </div>
   </div>
   <div id="postersGrid" class="posters-grid"></div>
   <div id="loadMoreWrap" style="display:none; justify-content:center; margin-top:22px;">
-    <button id="loadMoreBtn" class="btn btn-secondary" style="padding:9px 24px;" onclick="loadMoreCatalog()">Voir plus de titres</button>
+    <button id="loadMoreBtn" class="btn btn-secondary" style="padding:9px 24px;" data-on-click="loadMoreCatalog">Voir plus de titres</button>
   </div>
 
   <!-- Section Cloud Multi-Debrid -->
@@ -476,7 +477,7 @@
         <div id="rdCloudStatusNote">Gérez ou nettoyez automatiquement les fichiers et torrents stockés sur votre débrideur.</div>
       </div>
       <div class="lib-tools">
-        <select id="rdCloudRetentionSelect" class="catalog-sort" onchange="onChangeRdRetention(this.value)" title="Suppression automatique des fichiers et torrents anciens">
+        <select id="rdCloudRetentionSelect" class="catalog-sort" data-on-change="onChangeRdRetention" data-change-args='[{"$":"value"}]' title="Suppression automatique des fichiers et torrents anciens">
           <option value="0">Auto-suppression : Jamais</option>
           <option value="1">Auto-suppression : &gt; 24h</option>
           <option value="3">Auto-suppression : &gt; 3 jours</option>
@@ -484,8 +485,8 @@
           <option value="14">Auto-suppression : &gt; 14 jours</option>
           <option value="30">Auto-suppression : &gt; 30 jours</option>
         </select>
-        <button class="btn-surprise" onclick="loadRdCloud()">Actualiser</button>
-        <button class="btn-surprise" onclick="purgeRdCloud('all', this)">Tout vider</button>
+        <button class="btn-surprise" data-on-click="loadRdCloud">Actualiser</button>
+        <button class="btn-surprise" data-on-click="purgeRdCloud" data-click-args='["all",{"$":"this"}]'>Tout vider</button>
       </div>
     </div>
     <div id="rdCloudTools" class="cloud-tools" hidden></div>
@@ -508,7 +509,7 @@
         <h2 class="explore-title">Explorer</h2>
         <p class="explore-sub">Collections cultes, palmarès Letterboxd et pépites choisies par des cinéphiles.</p>
       </div>
-      <form class="explore-import" onsubmit="event.preventDefault(); importCustomLetterboxdFromInput();">
+      <form class="explore-import" data-on-submit="kinoSubmit" data-submit-args='[{"$":"event"},"importCustomLetterboxdFromInput"]'>
         <input type="text" inputmode="url" id="communityLetterboxdInput" placeholder="Adresse d'une liste Letterboxd (letterboxd.com ou boxd.it)" aria-label="Adresse d'une liste Letterboxd à importer" autocomplete="off" spellcheck="false">
         <button type="submit" class="btn">Importer</button>
       </form>
@@ -522,13 +523,13 @@
     <!-- Une sélection en entier -->
     <section id="communityActiveListSection" class="explore-open" hidden>
       <div class="explore-open-head">
-        <button type="button" class="btn btn-secondary lists-back" onclick="closeCommunityActiveList()" aria-label="Revenir à Explorer">← Explorer</button>
+        <button type="button" class="btn btn-secondary lists-back" data-on-click="closeCommunityActiveList" aria-label="Revenir à Explorer">← Explorer</button>
         <div class="explore-open-info">
           <h3 id="communityActiveListTitle" class="list-shelf-title"></h3>
           <div id="communityActiveListMeta" class="list-shelf-meta"></div>
           <p id="communityActiveListDesc" class="list-shelf-desc"></p>
         </div>
-        <button type="button" class="btn-surprise" onclick="surpriseMeFromOpenCommunityList()" title="Tirer un titre non vu de cette sélection">Roulette</button>
+        <button type="button" class="btn-surprise" data-on-click="surpriseMeFromOpenCommunityList" title="Tirer un titre non vu de cette sélection">Roulette</button>
       </div>
       <div id="communityActiveListFilters" class="cloud-chips" role="group" aria-label="État des titres"></div>
       <div id="communityActiveListGrid" class="posters-grid"></div>
@@ -544,12 +545,12 @@
         <p class="week-note">Heures de diffusion au Japon, à l’heure de ce Mac.</p>
       </div>
       <div class="lib-tools">
-        <select id="animeScheduleFilter" class="catalog-sort" aria-label="Épisodes affichés" onchange="setAnimeWeekFilter(this.value)">
+        <select id="animeScheduleFilter" class="catalog-sort" aria-label="Épisodes affichés" data-on-change="setAnimeWeekFilter" data-change-args='[{"$":"value"}]'>
           <option value="popular">Populaires</option>
           <option value="mine">Mes animes</option>
           <option value="all">Tout</option>
         </select>
-        <button type="button" class="btn-surprise" onclick="loadAnimeWeek(true)">Actualiser</button>
+        <button type="button" class="btn-surprise" data-on-click="loadAnimeWeek" data-click-args='[true]'>Actualiser</button>
       </div>
     </div>
     <div id="animeScheduleDays" class="week-days" role="group" aria-label="Jours"></div>
@@ -579,7 +580,7 @@
     <div class="settings-grid">
       <div id="settingsSetupNotice" class="settings-setup" role="status" hidden>
         <div><strong>Ajoutez votre clé Debrid</strong><span>Sans elle, KINO ne peut pas lancer de film ni de série.</span></div>
-        <button type="button" class="btn" onclick="focusDebridKey()">Ajouter ma clé</button>
+        <button type="button" class="btn" data-on-click="focusDebridKey">Ajouter ma clé</button>
       </div>
 
       <!-- 1. Lecture : ce qui se lance quand on appuie sur Lancer -->
@@ -636,7 +637,7 @@
               <label class="settings-label" for="cfgEpisodeNotifications">Notifications des nouveaux épisodes</label>
               <p class="settings-desc">macOS vous prévient quand un épisode d’une série suivie sort, sans en dire le titre.</p>
               <div class="settings-inline-actions">
-                <button type="button" class="btn btn-secondary btn-small" onclick="testEpisodeNotification(this)">Envoyer un essai</button>
+                <button type="button" class="btn btn-secondary btn-small" data-on-click="testEpisodeNotification" data-click-args='[{"$":"this"}]'>Envoyer un essai</button>
                 <span id="cfgNotificationStatus" class="settings-desc" role="status" aria-live="polite"></span>
               </div>
             </div>
@@ -648,7 +649,7 @@
               <p class="settings-desc">Chaque série peut avoir son propre réglage, depuis sa fiche.</p>
               <p id="spoilerSettingsStatus" class="settings-desc" role="status" aria-live="polite"></p>
             </div>
-            <select id="cfgSpoilerProtection" onchange="setGlobalSpoilerProtection(this.value === 'on')">
+            <select id="cfgSpoilerProtection" data-on-change="kinoSpoilerSetting" data-change-args='[null]'>
               <option value="off">Tout afficher</option>
               <option value="on">Masquer leurs titres et images</option>
             </select>
@@ -708,7 +709,7 @@
               <label class="settings-label" for="cfgProvider">Service</label>
               <p id="cfgProviderHelp" class="settings-desc">Votre clé se trouve sur <a id="cfgProviderLink" href="https://real-debrid.com/apitoken" target="_blank" rel="noopener">real-debrid.com/apitoken</a>.</p>
             </div>
-            <select id="cfgProvider" onchange="onConfigProviderChange()">
+            <select id="cfgProvider" data-on-change="onConfigProviderChange">
               <option value="realdebrid">Real-Debrid</option>
               <option value="alldebrid">AllDebrid</option>
               <option value="torbox">TorBox</option>
@@ -725,11 +726,11 @@
             <div class="set-key">
               <div class="set-key-field">
                 <input type="password" id="cfgToken" placeholder="Laisser vide pour garder la clé actuelle" autocomplete="off" spellcheck="false">
-                <button type="button" class="set-key-eye" onclick="togglePasswordVisibility('cfgToken', this)" title="Afficher ou masquer la clé" aria-label="Afficher ou masquer la clé">
+                <button type="button" class="set-key-eye" data-on-click="togglePasswordVisibility" data-click-args='["cfgToken",{"$":"this"}]' title="Afficher ou masquer la clé" aria-label="Afficher ou masquer la clé">
                   <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#eye"></use></svg>
                 </button>
               </div>
-              <button type="button" class="btn" id="cfgTokenVerifyBtn" onclick="verifyDebridKey(this)">Vérifier</button>
+              <button type="button" class="btn" id="cfgTokenVerifyBtn" data-on-click="verifyDebridKey" data-click-args='[{"$":"this"}]'>Vérifier</button>
             </div>
           </div>
           <div class="set-row">
@@ -746,7 +747,7 @@
                 <option value="14">Après 14 jours</option>
                 <option value="30">Après 30 jours</option>
               </select>
-              <button type="button" class="btn btn-secondary btn-small" onclick="purgeRdCloud('all', this)" title="Supprimer tout le contenu du Cloud, après confirmation">Vider le Cloud</button>
+              <button type="button" class="btn btn-secondary btn-small" data-on-click="purgeRdCloud" data-click-args='["all",{"$":"this"}]' title="Supprimer tout le contenu du Cloud, après confirmation">Vider le Cloud</button>
             </div>
           </div>
         </div>
@@ -758,7 +759,7 @@
               <label class="settings-label" for="stremioAddonUrl">Addons</label>
               <p class="settings-desc">Des sources et des catalogues de plus. KINO lit seulement leurs réponses : rien de l’addon ne s’exécute sur ce Mac.</p>
             </div>
-            <form class="set-key" onsubmit="addStremioAddon(event)">
+            <form class="set-key" data-on-submit="addStremioAddon" data-submit-args='[{"$":"event"}]'>
               <div class="set-key-field"><input type="url" id="stremioAddonUrl" placeholder="https://…/manifest.json" autocomplete="off" spellcheck="false"></div>
               <button type="submit" class="btn" id="stremioAddonAdd">Ajouter</button>
             </form>
@@ -769,14 +770,14 @@
               <label class="settings-label" for="cfgP2P">Lecture P2P</label>
               <p class="settings-desc" id="cfgP2PStatus">Sans service de débridage, KINO peut lire les torrents lui-même.</p>
             </div>
-            <label class="k-switch"><input type="checkbox" id="cfgP2P" role="switch" onchange="setP2PEnabled(this)"><span aria-hidden="true"></span></label>
+            <label class="k-switch"><input type="checkbox" id="cfgP2P" role="switch" data-on-change="setP2PEnabled" data-change-args='[{"$":"this"}]'><span aria-hidden="true"></span></label>
           </div>
           <div class="set-row">
             <div class="set-text">
               <label class="settings-label" for="cfgP2PUpload">Envoi aux autres pairs</label>
               <p class="settings-desc">Pendant la lecture, une partie du fichier part vers d’autres utilisateurs.</p>
             </div>
-            <select id="cfgP2PUpload" onchange="setP2PSetting('upload', this.value)">
+            <select id="cfgP2PUpload" data-on-change="setP2PSetting" data-change-args='["upload",{"$":"value"}]'>
               <option value="minimum">Minimum (64 Ko/s)</option>
               <option value="256k">256 Ko/s</option>
               <option value="1m">1 Mo/s</option>
@@ -788,7 +789,7 @@
               <label class="settings-label" for="cfgP2PDownload">Vitesse de téléchargement</label>
               <p class="settings-desc">Une limite laisse de la bande passante aux autres appareils de la maison.</p>
             </div>
-            <select id="cfgP2PDownload" onchange="setP2PSetting('download', this.value)">
+            <select id="cfgP2PDownload" data-on-change="setP2PSetting" data-change-args='["download",{"$":"value"}]'>
               <option value="none">Sans limite</option>
               <option value="10m">10 Mo/s</option>
               <option value="5m">5 Mo/s</option>
@@ -800,21 +801,21 @@
               <label class="settings-label" for="cfgP2PEncrypted">Connexions chiffrées uniquement</label>
               <p class="settings-desc">Moins de pairs, mais votre fournisseur d’accès reconnaît moins facilement BitTorrent. Votre adresse IP reste visible.</p>
             </div>
-            <label class="k-switch"><input type="checkbox" id="cfgP2PEncrypted" role="switch" onchange="setP2PSetting('encrypted', this.checked)"><span aria-hidden="true"></span></label>
+            <label class="k-switch"><input type="checkbox" id="cfgP2PEncrypted" role="switch" data-on-change="setP2PSetting" data-change-args='["encrypted",{"$":"checked"}]'><span aria-hidden="true"></span></label>
           </div>
           <div class="set-row">
             <div class="set-text">
               <label class="settings-label" for="cfgP2PPort">Port d’écoute</label>
               <p class="settings-desc">Vide : un port choisi automatiquement. Si votre VPN vous ouvre un port, indiquez-le : plus de pairs pourront vous joindre.</p>
             </div>
-            <input type="number" id="cfgP2PPort" class="p2p-port" min="1024" max="65535" step="1" placeholder="Auto" inputmode="numeric" onchange="setP2PSetting('port', this.value)">
+            <input type="number" id="cfgP2PPort" class="p2p-port" min="1024" max="65535" step="1" placeholder="Auto" inputmode="numeric" data-on-change="setP2PSetting" data-change-args='["port",{"$":"value"}]'>
           </div>
           <div class="set-row">
             <div class="set-text">
               <span class="settings-label">Fichiers temporaires</span>
               <p class="settings-desc" id="cfgP2PCache">Aucun fichier pour l’instant.</p>
             </div>
-            <button type="button" class="btn btn-secondary" id="cfgP2PClear" onclick="clearP2PCache()">Vider</button>
+            <button type="button" class="btn btn-secondary" id="cfgP2PClear" data-on-click="clearP2PCache">Vider</button>
           </div>
         </div>
       </section>
@@ -833,7 +834,7 @@
                 <p class="settings-desc">Votre historique et Ma Liste, entre ce Mac et votre PC.</p>
                 <p id="gdriveSyncStatus" class="settings-desc set-live">Se synchronise à chaque ouverture de KINO.</p>
               </div>
-              <button type="button" class="btn btn-secondary btn-small" onclick="triggerGdriveSync(this)">Synchroniser</button>
+              <button type="button" class="btn btn-secondary btn-small" data-on-click="triggerGdriveSync" data-click-args='[{"$":"this"}]'>Synchroniser</button>
             </div>
             <div class="set-row">
               <div class="set-text">
@@ -842,8 +843,8 @@
                 <p id="traktSyncStatus" class="settings-desc set-live">Non connecté</p>
               </div>
               <div class="set-control-pair">
-                <button type="button" id="traktConnectBtn" class="btn btn-secondary btn-small" onclick="toggleTraktAuth(this)">Connecter</button>
-                <button type="button" id="traktSyncBtn" class="btn btn-secondary btn-small" style="display:none;" onclick="triggerTraktSync(this)">Synchroniser</button>
+                <button type="button" id="traktConnectBtn" class="btn btn-secondary btn-small" data-on-click="toggleTraktAuth" data-click-args='[{"$":"this"}]'>Connecter</button>
+                <button type="button" id="traktSyncBtn" class="btn btn-secondary btn-small" style="display:none;" data-on-click="triggerTraktSync" data-click-args='[{"$":"this"}]'>Synchroniser</button>
               </div>
             </div>
             <div id="traktAuthBox" class="set-steps" style="display:none;">
@@ -863,8 +864,8 @@
                 <p id="cfgTvStatus" class="settings-desc">Une TV du même réseau que ce Mac (DLNA). Le Mac lui envoie la vidéo : il doit rester allumé.</p>
               </div>
               <div class="set-control-pair">
-                <select id="cfgTvDevice" onchange="chooseTvDevice(this.value)"><option value="">Aucune TV trouvée</option></select>
-                <button type="button" class="btn btn-secondary btn-small" onclick="loadTvDevices(true, this)">Rechercher</button>
+                <select id="cfgTvDevice" data-on-change="chooseTvDevice" data-change-args='[{"$":"value"}]'><option value="">Aucune TV trouvée</option></select>
+                <button type="button" class="btn btn-secondary btn-small" data-on-click="loadTvDevices" data-click-args='[true,{"$":"this"}]'>Rechercher</button>
               </div>
             </div>
           </div>
@@ -882,11 +883,11 @@
               <div class="set-key">
                 <div class="set-key-field">
                   <input type="password" id="cfgTmdbKey" placeholder="Collez votre clé d’API TMDB" autocomplete="off" spellcheck="false">
-                  <button type="button" class="set-key-eye" onclick="togglePasswordVisibility('cfgTmdbKey', this)" title="Afficher ou masquer la clé" aria-label="Afficher ou masquer la clé">
+                  <button type="button" class="set-key-eye" data-on-click="togglePasswordVisibility" data-click-args='["cfgTmdbKey",{"$":"this"}]' title="Afficher ou masquer la clé" aria-label="Afficher ou masquer la clé">
                     <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#eye"></use></svg>
                   </button>
                 </div>
-                <button type="button" class="btn" id="cfgTmdbVerifyBtn" onclick="verifyTmdbKey(this)">Vérifier</button>
+                <button type="button" class="btn" id="cfgTmdbVerifyBtn" data-on-click="verifyTmdbKey" data-click-args='[{"$":"this"}]'>Vérifier</button>
               </div>
             </div>
           </div>
@@ -900,7 +901,7 @@
                 <label class="settings-label" for="cfgDiscordRpc">Afficher ma lecture sur Discord</label>
                 <p id="discordRpcStatus" class="settings-desc">Le film ou l’épisode en cours apparaît sur votre profil, avec son affiche et le temps restant.</p>
               </div>
-              <label class="k-switch"><input type="checkbox" id="cfgDiscordRpc" role="switch" checked onchange="toggleDiscordRpcFields()"><span aria-hidden="true"></span></label>
+              <label class="k-switch"><input type="checkbox" id="cfgDiscordRpc" role="switch" checked data-on-change="toggleDiscordRpcFields"><span aria-hidden="true"></span></label>
             </div>
           </div>
           <details class="set-advanced" id="discordRpcOptions">
@@ -911,7 +912,7 @@
                   <label class="settings-label" for="cfgDiscordPreset">Nom affiché sur Discord</label>
                   <p class="settings-desc">Aucune application Discord personnelle à créer : KINO est préconfiguré pour tous.</p>
                 </div>
-                <select id="cfgDiscordPreset" onchange="onDiscordPresetChange()">
+                <select id="cfgDiscordPreset" data-on-change="onDiscordPresetChange">
                   <option value="1556492442415398973">KINO (préconfiguré)</option>
                   <option value="custom">Autre application</option>
                 </select>
@@ -941,7 +942,7 @@
                 <label class="settings-label" for="cfgUiLanguage">Langue</label>
                 <p class="settings-desc">KINO s’affiche dans cette langue. Par défaut, celle de votre ordinateur.</p>
               </div>
-              <select id="cfgUiLanguage" translate="no" onchange="KINO_I18N.choose(this.value)"></select>
+              <select id="cfgUiLanguage" translate="no" data-on-change="KINO_I18N.choose" data-change-args='[{"$":"value"}]'></select>
             </div>
           </div>
         </div>
@@ -956,7 +957,7 @@
               </div>
               <div class="set-key">
                 <input type="text" id="cfgDir" placeholder="Ex. /Users/vous/Movies/kino" spellcheck="false">
-                <button type="button" class="btn btn-secondary" onclick="openFolder()">Ouvrir</button>
+                <button type="button" class="btn btn-secondary" data-on-click="openFolder">Ouvrir</button>
               </div>
             </div>
           </div>
@@ -971,7 +972,7 @@
                 <p class="settings-desc">« Pour vous » et les titres proches viennent de ce que vous avez vu, noté et mis de côté. Rien de vous ne quitte ce Mac.</p>
                 <p id="suggestionsStatus" class="settings-desc set-live">…</p>
               </div>
-              <button type="button" class="btn btn-secondary btn-small" id="suggestionsResetBtn" onclick="resetNotForMe(this)">Oublier mes « Pas pour moi »</button>
+              <button type="button" class="btn btn-secondary btn-small" id="suggestionsResetBtn" data-on-click="resetNotForMe" data-click-args='[{"$":"this"}]'>Oublier mes « Pas pour moi »</button>
             </div>
           </div>
         </div>
@@ -985,9 +986,9 @@
                 <p class="settings-desc" id="kinoUpdateChannel">Les nouvelles versions sont publiées sur GitHub. KINO vérifie leur signature avant de les installer.</p>
               </div>
               <div class="set-control-pair kino-update-actions">
-                <button type="button" class="btn btn-secondary btn-small" onclick="checkKinoUpdates()">Rechercher une mise à jour</button>
-                <button type="button" class="btn btn-secondary btn-small" id="kinoUpdateChooseBtn" onclick="chooseKinoUpdate()" hidden>Choisir un paquet</button>
-                <button type="button" class="btn btn-secondary btn-small" id="kinoUpdatePageBtn" onclick="openKinoReleasePage()" hidden>Page des versions</button>
+                <button type="button" class="btn btn-secondary btn-small" data-on-click="checkKinoUpdates">Rechercher une mise à jour</button>
+                <button type="button" class="btn btn-secondary btn-small" id="kinoUpdateChooseBtn" data-on-click="chooseKinoUpdate" hidden>Choisir un paquet</button>
+                <button type="button" class="btn btn-secondary btn-small" id="kinoUpdatePageBtn" data-on-click="openKinoReleasePage" hidden>Page des versions</button>
               </div>
             </div>
             <div class="set-row">
@@ -995,7 +996,7 @@
                 <label class="settings-label" for="kinoUpdateAuto">Rechercher automatiquement</label>
                 <p class="settings-desc">Au démarrage puis toutes les 6 heures, KINO demande à GitHub s’il existe une nouvelle version. Rien d’autre n’est envoyé.</p>
               </div>
-              <label class="k-switch"><input type="checkbox" id="kinoUpdateAuto" role="switch" onchange="setKinoUpdateAuto(this)"><span aria-hidden="true"></span></label>
+              <label class="k-switch"><input type="checkbox" id="kinoUpdateAuto" role="switch" data-on-change="setKinoUpdateAuto" data-change-args='[{"$":"this"}]'><span aria-hidden="true"></span></label>
             </div>
             <div class="kino-update-progress" id="kinoUpdateProgressBox" hidden>
               <div class="kino-update-progress-track"><span id="kinoUpdateProgressBar"></span></div>
@@ -1004,14 +1005,14 @@
             <div id="kinoUpdateCandidate" class="kino-update-candidate" hidden>
               <strong id="kinoUpdateCandidateTitle"></strong>
               <p id="kinoUpdateNotes"></p>
-              <button type="button" class="btn" id="kinoUpdateInstallBtn" onclick="installKinoUpdate()">Installer et redémarrer KINO</button>
+              <button type="button" class="btn" id="kinoUpdateInstallBtn" data-on-click="installKinoUpdate">Installer et redémarrer KINO</button>
             </div>
             <div class="set-row kino-update-rollback" id="kinoUpdateRollbackRow" hidden>
               <div class="set-text">
                 <span class="settings-label">Version précédente</span>
                 <p class="settings-desc" id="kinoUpdateRollbackDescription">Aucune sauvegarde disponible.</p>
               </div>
-              <button type="button" class="btn btn-secondary btn-small" id="kinoUpdateRollbackBtn" onclick="rollbackKinoUpdate()" disabled>Revenir à cette version</button>
+              <button type="button" class="btn btn-secondary btn-small" id="kinoUpdateRollbackBtn" data-on-click="rollbackKinoUpdate" disabled>Revenir à cette version</button>
             </div>
             <p id="kinoUpdateMessage" class="settings-desc" role="status" aria-live="polite"></p>
           </div>
@@ -1026,7 +1027,7 @@
                 <p class="settings-desc">Ma Liste, l’historique, vos notes et vos réglages, gardés 7 jours sur ce Mac. Vos clés n’y sont pas.</p>
                 <p id="backupsStatus" class="settings-desc set-live" role="status" aria-live="polite"></p>
               </div>
-              <button type="button" class="btn btn-secondary btn-small" id="backupNowBtn" onclick="backupNow(this)">Sauvegarder maintenant</button>
+              <button type="button" class="btn btn-secondary btn-small" id="backupNowBtn" data-on-click="backupNow" data-click-args='[{"$":"this"}]'>Sauvegarder maintenant</button>
             </div>
             <div id="backupsList" class="backups-list"></div>
           </div>
@@ -1041,8 +1042,8 @@
                 <p class="settings-desc">La connexion, le compte, la synchronisation, le lecteur, l’espace disque et vos données. Rien n’est modifié.</p>
               </div>
               <div class="set-control-pair diagnostic-actions">
-                <button type="button" class="btn btn-secondary btn-small" id="diagnosticRunBtn" onclick="runDiagnostic()">Lancer le diagnostic</button>
-                <button type="button" class="btn btn-secondary btn-small" id="diagnosticCopyBtn" onclick="copyDiagnosticReport()" disabled>Copier le rapport</button>
+                <button type="button" class="btn btn-secondary btn-small" id="diagnosticRunBtn" data-on-click="runDiagnostic">Lancer le diagnostic</button>
+                <button type="button" class="btn btn-secondary btn-small" id="diagnosticCopyBtn" data-on-click="copyDiagnosticReport" disabled>Copier le rapport</button>
               </div>
             </div>
             <span id="diagnosticCopyStatus" class="settings-desc" role="status" aria-live="polite"></span>
@@ -1063,7 +1064,7 @@
             <li><span>Rechercher</span><kbd>⌘K</kbd></li>
             <li><span>Écran précédent</span><kbd>Échap</kbd></li>
           </ul>
-          <button type="button" class="btn btn-secondary btn-small" onclick="toggleShortcutsModal()">Tous les raccourcis</button>
+          <button type="button" class="btn btn-secondary btn-small" data-on-click="toggleShortcutsModal">Tous les raccourcis</button>
         </div>
       </section>
     </div>
@@ -1105,12 +1106,12 @@
   <div id="inAppStatusToast" class="inapp-toast"></div>
   <!-- Bouton Skip Intro Intelligent -->
   <div id="inAppSkipIntroCard" class="inapp-floating-card">
-    <button class="btn" id="inAppSkipIntroBtn" style="padding:7px 14px; font-size:0.82rem;" onclick="skipInAppIntro()">Passer l'intro</button>
-    <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="dismissSkipIntro()" title="Masquer">✕</button>
+    <button class="btn" id="inAppSkipIntroBtn" style="padding:7px 14px; font-size:0.82rem;" data-on-click="skipInAppIntro">Passer l'intro</button>
+    <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" data-on-click="dismissSkipIntro" title="Masquer">✕</button>
   </div>
   <!-- Bouton Annuler le saut (Undo) -->
   <div id="inAppUndoSkipCard" class="inapp-floating-card" style="display:none; bottom:86px;">
-    <button class="btn btn-secondary" id="inAppUndoSkipBtn" style="padding:6px 12px; font-size:0.80rem;" onclick="undoInAppSkip()">Annuler le saut</button>
+    <button class="btn btn-secondary" id="inAppUndoSkipBtn" style="padding:6px 12px; font-size:0.80rem;" data-on-click="undoInAppSkip">Annuler le saut</button>
   </div>
   <!-- Carte Prochain épisode dans 10s -->
   <div id="inAppNextEpCard" class="inapp-floating-card">
@@ -1118,61 +1119,61 @@
       <div style="font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">À suivre dans <span id="inAppNextEpCountdown">10</span>s</div>
       <div id="inAppNextEpTitle" style="font-size:0.86rem; font-weight:600; margin-top:2px; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Épisode suivant</div>
     </div>
-    <button class="btn" style="padding:6px 12px; font-size:0.78rem;" onclick="inAppNextTrack()">Lancer</button>
-    <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" onclick="cancelNextEpAuto()">Annuler</button>
+    <button class="btn" style="padding:6px 12px; font-size:0.78rem;" data-on-click="inAppNextTrack">Lancer</button>
+    <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" data-on-click="cancelNextEpAuto">Annuler</button>
   </div>
-  <div class="inapp-hud-top pywebview-drag-region" ondblclick="if(document.body.classList.contains('is-fullscreen')||Boolean(document.fullscreenElement||document.webkitFullscreenElement)){toggleInAppFullscreen();}else{windowAction('maximize');}">
+  <div class="inapp-hud-top pywebview-drag-region" data-on-dblclick="kinoPlayerDoubleClick">
     <div style="display:flex; align-items:center; gap:14px;" class="no-drag">
       <div class="mac-controls">
-        <button class="mac-btn mac-close" onclick="windowAction('close')" title="Fermer (Alt+F4)">
+        <button class="mac-btn mac-close" data-on-click="windowAction" data-click-args='["close"]' title="Fermer (Alt+F4)">
           <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
             <path d="M2.2 2.2l7.6 7.6M9.8 2.2l-7.6 7.6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
           </svg>
         </button>
-        <button class="mac-btn mac-min" onclick="windowAction('minimize')" title="Réduire (Ctrl+M)">
+        <button class="mac-btn mac-min" data-on-click="windowAction" data-click-args='["minimize"]' title="Réduire (Ctrl+M)">
           <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
             <line x1="2" y1="6" x2="10" y2="6" stroke="rgba(0,0,0,0.65)" stroke-width="1.3" stroke-linecap="round"/>
           </svg>
         </button>
-        <button class="mac-btn mac-max" onclick="windowAction('maximize')" title="Agrandir / Plein écran (F11)">
+        <button class="mac-btn mac-max" data-on-click="windowAction" data-click-args='["maximize"]' title="Agrandir / Plein écran (F11)">
           <svg class="mac-icon" viewBox="0 0 12 12" width="7" height="7">
             <polygon points="2.2,7.5 2.2,2.2 7.5,2.2" fill="rgba(0,0,0,0.65)"/>
             <polygon points="9.8,4.5 9.8,9.8 4.5,9.8" fill="rgba(0,0,0,0.65)"/>
           </svg>
         </button>
       </div>
-      <button class="inapp-btn kp-pill kp-back" onclick="closeInAppPlayer()">← Retour</button>
+      <button class="inapp-btn kp-pill kp-back" data-on-click="closeInAppPlayer">← Retour</button>
     </div>
     <div id="inAppTitle" class="kp-title"></div>
     <div class="kp-top-actions no-drag">
-      <button class="inapp-btn kp-pill kp-accent" id="inAppMpvSuggestBtn" onclick="switchToExternalPlayer()" style="display:none;" title="Optimisé pour 4K HDR & DTS sans saccades"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Basculer MPV</button>
-      <button class="inapp-btn kp-pill kp-accent" id="inAppAudioFixBtn" onclick="fixInAppAudio()" style="display:none;" title="Convertir l'audio multi-canal (DTS/TrueHD/E-AC3) en flux stéréo AAC compatible avec le navigateur"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>Réparer le son</button>
-      <select class="inapp-btn kp-pill kp-select" id="inAppAudioTrack" aria-label="Piste audio" title="Choisir la piste audio" onchange="changeInAppAudioTrack(this.value)" style="display:none;"></select>
-      <button class="inapp-btn kp-pill" id="inAppSubsBtn" onclick="cycleInAppSubtitles()" title="Sous-titres OpenSubtitles FR / EN (Touche C)">CC : Off</button>
+      <button class="inapp-btn kp-pill kp-accent" id="inAppMpvSuggestBtn" data-on-click="switchToExternalPlayer" style="display:none;" title="Optimisé pour 4K HDR & DTS sans saccades"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Basculer MPV</button>
+      <button class="inapp-btn kp-pill kp-accent" id="inAppAudioFixBtn" data-on-click="fixInAppAudio" style="display:none;" title="Convertir l'audio multi-canal (DTS/TrueHD/E-AC3) en flux stéréo AAC compatible avec le navigateur"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>Réparer le son</button>
+      <select class="inapp-btn kp-pill kp-select" id="inAppAudioTrack" aria-label="Piste audio" title="Choisir la piste audio" data-on-change="changeInAppAudioTrack" data-change-args='[{"$":"value"}]' style="display:none;"></select>
+      <button class="inapp-btn kp-pill" id="inAppSubsBtn" data-on-click="cycleInAppSubtitles" title="Sous-titres OpenSubtitles FR / EN (Touche C)">CC : Off</button>
       <div class="kp-more">
-        <button class="inapp-btn kp-pill" id="inAppMoreBtn" onclick="toggleInAppMoreMenu(event)" aria-expanded="false" aria-controls="inAppMoreMenu" title="Réglages de l'image et du son, partage, aide"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>Options</button>
+        <button class="inapp-btn kp-pill" id="inAppMoreBtn" data-on-click="toggleInAppMoreMenu" data-click-args='[{"$":"event"}]' aria-expanded="false" aria-controls="inAppMoreMenu" title="Réglages de l'image et du son, partage, aide"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>Options</button>
         <div id="inAppMoreMenu" class="kp-menu" role="group" aria-label="Options de lecture" hidden>
           <div class="kp-menu-heading">Image et son</div>
-          <button class="inapp-btn kp-menu-item" id="inAppSubSizeBtn" data-name="Taille des sous-titres" onclick="cycleInAppSubSize()" title="Taille des sous-titres (S / M / L / XL)">A</button>
-          <button class="inapp-btn kp-menu-item" id="inAppAudioBtn" data-name="Voix" onclick="cycleInAppAudioBoost()" title="Boost des dialogues / Mode Audio Nuit (Touche V)">Normal</button>
-          <button class="inapp-btn kp-menu-item" id="inAppClarityBtn" data-name="Clarté" onclick="cycleInAppClarity()" title="Déboucher les noirs / Éclaircir les scènes sombres (Touche B)">Normal</button>
-          <button class="inapp-btn kp-menu-item" id="inAppSpeedBtn" data-name="Vitesse" onclick="cycleInAppSpeed()" title="Vitesse de lecture (Touches [ et ])">1.0x</button>
-          <button class="inapp-btn kp-menu-item" id="inAppSeriesPreferenceBtn" onclick="openInAppSeriesPreference()" style="display:none;" title="Mémoriser les langues pour les prochains épisodes">Langues de la série</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSubSizeBtn" data-name="Taille des sous-titres" data-on-click="cycleInAppSubSize" title="Taille des sous-titres (S / M / L / XL)">A</button>
+          <button class="inapp-btn kp-menu-item" id="inAppAudioBtn" data-name="Voix" data-on-click="cycleInAppAudioBoost" title="Boost des dialogues / Mode Audio Nuit (Touche V)">Normal</button>
+          <button class="inapp-btn kp-menu-item" id="inAppClarityBtn" data-name="Clarté" data-on-click="cycleInAppClarity" title="Déboucher les noirs / Éclaircir les scènes sombres (Touche B)">Normal</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSpeedBtn" data-name="Vitesse" data-on-click="cycleInAppSpeed" title="Vitesse de lecture (Touches [ et ])">1.0x</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSeriesPreferenceBtn" data-on-click="openInAppSeriesPreference" style="display:none;" title="Mémoriser les langues pour les prochains épisodes">Langues de la série</button>
           <div class="kp-menu-heading">Partager et garder</div>
-          <button class="inapp-btn kp-menu-item" id="inAppTvBtn" onclick="sendInAppPlaybackToTv()" title="Continuer sur la TV, au même moment">Sur la TV</button>
-          <button class="inapp-btn kp-menu-item" id="inAppSaveOfflineBtn" onclick="saveCurrentPlaybackOffline()" title="Garder ce fichier et la piste de sous-titres choisie pour une lecture sans connexion">Garder hors ligne</button>
-          <button class="inapp-btn kp-menu-item" id="inAppShotBtn" onclick="captureInAppScreenshot()" title="Capturer une image du film dans Téléchargements">Capturer l'image</button>
-          <button class="inapp-btn kp-menu-item" id="inAppRemoteBtn" onclick="openRemoteModal()" title="Télécommande smartphone tactile via QR Code">Télécommande</button>
-          <button class="inapp-btn kp-menu-item" id="inAppWpBtn" onclick="openWatchPartyModal()" title="Watch Party synchronisée P2P (Code à 6 lettres)">Watch Party</button>
+          <button class="inapp-btn kp-menu-item" id="inAppTvBtn" data-on-click="sendInAppPlaybackToTv" title="Continuer sur la TV, au même moment">Sur la TV</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSaveOfflineBtn" data-on-click="saveCurrentPlaybackOffline" title="Garder ce fichier et la piste de sous-titres choisie pour une lecture sans connexion">Garder hors ligne</button>
+          <button class="inapp-btn kp-menu-item" id="inAppShotBtn" data-on-click="captureInAppScreenshot" title="Capturer une image du film dans Téléchargements">Capturer l'image</button>
+          <button class="inapp-btn kp-menu-item" id="inAppRemoteBtn" data-on-click="openRemoteModal" title="Télécommande smartphone tactile via QR Code">Télécommande</button>
+          <button class="inapp-btn kp-menu-item" id="inAppWpBtn" data-on-click="openWatchPartyModal" title="Watch Party synchronisée P2P (Code à 6 lettres)">Watch Party</button>
           <div class="kp-menu-heading">Aide</div>
-          <button class="inapp-btn kp-menu-item" onclick="openPlaybackHelp()" aria-haspopup="dialog">Problème de lecture</button>
-          <button class="inapp-btn kp-menu-item" id="inAppExternalBtn" onclick="switchToExternalPlayer()">Lecteur externe</button>
+          <button class="inapp-btn kp-menu-item" data-on-click="openPlaybackHelp" aria-haspopup="dialog">Problème de lecture</button>
+          <button class="inapp-btn kp-menu-item" id="inAppExternalBtn" data-on-click="switchToExternalPlayer">Lecteur externe</button>
         </div>
       </div>
       <div class="win-controls no-drag" role="group" aria-label="Fenêtre">
-        <button type="button" class="win-btn" onclick="windowAction('minimize')" title="Réduire" aria-label="Réduire"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
-        <button type="button" class="win-btn win-max" onclick="windowAction('maximize')" title="Agrandir" aria-label="Agrandir"><svg class="win-icon-max" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg><svg class="win-icon-restore" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="2.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><path d="M2.5 2.5V1.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
-        <button type="button" class="win-btn win-close" onclick="windowAction('close')" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
+        <button type="button" class="win-btn" data-on-click="windowAction" data-click-args='["minimize"]' title="Réduire" aria-label="Réduire"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
+        <button type="button" class="win-btn win-max" data-on-click="windowAction" data-click-args='["maximize"]' title="Agrandir" aria-label="Agrandir"><svg class="win-icon-max" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg><svg class="win-icon-restore" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="2.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><path d="M2.5 2.5V1.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
+        <button type="button" class="win-btn win-close" data-on-click="windowAction" data-click-args='["close"]' title="Fermer" aria-label="Fermer"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
       </div>
     </div>
   </div>
@@ -1180,48 +1181,48 @@
   <div id="inAppWpChatBox" style="position:absolute; right:20px; bottom:90px; width:280px; max-height:260px; background:rgba(18,18,21,0.92); backdrop-filter:blur(10px); border:1px solid var(--border); border-radius:12px; display:none; flex-direction:column; z-index:25; box-shadow:0 8px 30px rgba(0,0,0,0.8);">
     <div style="padding:10px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
       <span style="font-size:0.8rem; font-weight:600; color:#fafafa;">Watch Party Chat</span>
-      <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.7rem;" onclick="toggleWpChat()">✕</button>
+      <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.7rem;" data-on-click="toggleWpChat">✕</button>
     </div>
     <div id="inAppWpMessages" style="flex:1; overflow-y:auto; padding:10px; font-size:0.78rem; display:flex; flex-direction:column; gap:6px; max-height:160px;"></div>
     <div style="padding:8px 10px; border-top:1px solid var(--border); display:flex; gap:6px;">
-      <input type="text" id="inAppWpInput" placeholder="Message..." onkeydown="if(event.key==='Enter') sendWpMessage()" style="flex:1; padding:4px 8px; font-size:0.78rem; border-radius:6px; background:var(--surface-2); border:1px solid var(--border); color:#fafafa;">
-      <button class="btn" style="padding:4px 9px; font-size:0.75rem;" onclick="sendWpMessage()">Envoyer</button>
+      <input type="text" id="inAppWpInput" placeholder="Message..." data-on-keydown="kinoOnEnter" data-keydown-args='[{"$":"event"},"sendWpMessage"]' style="flex:1; padding:4px 8px; font-size:0.78rem; border-radius:6px; background:var(--surface-2); border:1px solid var(--border); color:#fafafa;">
+      <button class="btn" style="padding:4px 9px; font-size:0.75rem;" data-on-click="sendWpMessage">Envoyer</button>
     </div>
   </div>
   <div class="inapp-hud-bottom">
-    <div class="inapp-seekbar-container" id="inAppSeekbar" onclick="seekInApp(event)">
+    <div class="inapp-seekbar-container" id="inAppSeekbar" data-on-click="seekInApp" data-click-args='[{"$":"event"}]'>
       <div class="inapp-seekbar-bg">
         <div id="inAppSeekFill" class="inapp-seekbar-fill"></div>
       </div>
     </div>
     <div class="inapp-controls-row">
       <div class="inapp-controls-group">
-        <button class="inapp-btn inapp-btn-icon" onclick="inAppPrevTrack()" title="Épisode précédent (<)">
+        <button class="inapp-btn inapp-btn-icon" data-on-click="inAppPrevTrack" title="Épisode précédent (<)">
           <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
         </button>
-        <button class="inapp-btn inapp-btn-icon" onclick="inAppSeekRel(-10)" title="Reculer 10s (Flèche Gauche)">
+        <button class="inapp-btn inapp-btn-icon" data-on-click="inAppSeekRel" data-click-args='[-10]' title="Reculer 10s (Flèche Gauche)">
           <svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
             <text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text>
           </svg>
         </button>
-        <button class="inapp-btn inapp-btn-icon" id="inAppPlayPauseBtn" onclick="toggleInAppPlay()" title="Lecture / Pause (Espace)" style="min-width:36px;">
+        <button class="inapp-btn inapp-btn-icon" id="inAppPlayPauseBtn" data-on-click="toggleInAppPlay" title="Lecture / Pause (Espace)" style="min-width:36px;">
           <svg class="svg-icon" viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
         </button>
-        <button class="inapp-btn inapp-btn-icon" onclick="inAppSeekRel(10)" title="Avancer 10s (Flèche Droite)">
+        <button class="inapp-btn inapp-btn-icon" data-on-click="inAppSeekRel" data-click-args='[10]' title="Avancer 10s (Flèche Droite)">
           <svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
             <text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text>
           </svg>
         </button>
-        <button class="inapp-btn inapp-btn-icon" onclick="inAppNextTrack()" title="Épisode suivant (>)">
+        <button class="inapp-btn inapp-btn-icon" data-on-click="inAppNextTrack" title="Épisode suivant (>)">
           <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
         </button>
         <span id="inAppTimeText" style="color:var(--muted); font-size:0.82rem; margin-left:8px; font-variant-numeric:tabular-nums;">00:00 / 00:00</span>
       </div>
       <div class="inapp-controls-group">
         <div class="inapp-vol-group" id="inAppVolGroup">
-          <button class="inapp-btn inapp-btn-icon" id="inAppMuteBtn" onclick="toggleInAppMute()" title="Muet (M)">
+          <button class="inapp-btn inapp-btn-icon" id="inAppMuteBtn" data-on-click="toggleInAppMute" title="Muet (M)">
             <span id="inAppVolIcon">
               <svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/>
@@ -1230,19 +1231,19 @@
               </svg>
             </span>
           </button>
-          <div class="inapp-vol-slider-wrap" id="inAppVolSliderWrap" onmousedown="onVolMouseDown(event)" onclick="handleVolScrub(event)">
+          <div class="inapp-vol-slider-wrap" id="inAppVolSliderWrap" data-on-mousedown="onVolMouseDown" data-mousedown-args='[{"$":"event"}]' data-on-click="handleVolScrub" data-click-args='[{"$":"event"}]'>
             <div class="inapp-vol-slider-bg">
               <div id="inAppVolFill" class="inapp-vol-slider-fill" style="width: 100%;"></div>
             </div>
           </div>
           <span id="inAppVolText" class="inapp-vol-text">100%</span>
         </div>
-        <button class="inapp-btn inapp-btn-icon" id="inAppPipBtn" onclick="toggleInAppPiP()" title="Image dans l'image (I)" aria-label="Image dans l'image">
+        <button class="inapp-btn inapp-btn-icon" id="inAppPipBtn" data-on-click="toggleInAppPiP" title="Image dans l'image (I)" aria-label="Image dans l'image">
           <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><rect x="12" y="9" width="8" height="6" rx="1" fill="currentColor"/>
           </svg>
         </button>
-        <button class="inapp-btn inapp-btn-icon" id="inAppFsBtn" onclick="toggleInAppFullscreen()" title="Plein écran (F)">
+        <button class="inapp-btn inapp-btn-icon" id="inAppFsBtn" data-on-click="toggleInAppFullscreen" title="Plein écran (F)">
           <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
           </svg>
@@ -1253,17 +1254,17 @@
 </div>
 
 <!-- Sélection locale dans Ma Liste selon le temps, l'ambiance et les retours explicites. -->
-<div id="tonightModal" class="modal-bg" onclick="if(event.target===this) closeTonightModal()">
+<div id="tonightModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeTonightModal"]'>
   <div class="modal tonight-modal" role="dialog" aria-modal="true" aria-labelledby="tonightTitle" aria-describedby="tonightDescription">
     <div class="tonight-header">
       <div><span class="settings-eyebrow">MA LISTE</span><h2 id="tonightTitle">Ce soir</h2><p id="tonightDescription">Jusqu’à trois idées selon votre temps, votre envie et vos choix précédents.</p></div>
-      <button type="button" class="btn btn-secondary" onclick="closeTonightModal()" aria-label="Fermer Ce soir">Fermer</button>
+      <button type="button" class="btn btn-secondary" data-on-click="closeTonightModal" aria-label="Fermer Ce soir">Fermer</button>
     </div>
     <div class="tonight-form">
-      <label>Temps disponible<select id="tonightMinutes" onchange="findTonightChoices()"><option value="45">45 min</option><option value="90">1 h 30</option><option value="120" selected>2 h</option><option value="150">2 h 30</option><option value="180">3 h</option></select></label>
-      <label>Envie<select id="tonightMood" onchange="findTonightChoices()"><option value="discovery">Découverte</option><option value="light">Léger</option><option value="intense">Intense</option></select></label>
-      <label class="tonight-offline-toggle"><input type="checkbox" id="tonightOfflineOnly" onchange="findTonightChoices()"><span>Sans connexion <small>Fichiers prêts sur ce Mac</small></span></label>
-      <button type="button" class="btn" id="tonightSearchButton" onclick="findTonightChoices()">D’autres idées</button>
+      <label>Temps disponible<select id="tonightMinutes" data-on-change="findTonightChoices"><option value="45">45 min</option><option value="90">1 h 30</option><option value="120" selected>2 h</option><option value="150">2 h 30</option><option value="180">3 h</option></select></label>
+      <label>Envie<select id="tonightMood" data-on-change="findTonightChoices"><option value="discovery">Découverte</option><option value="light">Léger</option><option value="intense">Intense</option></select></label>
+      <label class="tonight-offline-toggle"><input type="checkbox" id="tonightOfflineOnly" data-on-change="findTonightChoices"><span>Sans connexion <small>Fichiers prêts sur ce Mac</small></span></label>
+      <button type="button" class="btn" id="tonightSearchButton" data-on-click="findTonightChoices">D’autres idées</button>
     </div>
     <p id="tonightStatus" class="tonight-status" role="status" aria-live="polite">Les suggestions viennent de Ma Liste.</p>
     <div id="tonightUndo" class="tonight-undo" role="status" aria-live="polite" style="display:none"></div>
@@ -1272,13 +1273,13 @@
       <summary id="tonightReviewSummary">Mes choix</summary>
       <p class="tonight-preferences-note">Les reports durent 24 h. Les exclusions restent jusqu’à leur réintégration. Vos choix restent sur ce Mac.</p>
       <div id="tonightReview"></div>
-      <button type="button" class="btn btn-secondary tonight-reset" onclick="resetTonightPreferences()">Réinitialiser les choix de Ce soir</button>
+      <button type="button" class="btn btn-secondary tonight-reset" data-on-click="resetTonightPreferences">Réinitialiser les choix de Ce soir</button>
     </details>
   </div>
 </div>
 
 <!-- Modal Roulette KINO (Mode Surprends-moi) -->
-<div id="caseModal" class="modal-bg" onclick="if(event.target===this) closeCaseModal()">
+<div id="caseModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeCaseModal"]'>
   <div class="case-modal-box">
     <div class="case-header">
       <div class="case-title-wrap">
@@ -1287,14 +1288,14 @@
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <div id="casePoolChips" style="display:flex; gap:5px; align-items:center; margin-right:6px;">
-          <button type="button" class="chip active" data-pool="catalog" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('catalog')">Catalogue</button>
-          <button type="button" class="chip" data-pool="classics" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('classics')">Classiques</button>
-          <button type="button" class="chip" data-pool="watchlist" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('watchlist')">Ma Liste</button>
-          <button type="button" class="chip" data-pool="watched" style="padding:3px 9px; font-size:0.72rem;" onclick="surpriseMeMedia('watched')">Rewatch (Déjà vus)</button>
+          <button type="button" class="chip active" data-pool="catalog" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["catalog"]'>Catalogue</button>
+          <button type="button" class="chip" data-pool="classics" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["classics"]'>Classiques</button>
+          <button type="button" class="chip" data-pool="watchlist" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["watchlist"]'>Ma Liste</button>
+          <button type="button" class="chip" data-pool="watched" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["watched"]'>Rewatch (Déjà vus)</button>
         </div>
-        <button id="caseSoundBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" onclick="toggleCaseSound()">Son : Activé</button>
-        <button id="caseSkipBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" onclick="skipCaseSpin()">Passer l'animation</button>
-        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" onclick="closeCaseModal()">Fermer (Échap)</button>
+        <button id="caseSoundBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" data-on-click="toggleCaseSound">Son : Activé</button>
+        <button id="caseSkipBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" data-on-click="skipCaseSpin">Passer l'animation</button>
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" data-on-click="closeCaseModal">Fermer (Échap)</button>
       </div>
     </div>
 
@@ -1308,7 +1309,7 @@
 </div>
 
 <!-- Modal Importation Watchlist & Films Déjà Vus Letterboxd -->
-<div id="letterboxdModal" class="modal-bg" onclick="if(event.target===this) closeLetterboxdModal()">
+<div id="letterboxdModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeLetterboxdModal"]'>
   <div class="modal" style="max-width:480px; width:92%; padding:20px 22px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
       <div style="display:flex; align-items:center; gap:8px;">
@@ -1319,13 +1320,13 @@
         </svg>
         <h3 style="font-size:0.96rem; font-weight:600; margin:0;">Letterboxd</h3>
       </div>
-      <button onclick="closeLetterboxdModal()" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem; line-height:1; padding:2px 6px;" title="Fermer">✕</button>
+      <button data-on-click="closeLetterboxdModal" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem; line-height:1; padding:2px 6px;" title="Fermer">✕</button>
     </div>
 
     <!-- Onglets du modal -->
     <div style="display:flex; gap:6px; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:14px;">
-      <button type="button" id="lbxTabBtnProfile" class="chip active" onclick="switchLbxModalTab('profile')" style="padding:4px 11px; font-size:0.76rem;">Profil &amp; Watchlist</button>
-      <button type="button" id="lbxTabBtnList" class="chip" onclick="switchLbxModalTab('list')" style="padding:4px 11px; font-size:0.76rem;">Importer une Liste publique</button>
+      <button type="button" id="lbxTabBtnProfile" class="chip active" data-on-click="switchLbxModalTab" data-click-args='["profile"]' style="padding:4px 11px; font-size:0.76rem;">Profil &amp; Watchlist</button>
+      <button type="button" id="lbxTabBtnList" class="chip" data-on-click="switchLbxModalTab" data-click-args='["list"]' style="padding:4px 11px; font-size:0.76rem;">Importer une Liste publique</button>
     </div>
 
     <!-- Section 1 : Profil & Watchlist -->
@@ -1336,18 +1337,18 @@
       <div style="display:flex; flex-direction:column; gap:11px;">
         <div>
           <label for="lbxUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;">Pseudo Letterboxd</label>
-          <input type="text" id="lbxUrlInput" placeholder="Ex: passionia ou lien public" style="width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter') submitLetterboxdImport()">
+          <input type="text" id="lbxUrlInput" placeholder="Ex: passionia ou lien public" style="width:100%; box-sizing:border-box;" data-on-keydown="kinoOnEnter" data-keydown-args='[{"$":"event"},"submitLetterboxdImport"]'>
         </div>
         <div style="display:flex; flex-direction:column; gap:4px; padding-top:2px;">
           <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.74rem;">
-            <input type="file" id="lbxCsvFileInput" accept=".csv,.txt" style="display:none;" onchange="handleLetterboxdCsvFile(this.files)">
-            <button type="button" onclick="document.getElementById('lbxCsvFileInput').click()" style="background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:0; font-size:0.74rem; display:inline-flex; align-items:center; gap:5px;">
+            <input type="file" id="lbxCsvFileInput" accept=".csv,.txt" style="display:none;" data-on-change="handleLetterboxdCsvFile" data-change-args='[{"$":"files"}]'>
+            <button type="button" data-on-click="kinoPickFile" data-click-args='["lbxCsvFileInput"]' style="background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; padding:0; font-size:0.74rem; display:inline-flex; align-items:center; gap:5px;">
               <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#file"></use></svg>
               <span>Importer un export .csv (ratings.csv, diary.csv, etc.)</span>
             </button>
             <div style="display:inline-flex; align-items:center; gap:4px; max-width:210px; overflow:hidden;">
               <span id="lbxCsvFileName" style="font-size:0.74rem; color:#00e054; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"></span>
-              <button type="button" id="lbxCsvClearBtn" onclick="clearLetterboxdCsv(event)" style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:0.75rem;" title="Retirer">✕</button>
+              <button type="button" id="lbxCsvClearBtn" data-on-click="clearLetterboxdCsv" data-click-args='[{"$":"event"}]' style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:0.75rem;" title="Retirer">✕</button>
             </div>
           </div>
           <div style="font-size:0.69rem; color:var(--dim); line-height:1.3;">
@@ -1355,10 +1356,10 @@
           </div>
         </div>
         <div id="lbxImportStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
-        <button type="button" id="lbxRestoreRemovedBtn" class="btn btn-secondary btn-small" hidden onclick="submitLetterboxdImport({ restoreRemoved: true })">Les réimporter aussi</button>
+        <button type="button" id="lbxRestoreRemovedBtn" class="btn btn-secondary btn-small" hidden data-on-click="submitLetterboxdImport" data-click-args='[{"restoreRemoved":true}]'>Les réimporter aussi</button>
         <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
-          <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" onclick="closeLetterboxdModal()">Annuler</button>
-          <button id="lbxSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" onclick="submitLetterboxdImport()">Synchroniser</button>
+          <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" data-on-click="closeLetterboxdModal">Annuler</button>
+          <button id="lbxSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" data-on-click="submitLetterboxdImport">Synchroniser</button>
         </div>
       </div>
     </div>
@@ -1371,12 +1372,12 @@
       <div style="display:flex; flex-direction:column; gap:11px;">
         <div>
           <label for="lbxCustomListUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;">URL de la liste Letterboxd</label>
-          <input type="text" id="lbxCustomListUrlInput" placeholder="https://letterboxd.com/username/list/nom-de-la-liste/" style="width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter') submitLetterboxdCustomListImport()">
+          <input type="text" id="lbxCustomListUrlInput" placeholder="https://letterboxd.com/username/list/nom-de-la-liste/" style="width:100%; box-sizing:border-box;" data-on-keydown="kinoOnEnter" data-keydown-args='[{"$":"event"},"submitLetterboxdCustomListImport"]'>
         </div>
         <div id="lbxCustomListStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
         <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
-          <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" onclick="closeLetterboxdModal()">Fermer</button>
-          <button id="lbxCustomListSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" onclick="submitLetterboxdCustomListImport()">Importer cette liste</button>
+          <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" data-on-click="closeLetterboxdModal">Fermer</button>
+          <button id="lbxCustomListSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" data-on-click="submitLetterboxdCustomListImport">Importer cette liste</button>
         </div>
 
         <div id="lbxSavedListsWrap" style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px; display:none;">
@@ -1389,15 +1390,15 @@
 </div>
 
 <!-- Modal Bande-Annonce Intégré -->
-<div id="trailerModal" class="modal-bg" onclick="if(event.target===this) closeTrailerModal()">
+<div id="trailerModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeTrailerModal"]'>
   <div class="modal" style="max-width:860px; width:94%; padding:16px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
       <h3 id="trailerModalTitle" style="font-size:0.95rem;">Bande-annonce</h3>
       <div style="display:flex; gap:6px; align-items:center;">
-        <button id="trailerBtnVf" class="chip active" style="padding:4px 10px; font-size:0.75rem;" onclick="switchTrailerLang('vf')">VF</button>
-        <button id="trailerBtnVo" class="chip" style="padding:4px 10px; font-size:0.75rem;" onclick="switchTrailerLang('vo')">VO</button>
+        <button id="trailerBtnVf" class="chip active" style="padding:4px 10px; font-size:0.75rem;" data-on-click="switchTrailerLang" data-click-args='["vf"]'>VF</button>
+        <button id="trailerBtnVo" class="chip" style="padding:4px 10px; font-size:0.75rem;" data-on-click="switchTrailerLang" data-click-args='["vo"]'>VO</button>
         <a id="trailerExternalLink" href="#" target="_blank" class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;">YouTube ↗</a>
-        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" onclick="closeTrailerModal()">Fermer (Échap)</button>
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" data-on-click="closeTrailerModal">Fermer (Échap)</button>
       </div>
     </div>
     <div style="position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:6px; overflow:hidden; border:1px solid var(--border);">
@@ -1412,11 +1413,11 @@
 <div id="configModal" style="display:none;"></div>
 
 <!-- Modal Raccourcis Clavier -->
-<div id="shortcutsModal" class="shortcuts-modal" onclick="if(event.target===this) toggleShortcutsModal()">
+<div id="shortcutsModal" class="shortcuts-modal" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"toggleShortcutsModal"]'>
   <div class="shortcuts-content">
     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
       <h3 style="font-size:1rem; font-weight:600;">Raccourcis Clavier KINO</h3>
-      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="toggleShortcutsModal()">Fermer (Échap)</button>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" data-on-click="toggleShortcutsModal">Fermer (Échap)</button>
     </div>
     <div class="shortcuts-grid">
       <div class="shortcut-row"><span>Lecture / Pause</span><kbd>Espace</kbd></div>
@@ -1438,14 +1439,14 @@
 </div>
 
 <!-- Modal Télécommande Smartphone -->
-<div id="remoteModal" class="modal-bg" onclick="if(event.target===this) closeRemoteModal()">
+<div id="remoteModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeRemoteModal"]'>
   <div class="modal" style="max-width:440px; text-align:center; padding:22px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
         <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#remote"></use></svg>
         <span>Télécommande KINO</span>
       </h3>
-      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeRemoteModal()">✕</button>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" data-on-click="closeRemoteModal">✕</button>
     </div>
     <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;">
       Scannez ce QR Code avec votre smartphone connecté au même Wi-Fi pour contrôler la lecture, le volume et naviguer depuis votre canapé.
@@ -1455,20 +1456,20 @@
     </div>
     <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
       <span id="remoteDirectUrl" style="font-size:0.78rem; color:var(--dim); word-break:break-all; text-align:left; font-family:monospace;">http://...</span>
-      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem; white-space:nowrap;" onclick="copyRemoteUrl()">Copier</button>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem; white-space:nowrap;" data-on-click="copyRemoteUrl">Copier</button>
     </div>
   </div>
 </div>
 
 <!-- Modal Watch Party P2P -->
-<div id="watchPartyModal" class="modal-bg" onclick="if(event.target===this) closeWatchPartyModal()">
+<div id="watchPartyModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeWatchPartyModal"]'>
   <div class="modal" style="max-width:480px; padding:20px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
       <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
         <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#users"></use></svg>
         <span>Mode Watch Party P2P</span>
       </h3>
-      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeWatchPartyModal()">✕</button>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" data-on-click="closeWatchPartyModal">✕</button>
     </div>
     <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 16px;">
       Regardez vos films et séries en parfaite synchronisation avec vos amis. Play, pause et temps de lecture calés à la seconde près sans serveur tiers (P2P direct).
@@ -1477,10 +1478,10 @@
     <!-- Zone Non Connecté -->
     <div id="wpSetupView">
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
-        <button class="btn" style="padding:10px 14px; font-size:0.82rem; font-weight:600;" onclick="createWatchPartyRoom()">
+        <button class="btn" style="padding:10px 14px; font-size:0.82rem; font-weight:600;" data-on-click="createWatchPartyRoom">
           Créer une Salle
         </button>
-        <button class="btn btn-secondary" style="padding:10px 14px; font-size:0.82rem;" onclick="showJoinWatchParty()">
+        <button class="btn btn-secondary" style="padding:10px 14px; font-size:0.82rem;" data-on-click="showJoinWatchParty">
           Rejoindre une Salle
         </button>
       </div>
@@ -1488,7 +1489,7 @@
         <label style="font-size:0.76rem; color:var(--muted); display:block; margin-bottom:6px;">Entrez le code de salle :</label>
         <div style="display:flex; gap:8px;">
           <input type="text" id="wpJoinCodeInput" placeholder="Ex: KINO9X" maxlength="12" style="text-transform:uppercase; font-weight:bold; letter-spacing:2px; font-size:0.95rem; text-align:center;">
-          <button class="btn" style="padding:6px 14px; font-size:0.8rem;" onclick="joinWatchPartyRoom()">Rejoindre</button>
+          <button class="btn" style="padding:6px 14px; font-size:0.8rem;" data-on-click="joinWatchPartyRoom">Rejoindre</button>
         </div>
       </div>
     </div>
@@ -1499,7 +1500,7 @@
         <span style="font-size:0.72rem; color:var(--dim); text-transform:uppercase; letter-spacing:1px;">Code de votre Salle</span>
         <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin:6px 0;">
           <span id="wpRoomCodeDisplay" style="font-size:1.6rem; font-weight:800; letter-spacing:4px; color:#4ade80; font-family:monospace;">------</span>
-          <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem;" onclick="copyWpRoomCode()">Copier</button>
+          <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem;" data-on-click="copyWpRoomCode">Copier</button>
         </div>
         <p style="font-size:0.72rem; color:var(--muted); margin:0;">Partagez ce code à vos amis pour synchroniser vos lecteurs instantanément.</p>
       </div>
@@ -1510,21 +1511,21 @@
       </div>
 
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
-        <button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem; color:#ef4444;" onclick="leaveWatchPartyRoom()">Quitter la salle</button>
+        <button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem; color:#ef4444;" data-on-click="leaveWatchPartyRoom">Quitter la salle</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Modal Gestionnaire d'Add-ons -->
-<div id="addonsModal" class="modal-bg" onclick="if(event.target===this) closeAddonsModal()">
+<div id="addonsModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeAddonsModal"]'>
   <div class="modal" style="max-width:640px; padding:20px; max-height:85vh; display:flex; flex-direction:column;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
         <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#puzzle"></use></svg>
         <span>Add-ons &amp; Scrapers Communautaires</span>
       </h3>
-      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="closeAddonsModal()">✕</button>
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" data-on-click="closeAddonsModal">✕</button>
     </div>
     <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;">
       Activez ou ajoutez des indexeurs et scrapers communautaires pour démultiplier les sources de recherche (Nyaa Anime VOSTFR, YggTorrent, Sharewood, etc.).
@@ -1534,8 +1535,8 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
       <span style="font-size:0.78rem; color:var(--dim);">Installer un add-on externe (.kino / .json)</span>
       <div>
-        <input type="file" id="addonFileInput" accept=".kino,.json,.zip" style="display:none;" onchange="uploadAddonFile(this)">
-        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" onclick="document.getElementById('addonFileInput').click()">+ Installer un Add-on</button>
+        <input type="file" id="addonFileInput" accept=".kino,.json,.zip" style="display:none;" data-on-change="uploadAddonFile" data-change-args='[{"$":"this"}]'>
+        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" data-on-click="kinoPickFile" data-click-args='["addonFileInput"]'>+ Installer un Add-on</button>
       </div>
     </div>
 
@@ -1577,15 +1578,15 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
 <!-- Lecteur manga : page par page ou en défilement, sens japonais au choix. -->
 <div id="mangaReader" class="manga-reader" role="dialog" aria-modal="true" aria-labelledby="mangaReaderTitle" hidden>
   <div class="manga-reader-bar">
-    <button type="button" class="inapp-btn" onclick="closeMangaReader()" aria-label="Fermer le lecteur">Fermer</button>
+    <button type="button" class="inapp-btn" data-on-click="closeMangaReader" aria-label="Fermer le lecteur">Fermer</button>
     <div class="manga-reader-title"><strong id="mangaReaderTitle"></strong><span id="mangaReaderChapter"></span></div>
     <span id="mangaReaderCount" class="manga-reader-count"></span>
-    <button type="button" class="inapp-btn" id="mangaReaderMode" onclick="toggleMangaMode()">Défilement</button>
-    <button type="button" class="inapp-btn" id="mangaReaderDirection" onclick="toggleMangaDirection()" title="Sens de lecture">Sens japonais</button>
+    <button type="button" class="inapp-btn" id="mangaReaderMode" data-on-click="toggleMangaMode">Défilement</button>
+    <button type="button" class="inapp-btn" id="mangaReaderDirection" data-on-click="toggleMangaDirection" title="Sens de lecture">Sens japonais</button>
   </div>
-  <div id="mangaReaderPages" class="manga-reader-pages" onclick="mangaReaderClick(event)"></div>
+  <div id="mangaReaderPages" class="manga-reader-pages" data-on-click="mangaReaderClick" data-click-args='[{"$":"event"}]'></div>
 </div>
-<dialog id="p2pConsent" class="p2p-consent" aria-labelledby="p2pConsentTitle" onclose="if (p2pConsentAnswer) answerP2PConsent(false)">
+<dialog id="p2pConsent" class="p2p-consent" aria-labelledby="p2pConsentTitle" data-on-close="kinoP2PConsentClosed">
   <h2 id="p2pConsentTitle">Lire les torrents en P2P ?</h2>
   <p>Sans service de débridage, KINO télécharge la vidéo directement auprès d’autres utilisateurs, comme un logiciel BitTorrent. Avant d’accepter, sachez que :</p>
   <ul>
@@ -1604,32 +1605,32 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     </select>
   </label>
   <div class="p2p-consent-actions">
-    <button type="button" class="btn btn-secondary" onclick="answerP2PConsent(false)">Annuler</button>
-    <button type="button" class="btn" onclick="answerP2PConsent(true)">J’accepte, lire en P2P</button>
+    <button type="button" class="btn btn-secondary" data-on-click="answerP2PConsent" data-click-args='[false]'>Annuler</button>
+    <button type="button" class="btn" data-on-click="answerP2PConsent" data-click-args='[true]'>J’accepte, lire en P2P</button>
   </div>
 </dialog>
 <dialog id="playbackHelp" class="playback-help" aria-labelledby="playbackHelpTitle">
-  <div class="playback-help-header"><h2 id="playbackHelpTitle">Problème de lecture</h2><button class="inapp-btn" onclick="closePlaybackHelp()" aria-label="Fermer le dépannage">Fermer</button></div>
+  <div class="playback-help-header"><h2 id="playbackHelpTitle">Problème de lecture</h2><button class="inapp-btn" data-on-click="closePlaybackHelp" aria-label="Fermer le dépannage">Fermer</button></div>
   <p>Choisissez le problème rencontré. La vidéo reste ouverte.</p>
   <div class="playback-help-choices" aria-label="Problème rencontré">
-    <button class="inapp-btn" data-help-kind="no_audio" onclick="showPlaybackHelp('no_audio')">Pas de son</button>
-    <button class="inapp-btn" data-help-kind="wrong_content" onclick="showPlaybackHelp('wrong_content')">Mauvais film / épisode</button>
-    <button class="inapp-btn" data-help-kind="stalled" onclick="showPlaybackHelp('stalled')">Lecture bloquée</button>
-    <button class="inapp-btn" data-help-kind="subtitles" onclick="showPlaybackHelp('subtitles')">Sous-titres décalés</button>
+    <button class="inapp-btn" data-help-kind="no_audio" data-on-click="showPlaybackHelp" data-click-args='["no_audio"]'>Pas de son</button>
+    <button class="inapp-btn" data-help-kind="wrong_content" data-on-click="showPlaybackHelp" data-click-args='["wrong_content"]'>Mauvais film / épisode</button>
+    <button class="inapp-btn" data-help-kind="stalled" data-on-click="showPlaybackHelp" data-click-args='["stalled"]'>Lecture bloquée</button>
+    <button class="inapp-btn" data-help-kind="subtitles" data-on-click="showPlaybackHelp" data-click-args='["subtitles"]'>Sous-titres décalés</button>
   </div>
   <section id="playbackHelpActions" aria-label="Actions disponibles"></section>
   <p id="playbackHelpStatus" role="status" aria-live="polite"></p>
-  <footer><button class="inapp-btn" id="playbackHelpRetry" onclick="retryPlaybackSources()">Réessayer les sources écartées</button>
-  <button class="inapp-btn" onclick="exportPlaybackDiagnostic()">Exporter le diagnostic</button></footer>
+  <footer><button class="inapp-btn" id="playbackHelpRetry" data-on-click="retryPlaybackSources">Réessayer les sources écartées</button>
+  <button class="inapp-btn" data-on-click="exportPlaybackDiagnostic">Exporter le diagnostic</button></footer>
   <small>Diagnostic local : état du lecteur uniquement, sans titre, lien de lecture ni identifiants de compte.</small>
 </dialog>
 <dialog id="inAppSeriesPreferenceDialog" class="playback-help" aria-labelledby="inAppSeriesPreferenceTitle">
-  <div class="playback-help-header"><h2 id="inAppSeriesPreferenceTitle">Langues de la série</h2><button class="inapp-btn" onclick="closeInAppSeriesPreference()" aria-label="Fermer les préférences de la série">Fermer</button></div>
+  <div class="playback-help-header"><h2 id="inAppSeriesPreferenceTitle">Langues de la série</h2><button class="inapp-btn" data-on-click="closeInAppSeriesPreference" aria-label="Fermer les préférences de la série">Fermer</button></div>
   <p>Choisissez la piste audio et les sous-titres dans le lecteur, puis mémorisez ces choix pour les prochains épisodes.</p>
   <p id="inAppSeriesPreferenceSummary"></p>
   <p id="inAppSeriesPreferenceStatus" role="status" aria-live="polite"></p>
-  <footer><button class="inapp-btn" onclick="saveInAppSeriesPreference()">Mémoriser pour cette série</button>
-  <button class="inapp-btn" id="inAppSeriesPreferenceReset" onclick="resetInAppSeriesPreference()">Utiliser les réglages généraux</button></footer>
+  <footer><button class="inapp-btn" data-on-click="saveInAppSeriesPreference">Mémoriser pour cette série</button>
+  <button class="inapp-btn" id="inAppSeriesPreferenceReset" data-on-click="resetInAppSeriesPreference">Utiliser les réglages généraux</button></footer>
   <small>La langue et le rôle de l’audio sont mémorisés, pas le numéro de piste. Si une langue manque, KINO utilise le réglage général et vous avertit.</small>
 </dialog>
 </body>

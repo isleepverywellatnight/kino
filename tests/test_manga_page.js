@@ -7,7 +7,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const ROOT = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(ROOT, 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const code = fs.readFileSync(path.join(ROOT, 'web/js/manga.js'), 'utf8');
 const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 

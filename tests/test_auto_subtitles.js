@@ -9,7 +9,7 @@ const vm = require('node:vm');
 const seriesSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/series-playback.js'), 'utf8'));
 const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
 const app = require('../tools/interface_source.js').appSource();
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 
 const SP = (() => { const context = {}; vm.runInNewContext(`${seriesSource}\nthis.SP = SeriesPlayback;`, context); return context.SP; })();
 const plain = value => JSON.parse(JSON.stringify(value));

@@ -12,7 +12,7 @@ const vm = require('node:vm');
 const checker = require('../tools/frontend_check.js');
 
 const source = require('../tools/interface_source.js').appSource();
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const fn = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
 
 test('the interface calls only functions and ids that exist', () => {

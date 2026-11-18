@@ -7,7 +7,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const ROOT = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(ROOT, 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const source = fs.readFileSync(path.join(ROOT, 'web/js/app-start.js'), 'utf8');
 const start = source.indexOf('let kinoUpdatePendingAction');
 const end = source.indexOf('async function checkKinoUpdates()');

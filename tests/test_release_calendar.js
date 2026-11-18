@@ -8,7 +8,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 const { loadPage, settle, shown } = require('../tools/page_harness.js');
 
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const base = { year: '2025', poster: 'https://img/p.jpg', followed: true, premiere: '', seen: false, before: 0, resume_pct: 0 };
 const item = fields => ({ ...base, season: 1, episode: 1, last_episode: fields.episode || 1, ...fields });
 const CALENDAR = {

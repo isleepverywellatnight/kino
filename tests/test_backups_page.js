@@ -7,7 +7,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = require('../tools/interface_source.js').appSource();
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const start = source.indexOf('// --- Sauvegardes (data_backup.py');
 const code = source.slice(start, source.indexOf('// --- fin des sauvegardes', start));
 

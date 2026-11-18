@@ -67,7 +67,7 @@ test('offline films use the native player only when it is available and switched
 });
 
 test('the setting is shown only where the native player exists and is saved as a boolean', () => {
-  const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+  const html = require('../tools/interface_source.js').indexHtml();
   assert.match(html, /id="cfgNativePlayerField" style="display:none;/);
   assert.match(html, /<script src="\/js\/native-player.js"><\/script>/);
   assert.match(app, /nativeField\.style\.display = cfg\.native_player_available === true \? 'flex' : 'none'/);

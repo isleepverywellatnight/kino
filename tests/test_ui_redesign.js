@@ -5,7 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = require('../tools/interface_source.js').appSource();
-const markup = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const markup = require('../tools/interface_source.js').indexHtml();
 const redesign = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
 const icons = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/icons.svg'), 'utf8');
 const resumeFunction = 'const FRENCH_MONTHS' + source
