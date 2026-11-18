@@ -80,8 +80,11 @@ impl Trakt<'_> {
             .send()
             .await;
         let answer = match sent.and_then(reqwest::Response::error_for_status) {
-            Ok(r) => r.json::<Value>().await.map_err(|e| e.to_string()),
-            Err(e) => Err(e.to_string()),
+            Ok(r) => r
+                .json::<Value>()
+                .await
+                .map_err(|e| crate::net::describe(&e)),
+            Err(e) => Err(crate::net::describe(&e)),
         };
         match answer {
             Ok(res) => {
@@ -110,7 +113,7 @@ impl Trakt<'_> {
             .await
         {
             Ok(r) => r,
-            Err(e) => return json!({"status": "error", "message": e.to_string()}),
+            Err(e) => return json!({"status": "error", "message": crate::net::describe(&e)}),
         };
         let code = response.status().as_u16();
         let (status, message) = match code {
@@ -129,7 +132,7 @@ impl Trakt<'_> {
         }
         let tokens: Value = match response.json().await {
             Ok(t) => t,
-            Err(e) => return json!({"status": "error", "message": e.to_string()}),
+            Err(e) => return json!({"status": "error", "message": crate::net::describe(&e)}),
         };
         let _ = self.db.save_config("trakt_tokens", &tokens);
         let _ = self.db.delete_config("trakt_pending_device");
@@ -185,9 +188,9 @@ impl Trakt<'_> {
         match sent.and_then(reqwest::Response::error_for_status) {
             Ok(r) => match r.json::<Value>().await {
                 Ok(res) => json!({"status": "ok", "action": action, "response": res}),
-                Err(e) => json!({"status": "error", "message": e.to_string()}),
+                Err(e) => json!({"status": "error", "message": crate::net::describe(&e)}),
             },
-            Err(e) => json!({"status": "error", "message": e.to_string()}),
+            Err(e) => json!({"status": "error", "message": crate::net::describe(&e)}),
         }
     }
 
