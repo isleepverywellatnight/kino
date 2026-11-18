@@ -1732,3 +1732,92 @@ body.manga-reading { overflow: hidden; }
   .manga-series-head { flex-direction: column; }
   .manga-cover-large { flex-basis: auto; width: 160px; }
 }
+
+/* ---------- Windows, messages and empty screens (redesign step 7) ---------- */
+/* One dialog for every window: a plain surface over a blurred page (the blur
+   says a click beside it closes it), its title on the left, a round close
+   button on the right. */
+.modal-bg, .shortcuts-modal {
+  position: fixed; inset: 0; z-index: 100;
+  display: none; align-items: center; justify-content: center;
+  padding: var(--k-space-5) var(--k-space-3); box-sizing: border-box; overflow-y: auto;
+  background: rgba(9, 9, 11, .72);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.shortcuts-modal { z-index: 250; }
+.modal, .shortcuts-content, .case-modal-box {
+  position: relative; box-sizing: border-box;
+  width: 100%; max-width: 480px; max-height: calc(100vh - 2 * var(--k-space-5)); overflow-y: auto;
+  padding: var(--k-space-5);
+  background: var(--k-surface-1); border: 1px solid var(--k-line-strong); border-radius: var(--k-radius-lg);
+  box-shadow: var(--k-shadow); color: var(--k-text);
+  animation: k-dialog-in var(--k-slow) var(--k-ease);
+}
+.shortcuts-content { max-width: 580px; }
+.modal-wide { max-width: 640px; }
+.modal-video { max-width: 860px; padding: var(--k-space-4); }
+.modal-column { display: flex; flex-direction: column; max-height: 85vh; }
+.modal-centered { text-align: center; }
+.case-modal-box { max-width: 940px; overflow: hidden; }
+.tonight-modal { max-width: 980px; padding: var(--k-space-6); }
+@keyframes k-dialog-in { from { opacity: 0; transform: translateY(8px) scale(.985); } }
+
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--k-space-3); margin-bottom: var(--k-space-4); flex-wrap: wrap; }
+.modal-title { display: flex; align-items: center; gap: var(--k-space-2); margin: 0; color: var(--k-text); font-size: var(--k-fs-lg); font-weight: 600; line-height: 1.3; text-align: left; }
+.modal-title .ui-icon { color: var(--k-text-2); }
+.modal-tools { display: flex; align-items: center; gap: var(--k-space-2); flex-wrap: wrap; }
+.modal-tools .chip, .modal-tools .btn { padding: 6px 12px; font-size: var(--k-fs-sm); }
+.modal-close {
+  display: inline-grid; place-items: center; flex: none;
+  width: 32px; height: 32px; margin-left: auto; padding: 0;
+  border: 0; border-radius: var(--k-radius-pill); background: var(--k-surface-2); color: var(--k-text-2);
+  cursor: pointer; transition: background var(--k-fast) var(--k-ease), color var(--k-fast) var(--k-ease);
+}
+.modal-close .ui-icon { width: 14px; height: 14px; }
+.modal-close:hover { background: var(--k-surface-3); color: var(--k-text); }
+.modal-close:focus-visible { outline: 2px solid var(--k-ring); outline-offset: 2px; }
+
+/* Keyboard shortcuts: two columns of rows, each key in a small cap. */
+.shortcuts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--k-space-3) var(--k-space-5); }
+.shortcut-row { display: flex; align-items: center; justify-content: space-between; gap: var(--k-space-3); color: var(--k-text-2); font-size: var(--k-fs-sm); }
+kbd { padding: 2px 8px; border: 1px solid var(--k-line-strong); border-radius: 6px; background: var(--k-surface-2); color: var(--k-text); font-family: inherit; font-size: var(--k-fs-xs); }
+@media (max-width: 560px) { .shortcuts-grid { grid-template-columns: 1fr; } }
+
+/* A message over the player, and the banner when the connection drops. */
+.inapp-toast {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10;
+  display: none; max-width: 440px; padding: var(--k-space-4) var(--k-space-5);
+  background: rgba(19, 19, 22, .94); border: 1px solid var(--k-line-strong); border-radius: var(--k-radius);
+  box-shadow: var(--k-shadow); color: var(--k-text); font-size: var(--k-fs-md); line-height: 1.45; text-align: center; pointer-events: auto;
+}
+.network-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--k-space-3); flex-wrap: wrap;
+  margin: 0 0 var(--k-space-4); padding: var(--k-space-3) var(--k-space-4);
+  background: var(--k-surface-1); border: 1px solid var(--k-text); border-radius: var(--k-radius);
+}
+.network-banner[hidden] { display: none; }
+.network-banner strong { display: block; color: var(--k-text); font-size: var(--k-fs-base); }
+.network-banner span { display: block; max-width: 64ch; margin-top: 2px; color: var(--k-text-2); font-size: var(--k-fs-sm); }
+.network-banner-actions { display: flex; gap: var(--k-space-2); flex-wrap: wrap; }
+.network-banner.is-back { border-color: var(--k-line-strong); }
+.network-banner.is-back .network-banner-actions { display: none; }
+
+/* Empty screens: no box, an invitation to act — a mark, what is missing, how to fill it. */
+.library-empty {
+  grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--k-space-2); min-height: 220px; padding: var(--k-space-7) var(--k-space-5); text-align: center;
+}
+.library-empty-icon {
+  display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: var(--k-space-2);
+  border-radius: var(--k-radius-pill); background: var(--k-surface-2); color: var(--k-text-2);
+  font-size: var(--k-fs-xl); line-height: 1;
+}
+.library-empty h3 { margin: 0; color: var(--k-text); font-size: var(--k-fs-lg); font-weight: 600; }
+.library-empty p { max-width: 42ch; margin: 0 0 var(--k-space-2); color: var(--k-text-3); font-size: var(--k-fs-md); line-height: 1.5; }
+.resume-empty { grid-column: 1 / -1; padding: var(--k-space-4) 0; color: var(--k-text-3); font-size: var(--k-fs-md); }
+.list-shelf-empty, .ep-empty { margin: 0; color: var(--k-text-3); font-size: var(--k-fs-sm); }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal, .shortcuts-content, .case-modal-box { animation: none; }
+}
+@media (max-width: 700px) { .tonight-modal { padding: var(--k-space-4); } }

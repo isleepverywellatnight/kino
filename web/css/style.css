@@ -146,47 +146,6 @@
     font-weight: 600;
   }
 
-  /* Modal Raccourcis Clavier */
-  .shortcuts-modal {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(8px);
-    z-index: 250;
-    align-items: center;
-    justify-content: center;
-  }
-  .shortcuts-content {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    max-width: 580px;
-    width: 90%;
-    padding: 24px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.9);
-  }
-  .shortcuts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px 20px;
-    margin-top: 16px;
-  }
-  .shortcut-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.82rem;
-  }
-  kbd {
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 2px 7px;
-    font-size: 0.75rem;
-    font-family: inherit;
-    color: var(--text);
-  }
 /* Sous-navigation Bibliothèque */
 
   @keyframes fadeInSub {
@@ -929,27 +888,7 @@
     border: 1px solid #ffffff;
     font-weight: 700;
   }
-  .modal-bg {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.8);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 100;
-    overflow-y: auto;
-    padding: 20px 10px;
-    box-sizing: border-box;
-  }
-  .modal {
-    border: 1px solid var(--border);
-    padding: 22px;
-    width: 92%;
-    max-width: 480px;
-    max-height: 88vh;
-    overflow-y: auto;
-    box-sizing: border-box;
-  }
-
+  
   /* Page de Parametres Dediee & Ergonomique */
   .settings-page {
     margin-bottom: 40px;
@@ -1185,25 +1124,6 @@
     display: block;
     flex-shrink: 0;
   }
-  .inapp-toast {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(17, 17, 19, 0.94);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px 24px;
-    color: var(--text);
-    font-size: 0.88rem;
-    display: none;
-    z-index: 10;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-    pointer-events: auto;
-    text-align: center;
-    max-width: 440px;
-    line-height: 1.4;
-  }
 
   .no-drag, .btn, .nav-tab, .chip, input, select, textarea, button, a {
     -webkit-app-region: no-drag;
@@ -1354,18 +1274,6 @@
     gap: 12px;
   }
 /* Roulette KINO (Mode Surprends-moi — DA monochrome épurée) */
-
-  .case-modal-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 20px 22px 22px;
-    width: 95%;
-    max-width: 940px;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85);
-    position: relative;
-    overflow: hidden;
-  }
   .case-header {
     display: flex;
     justify-content: space-between;
