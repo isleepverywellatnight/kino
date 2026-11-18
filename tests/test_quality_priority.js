@@ -6,7 +6,7 @@ const path = require('node:path');
 const test = require('node:test');
 const { loadPage, settle } = require('../tools/page_harness.js');
 
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const source = require('../tools/interface_source.js').appSource();
 
 test('Lecture offers the two priorities, « Lancer vite » first, and says what each does', () => {

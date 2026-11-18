@@ -10,7 +10,7 @@ const vm = require('node:vm');
 const read = name => fs.readFileSync(path.join(path.join(__dirname, '..'), name), 'utf8');
 const { appSource, interfaceScripts } = require('../tools/interface_source.js');
 const source = appSource();
-const html = read('web/index.html');
+const html = require('../tools/interface_source.js').indexHtml();
 const css = read('web/css/design.css');
 const animeHome = require('../tools/interface_source.js').inFrench(read('web/js/anime-home.js'));
 const between = (start, end) => start + source.split(start, 2)[1].split(end, 1)[0];

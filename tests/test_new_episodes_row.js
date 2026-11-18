@@ -7,7 +7,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = require('../tools/interface_source.js').appSource();
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
 const resumeCode = 'const FRENCH_MONTHS' + source.split('const FRENCH_MONTHS', 2)[1].split('async function removeHistoryItem', 1)[0];
 const targetCode = 'function getSeriesTargetEpisode(h)' + source.split('function getSeriesTargetEpisode(h)', 2)[1].split('const FRENCH_MONTHS', 1)[0];

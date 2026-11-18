@@ -146,7 +146,7 @@ test('an import says how many removed films it left out, and can bring them back
   assert.equal(bodies[1].restore_removed, true);
   assert.equal(page.element('lbxImportStatus').textContent, '✓ Synchronisation réussie : 51 dans Déjà vus.');
   assert.equal(page.element('lbxRestoreRemovedBtn').hidden, true);
-  const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+  const html = require('../tools/interface_source.js').indexHtml();
   assert.match(html, /<button type="button" id="lbxRestoreRemovedBtn" class="btn btn-secondary btn-small" hidden onclick="submitLetterboxdImport\(\{ restoreRemoved: true \}\)">Les réimporter aussi<\/button>/);
 });
 

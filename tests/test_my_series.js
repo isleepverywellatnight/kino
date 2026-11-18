@@ -8,7 +8,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 const { loadPage, settle, shown } = require('../tools/page_harness.js');
 
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const base = { year: '2025', poster: 'https://img/p.jpg', known: true, finished: false, last_watched: 1 };
 const SERIES = [
   { ...base, id: 'tt1', name: 'Dexter: Resurrection', group: 'continue', current: { season: 2, episode: 2, progress_pct: 45 },
