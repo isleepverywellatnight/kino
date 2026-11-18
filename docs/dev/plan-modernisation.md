@@ -35,7 +35,7 @@ Règles qui valent pour tout le plan :
 | i18n par `MutationObserver` | Confirmé : `web/js/i18n.js:142`, catalogues indexés par **la phrase française** (`web/js/i18n/*.js`, `strings.json`) | Chantier 2 justifié. |
 | mpv Windows docké par `SetParent` | Confirmé : `win_dock.rs` (112 lignes) reparent la fenêtre de `mpv.exe`, pilotage par tube nommé `\\.\pipe\kino_mpv` | Chantier 3 justifié. |
 | Signature | macOS : `codesign --verify` seulement, pas de notarisation ; Windows : pas d'Authenticode ; mises à jour signées Ed25519 par KINO | Chantier 6.3 justifié. |
-| Linux | Le crate `kino` est testé sur `ubuntu-latest` ; la cible desktop Linux n'est ni construite ni publiée | Chantier 6.1 part de zéro côté desktop. |
+| Linux | Tout le workspace (desktop compris, avec WebKitGTK) est compilé et testé sur `ubuntu-latest` par `rust.yml` ; rien n'est empaqueté ni publié | Chantier 6.1 = empaquetage, pas portage. |
 
 ---
 
@@ -403,45 +403,29 @@ signature Developer ID (chantier 6.3) sur macOS.**
 
 ### Chantier 5 — Concurrence SQLite et observabilité
 
-**5.1 Audit, pas refonte.** `Db` sépare déjà l'écrivain et les lecteurs, et
-les routes lourdes passent par `spawn_blocking`. Il reste à garantir
-qu'aucun appel `Db::with`/`Db::read` ne s'exécute sur un worker Tokio.
-Tokio ne permet pas de distinguer un thread `spawn_blocking` d'un worker
-(`Handle::try_current()` réussit dans les deux). Le garde passe donc par un
-seul point d'entrée qui marque le thread :
+**5.1 Mesurer, puis corriger les appels lents.** `Db` sépare déjà l'écrivain
+et les lecteurs. Mais une cinquantaine de handlers async appellent la base
+directement (`routes/library.rs`, etc.) : ce sont surtout des lectures de
+quelques microsecondes, que les envelopper toutes dans `spawn_blocking` ne
+rendrait pas plus rapides. Ce qui compte, ce sont les appels **lents** sur un
+thread async (FTS5, agrégations d'historique, attente du verrou d'écriture).
 
-```rust
-// crates/kino/src/db.rs
-thread_local! { static OFF_RUNTIME: std::cell::Cell<bool> = const { std::cell::Cell::new(false) }; }
+Fait en P0 (`crates/kino/src/db.rs`) :
 
-/// Seule façon d'atteindre la base depuis du code async.
-pub async fn blocking<T: Send + 'static>(
-    work: impl FnOnce() -> T + Send + 'static,
-) -> Result<T, tokio::task::JoinError> {
-    tokio::task::spawn_blocking(move || {
-        OFF_RUNTIME.set(true);
-        let out = work();
-        OFF_RUNTIME.set(false);
-        out
-    })
-    .await
-}
+- `db::spawn_blocking` remplace `tokio::task::spawn_blocking` dans tout le
+  serveur ; il marque le thread comme « bloquant autorisé ».
+  `db::blocking(…)` fait la même chose pour les threads lancés autrement
+  (les appels du pont de l'app desktop).
+- `Db::with` et `Db::read` mesurent chaque accès. Un accès de **25 ms ou
+  plus**, sur un thread qui exécute des tâches async et n'est pas marqué, est
+  écrit dans le journal d'erreurs : « Base lente sur un thread async »,
+  avec le fichier et la ligne de KINO qui l'a demandé (`#[track_caller]`) et
+  la durée. Rien n'est écrit pour les accès rapides.
 
-fn assert_off_runtime() {
-    // Hors runtime (threads std, tests synchrones) : rien à vérifier.
-    #[cfg(debug_assertions)]
-    if tokio::runtime::Handle::try_current().is_ok() {
-        assert!(OFF_RUNTIME.get(), "accès SQLite depuis un thread du runtime sans db::blocking");
-    }
-}
-```
-
-`routes/native.rs` a déjà un `blocking()` identique sans le marquage : il
-devient celui-ci, et les `spawn_blocking` qui touchent la base passent par lui.
-Appelé au début de `with` et `read`, le garde fait échouer les tests à chaque
-appel fautif ; chacun se corrige au cas par cas.
-Les requêtes FTS5 et les agrégations d'historique sont les premières à
-vérifier. Le garde reste en debug ; aucun coût en release.
+La P4 part de ces entrées, relevées sur un vrai usage : chaque endroit signalé
+passe par `db::spawn_blocking`, ou son calcul part dans un service déjà appelé
+hors du runtime. Un garde qui ferait échouer tout accès depuis un thread async
+(idée initiale) aurait imposé de réécrire 50 appels rapides sans gain.
 
 **5.2 Journalisation.** Je recommande de **ne pas** introduire `tracing` :
 `errorlog.rs` fait déjà ce dont KINO a besoin (local, rotation, masquage des
@@ -461,9 +445,9 @@ Si un jour un traçage par requête devient nécessaire (temps par route),
 
 ### Chantier 6 — Distribution
 
-**6.1 Linux.** Ordre : d'abord faire **construire** `kino-desktop` sous Linux
-(Wry → WebKitGTK 4.1 ; le lecteur passe par `mpv` externe en fenêtre séparée,
-le temps d'avoir `wid` sur X11), puis **AppImage** (un fichier, fonctionne sur
+**6.1 Linux.** `kino-desktop` compile déjà sous Linux (WebKitGTK 4.1, CI
+`rust.yml`). Reste à vérifier l'app réelle (le lecteur passe par `mpv` externe
+en fenêtre séparée, le temps d'avoir `wid` sur X11), puis **AppImage** (un fichier, fonctionne sur
 Steam Deck en mode bureau), puis **Flatpak** (`org.freedesktop.Platform`,
 extension `io.mpv` ou mpv construit dans le manifeste, permissions réseau,
 `--talk-name=org.freedesktop.secrets` pour le trousseau). Le serveur local
@@ -576,11 +560,11 @@ Ordre choisi pour que chaque phase rende la suivante plus sûre, et que les
 | Phase | Contenu | Dépend de | Définition de « fini » |
 |---|---|---|---|
 | **R** Fin de la refonte | Bibliothèque, fenêtres/messages/états vides, lecteurs, retrait de `style.css` et `redesign.css` | — | chaque écran livré et essayé par l'utilisateur avant le suivant ; plus aucune règle dans les anciennes feuilles |
-| **P0** Socle | `jsconfig.json` + `tsc --noEmit` en CI (en avertissement) ; garde debug SQLite (5.1) ; `PRAGMA user_version` à 1 sans changement de tables | — | CI verte ; `user_version = 1` sur une copie de la vraie base, aucune ligne modifiée ; liste des appels SQLite fautifs produite |
+| **P0** Socle ✅ | `jsconfig.json` + `tsc` **bloquant** en CI sur les fichiers marqués `// @ts-check` (9 fichiers au départ) ; types partagés dans `web/types/globals.d.ts` ; mesure des accès SQLite lents (5.1) ; `PRAGMA user_version` à 1 sans changement de tables | — | CI verte ; base existante passée à `user_version = 1` sans ligne modifiée (test) ; accès lents signalés dans le journal |
 | **P1** Rendu sûr | `html.js`, `safeUrl`, migration des 208 injections, règle `frontend_check` | P0, R | 0 `innerHTML =` hors `html.js` ; tests interface verts ; test : un titre `<img onerror>` s'affiche en texte |
 | **P2** Modules ES | `main.js`, registre d'actions, imports/exports, `@ts-check` fichier par fichier, `bridge.d.ts` + test de cohérence | P1 | `index.html` et `remote.html` : un seul `type="module"` ; 0 accès `window.*` hors pont ; `tsc` bloquant ; CSP inchangée ; vraie fenêtre Windows UI verte |
 | **P3** i18n | clés sémantiques, conversion des 8 catalogues, `t()`/`data-i18n` écran par écran, retrait de l'observateur | P2 | 0 texte traduit par l'observateur ; catalogues complets (test) ; captures FR/EN/JA identiques à avant, sans clignotement |
-| **P4** Journal & SQLite | tri des `let _`, `eprintln!` → `errorlog`, corrections issues du garde P0 | P0 | garde SQLite actif sans échec ; aucune erreur ignorée sans commentaire |
+| **P4** Journal & SQLite | tri des `let _`, `eprintln!` → `errorlog`, correction des accès lents signalés par P0 | P0 + quelques jours d'usage réel | plus d'entrée « Base lente » en usage normal ; aucune erreur ignorée sans commentaire |
 | **P5** Lecteur Windows | `mpv_api.rs` commun, `win_mpv.rs` (`wid`), `libmpv-2.dll`, option lecteur externe | — | Windows UI : lecture, redimensionnement, plein écran, Échap, fermeture ; essai manuel ; `win_dock.rs` retiré à la version suivante |
 | ~~P6~~ Signature | **Reportée** (pas de comptes payants pour l'instant). Developer ID + notarisation, Trusted Signing | comptes de l'utilisateur | `spctl --assess` accepte l'app ; installeur Windows sans avertissement SmartScreen « éditeur inconnu » |
 | **P7** Secrets, expand | `secrets.rs`, double écriture, migration idempotente, Diagnostic. **Windows (Credential Manager) et Linux (Secret Service) seulement** ; macOS garde le fichier chmod 600 tant que P6 n'est pas faite | — | clés lues depuis le trousseau sous Windows et Linux ; macOS inchangé ; retour à N-1 fonctionne ; tests sur magasin en mémoire |
