@@ -9,6 +9,7 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
+use bridge::{BridgeCall, Edge};
 use serde_json::{Value, json};
 use tao::dpi::{LogicalPosition, LogicalSize};
 use tao::event::{Event, WindowEvent};
@@ -19,6 +20,7 @@ use wry::WebViewBuilder;
 #[cfg(target_os = "macos")]
 use objc2::rc::Retained;
 
+mod bridge;
 #[cfg(target_os = "macos")]
 mod mac_media;
 #[cfg(target_os = "macos")]
@@ -82,7 +84,8 @@ fn bridge_script() -> String {
 }
 
 enum UserEvent {
-    Call(u64, String, Vec<Value>),
+    /// A call of the page, already read and checked.
+    Call(u64, BridgeCall),
     /// The external player started or ended: the window steps aside, then comes back.
     Hide,
     Show,
@@ -232,18 +235,17 @@ fn free_port(start: u16) -> u16 {
         .unwrap_or(start)
 }
 
-fn direction(name: &str) -> Option<ResizeDirection> {
-    Some(match name.replace('_', "-").as_str() {
-        "left" => ResizeDirection::West,
-        "right" => ResizeDirection::East,
-        "top" => ResizeDirection::North,
-        "bottom" => ResizeDirection::South,
-        "topleft" | "top-left" => ResizeDirection::NorthWest,
-        "topright" | "top-right" => ResizeDirection::NorthEast,
-        "bottomleft" | "bottom-left" => ResizeDirection::SouthWest,
-        "bottomright" | "bottom-right" => ResizeDirection::SouthEast,
-        _ => return None,
-    })
+fn resize_direction(edge: Edge) -> ResizeDirection {
+    match edge {
+        Edge::Left => ResizeDirection::West,
+        Edge::Right => ResizeDirection::East,
+        Edge::Top => ResizeDirection::North,
+        Edge::Bottom => ResizeDirection::South,
+        Edge::TopLeft => ResizeDirection::NorthWest,
+        Edge::TopRight => ResizeDirection::NorthEast,
+        Edge::BottomLeft => ResizeDirection::SouthWest,
+        Edge::BottomRight => ResizeDirection::SouthEast,
+    }
 }
 
 fn state(window: &Window) -> Value {
@@ -258,106 +260,72 @@ fn state(window: &Window) -> Value {
 }
 
 /// One call of the page: Ok(answer) or Err(message). `quit` ends the app.
-fn call(window: &Window, name: &str, args: &[Value], quit: &mut bool) -> Result<Value, String> {
-    let number = |i: usize| args.get(i).and_then(Value::as_f64);
-    Ok(match name {
-        "minimize" => {
+fn call(window: &Window, request: &BridgeCall, quit: &mut bool) -> Result<Value, String> {
+    Ok(match request {
+        BridgeCall::Minimize => {
             window.set_minimized(true);
             json!(true)
         }
-        "toggle_maximize" => {
+        BridgeCall::ToggleMaximize => {
             set_maximized(window, !maximized(window));
             json!(maximized(window))
         }
-        "start_window_drag" => {
+        BridgeCall::StartWindowDrag => {
             #[cfg(windows)]
             if !win_frame::button_down() {
                 return Ok(json!(false));
             }
             json!(window.drag_window().is_ok())
         }
-        "start_resize" => {
-            let d = args
-                .first()
-                .and_then(Value::as_str)
-                .and_then(direction)
-                .ok_or("Bord inconnu.")?;
-            json!(window.drag_resize_window(d).is_ok())
+        BridgeCall::StartResize(edge) => {
+            json!(window.drag_resize_window(resize_direction(*edge)).is_ok())
         }
-        "is_fullscreen" => json!(window.fullscreen().is_some()),
-        "toggle_fullscreen" => {
+        BridgeCall::IsFullscreen => json!(window.fullscreen().is_some()),
+        BridgeCall::ToggleFullscreen => {
             let on = window.fullscreen().is_none();
             window.set_fullscreen(on.then_some(Fullscreen::Borderless(None)));
             json!(on)
         }
-        "enter_fullscreen" => {
+        BridgeCall::EnterFullscreen => {
             window.set_fullscreen(Some(Fullscreen::Borderless(None)));
             json!(true)
         }
-        "exit_fullscreen" => {
+        BridgeCall::ExitFullscreen => {
             window.set_fullscreen(None);
             json!(false)
         }
-        "close" => {
+        BridgeCall::Close => {
             *quit = true;
             json!(true)
         }
-        "set_bounds" | "resize" => {
-            let (x, y, w, h) = if name == "resize" {
-                (None, None, number(0), number(1))
-            } else {
-                (number(0), number(1), number(2), number(3))
-            };
+        BridgeCall::SetBounds {
+            x,
+            y,
+            width,
+            height,
+        } => {
             if let (Some(x), Some(y)) = (x, y) {
-                window.set_outer_position(LogicalPosition::new(x, y));
+                window.set_outer_position(LogicalPosition::new(*x, *y));
             }
-            if let (Some(w), Some(h)) = (w, h) {
+            if let (Some(w), Some(h)) = (width, height) {
                 window.set_inner_size(LogicalSize::new(w.max(640.0), h.max(420.0)));
             }
             state(window)
         }
-        "get_state" => state(window),
-        "platform" => json!(std::env::consts::OS),
-        "choose_manga_folder" => match rfd::FileDialog::new().set_parent(window).pick_folder() {
-            None => json!({"cancelled": true}),
-            Some(path) => {
-                let db = kino::db::Db::open(&kino::paths::database()).map_err(|e| e.to_string())?;
-                kino::manga::local::set_folder(&db, &path.to_string_lossy())
-                    .map_err(|e| format!("{e:?}"))?
+        BridgeCall::GetState => state(window),
+        BridgeCall::Platform => json!(std::env::consts::OS),
+        BridgeCall::ChooseMangaFolder => {
+            match rfd::FileDialog::new().set_parent(window).pick_folder() {
+                None => json!({"cancelled": true}),
+                Some(path) => {
+                    let db =
+                        kino::db::Db::open(&kino::paths::database()).map_err(|e| e.to_string())?;
+                    kino::manga::local::set_folder(&db, &path.to_string_lossy())
+                        .map_err(|e| format!("{e:?}"))?
+                }
             }
-        },
-        "export_playback_diagnostic" => {
-            // Numbers only: nothing about the title or the source leaves.
-            let allowed = [
-                "schema",
-                "position",
-                "duration",
-                "paused",
-                "muted",
-                "volume",
-                "readyState",
-                "networkState",
-                "mediaError",
-                "compatibleStream",
-                "audioTrackCount",
-                "selectedAudioIndex",
-                "subtitleCueCount",
-                "subtitleDelay",
-                "sourceAttempts",
-            ];
-            let report = args
-                .first()
-                .and_then(Value::as_object)
-                .ok_or("Rapport invalide")?;
-            let mut safe: serde_json::Map<String, Value> = report
-                .iter()
-                .filter(|(k, v)| {
-                    allowed.contains(&k.as_str())
-                        && (v.is_null() || v.is_boolean() || v.as_f64().is_some_and(f64::is_finite))
-                })
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect();
-            safe.insert("player".into(), json!("KINO internal"));
+        }
+        BridgeCall::ExportPlaybackDiagnostic(safe) => {
             match rfd::FileDialog::new()
                 .set_parent(window)
                 .set_file_name("KINO-diagnostic.json")
@@ -366,15 +334,12 @@ fn call(window: &Window, name: &str, args: &[Value], quit: &mut bool) -> Result<
             {
                 None => json!(false),
                 Some(path) => json!(
-                    std::fs::write(
-                        path,
-                        serde_json::to_string_pretty(&Value::Object(safe)).unwrap_or_default()
-                    )
-                    .is_ok()
+                    std::fs::write(path, serde_json::to_string_pretty(safe).unwrap_or_default())
+                        .is_ok()
                 ),
             }
         }
-        _ => return Err("Pas encore disponible dans cette fenêtre.".into()),
+        _ => return Err(bridge::UNKNOWN.into()),
     })
 }
 
@@ -415,13 +380,12 @@ fn start_update_tasks(runtime: &tokio::runtime::Handle, updater: Arc<kino::updat
 /// The bridge's update calls. Quick ones answer at once (Some); the others
 /// answer later through `replies` (None).
 fn updates(
-    name: &str,
+    request: &BridgeCall,
     updater: &Arc<kino::update::Updater>,
     runtime: &tokio::runtime::Handle,
     remote: &Arc<kino::remote::Remote>,
     replies: &EventLoopProxy<UserEvent>,
     id: u64,
-    args: &[Value],
 ) -> Option<Result<Value, String>> {
     let later = |work: Box<dyn FnOnce() -> Result<Value, String> + Send>, close_after: bool| {
         let replies = replies.clone();
@@ -447,10 +411,10 @@ fn updates(
                     .unwrap_or(0.0)
                 < 5.0
     };
-    match name {
-        "update_status" => Some(Ok(updater.status())),
-        "set_update_auto_check" => Some(updater.set_auto_check(args.first() == Some(&json!(true)))),
-        "open_release_page" => {
+    match request {
+        BridgeCall::UpdateStatus => Some(Ok(updater.status())),
+        BridgeCall::SetUpdateAutoCheck(on) => Some(updater.set_auto_check(*on)),
+        BridgeCall::OpenReleasePage => {
             let page = updater.status()["latest"]["page"]
                 .as_str()
                 .filter(|p| {
@@ -471,7 +435,7 @@ fn updates(
             let _ = Command::new(program).arg(page).spawn();
             Some(Ok(json!({"opened": true})))
         }
-        "check_for_updates" => {
+        BridgeCall::CheckForUpdates => {
             let (updater, replies) = (updater.clone(), replies.clone());
             runtime.spawn(async move {
                 let result = updater.check_for_updates().await;
@@ -479,7 +443,7 @@ fn updates(
             });
             None
         }
-        "choose_update_package" => {
+        BridgeCall::ChooseUpdatePackage => {
             let Some(path) = rfd::FileDialog::new()
                 .add_filter("Mise à jour KINO", &["kinoupdate"])
                 .pick_file()
@@ -489,9 +453,10 @@ fn updates(
             let updater = updater.clone();
             later(Box::new(move || updater.prepare(&path)), false)
         }
-        "install_update" | "rollback_update" => {
+        BridgeCall::InstallUpdate | BridgeCall::RollbackUpdate => {
+            let install = *request == BridgeCall::InstallUpdate;
             if playing() {
-                let what = if name == "install_update" {
+                let what = if install {
                     "installer la mise à jour"
                 } else {
                     "revenir à l'ancienne version"
@@ -501,7 +466,6 @@ fn updates(
                 ));
             }
             let updater = updater.clone();
-            let install = name == "install_update";
             later(
                 Box::new(move || {
                     if install {
@@ -513,34 +477,51 @@ fn updates(
                 true,
             )
         }
-        _ => Some(Err("Pas encore disponible dans cette fenêtre.".into())),
+        _ => Some(Err(bridge::UNKNOWN.into())),
     }
 }
 
-/// A poster for « À l'écoute »: https only, 3 MB at most.
+/// A poster for « À l'écoute »: https only, read until 3 MB at most, on the
+/// app's runtime with one client for every poster.
 #[cfg(target_os = "macos")]
-fn fetch_poster(url: &str) -> Option<Vec<u8>> {
+async fn fetch_poster(url: &str) -> Option<Vec<u8>> {
+    static CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
     if !url.starts_with("https://") {
         return None;
     }
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .ok()?;
-    runtime.block_on(async {
-        let client = reqwest::Client::builder()
+    let client = CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(6))
             .build()
-            .ok()?;
-        let answer = client
-            .get(url)
-            .header("User-Agent", "KINO")
-            .send()
-            .await
-            .ok()?;
-        let bytes = answer.bytes().await.ok()?;
-        (bytes.len() <= 3 * 1024 * 1024).then(|| bytes.to_vec())
-    })
+            .unwrap_or_default()
+    });
+    let answer = client
+        .get(url)
+        .header("User-Agent", "KINO")
+        .send()
+        .await
+        .ok()?;
+    read_capped(answer, POSTER_MAX).await
+}
+
+#[cfg(target_os = "macos")]
+const POSTER_MAX: usize = 3 * 1024 * 1024;
+
+/// A successful answer's body, unless it goes past `max` bytes (then nothing
+/// more is read).
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+async fn read_capped(mut answer: reqwest::Response, max: usize) -> Option<Vec<u8>> {
+    if !answer.status().is_success() || answer.content_length().is_some_and(|n| n > max as u64) {
+        return None;
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = answer.chunk().await.ok()? {
+        if body.len() + chunk.len() > max {
+            return None;
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Some(body)
 }
 
 /// Whether this program runs from an installed KINO (an app bundle or an
@@ -877,13 +858,15 @@ fn main() -> Result<()> {
             }
         })
         .with_ipc_handler(move |request| {
-            let Ok(message) = serde_json::from_str::<Value>(request.body()) else {
+            let Some(message) = bridge::Message::read(request.body()) else {
                 return;
             };
-            let id = message["id"].as_u64().unwrap_or(0);
-            let name = message["name"].as_str().unwrap_or("").to_string();
-            let args = message["args"].as_array().cloned().unwrap_or_default();
-            let _ = proxy.send_event(UserEvent::Call(id, name, args));
+            // A call the window cannot make is answered at once.
+            let event = match BridgeCall::parse(&message.name, &message.args) {
+                Ok(call) => UserEvent::Call(message.id, call),
+                Err(e) => UserEvent::Reply(message.id, Err(e)),
+            };
+            let _ = proxy.send_event(event);
         })
         .build(&window)?;
 
@@ -898,14 +881,17 @@ fn main() -> Result<()> {
             mac_media::NowPlaying::create(
                 main,
                 remote.clone(),
-                Box::new(move |url: String| {
-                    let proxy = posters.lock().ok().map(|p| (*p).clone());
-                    std::thread::spawn(move || {
-                        let bytes = fetch_poster(&url).unwrap_or_default();
-                        if let Some(p) = proxy {
-                            let _ = p.send_event(UserEvent::Poster(url, bytes));
-                        }
-                    });
+                Box::new({
+                    let runtime = runtime.clone();
+                    move |url: String| {
+                        let proxy = posters.lock().ok().map(|p| (*p).clone());
+                        runtime.spawn(async move {
+                            let bytes = fetch_poster(&url).await.unwrap_or_default();
+                            if let Some(p) = proxy {
+                                let _ = p.send_event(UserEvent::Poster(url, bytes));
+                            }
+                        });
+                    }
                 }),
             )
         })
@@ -935,18 +921,16 @@ fn main() -> Result<()> {
         }
         let mut quit = false;
         match event {
-            Event::UserEvent(UserEvent::Call(id, name, args))
-                if name.contains("update") || name == "open_release_page" =>
-            {
-                let done = updates(&name, &updater, &runtime, &remote, &replies, id, &args);
+            Event::UserEvent(UserEvent::Call(id, request)) if request.is_update() => {
+                let done = updates(&request, &updater, &runtime, &remote, &replies, id);
                 if let Some(result) = done {
                     let _ = replies.send_event(UserEvent::Reply(id, result));
                 }
             }
             // Windows: a press on the bar becomes a drag only when the mouse moves.
             #[cfg(windows)]
-            Event::UserEvent(UserEvent::Call(id, name, _)) if name == "start_window_drag" => {
-                let _ = webview.evaluate_script(&format!("window.__kinoReply({id}, true, true)"));
+            Event::UserEvent(UserEvent::Call(id, BridgeCall::StartWindowDrag)) => {
+                let _ = webview.evaluate_script(&bridge::reply_script(id, &Ok(json!(true))));
                 if win_frame::take_double() {
                     // The press came late, after its double was complete.
                     let _ = replies.send_event(UserEvent::Action("maximize".into()));
@@ -981,20 +965,11 @@ fn main() -> Result<()> {
                 }
             }
             Event::UserEvent(UserEvent::Reply(id, result)) => {
-                let (ok, value) = match result {
-                    Ok(v) => (true, v),
-                    Err(e) => (false, json!(e)),
-                };
-                let _ =
-                    webview.evaluate_script(&format!("window.__kinoReply({id}, {ok}, {value})"));
+                let _ = webview.evaluate_script(&bridge::reply_script(id, &result));
             }
-            Event::UserEvent(UserEvent::Call(id, name, args)) => {
-                let (ok, value) = match call(&window, &name, &args, &mut quit) {
-                    Ok(v) => (true, v),
-                    Err(e) => (false, json!(e)),
-                };
-                let _ =
-                    webview.evaluate_script(&format!("window.__kinoReply({id}, {ok}, {value})"));
+            Event::UserEvent(UserEvent::Call(id, request)) => {
+                let result = call(&window, &request, &mut quit);
+                let _ = webview.evaluate_script(&bridge::reply_script(id, &result));
             }
             Event::UserEvent(UserEvent::Action(name)) => {
                 if let Some(on) = match name.as_str() {
@@ -1014,8 +989,8 @@ fn main() -> Result<()> {
                     }
                     other => other,
                 };
-                if !name.is_empty() {
-                    let _ = call(&window, name, &[], &mut quit);
+                if let Ok(request) = BridgeCall::parse(name, &[]) {
+                    let _ = call(&window, &request, &mut quit);
                 }
             }
             Event::UserEvent(UserEvent::Notification(info)) => {
@@ -1087,4 +1062,42 @@ fn main() -> Result<()> {
             *control_flow = ControlFlow::Exit;
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wiremock::matchers::path;
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[tokio::test]
+    async fn a_body_is_read_up_to_its_limit() {
+        let server = MockServer::start().await;
+        for (at, status, size) in [
+            ("/small", 200, 1000),
+            ("/large", 200, 5000),
+            ("/missing", 404, 10),
+        ] {
+            Mock::given(path(at))
+                .respond_with(ResponseTemplate::new(status).set_body_bytes(vec![7u8; size]))
+                .mount(&server)
+                .await;
+        }
+        let client = reqwest::Client::new();
+        let get = |at: &str| client.get(format!("{}{at}", server.uri())).send();
+        assert_eq!(
+            read_capped(get("/small").await.unwrap(), 4096).await,
+            Some(vec![7u8; 1000])
+        );
+        assert_eq!(
+            read_capped(get("/large").await.unwrap(), 4096).await,
+            None,
+            "too large"
+        );
+        assert_eq!(
+            read_capped(get("/missing").await.unwrap(), 4096).await,
+            None,
+            "not found"
+        );
+    }
 }
