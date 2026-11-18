@@ -35,11 +35,8 @@ fn refused(error: OfflineError) -> Response {
 }
 
 fn download_dir() -> String {
-    crate::config::load()
-        .get("download_dir")
-        .and_then(Value::as_str)
+    Some(crate::config::load().download_dir)
         .filter(|d| !d.is_empty())
-        .map(str::to_string)
         .unwrap_or_else(crate::config::default_download_dir)
 }
 

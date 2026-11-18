@@ -116,11 +116,11 @@ async fn open(State(s): State<Shared>, request: Request) -> Response {
     let volume = body["volume"].as_f64();
     let pref_lang = blocking(crate::config::load)
         .await
-        .and_then(|c| c.get("pref_lang").map(text))
-        .unwrap_or_else(|| "vf".into());
+        .map(|c| c.pref_lang)
+        .unwrap_or_default();
     let opener = native.clone();
-    let lang = pref_lang.clone();
-    let Some(Ok(mut state)) = blocking(move || opener.open(&path, start, volume, &lang)).await
+    let lang = pref_lang;
+    let Some(Ok(mut state)) = blocking(move || opener.open(&path, start, volume, lang)).await
     else {
         return failure(StatusCode::INTERNAL_SERVER_ERROR, BROKEN);
     };
@@ -131,7 +131,7 @@ async fn open(State(s): State<Shared>, request: Request) -> Response {
         let srt = cues_to_srt(&subtitle["cues"]);
         let lang: String = text(&subtitle["lang"]).chars().take(8).collect();
         if !srt.is_empty() {
-            let select = pref_lang == "vostfr" && lang == "fr";
+            let select = pref_lang == crate::config::PrefLang::Vostfr && lang == "fr";
             let adder = native.clone();
             if let Some(Ok(())) =
                 blocking(move || adder.add_subtitle(&srt, "gardé avec le film", &lang, select))

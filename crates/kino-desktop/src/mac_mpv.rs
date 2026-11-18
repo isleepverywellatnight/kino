@@ -598,7 +598,7 @@ impl kino::native::NativePlayer for Controller {
         path: &str,
         start: f64,
         volume: Option<f64>,
-        pref_lang: &str,
+        pref_lang: kino::config::PrefLang,
     ) -> Result<Value, String> {
         let mut playing = self.playing.lock().unwrap_or_else(|e| e.into_inner());
         self.close_playing(&mut playing);

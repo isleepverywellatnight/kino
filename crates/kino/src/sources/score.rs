@@ -9,6 +9,7 @@ use serde_json::{Map, Value, json};
 
 use super::release::{FRENCH_AUDIO_LANGS, TRASH, details};
 use super::relevance::{plausible_size, release_years};
+use crate::config::{HdrMode, PrefLang, Quality, SourcePriority};
 
 pub const QUALITY_FIRST_POINTS: i64 = 10000;
 const ANIME_GROUPS: [&str; 13] = [
@@ -48,14 +49,14 @@ static ANNOUNCED_NO_SD: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 pub struct Profile {
-    pub pref_lang: String,
-    pub pref_quality: String,
-    pub hdr_mode: String,
+    pub pref_lang: PrefLang,
+    pub pref_quality: Quality,
+    pub hdr_mode: HdrMode,
     pub media_type: String,
     pub runtime_minutes: Option<f64>,
     pub target_year: String,
     pub title_years: Vec<i64>,
-    pub priority: String,
+    pub priority: SourcePriority,
 }
 
 fn langs(d: &Value) -> Vec<&str> {
@@ -106,7 +107,7 @@ fn quality_points(d: &Value, p: &Profile) -> i64 {
         d["resolution"].as_str().unwrap_or(""),
         d["source"].as_str().unwrap_or(""),
     );
-    if p.pref_quality == "1080p" {
+    if p.pref_quality == Quality::Q1080p {
         if res == "1080p" {
             return 350
                 + match src {
@@ -143,7 +144,7 @@ fn quality_points(d: &Value, p: &Profile) -> i64 {
 
 fn language_points(d: &Value, p: &Profile) -> i64 {
     let l = langs(d);
-    if p.pref_lang == "vostfr" {
+    if p.pref_lang == PrefLang::Vostfr {
         if has(&l, "VOSTFR") {
             return 900;
         }
@@ -179,8 +180,8 @@ fn language_points(d: &Value, p: &Profile) -> i64 {
 fn picture_points(d: &Value, p: &Profile) -> i64 {
     let hdr = d["hdr_type"].as_str().unwrap_or("");
     let mut points = 0;
-    match p.hdr_mode.as_str() {
-        "hdr_native" => {
+    match p.hdr_mode {
+        HdrMode::HdrNative => {
             if hdr.contains("DV") {
                 points += 60;
             }
@@ -188,7 +189,7 @@ fn picture_points(d: &Value, p: &Profile) -> i64 {
                 points += 50;
             }
         }
-        "hdr_boost" => {
+        HdrMode::HdrBoost => {
             if hdr.contains("SDR") {
                 points += 100;
             }
@@ -243,7 +244,7 @@ fn fake_penalty(item: &Value, p: &Profile) -> i64 {
 
 fn size_points(item: &Value, p: &Profile) -> i64 {
     let size = number(&item["size_gb"]);
-    if p.pref_quality == "1080p" {
+    if p.pref_quality == Quality::Q1080p {
         if (1.5..=14.0).contains(&size) {
             return 60;
         }
@@ -296,10 +297,10 @@ fn year_points(item: &Value, p: &Profile) -> i64 {
 }
 
 fn priority_points(item: &Value, d: &Value, p: &Profile) -> i64 {
-    if p.priority != "quality" {
+    if p.priority != SourcePriority::Quality {
         return 0;
     }
-    let wanted = if p.pref_quality == "1080p" {
+    let wanted = if p.pref_quality == Quality::Q1080p {
         "1080p"
     } else {
         "4K"
@@ -314,7 +315,13 @@ fn priority_points(item: &Value, d: &Value, p: &Profile) -> i64 {
     if fake_penalty(item, p) < 0 || year_points(item, p) < 0 {
         return 0;
     }
-    if language_points(d, p) < (if p.pref_lang == "vostfr" { 500 } else { 400 }) {
+    if language_points(d, p)
+        < (if p.pref_lang == PrefLang::Vostfr {
+            500
+        } else {
+            400
+        })
+    {
         return 0;
     }
     QUALITY_FIRST_POINTS
@@ -350,7 +357,7 @@ fn quality_reason(points: i64, item: &Value, d: &Value, p: &Profile) -> (String,
             _ => "",
         }
     );
-    let wanted = if p.pref_quality != "1080p" {
+    let wanted = if p.pref_quality != Quality::Q1080p {
         "4K"
     } else {
         "1080p"
@@ -371,7 +378,7 @@ fn quality_reason(points: i64, item: &Value, d: &Value, p: &Profile) -> (String,
 
 fn language_reason(d: &Value, p: &Profile) -> (&'static str, &'static str) {
     let l = langs(d);
-    if p.pref_lang == "vostfr" {
+    if p.pref_lang == PrefLang::Vostfr {
         if has(&l, "VOSTFR") {
             return ("VOSTFR, la langue choisie", "good");
         }
@@ -403,9 +410,11 @@ fn language_reason(d: &Value, p: &Profile) -> (&'static str, &'static str) {
 
 fn picture_reason(points: i64, d: &Value, p: &Profile) -> Option<(&'static str, &'static str)> {
     let hdr = d["hdr_type"].as_str().unwrap_or("");
-    match p.hdr_mode.as_str() {
-        "hdr_native" => (points > 0).then_some(("HDR / Dolby Vision, pour votre écran", "good")),
-        "hdr_boost" => {
+    match p.hdr_mode {
+        HdrMode::HdrNative => {
+            (points > 0).then_some(("HDR / Dolby Vision, pour votre écran", "good"))
+        }
+        HdrMode::HdrBoost => {
             if points > 0 {
                 Some(("Image SDR, idéale pour l’amélioration HDR", "good"))
             } else {
@@ -612,8 +621,8 @@ pub fn episode_status(
 /// The signals behind a recommendation, from the same details as the ranking.
 pub fn explain(
     item: &Value,
-    pref_lang: &str,
-    pref_quality: &str,
+    pref_lang: PrefLang,
+    pref_quality: Quality,
     title_checked: bool,
     status: &str,
 ) -> Value {
@@ -633,7 +642,7 @@ pub fn explain(
         reasons.push("Disponibilité immédiate signalée".into());
     }
     let l = langs(&d);
-    let preferred: &[&str] = if pref_lang == "vostfr" {
+    let preferred: &[&str] = if pref_lang == PrefLang::Vostfr {
         &["VOSTFR"]
     } else {
         &["VFF", "VF", "MULTI", "FR"]
@@ -642,7 +651,7 @@ pub fn explain(
         reasons.push(format!("Langue souhaitée : {chosen}"));
     } else if l.is_empty() {
         warnings.push("Langue non indiquée".into());
-    } else if pref_lang == "vostfr" {
+    } else if pref_lang == PrefLang::Vostfr {
         if has(&l, "VO") {
             warnings.push("Sous-titres français non indiqués".into());
         }
@@ -651,7 +660,7 @@ pub fn explain(
     }
     let resolution = d["resolution"].as_str().unwrap_or("");
     if !resolution.is_empty() && ANNOUNCED_NO_SD.is_match(&raw_text(item)) {
-        let label = if resolution.to_lowercase() == pref_quality.to_lowercase() {
+        let label = if resolution.to_lowercase() == pref_quality.as_str() {
             "Qualité souhaitée"
         } else {
             "Qualité annoncée"
