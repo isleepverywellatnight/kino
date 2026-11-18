@@ -111,6 +111,11 @@
     if (input) input.click();
   };
 
+  // An element that has nothing to show (an image that does not load) goes.
+  window.kinoRemove = function (element) {
+    element.remove();
+  };
+
   // An image that does not load is hidden.
   window.kinoHideImage = function (element) {
     element.hidden = true;

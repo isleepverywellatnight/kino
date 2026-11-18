@@ -24,6 +24,23 @@ function listMediaArg(m) {
   });
 }
 
+// A declared action for a template, run by web/js/actions.js:
+// `<button ${act('debridFromIndex', idx)}>` gives data-on-click="debridFromIndex"
+// and data-click-args="[3]". The arguments are values, not code; THIS and EVENT
+// stand for the element and the event, VALUE and CHECKED for its value and state.
+const THIS = { $: 'this' };
+const EVENT = { $: 'event' };
+const VALUE = { $: 'value' };
+const CHECKED = { $: 'checked' };
+
+function actOn(type, name, ...args) {
+  return `data-on-${type}="${escapeHtml(name)}"${args.length ? ` data-${type}-args="${attrJson(args)}"` : ''}`;
+}
+
+function act(name, ...args) {
+  return actOn('click', name, ...args);
+}
+
 function escapeJsString(s) {
   if (s === null || s === undefined) return '';
   return String(s)

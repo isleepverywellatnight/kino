@@ -50,9 +50,14 @@ function asCall(name, args) {
   return `${name}(${args.map(js).join(', ')})`;
 }
 
+const unescape = text => text.replaceAll('&quot;', '"').replaceAll('&#39;', "'").replaceAll('&lt;', '<')
+  .replaceAll('&gt;', '>').replaceAll('&amp;', '&');
+
+// Both forms: index.html's single-quoted JSON, the templates' escaped one.
 function withCalls(html) {
-  return html.replace(/ data-on-([a-z]+)="([^"]+)"(?: data-\1-args='([^']*)')?( data-\1-stop)?/g, (_, type, name, args, stop) => {
-    const call = asCall(name, args ? JSON.parse(args) : []);
+  return html.replace(/ data-on-([a-z]+)="([^"]+)"(?: data-\1-args=(?:'([^']*)'|"([^"]*)"))?( data-\1-stop)?/g, (_, type, name, single, double, stop) => {
+    const raw = single ?? (double === undefined ? undefined : unescape(double));
+    const call = asCall(unescape(name), raw ? JSON.parse(raw) : []);
     return ` on${type}="${(stop ? 'event.stopPropagation(); ' : '') + call.replace(/"/g, '&quot;')}"`;
   });
 }
@@ -61,4 +66,20 @@ function indexHtml(root = ROOT) {
   return withCalls(fs.readFileSync(path.join(root, 'web', 'index.html'), 'utf8'));
 }
 
-module.exports = { appParts, appSource, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls };
+// What templates use to declare an action (act, actOn, THIS, EVENT…), taken from
+// the page itself, for tests that run a template alone.
+function templateHelpers(root = ROOT) {
+  const social = fs.readFileSync(path.join(root, 'web', 'js', 'app-social.js'), 'utf8');
+  const code = social.slice(social.indexOf('function escapeHtml(s)'), social.indexOf('// --- Trakt.tv Integration ---'));
+  const context = {};
+  require('node:vm').runInNewContext(`${code}; this.out = { act, actOn, THIS, EVENT, VALUE, CHECKED };`, context);
+  return context.out;
+}
+
+// A test's context with those helpers, unless it brings its own.
+function withHelpers(context = {}) {
+  for (const [name, value] of Object.entries(templateHelpers())) if (!(name in context)) context[name] = value;
+  return context;
+}
+
+module.exports = { appParts, appSource, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls, templateHelpers, withHelpers };
