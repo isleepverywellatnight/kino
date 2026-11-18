@@ -589,7 +589,7 @@ fn storage_facts(folder: &str, offline: &[Value]) -> Value {
 }
 
 fn database_facts(db: &crate::db::Db) -> Value {
-    let read = db.with(|c| {
+    let read = db.read(|c| {
         let ok: String = c.query_row("PRAGMA quick_check", [], |r| r.get(0))?;
         let watchlist: i64 = c.query_row("SELECT COUNT(*) FROM watchlist", [], |r| r.get(0))?;
         let history: i64 = c.query_row("SELECT COUNT(*) FROM watch_history", [], |r| r.get(0))?;
@@ -638,15 +638,12 @@ pub async fn gather(state: &crate::server::AppState, window: &Window) -> (Value,
     let cfg = tokio::task::spawn_blocking(crate::config::load)
         .await
         .unwrap_or_default();
-    let provider = cfg
-        .get("debrid_provider")
-        .map(text)
-        .unwrap_or_else(|| "realdebrid".into());
+    let provider = cfg.debrid_provider.as_str().to_string();
     let name = crate::debrid::PROVIDERS
         .iter()
         .find(|p| p.0 == provider)
         .map_or("Real-Debrid", |p| p.1);
-    let token = cfg.get("rd_token").map(text).unwrap_or_default();
+    let token = cfg.rd_token.clone();
     let online = crate::network::online(true).await;
     let mut debrid = json!({"provider": name, "has_token": !token.is_empty(), "status": "skipped", "premium": null});
     if !token.is_empty() && online {
@@ -672,9 +669,7 @@ pub async fn gather(state: &crate::server::AppState, window: &Window) -> (Value,
         }
         _ => Value::Null,
     };
-    let folder = cfg
-        .get("download_dir")
-        .map(text)
+    let folder = Some(cfg.download_dir.clone())
         .filter(|d| !d.is_empty())
         .unwrap_or_else(crate::config::default_download_dir);
     let offline: Vec<Value> = state.offline.list().into_iter().map(|(_, v)| v).collect();
@@ -688,7 +683,7 @@ pub async fn gather(state: &crate::server::AppState, window: &Window) -> (Value,
         json!({"found": false}),
     ));
     let day_ago = crate::db::now() - 86400.0;
-    let notifications_on = cfg.get("episode_notifications") != Some(&json!(false));
+    let notifications_on = cfg.episode_notifications != Some(false);
     let facts = json!({
         "now": crate::db::now(),
         "version": crate::backup::app_version(),
@@ -698,21 +693,15 @@ pub async fn gather(state: &crate::server::AppState, window: &Window) -> (Value,
         "trakt": {"connected": truthy(&tokens["access_token"]), "expires_at": expires},
         "drive": drive,
         "player": {"ffmpeg": crate::intro::find_tool("ffmpeg").is_some(), "native_available": window.native_player,
-                   "native_on": cfg.get("native_player").map_or(window.native_player, truthy)},
+                   "native_on": cfg.native_player.unwrap_or(window.native_player)},
         "notifications": {"available": window.notifications.is_some(), "enabled": notifications_on,
                           "status": window.notifications.clone().unwrap_or_else(|| "unavailable".into())},
         "storage": storage_facts(&folder, &offline),
         "database": database,
         "errors": {"day": crate::errorlog::LOG.recent(10_000, Some(day_ago)).len(), "recent": crate::errorlog::LOG.recent(10, None)},
     });
-    let mut secrets = vec![token, cfg.get("tmdb_key").map(text).unwrap_or_default()];
-    secrets.extend(
-        cfg.get("provider_tokens")
-            .and_then(Value::as_object)
-            .into_iter()
-            .flatten()
-            .filter_map(|(_, v)| v.as_str().map(str::to_string)),
-    );
+    let mut secrets = vec![token, cfg.tmdb_key().to_string()];
+    secrets.extend(cfg.provider_tokens.values().cloned());
     secrets.extend(
         tokens
             .as_object()

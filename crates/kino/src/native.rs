@@ -17,7 +17,11 @@ const CLARITY_LEVELS: [(i64, i64, i64); 4] = [(0, 0, 0), (12, 3, 2), (22, 6, 3),
 const LOCAL_ROUTES: [&str; 3] = ["/api/auto-stream", "/api/ad-dl", "/api/torbox-dl"];
 
 /// The options every native playback starts with.
-pub fn options(pref_lang: &str, start: f64, volume: Option<f64>) -> Vec<(String, String)> {
+pub fn options(
+    pref_lang: crate::config::PrefLang,
+    start: f64,
+    volume: Option<f64>,
+) -> Vec<(String, String)> {
     let mut options: Vec<(String, String)> = [
         ("cache", "yes"),
         ("demuxer-max-bytes", "150MiB"),
@@ -33,7 +37,7 @@ pub fn options(pref_lang: &str, start: f64, volume: Option<f64>) -> Vec<(String,
     .map(|(k, v)| (k.to_string(), v.to_string()))
     .collect();
     options.push((
-        if pref_lang == "vostfr" {
+        if pref_lang == crate::config::PrefLang::Vostfr {
             "slang"
         } else {
             "alang"
@@ -187,7 +191,7 @@ pub trait NativePlayer: Send + Sync {
         path: &str,
         start: f64,
         volume: Option<f64>,
-        pref_lang: &str,
+        pref_lang: crate::config::PrefLang,
     ) -> Result<Value, String>;
     /// Runs mpv commands (already checked).
     fn command(&self, commands: &[Vec<String>]) -> Result<(), String>;
@@ -261,7 +265,9 @@ mod tests {
                 && !stream_allowed("https://user@x/a", 8080)
         );
         assert_eq!(
-            options("vostfr", 12.0, Some(80.0)).last().unwrap(),
+            options(crate::config::PrefLang::Vostfr, 12.0, Some(80.0))
+                .last()
+                .unwrap(),
             &("start".to_string(), "12.0".to_string())
         );
     }
