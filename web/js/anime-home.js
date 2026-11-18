@@ -131,10 +131,10 @@ function animeCardHtml(item, nowMs = Date.now(), mine = new Map()) {
   const next = animeNextLabel(item.next, nowMs);
   const state = item.kino ? mine.get(item.kino.id) : '';
   return `
-      <div class="poster-card anime-card" data-anime="${id}" onclick="openAnimeWork(${id})">
+      <div class="poster-card anime-card" data-anime="${id}" ${act('openAnimeWork', id)}>
         ${state ? `<span class="poster-watched is-static">${escapeHtml(state)}</span>` : ''}
         <div class="poster-art">
-          <img src="${escapeHtml(item.poster || '')}" alt="${title}" loading="lazy" onload="this.classList.add('is-loaded')" onerror="this.classList.add('is-loaded'); handlePosterCardError(this, '')">
+          <img src="${escapeHtml(item.poster || '')}" alt="${title}" loading="lazy" ${actOn('load', 'kinoLoaded', THIS)} ${actOn('error', 'kinoPosterFailed', THIS, '')}>
           ${next ? `<span class="anime-card-next">${escapeHtml(next)}</span>` : ''}
         </div>
         <div class="poster-info">
@@ -170,8 +170,8 @@ function renderAnimeHome() {
   }
   if (!(data.rows || []).length) {
     panel.innerHTML = `<div class="anime-home-none"><p>${escapeHtml(data.message || 'Les rangées anime sont indisponibles pour le moment.')}</p>`
-      + `<div class="lib-tools"><button type="button" class="btn btn-secondary" onclick="loadAnimeHome(true)">Réessayer</button>`
-      + `<button type="button" class="btn btn-secondary" onclick="switchAnimeSubTab('catalog')">Ouvrir le catalogue</button></div></div>`;
+      + `<div class="lib-tools"><button type="button" class="btn btn-secondary" ${act('loadAnimeHome', true)}>Réessayer</button>`
+      + `<button type="button" class="btn btn-secondary" ${act('switchAnimeSubTab', 'catalog')}>Ouvrir le catalogue</button></div></div>`;
     return;
   }
   const now = Date.now();
@@ -318,7 +318,7 @@ function animeWeekRowHtml(episode, nowMs, mine) {
   const facts = [ANIME_FORMATS[episode.format] || 'Anime', ...(episode.genres || []).slice(0, 2).map(genre => ANIME_GENRES[genre] || frenchGenre(genre)),
     Number(episode.score) > 0 ? `${Number(episode.score)} %` : ''].filter(Boolean).join(' · ');
   const aired = episode.airing_at * 1000 <= nowMs;
-  const poster = hidden || !episode.poster ? '' : `<img src="${escapeHtml(episode.poster)}" alt="" loading="lazy" onerror="this.remove()">`;
+  const poster = hidden || !episode.poster ? '' : `<img src="${escapeHtml(episode.poster)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>`;
   return `<article class="offline-item myseries-item week-row${aired ? ' is-aired' : ''}" data-anime="${id}">
       <time class="week-time" datetime="${new Date(episode.airing_at * 1000).toISOString()}">${animeClock(new Date(episode.airing_at * 1000))}</time>
       <div class="offline-poster"${hidden ? ` role="img" aria-label="Image masquée pour l’épisode ${number}"` : ''}>${poster}<span aria-hidden="true">${hidden ? number : '▷'}</span></div>
@@ -329,8 +329,8 @@ function animeWeekRowHtml(episode, nowMs, mine) {
       </div>
       <div class="offline-actions">
         <span class="week-when">${escapeHtml(animeAiringLabel(episode.airing_at, nowMs))}</span>
-        ${hidden ? `<button type="button" class="btn btn-secondary spoiler-reveal-btn" onclick="revealScheduleEpisode(${id}, ${number})" aria-label="Afficher l’image de l’épisode ${number}">Afficher</button>` : ''}
-        <button type="button" class="btn btn-secondary" onclick="openAnimeWork(${id})">Fiche</button>
+        ${hidden ? `<button type="button" class="btn btn-secondary spoiler-reveal-btn" ${act('revealScheduleEpisode', id, number)} aria-label="Afficher l’image de l’épisode ${number}">Afficher</button>` : ''}
+        <button type="button" class="btn btn-secondary" ${act('openAnimeWork', id)}>Fiche</button>
       </div>
     </article>`;
 }
@@ -368,7 +368,7 @@ function renderAnimeWeek() {
     summary.textContent = [`${total} épisode${total > 1 ? 's' : ''} sur sept jours`,
       followed ? `${followed} de vos animes` : '', data.stale ? 'planning de la dernière visite' : ''].filter(Boolean).join(' · ');
   }
-  daysBar.innerHTML = days.map((day, index) => `<button type="button" class="chip${index === animeWeekDay ? ' active' : ''}" aria-pressed="${index === animeWeekDay}" onclick="selectAnimeWeekDay(${index})">${escapeHtml(day.label)} <span class="lib-count">${day.shown.length || ''}</span></button>`).join('');
+  daysBar.innerHTML = days.map((day, index) => `<button type="button" class="chip${index === animeWeekDay ? ' active' : ''}" aria-pressed="${index === animeWeekDay}" ${act('selectAnimeWeekDay', index)}>${escapeHtml(day.label)} <span class="lib-count">${day.shown.length || ''}</span></button>`).join('');
   const day = days[animeWeekDay];
   list.innerHTML = day.shown.length
     ? day.shown.map(episode => animeWeekRowHtml(episode, now, mine)).join('')

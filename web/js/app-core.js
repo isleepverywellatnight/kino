@@ -604,19 +604,19 @@ function renderTonightResult(result) {
           <p>${(choice.reasons || []).map(escapeHtml).join(' · ')}</p></div>
       </div>
       <div class="tonight-choice-actions">
-        <button type="button" class="btn" onclick="playTonightChoice(${index}, event)">${choice.offline_id ? 'Lire hors ligne' : 'Regarder'}</button>
-        <button type="button" class="btn btn-secondary" onclick="openTonightChoice(${index})">Voir la fiche</button>
+        <button type="button" class="btn" ${act('playTonightChoice', index, EVENT)}>${choice.offline_id ? 'Lire hors ligne' : 'Regarder'}</button>
+        <button type="button" class="btn btn-secondary" ${act('openTonightChoice', index)}>Voir la fiche</button>
       </div>
       <div class="tonight-feedback-actions" aria-label="Votre avis sur cette idée">
-        <button type="button" onclick="sendTonightFeedback(${index}, 'defer')">Pas ce soir</button>
-        <button type="button" onclick="sendTonightFeedback(${index}, 'seen')">Déjà vu</button>
-        <button type="button" onclick="sendTonightFeedback(${index}, 'exclude')">Ça ne m’intéresse pas</button>
+        <button type="button" ${act('sendTonightFeedback', index, 'defer')}>Pas ce soir</button>
+        <button type="button" ${act('sendTonightFeedback', index, 'seen')}>Déjà vu</button>
+        <button type="button" ${act('sendTonightFeedback', index, 'exclude')}>Ça ne m’intéresse pas</button>
       </div>
     </article>
   `).join('');
   const review = document.getElementById('tonightReview');
   if (review) review.innerHTML = tonightReviewItems.length
-    ? tonightReviewItems.map((item, index) => `<div class="tonight-review-row"><span><strong>${escapeHtml(item.name || 'Titre')}</strong><small>${item.decision === 'deferred' ? 'Reporté 24 h' : item.decision === 'seen' ? 'Marqué déjà vu' : 'Écarté de Ce soir'}</small></span><button type="button" class="btn btn-secondary" onclick="restoreTonightChoice(${index})">${item.decision === 'seen' ? 'Annuler' : 'Réintégrer'}</button></div>`).join('')
+    ? tonightReviewItems.map((item, index) => `<div class="tonight-review-row"><span><strong>${escapeHtml(item.name || 'Titre')}</strong><small>${item.decision === 'deferred' ? 'Reporté 24 h' : item.decision === 'seen' ? 'Marqué déjà vu' : 'Écarté de Ce soir'}</small></span><button type="button" class="btn btn-secondary" ${act('restoreTonightChoice', index)}>${item.decision === 'seen' ? 'Annuler' : 'Réintégrer'}</button></div>`).join('')
     : '<p class="tonight-review-empty">Aucun titre reporté ou écarté.</p>';
   const reviewSummary = document.getElementById('tonightReviewSummary');
   if (reviewSummary) reviewSummary.textContent = `Mes choix${tonightReviewItems.length ? ` (${tonightReviewItems.length})` : ''}`;
@@ -624,7 +624,7 @@ function renderTonightResult(result) {
   if (undo) {
     undo.style.display = tonightUndoAction ? 'flex' : 'none';
     undo.innerHTML = tonightUndoAction
-      ? `<span>${escapeHtml(tonightUndoAction.label)}</span><button type="button" class="btn btn-secondary" onclick="undoTonightFeedback()">Annuler</button>` : '';
+      ? `<span>${escapeHtml(tonightUndoAction.label)}</span><button type="button" class="btn btn-secondary" ${act('undoTonightFeedback')}>Annuler</button>` : '';
   }
 }
 

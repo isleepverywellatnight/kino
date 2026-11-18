@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const read = name => fs.readFileSync(path.join(path.join(__dirname, '..'), name), 'utf8');
 const { appSource, interfaceScripts } = require('../tools/interface_source.js');
@@ -126,7 +128,7 @@ test('a card carries the poster card look, its badge and what the user did with 
   const work = { id: 42, title: 'Frieren', romaji: 'Sousou no Frieren', format: 'TV', episodes: 28, score: 90, status: 'RELEASING',
     poster: 'https://img/42.jpg', next: { episode: 8, airing_at: at(16, 30) / 1000 }, kino: { id: 'tt2', type: 'series', season: 2 } };
   const card = context.animeCardHtml(work, NOW, mine);
-  assert.match(card, /<div class="poster-card anime-card" data-anime="42" onclick="openAnimeWork\(42\)">/);
+  assert.match(withCalls(card), /<div class="poster-card anime-card" data-anime="42" onclick="openAnimeWork\(42\)">/);
   assert.match(card, /<span class="poster-watched is-static">En cours<\/span>/);
   assert.match(card, /<span class="anime-card-next">Ép\. 8 · 16:30<\/span>/);
   assert.match(card, /<div class="poster-title" title="Sousou no Frieren">Frieren<\/div>\s*<div class="poster-year">Série · 28 ép\. · 90 %<\/div>/);
@@ -169,7 +171,7 @@ test('the rows arrive once, say when AniList is down, and offer the catalogue wh
   const offline = Object.assign(new Error('x'), { code: 'offline' });
   const empty = load({ api: async () => { throw offline; } });
   await empty.context.loadAnimeHome();
-  assert.match(empty.elements.animeHomePanel.innerHTML, /Pas de connexion à internet[\s\S]*onclick="loadAnimeHome\(true\)">Réessayer<[\s\S]*onclick="switchAnimeSubTab\('catalog'\)">Ouvrir le catalogue</);
+  assert.match(withCalls(empty.elements.animeHomePanel.innerHTML), /Pas de connexion à internet[\s\S]*onclick="loadAnimeHome\(true\)">Réessayer<[\s\S]*onclick="switchAnimeSubTab\('catalog'\)">Ouvrir le catalogue</);
 });
 
 test('a paired work opens its fiche under the series name, on its season', async () => {
@@ -261,7 +263,7 @@ test('a line says when: the hour first, then how long', () => {
     genres: ['Adventure', 'Drama', 'Fantasy'], score: 90, poster: 'p.jpg', kino: { id: 'tt9', type: 'series', season: 2 } }, NOW, new Map([['tt9', 'Ma Liste']]));
   assert.match(row, /<article class="offline-item myseries-item week-row" data-anime="5">\s*<time class="week-time" datetime="[^"]+">09:00<\/time>/);
   assert.match(row, /<strong title="Sousou no Frieren">Frieren<\/strong>\s*<span class="myseries-fact">Épisode 7 · Ma Liste<\/span>\s*<span class="myseries-fact">Série · Aventure · Drame · 90 %<\/span>/);
-  assert.match(row, /<span class="week-when">Dans 2 h 46<\/span>\s*<button type="button" class="btn btn-secondary" onclick="openAnimeWork\(5\)">Fiche<\/button>/);
+  assert.match(withCalls(row), /<span class="week-when">Dans 2 h 46<\/span>\s*<button type="button" class="btn btn-secondary" onclick="openAnimeWork\(5\)">Fiche<\/button>/);
   assert.match(context.animeWeekRowHtml({ id: 6, title: 'Vu', episode: 1, airing_at: at(5) / 1000 }, NOW, new Map()), /week-row is-aired"/);
   assert.match(context.animeWeekRowHtml({ id: 8, title: 'K-On', episode: 1, airing_at: at(9) / 1000, format: 'TV_SHORT', genres: ['Slice of Life', 'Supernatural'] }, NOW, new Map()),
     /<span class="myseries-fact">Série courte · Tranche de vie · Surnaturel<\/span>/);
@@ -281,14 +283,14 @@ test('the planning counts, filters and keeps the day; an episode not reached hid
     episode(4, at(9, 0, 14), 50000)] }, -1);
   context.renderAnimeWeek();
   assert.equal(elements.animeScheduleSummary.textContent, '3 épisodes sur sept jours · 1 de vos animes');
-  assert.match(elements.animeScheduleDays.innerHTML, /^<button type="button" class="chip active" aria-pressed="true" onclick="selectAnimeWeekDay\(0\)">Aujourd’hui <span class="lib-count">2<\/span><\/button><button type="button" class="chip" aria-pressed="false" onclick="selectAnimeWeekDay\(1\)">Demain <span class="lib-count">1<\/span>/);
+  assert.match(withCalls(elements.animeScheduleDays.innerHTML), /^<button type="button" class="chip active" aria-pressed="true" onclick="selectAnimeWeekDay\(0\)">Aujourd’hui <span class="lib-count">2<\/span><\/button><button type="button" class="chip" aria-pressed="false" onclick="selectAnimeWeekDay\(1\)">Demain <span class="lib-count">1<\/span>/);
   const rows = () => [...elements.animeScheduleGrid.innerHTML.matchAll(/data-anime="(\d+)"/g)].map(match => Number(match[1]));
   assert.deepEqual(rows(), [1, 3]);
   // Series tt9 is followed (season 2 only): its episode 3 is hidden, with a way to show it; the others keep their cover.
   assert.deepEqual(concealed, [['tt9', 2, 3]]);
   assert.match(elements.animeScheduleGrid.innerHTML, /src="p1\.jpg"/);
   assert.doesNotMatch(elements.animeScheduleGrid.innerHTML, /src="p3\.jpg"/);
-  assert.match(elements.animeScheduleGrid.innerHTML, /role="img" aria-label="Image masquée pour l’épisode 3">[\s\S]*onclick="revealScheduleEpisode\(3, 3\)"[^>]*>Afficher</);
+  assert.match(withCalls(elements.animeScheduleGrid.innerHTML), /role="img" aria-label="Image masquée pour l’épisode 3">[\s\S]*onclick="revealScheduleEpisode\(3, 3\)"[^>]*>Afficher</);
   vm.runInNewContext('revealScheduleEpisode(3, 3)', context);
   assert.deepEqual(revealed, [[2, 3, 'tt9']]);
 

@@ -29,7 +29,9 @@
   }
 
   function pickLanguage() {
-    const chosen = window.KINO_UI_LANGUAGE || storedChoice();
+    // Set by the server from the settings (a meta tag: the page runs no inline script).
+    const meta = document.querySelector('meta[name="kino-ui-language"]');
+    const chosen = (meta && meta.content) || window.KINO_UI_LANGUAGE || storedChoice();
     if (LANGUAGES[chosen]) return chosen;
     for (const tag of navigator.languages || [navigator.language || '']) {
       const base = String(tag).slice(0, 2).toLowerCase();

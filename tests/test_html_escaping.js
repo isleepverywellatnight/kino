@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const between = (start, end) => start + source.split(start, 2)[1].split(end, 1)[0];
@@ -32,7 +34,7 @@ function handlerCalls(html, functionName) {
   const calls = [];
   const decode = text => text.replaceAll('&quot;', '"').replaceAll('&#39;', "'").replaceAll('&lt;', '<')
     .replaceAll('&gt;', '>').replaceAll('&amp;', '&');
-  for (const [, quote, body] of html.matchAll(/onclick=(["'])(.*?)\1/g)) {
+  for (const [, quote, body] of withCalls(html).matchAll(/onclick=(["'])(.*?)\1/g)) {
     const code = decode(body);
     if (!code.startsWith(functionName + '(')) continue;
     const context = { [functionName]: (...args) => calls.push(args), event: {}, document: { querySelector: () => null } };

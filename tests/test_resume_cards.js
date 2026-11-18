@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
+const { withCalls } = require('../tools/interface_source.js');
 
 const source = require('../tools/interface_source.js').appSource();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
@@ -256,10 +258,10 @@ test('the cards carry the still, the texts and both actions, escaped', () => {
   assert.match(html, /<span class="resume-subinfo">Il reste 1h25<\/span>/);
   assert.match(html, /<span class="resume-progress-fill" style="width:40%;"><\/span>/);
   assert.match(html, /data-poster="https:\/\/example\.test\/p\.jpg"/);
-  assert.match(html, /onerror="resumeImageFallback\(this\)"/);
+  assert.match(withCalls(html), /onerror="resumeImageFallback\(this\)"/);
   assert.doesNotMatch(html, /loading="lazy"/, 'the home row loads its few images at once');
-  assert.match(html, /onclick="openResumeCard\(this, \{&quot;imdb_id&quot;:&quot;tt3&quot;/);
-  assert.match(html, /onclick="removeHistoryItem\(&quot;tt3&quot;\)"/);
+  assert.match(withCalls(html), /onclick="openResumeCard\(this, \{ imdb_id: 'tt3'/);
+  assert.match(withCalls(html), /onclick="removeHistoryItem\('tt3'\)"/);
   assert.match(html, /aria-label="Voir la fiche, prochain épisode le 16 novembre : Bad &quot;&lt;b&gt;&quot; &amp; &#39;quote&#39;"/);
   assert.doesNotMatch(html, /<b>/);
   assert.deepEqual(requested, [], 'cached metas are used directly');

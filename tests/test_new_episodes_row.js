@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
+const { withCalls } = require('../tools/interface_source.js');
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -77,7 +79,7 @@ test('each card says which episode, when it came out, and how many are new', () 
   assert.match(dexter, /<span class="resume-subinfo">Reprendre · sorti hier<\/span>/);
   assert.match(dexter, /aria-label="Reprendre S02E02 : Dexter: Resurrection"/);
   assert.match(dexter, /src="https:\/\/img\/2\.jpg" data-fallback="https:\/\/images\.metahub\.space\/background\/medium\/tt2\/img"/);
-  assert.match(dexter, /openResumeCard\(this, \{&quot;imdb_id&quot;:&quot;tt2&quot;,&quot;type&quot;:&quot;series&quot;,&quot;season&quot;:2,&quot;episode&quot;:2/);
+  assert.match(withCalls(dexter), /openResumeCard\(this, \{ imdb_id: 'tt2', type: 'series', season: 2, episode: 2/);
   const doves = card(out, 'tt1');
   assert.match(doves, /<span class="resume-kicker">S02E01<\/span>/, '« TBA » left out');
   assert.match(doves, /Sorti il y a 5 jours · \+4 autres/);

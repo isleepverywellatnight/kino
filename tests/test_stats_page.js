@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const statsCode = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/stats.js'), 'utf8'));
 const source = require('../tools/interface_source.js').appSource();
@@ -90,7 +92,7 @@ test('nothing seen yet, or no answer', async () => {
 });
 
 test('reached from its Bibliothèque tab, alone on it, in one grey', () => {
-  assert.match(html, /<button class="lib-subtab" id="subtab-stats" onclick="switchTab\('stats'\)">Statistiques<\/button>/);
+  assert.match(withCalls(html), /<button class="lib-subtab" id="subtab-stats" onclick="switchTab\('stats'\)">Statistiques<\/button>/);
   assert.match(html, /<div id="viewingStatsPanel" class="panel lib-panel stats-panel" style="display:none;">[\s\S]*?<div id="viewingStatsBody"><\/div>/);
   assert.ok(html.indexOf('src="/js/app-start.js"') > 0 && html.indexOf('src="/js/app-start.js"') < html.indexOf('src="/js/stats.js"'), 'stats.js uses the helpers of the app parts');
   assert.match(source, /\['watchlist', 'history', 'myseries', 'calendar', 'watched', 'offline', 'customlists', 'rdcloud', 'stats', 'library'\]\.includes\(tab\)/);

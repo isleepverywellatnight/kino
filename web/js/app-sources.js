@@ -65,12 +65,12 @@ function episodeTileHtml(v, ctx) {
   const meta = [upcoming ? (air ? `Diffusion le ${air}` : 'À venir') : air, inProgress ? `${Math.round(pct)} % vu` : ''].filter(Boolean).join(' · ');
   const art = hidden
     ? `<span class="spoiler-neutral-art" aria-label="Image masquée pour l'épisode ${epNum}">ÉPISODE ${epNum}</span>`
-    : (thumb ? `<img class="ep-tile-img" src="${escapeHtml(thumb)}" alt="" loading="lazy" onerror="this.remove()">` : '') + `<span class="ep-tile-fallback" aria-hidden="true">${epNum}</span>`;
+    : (thumb ? `<img class="ep-tile-img" src="${escapeHtml(thumb)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : '') + `<span class="ep-tile-fallback" aria-hidden="true">${epNum}</span>`;
   const inside = `${art}${badge ? `<span class="ep-tile-badge">${escapeHtml(badge)}</span>` : ''}${upcoming ? '' : '<span class="ep-tile-play" aria-hidden="true">▶</span>'}${pct > 0 && !isWatched ? `<span class="ep-tile-progress"><span style="width:${Math.min(100, Math.max(0, pct))}%"></span></span>` : ''}`;
   const action = inProgress ? 'Reprendre' : 'Lancer';
   const head = upcoming
     ? `<div class="ep-tile-art">${inside}</div>`
-    : `<button type="button" class="ep-tile-art" onclick="oneClickSeriesEpisode(this, ${seasonNum}, ${epNum})" aria-label="${action} ${code} · ${escapeHtml(title)}">${inside}</button>`;
+    : `<button type="button" class="ep-tile-art" ${act('oneClickSeriesEpisode', THIS, seasonNum, epNum)} aria-label="${action} ${code} · ${escapeHtml(title)}">${inside}</button>`;
   return `
     <article class="${classes}" role="listitem" data-ep="${epNum}"${hidden ? ' data-hidden="1"' : ''}${ctx.target.focus === epNum ? ' data-focus="1"' : ''}>
       ${head}
@@ -79,9 +79,9 @@ function episodeTileHtml(v, ctx) {
         ${meta ? `<div class="ep-tile-meta">${escapeHtml(meta)}</div>` : ''}
         ${overview ? `<p class="ep-tile-desc">${escapeHtml(overview)}</p>` : ''}
         <div class="ep-tile-actions">
-          ${upcoming ? '' : `<button type="button" class="btn btn-secondary ep-mini" onclick="pickSeriesEpisodeSources(${seasonNum}, ${epNum})">Sources</button>`}
-          ${hidden ? `<button type="button" class="btn btn-secondary ep-mini spoiler-reveal-btn" onclick="revealSpoilerEpisode(${seasonNum}, ${epNum})" aria-label="Afficher le titre, le résumé et l'image de l'épisode ${epNum}">Afficher pour cet épisode</button>` : ''}
-          ${upcoming ? '' : `<button type="button" class="btn btn-secondary ep-mini ep-watch${isWatched ? ' is-on' : ''}" aria-pressed="${isWatched}" title="${isWatched ? 'Démarquer comme vu' : 'Marquer cet épisode comme vu'}" onclick="toggleWatchedSeriesEp(${seasonNum}, ${epNum})">${isWatched ? '✓ Vu' : '✓ Marquer vu'}</button>`}
+          ${upcoming ? '' : `<button type="button" class="btn btn-secondary ep-mini" ${act('pickSeriesEpisodeSources', seasonNum, epNum)}>Sources</button>`}
+          ${hidden ? `<button type="button" class="btn btn-secondary ep-mini spoiler-reveal-btn" ${act('revealSpoilerEpisode', seasonNum, epNum)} aria-label="Afficher le titre, le résumé et l'image de l'épisode ${epNum}">Afficher pour cet épisode</button>` : ''}
+          ${upcoming ? '' : `<button type="button" class="btn btn-secondary ep-mini ep-watch${isWatched ? ' is-on' : ''}" aria-pressed="${isWatched}" title="${isWatched ? 'Démarquer comme vu' : 'Marquer cet épisode comme vu'}" ${act('toggleWatchedSeriesEp', seasonNum, epNum)}>${isWatched ? '✓ Vu' : '✓ Marquer vu'}</button>`}
         </div>
       </div>
     </article>`;
@@ -316,6 +316,11 @@ const expandedSourceGroups = new Set();
 // The other sources are folded under the recommended one.
 let sourcesMoreOpen = false;
 
+// « Choisir une autre source » stays open or closed when the list is drawn again.
+function rememberSourcesMore(details) {
+  sourcesMoreOpen = details.open;
+}
+
 function sourceResolution(t) {
   const resolution = String(t?.parsed_details?.resolution || '').toLowerCase();
   const qualities = (t?.qualities || []).map(q => String(q).replace(/\+$/, '').toLowerCase());
@@ -472,10 +477,10 @@ function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
           ${explanation}${warning}${why}
         </div>
         <div class="torrent-actions">
-          ${t.magnet ? `<button class="btn btn-secondary btn-icon" onclick="copyTorrentMagnet(event, this, ${idx})" title="Copier le lien Magnet" aria-label="Copier le lien Magnet"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#link"></use></svg></button>` : ''}
+          ${t.magnet ? `<button class="btn btn-secondary btn-icon" ${act('copyTorrentMagnet', EVENT, THIS, idx)} title="Copier le lien Magnet" aria-label="Copier le lien Magnet"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#link"></use></svg></button>` : ''}
           ${isBest
-            ? `<button class="btn btn-play-hero" style="padding:7px 16px !important; font-size:0.82rem !important;" onclick="debridFromIndex(${idx})"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#play-solid"></use></svg> Lancer</button>`
-            : `<button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem;" onclick="debridFromIndex(${idx})">Sélectionner</button>`
+            ? `<button class="btn btn-play-hero" style="padding:7px 16px !important; font-size:0.82rem !important;" ${act('debridFromIndex', idx)}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#play-solid"></use></svg> Lancer</button>`
+            : `<button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem;" ${act('debridFromIndex', idx)}>Sélectionner</button>`
           }
         </div>
       </div>`;
@@ -487,7 +492,7 @@ function renderTorrents() {
   const sourceSeason = Number(document.getElementById('seasonSelect')?.value || 0);
   const sourceEpisode = Number(document.getElementById('episodeSelect')?.value || 0);
   const sourceHidden = currentMedia?.type === 'series' && spoilerConcealed(spoilerSeriesId(), sourceSeason, sourceEpisode);
-  const revealSource = sourceHidden ? `<button class="btn btn-secondary spoiler-reveal-btn" style="margin-bottom:10px" onclick="revealSpoilerEpisode(${sourceSeason}, ${sourceEpisode})">Afficher pour cet épisode</button>` : '';
+  const revealSource = sourceHidden ? `<button class="btn btn-secondary spoiler-reveal-btn" style="margin-bottom:10px" ${act('revealSpoilerEpisode', sourceSeason, sourceEpisode)}>Afficher pour cet épisode</button>` : '';
 
   let bestIdx = -1;
   let maxScore = -1;
@@ -523,8 +528,8 @@ function renderTorrents() {
       const hidden = group.rows.length - shown.length;
       const where = group.key === 'other' ? '' : ` en ${group.label}`;
       const toggle = !open && hidden > 0
-        ? `<button type="button" class="btn btn-secondary source-more" onclick="toggleSourceGroup('${group.key}')" aria-expanded="false">Voir ${hidden} autre${hidden > 1 ? 's' : ''}${where}</button>`
-        : (open && group.rows.length > SOURCE_GROUP_SIZE ? `<button type="button" class="btn btn-secondary source-more" onclick="toggleSourceGroup('${group.key}')" aria-expanded="true">Réduire</button>` : '');
+        ? `<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="false">Voir ${hidden} autre${hidden > 1 ? 's' : ''}${where}</button>`
+        : (open && group.rows.length > SOURCE_GROUP_SIZE ? `<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="true">Réduire</button>` : '');
       return `<section class="source-group" aria-label="${group.label}">
         <h4 class="source-group-title">${group.label} <span class="list-count">${group.rows.length}</span></h4>
         ${shown.map(row => sourceRowHtml(row, false, sourceHidden, sourceEpisode, best)).join('')}
@@ -534,7 +539,7 @@ function renderTorrents() {
   // With a recommended source, the others wait behind « Choisir une autre source ».
   const others = rest.length;
   const folded = best && others
-    ? `<details class="sources-more"${sourcesMoreOpen ? ' open' : ''} ontoggle="sourcesMoreOpen = this.open"><summary>Choisir une autre source <span class="list-count">${others}</span></summary>${groupsHtml}</details>`
+    ? `<details class="sources-more"${sourcesMoreOpen ? ' open' : ''} ${actOn('toggle', 'rememberSourcesMore', THIS)}><summary>Choisir une autre source <span class="list-count">${others}</span></summary>${groupsHtml}</details>`
     : groupsHtml;
   list.innerHTML = revealSource
     + (best ? `<div class="source-best">${sourceRowHtml(best, true, sourceHidden, sourceEpisode)}</div>` : '')
@@ -658,11 +663,11 @@ function renderDebridState(res, season, episode, chosenTorrentTitle = '', playli
             <div class="torrent-meta">${escapeHtml(f.filesize || '')}</div>
           </div>
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            ${hidden && fileEpisode ? `<button class="btn btn-secondary spoiler-reveal-btn" onclick="revealSpoilerEpisode(${fileSeason}, ${fileEpisode})">Afficher pour cet épisode</button>` : ''}
-            <button class="btn" onclick="openDebridFile(this, ${index})">Lancer</button>
-            <button class="btn btn-secondary" onclick="sendDebridFileToTv(this, ${index})" title="Lire ce fichier sur la TV"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#cast"></use></svg> Sur la TV</button>
-            <button class="btn btn-secondary" onclick="downloadDebridFile(${index})">Télécharger</button>
-            <button class="btn btn-secondary" onclick="openDebridLink(${index})">Lien direct</button>
+            ${hidden && fileEpisode ? `<button class="btn btn-secondary spoiler-reveal-btn" ${act('revealSpoilerEpisode', fileSeason, fileEpisode)}>Afficher pour cet épisode</button>` : ''}
+            <button class="btn" ${act('openDebridFile', THIS, index)}>Lancer</button>
+            <button class="btn btn-secondary" ${act('sendDebridFileToTv', THIS, index)} title="Lire ce fichier sur la TV"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#cast"></use></svg> Sur la TV</button>
+            <button class="btn btn-secondary" ${act('downloadDebridFile', index)}>Télécharger</button>
+            <button class="btn btn-secondary" ${act('openDebridLink', index)}>Lien direct</button>
           </div>
         </div>
       `; }).join('')}

@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
+const { withCalls } = require('../tools/interface_source.js');
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -33,7 +35,7 @@ test('the row asks once, then shows each poster with its reason, without the tit
   assert.deepEqual(page.requests.map(r => r[0]), ['/api/for-you?type=movie']);
   const row = page.el('homeForYouRow').innerHTML;
   assert.equal(page.el('homeForYouSection').hidden, false);
-  assert.match(row, /<div class="foryou-item" data-foryou="tt1"><card tt1><p class="foryou-why">Parce que vous avez aimé A1<\/p><button type="button" class="foryou-no" onclick='notForMe\(event, "tt1"\)'>Pas pour moi<\/button><\/div>/);
+  assert.match(withCalls(row), /<div class="foryou-item" data-foryou="tt1"><card tt1><p class="foryou-why">Parce que vous avez aimé A1<\/p><button type="button" class="foryou-no" onclick="notForMe\(event, 'tt1'\)">Pas pour moi<\/button><\/div>/);
   assert.doesNotMatch(row, /tt3/, 'a title seen since is left out');
 });
 
@@ -53,5 +55,5 @@ test('fewer than four suggestions hide the row; the settings say it is computed 
   assert.equal(page.el('homeForYouSection').hidden, true);
   assert.match(html, /<section id="homeForYouSection" class="home-shelf" aria-labelledby="homeForYouTitle" hidden>/);
   assert.match(html, /Rien de vous ne quitte ce Mac\./);
-  assert.match(html, /onclick="resetNotForMe\(this\)">Oublier mes « Pas pour moi »<\/button>/);
+  assert.match(withCalls(html), /onclick="resetNotForMe\(this\)">Oublier mes « Pas pour moi »<\/button>/);
 });

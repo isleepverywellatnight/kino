@@ -145,8 +145,8 @@ function stremioAddonHtml(addon) {
         <strong>${escapeHtml(addon.name)}</strong>
         <span>${escapeHtml([offers, addon.version ? `v${addon.version}` : ''].filter(Boolean).join(' · '))}</span>
       </div>
-      <label class="k-switch" title="${addon.enabled ? 'Désactiver cet addon' : 'Activer cet addon'}"><input type="checkbox" role="switch" aria-label="${escapeHtml(addon.name)} actif"${addon.enabled ? ' checked' : ''} onchange="toggleStremioAddon(${id}, this.checked)"><span aria-hidden="true"></span></label>
-      <button type="button" class="btn btn-secondary btn-small" onclick="removeStremioAddon(${id})" aria-label="Retirer ${escapeHtml(addon.name)}">Retirer</button>
+      <label class="k-switch" title="${addon.enabled ? 'Désactiver cet addon' : 'Activer cet addon'}"><input type="checkbox" role="switch" aria-label="${escapeHtml(addon.name)} actif"${addon.enabled ? ' checked' : ''} ${actOn('change', 'toggleStremioAddon', addon.id, CHECKED)}><span aria-hidden="true"></span></label>
+      <button type="button" class="btn btn-secondary btn-small" ${act('removeStremioAddon', addon.id)} aria-label="Retirer ${escapeHtml(addon.name)}">Retirer</button>
     </li>`;
 }
 

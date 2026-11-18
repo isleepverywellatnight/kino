@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -36,11 +38,11 @@ test('the other sources wait, folded, under the recommended one', () => {
   const view = loadSources(torrents, 0);
   view.renderTorrents();
   const out = view.list.innerHTML;
-  assert.match(out, /^<div class="source-best">[\s\S]*?debridFromIndex\(0\)[\s\S]*?<\/div><details class="sources-more" ontoggle="sourcesMoreOpen = this\.open"><summary>Choisir une autre source <span class="list-count">2<\/span><\/summary>/);
+  assert.match(withCalls(out), /^<div class="source-best">[\s\S]*?debridFromIndex\(0\)[\s\S]*?<\/div><details class="sources-more" ontoggle="rememberSourcesMore\(this\)"><summary>Choisir une autre source <span class="list-count">2<\/span><\/summary>/);
   assert.match(out, /<details class="sources-more"[\s\S]*aria-label="4K"[\s\S]*aria-label="720p"[\s\S]*<\/details>$/);
   view.open(true);
   view.renderTorrents();
-  assert.match(view.list.innerHTML, /<details class="sources-more" open ontoggle=/, 'a filter or a sort keeps it open');
+  assert.match(withCalls(view.list.innerHTML), /<details class="sources-more" open ontoggle=/, 'a filter or a sort keeps it open');
   assert.match(out, /title="Copier le lien Magnet" aria-label="Copier le lien Magnet"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="\/icons\.svg#link"><\/use><\/svg><\/button>/);
   assert.match(source, /lastReadyDebrid = null;\n  sourcesMoreOpen = false;/, 'a new title or episode starts folded');
 });
@@ -66,7 +68,7 @@ test('the fiche glows with its own image once it has loaded', () => {
   const panel = { style: { setProperty: (k, v) => { props[k] = v; } }, contains: el => el === img };
   vm.runInNewContext(`${code}\nficheGlow(img); ficheGlow({ currentSrc: 'https://other' });`, { document: { getElementById: () => panel }, img, encodeURIComponent });
   assert.equal(props['--hero-glow'], 'url("https://img/b%22g.jpg")', 'an image of another fiche is ignored');
-  assert.match(source, /onload="ficheGlow\(this\)"/);
+  assert.match(withCalls(source), /\$\{actOn\('load', 'ficheGlow', THIS\)\}/);
   assert.match(source, /detail\.style\.display = 'block';\n  detail\.style\.removeProperty\('--hero-glow'\);/);
   assert.match(css, /#detailPanel::before \{[\s\S]*?background: var\(--hero-glow, none\) center \/ cover no-repeat;[\s\S]*?filter: blur\(70px\)/);
 });
@@ -95,7 +97,7 @@ test('« Vous aimerez aussi » takes TMDB\'s recommendations once known', async 
 });
 
 test('Paramètres → Connexions has the TMDB key, checked before it is kept', () => {
-  assert.match(html, /<div class="set-block" id="settings-tmdb" aria-labelledby="settings-tmdb-title">[\s\S]*?<input type="password" id="cfgTmdbKey"[\s\S]*?onclick="verifyTmdbKey\(this\)">Vérifier<\/button>/);
+  assert.match(withCalls(html), /<div class="set-block" id="settings-tmdb" aria-labelledby="settings-tmdb-title">[\s\S]*?<input type="password" id="cfgTmdbKey"[\s\S]*?onclick="verifyTmdbKey\(this\)">Vérifier<\/button>/);
   assert.match(source, /await api\('\/api\/tmdb\/key', \{ method: 'POST'/);
   assert.match(source, /RELATED_CLIENT_CACHE\.clear\(\);/);
 });

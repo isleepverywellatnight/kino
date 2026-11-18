@@ -51,4 +51,24 @@ async fn the_bare_server_says_what_needs_the_app() {
         .await
         .unwrap();
     assert_eq!(answer.status().as_u16(), 404);
+
+    // The page runs only KINO's own scripts, and carries no inline one.
+    let page = http.get(format!("{base}/")).send().await.unwrap();
+    assert_eq!(
+        page.headers()
+            .get("content-security-policy")
+            .and_then(|v| v.to_str().ok()),
+        Some("script-src 'self'; object-src 'none'; base-uri 'self'")
+    );
+    let html = page.text().await.unwrap();
+    let inline = regex::Regex::new(r"<script(?:\s+[^>]*)?>").unwrap();
+    for tag in inline.find_iter(&html) {
+        assert!(
+            tag.as_str().contains("src="),
+            "inline script: {}",
+            tag.as_str()
+        );
+    }
+    let handler = regex::Regex::new(r#"\son[a-z]+=["']"#).unwrap();
+    assert!(!handler.is_match(&html), "no inline handler");
 }

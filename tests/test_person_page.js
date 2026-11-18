@@ -6,7 +6,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const { loadPage, settle, shown } = require('../tools/page_harness.js');
 
 const source = require('../tools/interface_source.js').appSource();
@@ -34,7 +36,7 @@ async function open(answer = PAGE, { history = [] } = {}) {
 const grid = page => page.element('postersGrid').innerHTML;
 
 test('a click on a person in the fiche opens their page', () => {
-  assert.match(source, /class="detail-person" data-person="\$\{escapeHtml\(person\.name\)\}" onclick='openPerson\(\$\{nameJs\}\)' title="Films et séries de /);
+  assert.match(withCalls(source), /class="detail-person" data-person="\$\{escapeHtml\(person\.name\)\}" \$\{act\('openPerson', person\.name\)\} title="Films et séries de /);
 });
 
 test('the page: photo, description, short bio, what they do, and the way back', async () => {
@@ -46,7 +48,7 @@ test('the page: photo, description, short bio, what they do, and the way back', 
   assert.match(out, /<p class="person-description">actrice suédoise<\/p>/);
   assert.match(out, /<p class="person-bio">Rebecca Ferguson est une actrice &lt;suédoise&gt;\.<\/p>/);
   assert.match(out, /<p class="person-facts">Joue dans 2 films et 1 série · Écrit 1 film · 1 déjà vu<\/p>/);
-  assert.match(out, /onclick="backFromPerson\(\)">Retour à « Dune: Part Two »<\/button>/);
+  assert.match(withCalls(out), /onclick="backFromPerson\(\)">Retour à « Dune: Part Two »<\/button>/);
 });
 
 test('films and series in their groups, seen ones marked on their cards', async () => {
@@ -54,10 +56,11 @@ test('films and series in their groups, seen ones marked on their cards', async 
   const out = grid(page);
   assert.ok(out.indexOf('Films <span class="list-count">2</span>') < out.indexOf('Séries <span class="list-count">1</span>'));
   assert.ok(out.indexOf('Dune: Part Two') < out.indexOf('Doctor Sleep'), 'the server order, newest first');
-  const card = id => out.slice(out.indexOf(`selectMedia({"id":"${id}"`), out.indexOf('<div class="poster-card"', out.indexOf(`selectMedia({"id":"${id}"`)));
+  const shown = withCalls(out);
+  const card = id => shown.slice(shown.indexOf(`selectMedia({ id: '${id}'`), shown.indexOf('<div class="poster-card"', shown.indexOf(`selectMedia({ id: '${id}'`)));
   assert.match(card('tt2'), /class="poster-watched"[^>]*>✓ Vu<\/button>/);
   assert.doesNotMatch(card('tt1'), /class="poster-watched"/);
-  assert.match(out, /setPersonFilter\('all'\)">Tout <span class="list-count">3<\/span>[\s\S]*setPersonFilter\('movie'\)">Films[\s\S]*setPersonFilter\('series'\)">Séries[\s\S]*setPersonFilter\('unseen'\)">Pas encore vus <span class="list-count">2<\/span>/);
+  assert.match(withCalls(out), /setPersonFilter\('all'\)">Tout <span class="list-count">3<\/span>[\s\S]*setPersonFilter\('movie'\)">Films[\s\S]*setPersonFilter\('series'\)">Séries[\s\S]*setPersonFilter\('unseen'\)">Pas encore vus <span class="list-count">2<\/span>/);
   page.context.setPersonFilter('unseen');
   assert.doesNotMatch(grid(page), /Doctor Sleep/);
   assert.match(grid(page), /Dune: Part Two[\s\S]*Silo/);
@@ -68,7 +71,7 @@ test('films and series in their groups, seen ones marked on their cards', async 
 test('titles the credits do not confirm stay apart until asked for', async () => {
   const page = await open();
   assert.doesNotMatch(grid(page), /Nya tider/);
-  assert.match(grid(page), /onclick="togglePersonOthers\(\)" aria-expanded="false">Autres résultats pour ce nom \(1\)<\/button>/);
+  assert.match(withCalls(grid(page)), /onclick="togglePersonOthers\(\)" aria-expanded="false">Autres résultats pour ce nom \(1\)<\/button>/);
   page.context.togglePersonOthers();
   assert.match(grid(page), /Autres résultats pour ce nom <span class="list-count">1<\/span>[\s\S]*un petit rôle, ou un homonyme[\s\S]*Nya tider/);
 });

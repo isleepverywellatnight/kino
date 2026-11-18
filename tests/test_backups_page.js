@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -78,6 +80,6 @@ test('nothing is restored without a yes', async () => {
 test('the block sits in Paramètres → Application', () => {
   const app = html.slice(html.indexOf('id="settings-app"'));
   assert.ok(app.indexOf('id="settings-backups"') > 0 && app.indexOf('id="settings-backups"') < app.indexOf('id="settings-diagnostic"'));
-  assert.match(html, /id="backupNowBtn" onclick="backupNow\(this\)">Sauvegarder maintenant</);
+  assert.match(withCalls(html), /id="backupNowBtn" onclick="backupNow\(this\)">Sauvegarder maintenant</);
   assert.match(source, /loadSuggestionStatus\(\);\n\s+loadBackups\(\);/);
 });
