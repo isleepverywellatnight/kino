@@ -500,10 +500,11 @@ async function run(hwnd, videoUrl) {
   const page0 = await page.evaluate(() => document.documentElement.classList.contains('native-playing'));
   check('native player closes back to the page', closed && !(closed.state || closed).open && !page0,
     JSON.stringify({ closed, page_transparent: page0 }));
-  // The page is on screen again: the same points are no longer the test pattern.
+  // The page is on screen again: the same points no longer show the test pattern's colours.
   const after = pixels([0.2, 0.35, 0.5, 0.65, 0.8].map(f => [ox + area.w * f, oy + area.h * 0.3]));
-  const still = after.filter(([r, g, b]) => r + g + b > 120).length;
-  check('page shows again after native', still <= 1, JSON.stringify({ after, children: childClasses(hwnd) }));
+  const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 12);
+  const still = after.filter((colour, i) => near(colour, seen[i])).length;
+  check('page shows again after native', still <= 1, JSON.stringify({ after, during: seen, children: childClasses(hwnd) }));
   screenshot('after-native', hwnd);
 
   // mpv, the external player, docked inside KINO's window.
