@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -36,11 +38,11 @@ test('the other sources wait, folded, under the recommended one', () => {
   const view = loadSources(torrents, 0);
   view.renderTorrents();
   const out = view.list.innerHTML;
-  assert.match(out, /^<div class="source-best">[\s\S]*?debridFromIndex\(0\)[\s\S]*?<\/div><details class="sources-more" ontoggle="sourcesMoreOpen = this\.open"><summary>Choisir une autre source <span class="list-count">2<\/span><\/summary>/);
+  assert.match(withCalls(out), /^<div class="source-best">[\s\S]*?debridFromIndex\(0\)[\s\S]*?<\/div><details class="sources-more" ontoggle="rememberSourcesMore\(this\)"><summary>Choisir une autre source <span class="list-count">2<\/span><\/summary>/);
   assert.match(out, /<details class="sources-more"[\s\S]*aria-label="4K"[\s\S]*aria-label="720p"[\s\S]*<\/details>$/);
   view.open(true);
   view.renderTorrents();
-  assert.match(view.list.innerHTML, /<details class="sources-more" open ontoggle=/, 'a filter or a sort keeps it open');
+  assert.match(withCalls(view.list.innerHTML), /<details class="sources-more" open ontoggle=/, 'a filter or a sort keeps it open');
   assert.match(out, /title="Copier le lien Magnet" aria-label="Copier le lien Magnet"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="\/icons\.svg#link"><\/use><\/svg><\/button>/);
   assert.match(source, /lastReadyDebrid = null;\n  sourcesMoreOpen = false;/, 'a new title or episode starts folded');
 });
@@ -95,7 +97,7 @@ test('« Vous aimerez aussi » takes TMDB\'s recommendations once known', async 
 });
 
 test('Paramètres → Connexions has the TMDB key, checked before it is kept', () => {
-  assert.match(html, /<div class="set-block" id="settings-tmdb" aria-labelledby="settings-tmdb-title">[\s\S]*?<input type="password" id="cfgTmdbKey"[\s\S]*?onclick="verifyTmdbKey\(this\)">Vérifier<\/button>/);
+  assert.match(withCalls(html), /<div class="set-block" id="settings-tmdb" aria-labelledby="settings-tmdb-title">[\s\S]*?<input type="password" id="cfgTmdbKey"[\s\S]*?onclick="verifyTmdbKey\(this\)">Vérifier<\/button>/);
   assert.match(source, /await api\('\/api\/tmdb\/key', \{ method: 'POST'/);
   assert.match(source, /RELATED_CLIENT_CACHE\.clear\(\);/);
 });

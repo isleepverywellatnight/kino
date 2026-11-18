@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -145,7 +146,7 @@ test('« Fichier prêt »: each file of a chosen source has « Sur la TV », fro
   context.fail = true;
   await context.send(button, 0);
   assert.equal(elements.debridTvStatus.textContent, 'Aucune TV choisie.', 'the reason shows under the files');
-  assert.match(source, /onclick="sendDebridFileToTv\(this, \$\{index\}\)" title="Lire ce fichier sur la TV">/);
+  assert.match(source, /\$\{act\('sendDebridFileToTv', THIS, index\)\} title="Lire ce fichier sur la TV">/);
 });
 
 test('both players offer « Sur la TV »: pause, send at this moment, then stop on the Mac', () => {
