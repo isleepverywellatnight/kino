@@ -247,7 +247,9 @@ pub struct Space {
     pub entries: IndexMap<String, Value>,
     idf: HashMap<String, f64>,
     default_idf: f64,
-    vectors: Mutex<HashMap<String, Arc<Vector>>>,
+    /// Each pooled title's traits, measured once when the pool is read: no lock
+    /// between requests ranking at the same time.
+    vectors: HashMap<String, Arc<Vector>>,
 }
 
 impl Space {
@@ -269,42 +271,36 @@ impl Space {
             // A later duplicate replaces the value but keeps the first place, as a dict.
             entries.insert(id, entry);
         }
+        let default_idf = (total + 1.0).ln() + 1.0;
+        let vectors = entries
+            .iter()
+            .map(|(id, entry)| (id.clone(), Arc::new(measure(entry, &idf, default_idf))))
+            .collect();
         Self {
             entries,
             idf,
-            default_idf: (total + 1.0).ln() + 1.0,
-            vectors: Mutex::new(HashMap::new()),
+            default_idf,
+            vectors,
         }
     }
 
+    /// A title's traits, weighed: the pool's own measure for a pooled title.
     pub fn vector(&self, entry: &Value) -> Arc<Vector> {
-        let key = text(&entry["id"]);
-        let pooled = self.entries.contains_key(&key);
-        if pooled
-            && let Some(v) = self
-                .vectors
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .get(&key)
-        {
-            return v.clone();
+        match self.vectors.get(&text(&entry["id"])) {
+            Some(v) => v.clone(),
+            None => Arc::new(measure(entry, &self.idf, self.default_idf)),
         }
-        let mut vec = Vector::new();
-        for t in traits(entry) {
-            let group = t.split(':').next().unwrap_or("");
-            let weight =
-                group_weight(group) * self.idf.get(&t).copied().unwrap_or(self.default_idf);
-            vec.insert(t, weight);
-        }
-        let vec = Arc::new(normalized(vec));
-        if pooled {
-            self.vectors
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .insert(key, vec.clone());
-        }
-        vec
     }
+}
+
+fn measure(entry: &Value, idf: &HashMap<String, f64>, default_idf: f64) -> Vector {
+    let mut vec = Vector::new();
+    for t in traits(entry) {
+        let group = t.split(':').next().unwrap_or("");
+        let weight = group_weight(group) * idf.get(&t).copied().unwrap_or(default_idf);
+        vec.insert(t, weight);
+    }
+    normalized(vec)
 }
 
 fn cosine(a: &Vector, b: &Vector) -> f64 {
@@ -756,7 +752,7 @@ impl Store {
             return space.clone();
         }
         let rows: Vec<String> = db
-            .with(|c| {
+            .read(|c| {
                 let mut s = c.prepare("SELECT data_json FROM taste_pool")?;
                 s.query_map([], |r| r.get::<_, Option<String>>(0))?
                     .map(|r| r.map(Option::unwrap_or_default))
@@ -772,12 +768,9 @@ impl Store {
         space
     }
 
-    /// Reads the pool and measures each title's traits, ahead of the first ask.
+    /// Reads the pool (and measures each title's traits), ahead of the first ask.
     pub fn warm(&self, db: &Db) {
-        let space = self.space(db);
-        for entry in space.entries.values() {
-            space.vector(entry);
-        }
+        self.space(db);
     }
 
     /// Titles fetched one by one (watched titles missing from the pool).

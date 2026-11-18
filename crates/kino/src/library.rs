@@ -140,7 +140,7 @@ fn text(value: &Value) -> String {
 // ---------- Ma Liste ----------
 
 pub fn watchlist(db: &Db) -> Vec<Value> {
-    db.with(|c| {
+    db.read(|c| {
         let mut statement = c.prepare("SELECT id, name, type, year, poster, imdb_rating, user_rating FROM watchlist ORDER BY added_at DESC LIMIT 500")?;
         let rows = statement.query_map([], |r| {
             let get = |i: usize| r.get::<_, Option<String>>(i).map(Option::unwrap_or_default);
@@ -185,7 +185,7 @@ pub fn toggle_watchlist(db: &Db, item: &Value) -> Vec<Value> {
 // ---------- The history ----------
 
 pub fn history(db: &Db) -> Vec<Value> {
-    db.with(|c| {
+    db.read(|c| {
         let mut statement =
             c.prepare("SELECT data_json FROM watch_history ORDER BY last_watched DESC LIMIT 300")?;
         let rows = statement.query_map([], |r| r.get::<_, Option<String>>(0))?;

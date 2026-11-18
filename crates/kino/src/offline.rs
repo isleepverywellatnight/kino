@@ -214,7 +214,7 @@ fn offline_root(dest: &str) -> Result<PathBuf, OfflineError> {
 type Row = Map<String, Value>;
 
 fn read_rows(db: &Db, id: Option<&str>) -> Vec<Row> {
-    db.with(|c| {
+    db.read(|c| {
         let sql = if id.is_some() {
             "SELECT * FROM offline_downloads WHERE id=?"
         } else {

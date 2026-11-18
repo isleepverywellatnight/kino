@@ -589,7 +589,7 @@ fn storage_facts(folder: &str, offline: &[Value]) -> Value {
 }
 
 fn database_facts(db: &crate::db::Db) -> Value {
-    let read = db.with(|c| {
+    let read = db.read(|c| {
         let ok: String = c.query_row("PRAGMA quick_check", [], |r| r.get(0))?;
         let watchlist: i64 = c.query_row("SELECT COUNT(*) FROM watchlist", [], |r| r.get(0))?;
         let history: i64 = c.query_row("SELECT COUNT(*) FROM watch_history", [], |r| r.get(0))?;
