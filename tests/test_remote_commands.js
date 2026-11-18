@@ -8,7 +8,9 @@ const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
-const remotePage = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/remote.html'), 'utf8');
+// The phone page's controls (declared actions, read as calls) and its code.
+const remotePage = withCalls(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/remote.html'), 'utf8'))
+  + fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/remote.js'), 'utf8');
 const handler = 'function handleRemoteCommand(cmd)' + source
   .split('function handleRemoteCommand(cmd)', 2)[1]
   .split('// --- Watch Party P2P (PeerJS) ---', 1)[0];

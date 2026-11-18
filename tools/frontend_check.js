@@ -166,10 +166,14 @@ function handlerCalls(texts) {
 
 function check(root) {
   const webDir = path.join(root, 'web');
-  const html = fs.readFileSync(path.join(webDir, 'index.html'), 'utf8');
+  // The pages: the window's and the phone remote's.
+  const pages = ['index.html', 'remote.html'].filter(name => fs.existsSync(path.join(webDir, name)))
+    .map(name => ({ name, html: fs.readFileSync(path.join(webDir, name), 'utf8') }));
+  const html = pages.map(page => page.html).join('\n');
   const jsFiles = fs.readdirSync(path.join(webDir, 'js')).filter(name => name.endsWith('.js'))
     .map(name => ({ name, src: fs.readFileSync(path.join(webDir, 'js', name), 'utf8') }));
-  const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m, index) => ({ name: `index.html#script${index + 1}`, src: m[1] }));
+  const inlineScripts = pages.flatMap(page => [...page.html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+    .map((m, index) => ({ name: `${page.name}#script${index + 1}`, src: m[1] })));
   const sources = [...jsFiles, ...inlineScripts];
   const parsed = sources.map(file => ({ ...file, ...tokenize(file.src) }));
 
@@ -187,6 +191,18 @@ function check(root) {
   const missingHandlers = [];
   for (const [name, count] of handlerCalls(handlerTexts)) {
     if (!globals.has(name)) missingHandlers.push({ name, count });
+  }
+  // Declared actions (web/js/actions.js runs them): data-on-click="name" in a page,
+  // act('name', …) and actOn('type', 'name', …) in a template.
+  const actions = new Map();
+  const count = name => actions.set(name, (actions.get(name) || 0) + 1);
+  for (const m of html.matchAll(/data-on-[a-z]+="([\w$.]+)"/g)) count(m[1]);
+  for (const file of jsFiles) {
+    for (const m of file.src.matchAll(/\bact\('([\w$.]+)'/g)) count(m[1]);
+    for (const m of file.src.matchAll(/\bactOn\('[a-z]+', '([\w$.]+)'/g)) count(m[1]);
+  }
+  for (const [name, n] of actions) {
+    if (!globals.has(name.split('.')[0])) missingHandlers.push({ name, count: n });
   }
 
   const htmlIds = new Set([...html.matchAll(/\bid\s*=\s*["']([^"'$]+)["']/g)].map(m => m[1]));

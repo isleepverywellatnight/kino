@@ -159,3 +159,10 @@ test('a template action carries its arguments as values', () => {
   assert.doesNotMatch(withCalls(html), /onclick="x/, 'an argument stays inside its attribute');
   assert.equal(withCalls(html), `<b onclick="toggleSourceGroup('4k&quot; onclick=&quot;x')"></b><i onerror="kinoRemove(this)"></i><u onclick="copyLink(event, 3)"></u>`);
 });
+
+test('the phone remote has no inline code either, and loads its code as files', () => {
+  const remote = fs.readFileSync(path.join(ROOT, 'web/remote.html'), 'utf8');
+  assert.doesNotMatch(remote, /\son[a-z]+=["']/i);
+  assert.doesNotMatch(remote, /<script(?![^>]*\bsrc=)[^>]*>/, 'no inline script');
+  assert.match(remote, /<script src="\/js\/actions\.js"><\/script>\s*<script src="\/js\/remote\.js"><\/script>/);
+});
