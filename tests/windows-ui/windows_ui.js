@@ -19,10 +19,12 @@ const { chromium } = require('playwright-core');
 
 const PROJECT = path.resolve(__dirname, '..', '..');
 const PORT = 9333;
-const EXPECTED_CHECKS = 26;
+const EXPECTED_CHECKS = 31;
 const FFMPEG = process.env.KINO_FFMPEG || path.join(PROJECT, 'vendor', 'ffmpeg', 'ffmpeg.exe');
 // The mpv KINO bundles (tools/fetch_mpv_windows.ps1), set as the test home's player.
 const MPV = path.join(PROJECT, 'vendor', 'mpv-windows', 'mpv.exe');
+// The film the native player opens: a finished « hors ligne » download in the test home.
+const OFFLINE_ID = '0123456789abcdef0123456789abcdef';
 
 const user32 = koffi.load('user32.dll');
 try {
@@ -154,6 +156,39 @@ $small.Save('${file}', $jpeg, $params)`;
   } catch (error) {
     say(`screenshot ${name} failed: ${error.message}`);
   }
+}
+
+// The colours of a few screen points (the native player's video is not in the page).
+function pixels(points) {
+  const list = points.map(([x, y]) => `@(${Math.round(x)},${Math.round(y)})`).join(',');
+  const script = `
+Add-Type -AssemblyName System.Drawing
+Add-Type -Namespace K -Name Dpi -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware();'
+[K.Dpi]::SetProcessDPIAware() | Out-Null
+$one = New-Object System.Drawing.Bitmap 1, 1
+$g = [System.Drawing.Graphics]::FromImage($one)
+foreach ($p in @(${list})) { $g.CopyFromScreen($p[0], $p[1], 0, 0, $one.Size); $c = $one.GetPixel(0, 0); "$($c.R),$($c.G),$($c.B)" }`;
+  const out = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' });
+  return out.trim().split(/\r?\n/).map(line => line.split(',').map(Number));
+}
+
+// A finished offline download of the test video, as KINO records one.
+function addOfflineFilm(home, video) {
+  const { DatabaseSync } = require('node:sqlite');
+  const root = path.join(home, 'offline');
+  fs.mkdirSync(root);
+  const file = path.join(root, `${OFFLINE_ID}_test.mp4`);
+  fs.copyFileSync(video, file);
+  const size = fs.statSync(file).size;
+  const db = new DatabaseSync(path.join(home, '.kino_data.db'));
+  db.exec(fs.readFileSync(path.join(PROJECT, 'crates', 'kino', 'src', 'schema.sql'), 'utf8'));
+  const now = Date.now() / 1000;
+  db.prepare(`INSERT INTO offline_downloads (id, fingerprint, status, source_url, filename, title, media_json,
+      root_path, file_path, part_path, poster_path, bytes_done, bytes_total, created_at, updated_at)
+      VALUES (?, 'test', 'completed', 'https://example.invalid/test.mp4', 'test.mp4', 'Test natif', '{}',
+      ?, ?, ?, '', ?, ?, ?, ?)`)
+    .run(OFFLINE_ID, root, file, `${file}.part`, size, size, now, now);
+  db.close();
 }
 
 function makeVideo(folder) {
@@ -399,6 +434,46 @@ async function run(hwnd, videoUrl) {
   await page.evaluate(() => toggleInAppFullscreen());
   await page.waitForTimeout(800);
 
+  // The native player: libmpv draws in KINO's window, the page's controls stay over it.
+  await smallWindow();
+  const available = await page.evaluate(() => window.NativePlayer.available === true);
+  check('native player available', available);
+  const native = available ? await page.evaluate(id => window.NativePlayer.open(
+    { id, filename: 'test.mp4' }, { type: 'movie', name: 'Test natif' }, 0, 'Test natif', null)
+    .then(() => 'ok', error => String(error)), OFFLINE_ID) : 'unavailable';
+  let playing = null;
+  for (let i = 0; i < 60 && !(playing && playing.time > 1); i++) {
+    await sleep(250);
+    playing = await page.evaluate(() => fetch('/api/native-player/state').then(r => r.json()).catch(() => null));
+  }
+  const state0 = playing && (playing.state || playing);
+  check('native player plays', state0 && state0.open && state0.time > 1, JSON.stringify({ native, state: state0 }));
+  await page.waitForTimeout(800);
+  screenshot('native-player', hwnd);
+  // The video shows through the page: points of the upper half are the test pattern, not the page's black.
+  const [ox, oy] = clientOrigin(hwnd);
+  const area = await page.evaluate(() => ({ w: innerWidth * devicePixelRatio, h: innerHeight * devicePixelRatio }));
+  const seen = pixels([0.2, 0.35, 0.5, 0.65, 0.8].map(f => [ox + area.w * f, oy + area.h * 0.3]));
+  const bright = seen.filter(([r, g, b]) => r + g + b > 120).length;
+  check('native video shows under the page', bright >= 3, JSON.stringify(seen));
+  // A real click on the page's pause button reaches the page (mpv's window does not take it).
+  const before0 = state0 ? state0.paused : null;
+  if (await page.isVisible('#nativePlay')) await click(await centerOf(page, hwnd, '#nativePlay'));
+  let paused = null;
+  for (let i = 0; i < 20 && paused !== true; i++) {
+    await sleep(150);
+    const now = await page.evaluate(() => fetch('/api/native-player/state').then(r => r.json()).catch(() => null));
+    paused = now ? (now.state || now).paused : null;
+  }
+  check('click on the native controls pauses', before0 === false && paused === true, JSON.stringify({ before: before0, after: paused }));
+  await page.evaluate(() => window.NativePlayer.close());
+  await page.waitForTimeout(800);
+  const closed = await page.evaluate(() => fetch('/api/native-player/state').then(r => r.json()).catch(() => null));
+  const page0 = await page.evaluate(() => document.documentElement.classList.contains('native-playing'));
+  check('native player closes back to the page', closed && !(closed.state || closed).open && !page0,
+    JSON.stringify({ closed, page_transparent: page0 }));
+  screenshot('after-native', hwnd);
+
   // mpv, the external player, docked inside KINO's window.
   await smallWindow();
   await page.waitForTimeout(500);
@@ -451,6 +526,7 @@ async function main() {
   const home = path.join(work, 'home');
   fs.mkdirSync(home);
   fs.writeFileSync(path.join(home, '.rd_cinehub_config.json'), JSON.stringify({ mpv_path: MPV }));
+  addOfflineFilm(home, path.join(work, 'test.mp4'));
   const env = { ...process.env, KINO_DEVTOOLS_PORT: String(PORT), USERPROFILE: home, HOME: home };
   const kino = spawn(path.join(PROJECT, 'target', 'release', 'kino-desktop.exe'), [], { env, cwd: PROJECT, stdio: 'inherit' });
   let exitCode = null;

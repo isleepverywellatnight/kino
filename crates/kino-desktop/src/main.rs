@@ -29,10 +29,14 @@ mod mac_mpv;
 mod mac_notify;
 #[cfg(target_os = "macos")]
 mod mac_window;
+#[cfg(any(target_os = "macos", windows))]
+mod mpv;
 #[cfg(windows)]
 mod win_dock;
 #[cfg(windows)]
 mod win_frame;
+#[cfg(windows)]
+mod win_mpv;
 
 /// What the page may call; each returns a promise, as pywebview's do.
 const BRIDGE: [&str; 22] = [
@@ -106,14 +110,20 @@ enum UserEvent {
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Notification(Value),
     /// The native player's work on the main thread (open, close).
-    #[cfg(target_os = "macos")]
-    Native(mac_mpv::MainCall),
+    #[cfg(any(target_os = "macos", windows))]
+    Native(mpv::MainCall),
     /// A poster fetched for « À l'écoute » (its address, its bytes).
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Poster(String, Vec<u8>),
 }
 
 type Bounds = Arc<Mutex<Option<(i32, i32, u32, u32)>>>;
+
+/// The page's background (KINO's near-black) while nothing plays under it.
+#[cfg(not(windows))]
+const PAGE_BACKGROUND: (u8, u8, u8, u8) = (9, 9, 11, 255);
+#[cfg(windows)]
+use win_mpv::PAGE_BACKGROUND;
 
 /// What the external player asks of the window, from the server's threads.
 struct Hooks {
@@ -589,7 +599,7 @@ fn self_check() -> Result<Value, String> {
     }
     #[cfg(target_os = "macos")]
     {
-        let mpv = mac_mpv::version();
+        let mpv = mpv::version();
         if packaged() && mpv.is_none() {
             return Err("libmpv is missing from the application".into());
         }
@@ -606,6 +616,11 @@ fn self_check() -> Result<Value, String> {
             return Err("mpv is missing from the installation folder".into());
         }
         result["mpv"] = json!(mpv.display().to_string());
+        let libmpv = mpv::version();
+        if packaged() && libmpv.is_none() {
+            return Err("libmpv is missing from the installation folder".into());
+        }
+        result["libmpv"] = json!(libmpv);
     }
     // KINO's data opens, in a throwaway folder.
     let scratch = std::env::temp_dir().join(format!("kino-self-check-{}", std::process::id()));
@@ -745,14 +760,25 @@ fn main() -> Result<()> {
     #[cfg(not(target_os = "macos"))]
     let notifier: Option<Arc<dyn kino::alerts::Notifier>> = None;
     let remote: Arc<kino::remote::Remote> = Default::default();
-    #[cfg(target_os = "macos")]
-    let native: Option<Arc<dyn kino::native::NativePlayer>> = mac_mpv::available().then(|| {
+    // Windows: mpv draws in KINO's window, known once it is built below.
+    #[cfg(windows)]
+    let native_window: Arc<std::sync::OnceLock<isize>> = Default::default();
+    #[cfg(any(target_os = "macos", windows))]
+    let native: Option<Arc<dyn kino::native::NativePlayer>> = mpv::available().then(|| {
         let calls = event_loop.create_proxy();
-        Arc::new(mac_mpv::Controller::new(Box::new(move |call| {
-            let _ = calls.send_event(UserEvent::Native(call));
-        }))) as Arc<dyn kino::native::NativePlayer>
+        #[cfg(target_os = "macos")]
+        let window_options: mpv::WindowOptions = Box::new(mac_mpv::window_options);
+        #[cfg(windows)]
+        let window_options: mpv::WindowOptions =
+            Box::new(win_mpv::window_options(native_window.clone()));
+        Arc::new(mpv::Controller::new(
+            Box::new(move |call| {
+                let _ = calls.send_event(UserEvent::Native(call));
+            }),
+            window_options,
+        )) as Arc<dyn kino::native::NativePlayer>
     });
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(any(target_os = "macos", windows)))]
     let native: Option<Arc<dyn kino::native::NativePlayer>> = None;
     let options = kino::launch::Options {
         port,
@@ -846,7 +872,7 @@ fn main() -> Result<()> {
     let webview = builder
         .with_url(format!("http://127.0.0.1:{port}/"))
         .with_initialization_script(bridge_script())
-        .with_background_color((9, 9, 11, 255))
+        .with_background_color(PAGE_BACKGROUND)
         .with_on_page_load_handler({
             let updater = updater.clone();
             move |event, _url| {
@@ -899,6 +925,13 @@ fn main() -> Result<()> {
     let mut next_tick = std::time::Instant::now();
     #[cfg(target_os = "macos")]
     let mut native_side = mac_mpv::MainSide::default();
+    #[cfg(windows)]
+    let mut native_side = win_mpv::MainSide::default();
+    #[cfg(windows)]
+    {
+        use tao::platform::windows::WindowExtWindows;
+        let _ = native_window.set(window.hwnd());
+    }
     #[cfg(target_os = "macos")]
     let page_view: Retained<objc2_app_kit::NSView> = {
         use wry::WebViewExtMacOS;
@@ -1001,11 +1034,21 @@ fn main() -> Result<()> {
             }
             #[cfg(target_os = "macos")]
             Event::UserEvent(UserEvent::Native(call)) => match call {
-                mac_mpv::MainCall::Open(player, path, reply) => {
+                mpv::MainCall::Open(player, path, reply) => {
                     let _ = reply.send(native_side.open(&page_view, player, &path));
                 }
-                mac_mpv::MainCall::Close(reply) => {
+                mpv::MainCall::Close(reply) => {
                     native_side.close(&page_view);
+                    let _ = reply.send(());
+                }
+            },
+            #[cfg(windows)]
+            Event::UserEvent(UserEvent::Native(call)) => match call {
+                mpv::MainCall::Open(player, path, reply) => {
+                    let _ = reply.send(native_side.open(&webview, player, &path));
+                }
+                mpv::MainCall::Close(reply) => {
+                    native_side.close(&webview);
                     let _ = reply.send(());
                 }
             },
