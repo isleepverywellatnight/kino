@@ -69,25 +69,9 @@ fn secrets() -> Vec<String> {
     let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
     if at - cache.0 > 60.0 {
         let cfg = crate::config::load();
-        let mut found: Vec<String> = vec![
-            cfg.get("rd_token")
-                .and_then(Value::as_str)
-                .unwrap_or("")
-                .to_string(),
-        ];
-        found.extend(
-            cfg.get("provider_tokens")
-                .and_then(Value::as_object)
-                .into_iter()
-                .flatten()
-                .filter_map(|(_, v)| v.as_str().map(str::to_string)),
-        );
-        found.push(
-            cfg.get("tmdb_key")
-                .and_then(Value::as_str)
-                .unwrap_or("")
-                .to_string(),
-        );
+        let mut found: Vec<String> = vec![cfg.rd_token.clone()];
+        found.extend(cfg.provider_tokens.values().cloned());
+        found.push(cfg.tmdb_key().to_string());
         *cache = (at, found.into_iter().filter(|s| !s.is_empty()).collect());
     }
     cache.1.clone()

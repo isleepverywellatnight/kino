@@ -10,6 +10,7 @@ use regex::Regex;
 use serde_json::{Map, Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
+use crate::config::{AudioMode, HdrMode, PrefLang};
 use crate::db::Db;
 use crate::discord::{Discord, Playing};
 use crate::meta::Meta;
@@ -207,8 +208,8 @@ pub fn find() -> Option<PathBuf> {
 struct Plan {
     alang: &'static str,
     slang: &'static str,
-    hdr_mode: String,
-    audio_mode: String,
+    hdr_mode: HdrMode,
+    audio_mode: AudioMode,
     hdr_media: bool,
     input_conf: Option<String>,
     start_sec: i64,
@@ -220,15 +221,15 @@ struct Plan {
 /// Sound, picture and resume: the same for mpv (« -- ») and IINA (« --mpv- »).
 fn shared_options(prefix: &str, plan: &Plan) -> Vec<String> {
     let mut args = vec![];
-    if plan.audio_mode == "voice_boost" {
+    if plan.audio_mode == AudioMode::VoiceBoost {
         args.push(format!(
             "{prefix}af=lavfi=[dynaudnorm=f=180:g=13:p=0.92:m=4.5]"
         ));
     }
-    if plan.hdr_mode != "hdr_native" {
+    if plan.hdr_mode != HdrMode::HdrNative {
         args.push(format!("{prefix}tone-mapping=bt.2446a"));
         args.push(format!("{prefix}hdr-compute-peak=yes"));
-        if plan.hdr_mode == "hdr_boost" {
+        if plan.hdr_mode == HdrMode::HdrBoost {
             args.extend([
                 format!("{prefix}gamma=9"),
                 format!("{prefix}brightness=3"),
@@ -252,7 +253,7 @@ fn iina_command(bin: &Path, plan: &Plan) -> (PathBuf, Vec<String>) {
             bin = cli;
         }
     }
-    if cfg!(target_os = "macos") && ["sdr_pref", "hdr_boost"].contains(&plan.hdr_mode.as_str()) {
+    if cfg!(target_os = "macos") && matches!(plan.hdr_mode, HdrMode::SdrPref | HdrMode::HdrBoost) {
         let _ = std::process::Command::new("defaults")
             .args([
                 "write",
@@ -467,8 +468,8 @@ pub async fn send(command: Value) -> bool {
 impl Player {
     pub fn new(db: Arc<Db>, meta: Meta, window: Option<Arc<dyn WindowHooks>>) -> Arc<Self> {
         let cfg = crate::sources::search::load_settings();
-        let enabled = cfg.get("discord_rpc").is_none_or(crate::play::truthy);
-        let client = cfg.get("discord_client_id").map(text).unwrap_or_default();
+        let enabled = cfg.discord_rpc;
+        let client = cfg.discord_client_id.clone();
         Arc::new(Self {
             db,
             meta,
@@ -519,21 +520,15 @@ impl Player {
             .as_ref()
             .map(|m| m.filename.as_str())
             .unwrap_or("");
-        let setting = |k: &str, default: &str| {
-            cfg.get(k)
-                .map(text)
-                .filter(|v| !v.is_empty())
-                .unwrap_or_else(|| default.into())
-        };
         let plan = Plan {
-            alang: if setting("pref_lang", "vf") == "vostfr" {
+            alang: if cfg.pref_lang == PrefLang::Vostfr {
                 "eng,ja,jpn,fre,fra,fr"
             } else {
                 "fre,fra,fr,eng"
             },
             slang: "fre,fra,fr,eng",
-            hdr_mode: setting("hdr_mode", "sdr_pref"),
-            audio_mode: setting("audio_mode", "voice_boost"),
+            hdr_mode: cfg.hdr_mode,
+            audio_mode: cfg.audio_mode,
             hdr_media: HDR.is_match(&format!("{} {filename} {}", request.title, request.url)),
             input_conf: input_conf(),
             start_sec: request.start_sec,
@@ -773,12 +768,12 @@ impl Player {
 mod tests {
     use super::*;
 
-    fn plan(hdr_mode: &str, start_sec: i64) -> Plan {
+    fn plan(hdr_mode: HdrMode, start_sec: i64) -> Plan {
         Plan {
             alang: "fre,fra,fr,eng",
             slang: "fre,fra,fr,eng",
-            hdr_mode: hdr_mode.into(),
-            audio_mode: "voice_boost".into(),
+            hdr_mode,
+            audio_mode: AudioMode::VoiceBoost,
             hdr_media: true,
             input_conf: None,
             start_sec,
@@ -792,7 +787,7 @@ mod tests {
     fn mpv_arguments() {
         let args = mpv_command(
             Path::new("/nowhere/mpv"),
-            &plan("sdr_pref", 600),
+            &plan(HdrMode::SdrPref, 600),
             Some((10, 20, 1280, 720)),
         );
         for wanted in [
@@ -805,7 +800,7 @@ mod tests {
             assert!(args.iter().any(|a| a == wanted), "{wanted} in {args:?}");
         }
         assert_eq!(args.last().map(String::as_str), Some("https://x/dune.mkv"));
-        let native = shared_options("--mpv-", &plan("hdr_native", 3));
+        let native = shared_options("--mpv-", &plan(HdrMode::HdrNative, 3));
         assert_eq!(
             native,
             vec!["--mpv-af=lavfi=[dynaudnorm=f=180:g=13:p=0.92:m=4.5]"]

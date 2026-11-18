@@ -38,6 +38,7 @@ fn every_release_name_reads_as_in_python() {
     );
 }
 
+use kino::config::{HdrMode, PrefLang, Quality, SourcePriority};
 use kino::sources::stream::{self, Wanted};
 use serde_json::{Map, json};
 
@@ -87,8 +88,8 @@ fn releases_kept_scored_and_sorted_as_in_python() {
                 runtime_minutes: case["runtime"].as_f64(),
                 titles: &titles,
                 release_year: case["year"].as_str().unwrap(),
-                pref_lang: p["pref_lang"].as_str().unwrap(),
-                pref_quality: p["pref_quality"].as_str().unwrap(),
+                pref_lang: PrefLang::parse(p["pref_lang"].as_str().unwrap()).unwrap(),
+                pref_quality: Quality::parse(p["pref_quality"].as_str().unwrap()).unwrap(),
             };
             let kept = stream::keep_relevant(merged.clone(), &wanted);
             let sort_by = result["sort_by"].as_str().unwrap();
@@ -96,8 +97,8 @@ fn releases_kept_scored_and_sorted_as_in_python() {
                 kept,
                 sort_by,
                 &wanted,
-                p["hdr_mode"].as_str().unwrap(),
-                p["source_priority"].as_str().unwrap(),
+                HdrMode::parse(p["hdr_mode"].as_str().unwrap()).unwrap(),
+                SourcePriority::parse(p["source_priority"].as_str().unwrap()).unwrap(),
             );
             let key = |item: &Value| {
                 let hash = item["info_hash"].as_str().unwrap_or("");

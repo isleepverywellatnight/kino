@@ -4,13 +4,14 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use kino::config::AppConfig;
 use kino::db::Db;
 use kino::meta::Meta;
 use kino::net::Net;
 use kino::play::{self, Episode, EpisodeLinks};
 use kino::resolve::{Hosts, Resolver};
 use kino::sources::search::Query;
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 use wiremock::matchers::{body_string_contains, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -28,7 +29,7 @@ fn query(pairs: &[(&str, &str)]) -> Query {
         .iter()
         .map(|(k, v)| (k.to_string(), v.to_string()))
         .collect();
-    Query::from_params(&params, &Map::new())
+    Query::from_params(&params, &AppConfig::default())
 }
 
 fn file(name: &str, bytes: i64) -> Value {
@@ -229,8 +230,10 @@ async fn the_next_episodes_go_through_auto_stream_and_reuse_found_links() {
         "http://127.0.0.1:8080/api/auto-stream?imdb_id=tt9&season=1&episode=4&name=Show&year=2020&poster=&pref_hash=abc"
     );
 
-    let mut cfg = Map::new();
-    cfg.insert("rd_token".into(), json!("FAKE"));
+    let cfg = AppConfig {
+        rd_token: "FAKE".into(),
+        ..AppConfig::default()
+    };
     let params: HashMap<String, String> = [
         ("imdb_id", "tt9"),
         ("season", "1"),

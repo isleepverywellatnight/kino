@@ -14,6 +14,7 @@ use axum::{Json, Router};
 use regex::Regex;
 use serde_json::{Map, Value, json};
 
+use crate::config::AppConfig;
 use crate::play::{self, Episode, Found, text};
 use crate::resolve::Resolver;
 use crate::server::{Shared, needs_app};
@@ -59,24 +60,15 @@ struct Play {
 }
 
 impl Play {
-    fn new(body: &Map<String, Value>, cfg: &Map<String, Value>) -> Self {
+    fn new(body: &Map<String, Value>, cfg: &AppConfig) -> Self {
         let get = |k: &str| body.get(k).cloned().unwrap_or(Value::Null);
         let title = body.get("title").map(text).unwrap_or_else(|| "KINO".into());
         let kind = body.get("type").map(text).unwrap_or_else(|| "movie".into());
-        let default_player = if cfg!(target_os = "macos") {
-            "integrated"
-        } else {
-            "kino"
-        };
-        let mode = [
-            get("player_mode"),
-            cfg.get("player_mode").cloned().unwrap_or(Value::Null),
-        ]
-        .into_iter()
-        .map(|v| text(&v))
-        .find(|v| !v.is_empty())
-        .unwrap_or_else(|| default_player.into())
-        .to_lowercase();
+        // The page may ask for a mode; else the one chosen in the settings.
+        let mode = Some(text(&get("player_mode")))
+            .filter(|v| !v.is_empty())
+            .unwrap_or_else(|| cfg.player_mode.as_str().into())
+            .to_lowercase();
         let name = text(&get("name"));
         Self {
             title: title.clone(),
@@ -160,7 +152,7 @@ async fn one_click_play(State(s): State<Shared>, raw: Bytes) -> Response {
     if sources.is_empty() {
         return error(StatusCode::INTERNAL_SERVER_ERROR, play::NO_STREAM, None);
     }
-    let quality_first = cfg.get("source_priority").and_then(Value::as_str) == Some("quality");
+    let quality_first = cfg.quality_first();
     if quality_first {
         sources.sort_by_key(|s| s["is_instant"].as_bool() != Some(true));
     }
@@ -341,7 +333,7 @@ fn direct_link(source: &Value) -> bool {
 async fn start(
     s: &Shared,
     play: &Play,
-    cfg: &Map<String, Value>,
+    cfg: &AppConfig,
     found: Found,
     tried: Vec<String>,
 ) -> Value {

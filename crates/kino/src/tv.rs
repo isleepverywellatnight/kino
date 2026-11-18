@@ -485,12 +485,9 @@ impl Cast {
     pub async fn chosen(&self) -> Option<Value> {
         let saved = tokio::task::spawn_blocking(crate::config::load)
             .await
-            .ok()?
-            .get("tv_device")
-            .cloned()
-            .unwrap_or(Value::Null);
-        if truthy(&saved["control_url"]) {
-            return Some(saved);
+            .ok()?;
+        if let Some(device) = saved.tv().filter(|d| !d.control_url.is_empty()) {
+            return serde_json::to_value(device).ok();
         }
         let first = self.devices(false).await.into_iter().next()?;
         let change = json!({"tv_device": first});

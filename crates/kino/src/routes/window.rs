@@ -102,10 +102,7 @@ async fn window_action(State(s): State<Shared>, request: Request) -> Response {
 }
 
 pub(crate) fn download_dir() -> std::path::PathBuf {
-    let cfg = crate::config::load();
-    let dir = cfg
-        .get("download_dir")
-        .map(text)
+    let dir = Some(crate::config::load().download_dir)
         .filter(|d| !d.is_empty())
         .unwrap_or_else(crate::config::default_download_dir);
     std::path::PathBuf::from(dir)
@@ -272,10 +269,10 @@ async fn probe_media(State(s): State<Shared>, request: Request) -> Response {
     let preference = tokio::task::spawn_blocking(crate::config::load)
         .await
         .ok()
-        .and_then(|c| c.get("pref_lang").map(text))
-        .unwrap_or_else(|| "vf".into());
+        .map(|c| c.pref_lang)
+        .unwrap_or_default();
     let audio = info["audio"].as_array().cloned().unwrap_or_default();
-    let selected = crate::media::select_audio(&audio, &preference);
+    let selected = crate::media::select_audio(&audio, preference.as_str());
     Json(json!({"ok": true, "media": info, "selected_audio": selected})).into_response()
 }
 
