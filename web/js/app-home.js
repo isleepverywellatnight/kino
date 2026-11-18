@@ -1,3 +1,4 @@
+// @ts-check
 // --- « Nouveaux épisodes »: series with episodes released since the last viewing ---
 let newEpisodes = [];
 let newEpisodesToday = '';
@@ -401,8 +402,8 @@ function updateGenreArrows() {
   const strip = document.getElementById('genreStrip');
   if (!row || !strip) return;
   const max = row.scrollWidth - row.clientWidth;
-  const prev = strip.querySelector('.genre-scroll-prev');
-  const next = strip.querySelector('.genre-scroll-next');
+  const prev = /** @type {HTMLElement | null} */ (strip.querySelector('.genre-scroll-prev'));
+  const next = /** @type {HTMLElement | null} */ (strip.querySelector('.genre-scroll-next'));
   if (prev) prev.hidden = !(max > 2 && row.scrollLeft > 2);
   if (next) next.hidden = !(max > 2 && row.scrollLeft < max - 2);
   strip.classList.toggle('fade-left', Boolean(prev && !prev.hidden));
@@ -453,13 +454,13 @@ function initGenreStrip() {
 
 // A genre badge of a fiche: the catalogue on that genre, its chip selected.
 function selectGenreBadge(genre) {
-  const chip = [...document.querySelectorAll('#genreFilters .chip')].find(c => c.dataset.genre === genre) || null;
+  const chip = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#genreFilters .chip'))].find(c => c.dataset.genre === genre) || null;
   selectGenre(genre, chip);
 }
 
 function selectGenre(genre, el) {
   activeGenre = genre;
-  const genreChips = [...document.querySelectorAll('#genreFilters .chip')];
+  const genreChips = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#genreFilters .chip'))];
   genreChips.forEach(c => c.classList.remove('active'));
   if (el) el.classList.add('active');
   syncChipPressed(genreChips, el);

@@ -1,3 +1,4 @@
+// @ts-check
 const Spoilers = (() => {
   const empty = () => ({ enabled: false, overrides: {}, revealed: {} });
   const code = (season, episode) => `S${String(Number(season)).padStart(2, '0')}E${String(Number(episode)).padStart(2, '0')}`;

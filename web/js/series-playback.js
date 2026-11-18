@@ -1,3 +1,4 @@
+// @ts-check
 // Stable properties are used across episodes; file-local stream indexes are never stored.
 const SeriesPlayback = (() => {
   const aliases = {

@@ -1,3 +1,4 @@
+// @ts-check
 // « Noter en un geste ». Three gestures, the same everywhere: at the
 // end of a playback, in the Home row « Vos derniers vus, à noter » and in the
 // fiche. They are Letterboxd values (ratings.py), so an imported note reads the
@@ -215,7 +216,7 @@ function showRatePrompt(entry, asked) {
   const prompt = document.getElementById('ratePrompt');
   if (!prompt) return;
   const name = typeof displayTitle === 'function' ? displayTitle(entry) : entry.name;
-  const poster = document.getElementById('ratePromptPoster');
+  const poster = /** @type {HTMLImageElement | null} */ (document.getElementById('ratePromptPoster'));
   const source = ratingPoster(entry);
   if (poster) {
     poster.hidden = !source;
