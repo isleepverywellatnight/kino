@@ -772,6 +772,14 @@ impl Store {
         space
     }
 
+    /// Reads the pool and measures each title's traits, ahead of the first ask.
+    pub fn warm(&self, db: &Db) {
+        let space = self.space(db);
+        for entry in space.entries.values() {
+            space.vector(entry);
+        }
+    }
+
     /// Titles fetched one by one (watched titles missing from the pool).
     pub fn add_known(&self, db: &Db, entries: &[Value], now: f64) {
         let _ = db.with(|c| {
