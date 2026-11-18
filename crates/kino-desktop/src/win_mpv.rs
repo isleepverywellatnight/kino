@@ -43,9 +43,14 @@ impl MainSide {
     }
 
     /// The page's own background again; the controller then ends the player.
+    /// WebView2 is shown anew so it draws a whole frame over the last video
+    /// image, then takes the keyboard back.
     pub fn close(&mut self, webview: &WebView) {
         if std::mem::take(&mut self.playing) {
             let _ = webview.set_background_color(PAGE_BACKGROUND);
+            let _ = webview.set_visible(false);
+            let _ = webview.set_visible(true);
+            let _ = webview.focus();
         }
     }
 }
