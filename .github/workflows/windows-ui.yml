@@ -1,12 +1,12 @@
 # KINO's real window on Windows, driven with real mouse input (tests/windows-ui):
-# title bar, window buttons, dragging, maximize, player and fullscreen cursor.
+# title bar, window buttons, dragging, maximize, player, fullscreen cursor and mpv docked.
 # Runs the Rust app built here (target/release/kino-desktop.exe).
 name: Windows UI
 
 on:
   push:
     branches: ["**"]
-    paths: ["crates/**", "web/**", "Cargo.lock", "tests/windows-ui/**", "tools/fetch_ffmpeg.ps1", ".github/workflows/windows-ui.yml"]
+    paths: ["crates/**", "web/**", "Cargo.lock", "tests/windows-ui/**", "tools/fetch_ffmpeg.ps1", "tools/fetch_mpv_windows.ps1", ".github/workflows/windows-ui.yml"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -32,6 +32,8 @@ jobs:
         run: cargo build --release --locked -p kino-desktop
       - name: FFmpeg (test video)
         run: ./tools/fetch_ffmpeg.ps1
+      - name: mpv (docked player)
+        run: ./tools/fetch_mpv_windows.ps1
       - name: Dependencies
         run: npm ci --prefix tests/windows-ui
       - name: Real window test
