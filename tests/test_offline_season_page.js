@@ -66,6 +66,6 @@ test('statuses and actions in Hors ligne', () => {
   const { context } = load();
   assert.equal(context.status({ status: 'waiting' }), 'En file d’attente');
   assert.equal(context.status({ status: 'failed', error_code: 'source_unavailable' }), 'Aucune source disponible pour cet épisode');
-  assert.match(withCalls(source), /\['queued', 'downloading', 'waiting'\]\.includes\(item\.status\)\n\s+\? `<button class="btn btn-secondary" onclick="downloadAction\('\$\{id\}', 'pause'\)">Pause<\/button>`/);
+  assert.match(withCalls(source), /\['queued', 'downloading', 'waiting'\]\.includes\(item\.status\)\n\s+\? `<button class="btn btn-secondary" \$\{act\('downloadAction', String\(id\), 'pause'\)\}>Pause<\/button>`/);
   assert.match(withCalls(source), /\$\{act\('downloadSeasonOffline', THIS\)\} title="Télécharger les épisodes sortis de cette saison, l’un après l’autre">⤓ Saison hors ligne<\/button>/);
 });

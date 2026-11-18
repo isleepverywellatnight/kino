@@ -34,7 +34,7 @@ function handlerCalls(html, functionName) {
   const calls = [];
   const decode = text => text.replaceAll('&quot;', '"').replaceAll('&#39;', "'").replaceAll('&lt;', '<')
     .replaceAll('&gt;', '>').replaceAll('&amp;', '&');
-  for (const [, quote, body] of html.matchAll(/onclick=(["'])(.*?)\1/g)) {
+  for (const [, quote, body] of withCalls(html).matchAll(/onclick=(["'])(.*?)\1/g)) {
     const code = decode(body);
     if (!code.startsWith(functionName + '(')) continue;
     const context = { [functionName]: (...args) => calls.push(args), event: {}, document: { querySelector: () => null } };

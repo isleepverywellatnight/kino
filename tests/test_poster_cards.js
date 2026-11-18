@@ -35,10 +35,10 @@ test('a card carries a preview with French genres, length and rating, and two ac
   assert.match(html, /<div class="poster-preview">/, 'its actions can be reached with the keyboard');
   assert.match(html, /<div class="poster-preview-meta">Comédie · Famille · 1 h 36 · ★ 6.9<\/div>/);
   assert.match(html, /class="poster-preview-desc" data-preview-id="tt0107120" data-preview-type="movie"/);
-  assert.match(withCalls(html), /class="poster-preview-play" onclick='oneClickCard\(event, this,/);
-  assert.match(withCalls(html), /<button type="button" onclick='toggleCardWatched\(event,[^>]*>Marquer vu</);
+  assert.match(withCalls(html), /class="poster-preview-play" onclick="oneClickCard\(event, this,/);
+  assert.match(withCalls(html), /<button type="button" onclick="toggleCardWatched\(event,[^>]*>Marquer vu</);
   assert.doesNotMatch(html, /btn-oneclick|tabindex="-1"/, 'no play button repeated under the poster');
-  assert.match(withCalls(html), /onload="this\.classList\.add\('is-loaded'\)"/);
+  assert.match(withCalls(html), /onload="kinoLoaded\(this\)"/);
   assert.doesNotMatch(html, /#4ade80|#38bdf8/, 'no green or blue: monochrome');
 });
 

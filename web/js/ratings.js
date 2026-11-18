@@ -70,7 +70,7 @@ function ratingGesturesHtml(id, current, { labels = true } = {}) {
     const pressed = chosen === g.key;
     return `<button type="button" class="rate-gesture is-${g.key}" data-rate-id="${escapeHtml(id)}" data-rate-value="${g.value}"`
       + ` aria-pressed="${pressed}" title="${pressed ? `${g.label} (cliquer pour retirer)` : g.label}"${labels ? '' : ` aria-label="${g.label}"`}`
-      + ` onclick="rateFromButton(event, this)">`
+      + ` ${act('rateFromButton', EVENT, THIS)}>`
       + `<svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#${g.icon}${pressed ? '-fill' : ''}"></use></svg>`
       + `${labels ? `<span>${g.label}</span>` : ''}</button>`;
   }).join('')}</div>`;
@@ -186,7 +186,7 @@ function renderHomeRate() {
     const media = { id: entry.id, name: entry.name, type: kind, year: entry.year || '', poster: ratingPoster(entry) };
     return `<div class="foryou-item rate-item" data-rate-item="${escapeHtml(entry.id)}">${posterCardHtml(media, kind)}`
       + ratingGesturesHtml(entry.id, '', { labels: false })
-      + `<button type="button" class="foryou-no" data-rate-id="${escapeHtml(entry.id)}" onclick="skipRating(event, this)">Passer</button>`
+      + `<button type="button" class="foryou-no" data-rate-id="${escapeHtml(entry.id)}" ${act('skipRating', EVENT, THIS)}>Passer</button>`
       + `<span class="rate-status" role="status"></span></div>`;
   }).join('');
 }

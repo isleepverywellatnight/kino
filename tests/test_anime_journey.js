@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+// The page's template helpers (act, THIS…) are globals by the time anything is drawn.
+Object.assign(globalThis, require('../tools/interface_source.js').templateHelpers());
+const { withCalls } = require('../tools/interface_source.js');
 const JourneyView = require('../web/js/anime-journey.js');
 
 const journey = {

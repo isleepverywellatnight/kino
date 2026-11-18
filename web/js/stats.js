@@ -64,7 +64,7 @@ function statsHtml(stats) {
   const series = stats.series || {};
   const seen = Number(stats.titles_seen || 0);
   if (!seen && !films.started && !series.total) {
-    return '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>Rien à compter pour l’instant</h3><p>Vos statistiques apparaîtront après vos premiers films et épisodes.</p><button class="btn" onclick="switchTab(\'movies\')">Découvrir les films</button></div>';
+    return '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>Rien à compter pour l’instant</h3><p>Vos statistiques apparaîtront après vos premiers films et épisodes.</p><button class="btn" ' + act('switchTab', 'movies') + '>Découvrir les films</button></div>';
   }
   const time = statsDuration(stats.watch_seconds);
   const filmDetail = [films.imported ? `dont ${films.imported} importé${films.imported > 1 ? 's' : ''}` : '', films.started ? `${films.started} en cours` : ''].filter(Boolean).join(' · ');

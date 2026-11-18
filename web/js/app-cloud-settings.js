@@ -103,24 +103,24 @@ function cloudGroupHtml(group) {
   const name = cloudName(group);
   const year = group.kind === 'other' ? '' : (media?.year || group.year || '');
   const initial = `<span aria-hidden="true">${escapeHtml((name || '?').trim().charAt(0).toUpperCase())}</span>`;
-  const image = media?.poster ? `<img src="${escapeHtml(media.poster)}" alt="" loading="lazy" onerror="this.remove()">` : '';
+  const image = media?.poster ? `<img src="${escapeHtml(media.poster)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : '';
   const poster = media
-    ? `<button type="button" class="cloud-poster" onclick="openCloudFiche(${key})" aria-label="Ouvrir la fiche de ${escapeHtml(name)}">${initial}${image}</button>`
+    ? `<button type="button" class="cloud-poster" ${act('openCloudFiche', group.key)} aria-label="Ouvrir la fiche de ${escapeHtml(name)}">${initial}${image}</button>`
     : `<div class="cloud-poster" aria-hidden="true">${initial}</div>`;
   const title = media ? `<span${titleAttrs(media, group.kind)}>${escapeHtml(name)}</span>` : `<span>${escapeHtml(name)}</span>`;
   const start = cloudStartIndex(group);
   const code = group.kind === 'series' ? cloudEpisodeCode(group.files[start]) : '';
   const play = group.kind === 'other' ? ''
-    : `<button type="button" class="btn" onclick="playCloudFile(${key}, ${start}, this)">${code ? `Lancer ${escapeHtml(code)}` : 'Lancer'}</button>`;
+    : `<button type="button" class="btn" ${act('playCloudFile', group.key, start, THIS)}>${code ? `Lancer ${escapeHtml(code)}` : 'Lancer'}</button>`;
   const files = !open ? '' : `<div class="cloud-files">${group.files.map((file, index) => cloudFileHtml(group, file, index)).join('')}${
-    group.count > 1 ? `<div class="cloud-files-foot"><button type="button" class="btn btn-secondary" onclick="deleteCloudGroup(${key}, this)">Retirer les ${group.count} fichiers du Cloud</button></div>` : ''}</div>`;
+    group.count > 1 ? `<div class="cloud-files-foot"><button type="button" class="btn btn-secondary" ${act('deleteCloudGroup', group.key, THIS)}>Retirer les ${group.count} fichiers du Cloud</button></div>` : ''}</div>`;
   return `<article class="cloud-group${open ? ' is-open' : ''}" aria-label="${escapeHtml(name)}">
     ${poster}
     <div class="cloud-group-main">
       <h4 class="cloud-group-title">${title}${year ? ` <span class="cloud-group-year">${escapeHtml(year)}</span>` : ''}</h4>
       <div class="cloud-group-meta">${escapeHtml(cloudGroupMeta(group))}</div>
     </div>
-    <div class="cloud-group-actions">${play}<button type="button" class="btn btn-secondary cloud-toggle" onclick="toggleCloudGroup(${key})" aria-expanded="${open}">${cloudToggleLabel(group)}<span class="cloud-chevron" aria-hidden="true"></span></button></div>
+    <div class="cloud-group-actions">${play}<button type="button" class="btn btn-secondary cloud-toggle" ${act('toggleCloudGroup', group.key)} aria-expanded="${open}">${cloudToggleLabel(group)}<span class="cloud-chevron" aria-hidden="true"></span></button></div>
     ${files}
   </article>`;
 }
@@ -135,8 +135,8 @@ function cloudFileHtml(group, file, index) {
   // Only a web address is offered; « other » files play only when they are videos.
   const web = /^https?:\/\//i.test(String(file.download || ''));
   const playable = web && (group.kind !== 'other' || CLOUD_VIDEO.test(file.filename));
-  const play = playable ? `<button type="button" class="btn" onclick="playCloudFile(${key}, ${index}, this)">Lancer</button>` : '';
-  const save = web ? `<button type="button" class="btn btn-secondary" onclick="startPcDownload(${attrJson(file.download)}, ${attrJson(file.filename)})">Télécharger</button>
+  const play = playable ? `<button type="button" class="btn" ${act('playCloudFile', group.key, index, THIS)}>Lancer</button>` : '';
+  const save = web ? `<button type="button" class="btn btn-secondary" ${act('startPcDownload', file.download, file.filename)}>Télécharger</button>
         <a class="btn btn-secondary" href="${escapeHtml(file.download)}" target="_blank" rel="noopener">Lien direct</a>` : '';
   return `<div class="cloud-file">
       <div class="cloud-file-main">
@@ -146,7 +146,7 @@ function cloudFileHtml(group, file, index) {
       <div class="cloud-file-actions">
         ${play}
         ${save}
-        <button type="button" class="btn btn-secondary" onclick="deleteCloudFile(${key}, ${index}, this)" aria-label="Retirer ${escapeHtml(file.filename)} du Cloud">Retirer</button>
+        <button type="button" class="btn btn-secondary" ${act('deleteCloudFile', group.key, index, THIS)} aria-label="Retirer ${escapeHtml(file.filename)} du Cloud">Retirer</button>
       </div>
     </div>`;
 }
@@ -171,14 +171,14 @@ function renderCloud() {
   if (tools) {
     const chips = [['all', 'Tout'], ['movie', 'Films'], ['series', 'Séries'], ['other', 'Autres']]
       .filter(([kind]) => kind === 'all' || counts[kind])
-      .map(([kind, label]) => `<button type="button" class="chip${cloudFilter === kind ? ' active' : ''}" aria-pressed="${cloudFilter === kind}" onclick="setCloudFilter('${kind}')">${label} <span class="list-count">${counts[kind]}</span></button>`)
+      .map(([kind, label]) => `<button type="button" class="chip${cloudFilter === kind ? ' active' : ''}" aria-pressed="${cloudFilter === kind}" ${act('setCloudFilter', String(kind))}>${label} <span class="list-count">${counts[kind]}</span></button>`)
       .join('');
     const files = cloudGroups.reduce((total, group) => total + group.count, 0);
     const bytes = cloudGroups.reduce((total, group) => total + (Number(group.bytes) || 0), 0);
     const summary = [cloudPlural(cloudGroups.length, 'titre'), cloudPlural(files, 'fichier'), bytes > 0 ? offlineSize(bytes) : ''].filter(Boolean).join(' · ');
     tools.hidden = false;
     tools.innerHTML = `<div class="cloud-chips" role="group" aria-label="Type de titre">${chips}</div>
-      <input type="search" id="rdCloudSearch" class="cloud-search" placeholder="Rechercher un titre" aria-label="Rechercher dans le Cloud" value="${escapeHtml(cloudQuery)}" oninput="onCloudSearch(this.value)">
+      <input type="search" id="rdCloudSearch" class="cloud-search" placeholder="Rechercher un titre" aria-label="Rechercher dans le Cloud" value="${escapeHtml(cloudQuery)}" ${actOn('input', 'onCloudSearch', VALUE)}>
       <span class="cloud-summary">${escapeHtml(summary)}</span>`;
   }
   renderCloudList();
@@ -448,7 +448,7 @@ function diagnosticItemHtml(item) {
   const state = DIAGNOSTIC_STATES[item.state] ? item.state : 'warning';
   const advice = item.advice ? `<span class="diagnostic-advice">${escapeHtml(item.advice)}</span>` : '';
   const section = /^settings-[a-z]+$/.test(item.section || '') ? item.section : '';
-  const open = section && state !== 'ok' ? `<button type="button" class="btn btn-secondary" onclick="openSettingsSection('${section}')">Ouvrir</button>` : '';
+  const open = section && state !== 'ok' ? `<button type="button" class="btn btn-secondary" ${act('openSettingsSection', String(section))}>Ouvrir</button>` : '';
   return `<li class="diagnostic-item is-${state}"><span class="diagnostic-mark" aria-hidden="true">${DIAGNOSTIC_MARKS[state]}</span>`
     + `<div><strong>${escapeHtml(item.label)}<span class="diagnostic-state">${DIAGNOSTIC_STATES[state]}</span></strong>`
     + `<span>${escapeHtml(item.summary)}</span>${advice}</div>${open}</li>`;
@@ -653,7 +653,7 @@ function renderBackups(items = []) {
     return `<div class="set-row backup-row">
       <div class="set-text"><span class="settings-label">${escapeHtml(label)}</span><p class="settings-desc">${escapeHtml(backupCounts(item.counts))}</p></div>
       <button type="button" class="btn btn-secondary btn-small" data-backup="${escapeHtml(item.id)}" data-label="${escapeHtml(label)}"
-        onclick="restoreBackup(this)"${item.restorable ? '' : ' disabled title="Sauvegarde d’une version trop différente de KINO"'}>Restaurer</button>
+        ${act('restoreBackup', THIS)}${item.restorable ? '' : ' disabled title="Sauvegarde d’une version trop différente de KINO"'}>Restaurer</button>
     </div>`;
   }).join('');
 }

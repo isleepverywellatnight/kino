@@ -131,6 +131,22 @@
     element.closest('.detail-hero')?.classList.add('has-logo');
   };
 
+  // An image that does not load keeps its place, unseen.
+  window.kinoInvisible = function (element) {
+    element.style.visibility = 'hidden';
+  };
+
+  // A poster has arrived: its placeholder fades out.
+  window.kinoLoaded = function (element) {
+    element.classList.add('is-loaded');
+  };
+
+  // A poster that does not load: the card shows the title instead.
+  window.kinoPosterFailed = function (element, id) {
+    element.classList.add('is-loaded');
+    window.handlePosterCardError(element, id);
+  };
+
   // An image that does not load is hidden.
   window.kinoHideImage = function (element) {
     element.hidden = true;

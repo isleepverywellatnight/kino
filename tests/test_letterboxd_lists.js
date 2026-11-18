@@ -59,8 +59,8 @@ test('each list is a shelf with its progress, first posters and actions', () => 
   assert.match(top, /aria-valuenow="13"><span style="width:13%"><\/span>/);
   assert.match(top, /<p class="list-shelf-desc">Les « classiques » &amp; plus<\/p>/);
   assert.equal((top.match(/class="poster-card"/g) || []).length, 12, 'twelve posters on the shelf');
-  assert.match(withCalls(top), /onclick="openCustomList\(&quot;top&quot;\)">Voir les 15 titres<\/button>/);
-  assert.match(withCalls(top), /onclick="openCustomList\(&quot;top&quot;\)">Tout voir<\/button>/);
+  assert.match(withCalls(top), /onclick="openCustomList\('top'\)">Voir les 15 titres<\/button>/);
+  assert.match(withCalls(top), /onclick="openCustomList\('top'\)">Tout voir<\/button>/);
   assert.match(top, /href="https:\/\/letterboxd\.com\/u\/list\/top\/"/);
   assert.match(top, /aria-label="Retirer la liste Top &lt;250&gt;">Retirer<\/button>/);
   assert.match(empty, /Cette liste est vide\./);

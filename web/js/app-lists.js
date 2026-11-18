@@ -361,7 +361,7 @@ function renderListFilters(rawList, view) {
     if (shown.length <= 2 && current === 'all') return '';
     const chips = shown.map(([key, text]) => {
       const active = current === key;
-      return `<button type="button" class="chip${active ? ' active' : ''}" aria-pressed="${active}" onclick="setListFilter('${name}', '${key}')">${text} <span class="list-count">${count(key)}</span></button>`;
+      return `<button type="button" class="chip${active ? ' active' : ''}" aria-pressed="${active}" ${act('setListFilter', String(name), String(key))}>${text} <span class="list-count">${count(key)}</span></button>`;
     }).join('');
     return `<div class="list-filter-group" role="group" aria-label="${label}"><span class="list-filter-label" aria-hidden="true">${label}</span>${chips}</div>`;
   };
@@ -447,7 +447,7 @@ function renderActiveListTab() {
 
   if (rawList.length && !filtered.length) {
     const grid = document.getElementById('postersGrid');
-    if (grid) grid.innerHTML = '<div class="library-empty"><h3>Aucun titre ne correspond</h3><p>Changez de filtre ou de recherche.</p><button type="button" class="btn" onclick="resetListFilters()">Tout afficher</button></div>';
+    if (grid) grid.innerHTML = '<div class="library-empty"><h3>Aucun titre ne correspond</h3><p>Changez de filtre ou de recherche.</p><button type="button" class="btn" ' + act('resetListFilters') + '>Tout afficher</button></div>';
     return;
   }
   renderPosterCards(filtered, 'movie');
@@ -620,7 +620,7 @@ async function surpriseMeMedia(poolArg = null) {
       <div class="case-slot-card" id="caseSlot_${idx}">
         ${ratingBadge}
         ${poster
-          ? `<img class="case-slot-poster" src="${escapeHtml(poster)}" alt="${safeName}" loading="eager" onerror="this.style.visibility='hidden'">`
+          ? `<img class="case-slot-poster" src="${escapeHtml(poster)}" alt="${safeName}" loading="eager" ${actOn('error', 'kinoInvisible', THIS)}>`
           : `<div class="case-slot-poster" style="display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:0.75rem;">KINO</div>`
         }
         <div class="case-slot-info">
@@ -775,12 +775,12 @@ function finishCaseSpin(skipped = false) {
         </div>
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <button class="btn" onclick="casePlayOneClick(event, this)">Lancer</button>
-        <button class="btn btn-secondary" onclick="caseOpenDetails()">Fiche &amp; Sources</button>
-        <button class="btn btn-secondary" onclick="caseOpenTrailer()"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>Bande-annonce</button>
-        <button class="btn btn-secondary" id="caseWlBtn" onclick="caseToggleWatchlist(this)" title="Ajouter ou retirer ce titre de Ma Liste">${inWl ? '✓ Dans Ma Liste' : '+ Ma Liste'}</button>
-        ${poolMode !== 'watched' ? `<button class="btn btn-secondary" onclick="caseMarkWatchedAndRespin(this)" title="Marquer ce titre comme Déjà vu, le retirer de la roulette et relancer un tirage">✓ Déjà vu</button>` : ''}
-        <button class="btn-surprise" onclick="surpriseMeMedia('${poolMode || 'catalog'}')">Relancer</button>
+        <button class="btn" ${act('casePlayOneClick', EVENT, THIS)}>Lancer</button>
+        <button class="btn btn-secondary" ${act('caseOpenDetails')}>Fiche &amp; Sources</button>
+        <button class="btn btn-secondary" ${act('caseOpenTrailer')}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>Bande-annonce</button>
+        <button class="btn btn-secondary" id="caseWlBtn" ${act('caseToggleWatchlist', THIS)} title="Ajouter ou retirer ce titre de Ma Liste">${inWl ? '✓ Dans Ma Liste' : '+ Ma Liste'}</button>
+        ${poolMode !== 'watched' ? `<button class="btn btn-secondary" ${act('caseMarkWatchedAndRespin', THIS)} title="Marquer ce titre comme Déjà vu, le retirer de la roulette et relancer un tirage">✓ Déjà vu</button>` : ''}
+        <button class="btn-surprise" ${act('surpriseMeMedia', String(poolMode || 'catalog'))}>Relancer</button>
       </div>
     `;
     winPanel.style.display = 'flex';
@@ -893,15 +893,15 @@ function mySeriesItemHtml(item) {
   const share = item.aired ? Math.round(100 * item.seen / item.aired) : 0;
   const next = item.next;
   const play = next
-    ? `<button type="button" class="btn" onclick="playMySeries('${id}', this)">${next.resume ? 'Reprendre' : 'Lancer'} ${seriesEpisodeLabel(next.season, next.episode)}</button>` : '';
+    ? `<button type="button" class="btn" ${act('playMySeries', String(id), THIS)}>${next.resume ? 'Reprendre' : 'Lancer'} ${seriesEpisodeLabel(next.season, next.episode)}</button>` : '';
   return `<article class="offline-item myseries-item">
-      <div class="offline-poster">${item.poster ? `<img src="${escapeHtml(item.poster)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<span aria-hidden="true">▷</span></div>
+      <div class="offline-poster">${item.poster ? `<img src="${escapeHtml(item.poster)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span aria-hidden="true">▷</span></div>
       <div class="offline-info">
         <strong${titleAttrs(item, 'series')}>${escapeHtml(displayTitle(item))}</strong>
         ${facts.map(fact => `<span class="myseries-fact">${escapeHtml(fact)}</span>`).join('')}
         ${item.aired && item.group !== 'start' ? `<div class="progress-bar" role="img" aria-label="${item.seen} épisodes vus sur ${item.aired}"><div class="progress-fill" style="width:${share}%"></div></div>` : ''}
       </div>
-      <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" onclick="openMySeries('${id}')">Fiche</button></div>
+      <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" ${act('openMySeries', String(id))}>Fiche</button></div>
     </article>`;
 }
 
@@ -1018,14 +1018,14 @@ function calendarItemHtml(item, later = false) {
   const episode = Number(item.episode) || 1;
   const facts = later ? [calendarEpisodes(item), `Le ${episodeAirLabel(item.released)}`] : [calendarEpisodes(item), calendarState(item)];
   const play = !later && item.aired && !item.seen && !item.before
-    ? `<button type="button" class="btn" onclick="playCalendarEpisode('${id}', ${season}, ${episode}, this)">${item.resume_pct ? 'Reprendre' : 'Lancer'} ${seriesEpisodeLabel(season, episode)}</button>` : '';
+    ? `<button type="button" class="btn" ${act('playCalendarEpisode', String(id), season, episode, THIS)}>${item.resume_pct ? 'Reprendre' : 'Lancer'} ${seriesEpisodeLabel(season, episode)}</button>` : '';
   return `<article class="offline-item myseries-item calendar-item${item.seen ? ' is-seen' : ''}">
-      <div class="offline-poster">${item.poster ? `<img src="${escapeHtml(item.poster)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<span aria-hidden="true">▷</span></div>
+      <div class="offline-poster">${item.poster ? `<img src="${escapeHtml(item.poster)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span aria-hidden="true">▷</span></div>
       <div class="offline-info">
         <strong${titleAttrs(item, 'series')}>${escapeHtml(displayTitle(item))}</strong>
         ${facts.filter(Boolean).map(fact => `<span class="myseries-fact">${escapeHtml(fact)}</span>`).join('')}
       </div>
-      <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" onclick="openCalendarSeries('${id}')">Fiche</button></div>
+      <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" ${act('openCalendarSeries', String(id))}>Fiche</button></div>
     </article>`;
 }
 

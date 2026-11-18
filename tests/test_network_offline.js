@@ -36,7 +36,7 @@ test('without internet KINO opens on the offline files, with the reason above', 
   assert.equal(text(page, 'networkBannerTitle'), 'Sans internet');
   assert.match(text(page, 'networkBannerText'), /^Vos fichiers hors ligne restent disponibles\. Le catalogue, la recherche, les sources Debrid/);
   assert.match(page.element('postersGrid').innerHTML, /Le Samouraï/);
-  assert.match(page.element('postersGrid').innerHTML, /playOfflineDownload\('a{32}'\)">Lancer/);
+  assert.match(withCalls(page.element('postersGrid').innerHTML), /playOfflineDownload\('a{32}'\)">Lancer/);
   assert.equal(asked(page, '/api/catalog'), 0, 'the catalogue is not asked for');
   assert.equal(page.context.document.body.classList.contains('is-offline'), true);
 });
@@ -72,7 +72,7 @@ test('offline, a search looks in the files kept on this Mac', async () => {
   await page.context.runSearch();
   const grid = page.element('postersGrid').innerHTML;
   assert.match(grid, /Sans internet : dans vos fichiers hors ligne/);
-  assert.match(grid, /Le Samouraï[\s\S]*playOfflineDownload\('a{32}'\)">Lancer/);
+  assert.match(withCalls(grid), /Le Samouraï[\s\S]*playOfflineDownload\('a{32}'\)">Lancer/);
   page.element('searchInput').value = 'Dune';
   await page.context.runSearch();
   assert.match(page.element('postersGrid').innerHTML, /<h3>La recherche a besoin d’internet<\/h3>/);

@@ -123,7 +123,7 @@ test('add-ons are listed with what they offer, their names as text', async () =>
   assert.match(list, /<li class="addon-row is-off">/);
   assert.match(withCalls(list), /<strong>Bad &lt;img src=x onerror=alert\(1\)&gt;<\/strong>\s*<span>Sources · 2 catalogues · v1\.0\.0<\/span>/);
   assert.doesNotMatch(list, /<img/);
-  assert.match(withCalls(list), /onclick="removeStremioAddon\(&quot;a\\&quot;b&quot;\)"/);
+  assert.match(withCalls(list), /onclick="removeStremioAddon\('a&quot;b'\)"/);
   assert.equal(lib.elements.cfgP2P.checked, true);
   assert.match(lib.elements.cfgP2PStatus.textContent, /KINO lit les torrents lui-même/);
 });
