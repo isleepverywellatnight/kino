@@ -4,6 +4,12 @@
 let letterboxdCsvContent = '';
 let letterboxdCsvName = '';
 
+// « Importer une liste »: the Letterboxd dialog, on its list tab.
+function openLetterboxdListImport() {
+  openLetterboxdModal();
+  switchLbxModalTab('list');
+}
+
 function openLetterboxdModal() {
   const m = document.getElementById('letterboxdModal');
   const st = document.getElementById('lbxImportStatus');
@@ -271,7 +277,7 @@ function renderSavedListsInModal() {
         <span style="font-size:0.78rem; font-weight:600; color:#fafafa;">${escapeHtml(l.title)}</span>
         <span style="font-size:0.72rem; color:var(--muted); margin-left:6px;">(${l.count} films)</span>
       </div>
-      <button type="button" class="btn btn-secondary" style="padding:2px 7px; font-size:0.7rem; color:#f87171;" onclick="deleteLetterboxdCustomList(${attrJson(l.id)})">✕</button>
+      <button type="button" class="btn btn-secondary" style="padding:2px 7px; font-size:0.7rem; color:#f87171;" ${act('deleteLetterboxdCustomList', l.id)}>✕</button>
     </div>
   `).join('');
 }
@@ -392,7 +398,7 @@ function renderCustomListsTab() {
     catTitle.innerHTML = `
       <div class="lists-title">
         <span>Listes Letterboxd</span>
-        <button type="button" class="btn btn-secondary" onclick="openLetterboxdModal(); switchLbxModalTab('list');">+ Importer une liste</button>
+        <button type="button" class="btn btn-secondary" ${act('openLetterboxdListImport')}>+ Importer une liste</button>
       </div>`;
   }
 
@@ -405,7 +411,7 @@ function renderCustomListsTab() {
         <span class="library-empty-icon" aria-hidden="true">≡</span>
         <h3>Aucune liste Letterboxd importée</h3>
         <p>Collez le lien d'une liste Letterboxd publique (Top 250, A24, un réalisateur, une ambiance) pour la retrouver ici, prête à lancer, avec sa roulette.</p>
-        <button type="button" class="btn" onclick="openLetterboxdModal(); switchLbxModalTab('list');">Importer une liste Letterboxd</button>
+        <button type="button" class="btn" ${act('openLetterboxdListImport')}>Importer une liste Letterboxd</button>
       </div>`;
     return;
   }
@@ -435,13 +441,13 @@ function customListShelfHtml(list) {
           ${list.description ? `<p class="list-shelf-desc">${escapeHtml(list.description)}</p>` : ''}
         </div>
         <div class="list-shelf-actions">
-          <button type="button" class="btn" onclick="openCustomList(${attrJson(list.id)})">Tout voir</button>
-          <button type="button" class="btn-surprise" onclick="surpriseMeFromCustomList(${attrJson(list.id)})" title="Tirer un titre non vu de cette liste">Roulette</button>
+          <button type="button" class="btn" ${act('openCustomList', list.id)}>Tout voir</button>
+          <button type="button" class="btn-surprise" ${act('surpriseMeFromCustomList', list.id)} title="Tirer un titre non vu de cette liste">Roulette</button>
           ${/^https:\/\/letterboxd\.com\//.test(String(list.url || '')) ? `<a href="${escapeHtml(list.url)}" target="_blank" rel="noopener" class="btn btn-secondary">Letterboxd ↗</a>` : ''}
-          <button type="button" class="btn btn-secondary" onclick="deleteLetterboxdCustomList(${attrJson(list.id)})" aria-label="Retirer la liste ${label}">Retirer</button>
+          <button type="button" class="btn btn-secondary" ${act('deleteLetterboxdCustomList', list.id)} aria-label="Retirer la liste ${label}">Retirer</button>
         </div>
       </div>
-      ${items.length ? `<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie')).join('')}${items.length > LIST_SHELF_SIZE ? `<button type="button" class="list-shelf-more" onclick="openCustomList(${attrJson(list.id)})">Voir les ${items.length} titres</button>` : ''}</div>` : '<p class="list-shelf-empty">Cette liste est vide.</p>'}
+      ${items.length ? `<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie')).join('')}${items.length > LIST_SHELF_SIZE ? `<button type="button" class="list-shelf-more" ${act('openCustomList', list.id)}>Voir les ${items.length} titres</button>` : ''}</div>` : '<p class="list-shelf-empty">Cette liste est vide.</p>'}
     </section>`;
 }
 
@@ -466,7 +472,7 @@ function renderOpenCustomList(list) {
   grid.style.gap = '';
   const catTitle = document.getElementById('catalogTitle');
   if (catTitle) {
-    catTitle.innerHTML = `<span class="lists-title"><button type="button" class="btn btn-secondary lists-back" onclick="closeCustomList()" aria-label="Revenir aux listes">← Listes</button><span>${escapeHtml(list.title || 'Liste')}</span></span>`;
+    catTitle.innerHTML = `<span class="lists-title"><button type="button" class="btn btn-secondary lists-back" ${act('closeCustomList')} aria-label="Revenir aux listes">← Listes</button><span>${escapeHtml(list.title || 'Liste')}</span></span>`;
   }
   const wlw = document.getElementById('watchlistActionsWrap');
   if (wlw) wlw.style.display = 'flex';

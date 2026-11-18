@@ -24,6 +24,23 @@ function listMediaArg(m) {
   });
 }
 
+// A declared action for a template, run by web/js/actions.js:
+// `<button ${act('debridFromIndex', idx)}>` gives data-on-click="debridFromIndex"
+// and data-click-args="[3]". The arguments are values, not code; THIS and EVENT
+// stand for the element and the event, VALUE and CHECKED for its value and state.
+const THIS = { $: 'this' };
+const EVENT = { $: 'event' };
+const VALUE = { $: 'value' };
+const CHECKED = { $: 'checked' };
+
+function actOn(type, name, ...args) {
+  return `data-on-${type}="${escapeHtml(name)}"${args.length ? ` data-${type}-args="${attrJson(args)}"` : ''}`;
+}
+
+function act(name, ...args) {
+  return actOn('click', name, ...args);
+}
+
 function escapeJsString(s) {
   if (s === null || s === undefined) return '';
   return String(s)
@@ -652,7 +669,7 @@ async function loadAddonsList() {
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
             <label style="position:relative; display:inline-block; width:38px; height:20px; cursor:pointer;">
-              <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleAddonSwitch('${addon.id}', this.checked)" style="opacity:0; width:0; height:0;">
+              <input type="checkbox" ${isEnabled ? 'checked' : ''} ${actOn('change', 'toggleAddonSwitch', String(addon.id), CHECKED)} style="opacity:0; width:0; height:0;">
               <span style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:${isEnabled ? '#4ade80' : 'rgba(255,255,255,0.15)'}; border-radius:20px; transition:.2s;"></span>
               <span style="position:absolute; content:''; height:14px; width:14px; left:${isEnabled ? '20px' : '3px'}; bottom:3px; background:white; border-radius:50%; transition:.2s;"></span>
             </label>
@@ -750,7 +767,7 @@ function communityShelfHtml(col) {
   const progress = customListProgress(items);
   const label = escapeHtml(col.title || 'Sélection');
   const id = attrJson(col.id);
-  const open = col.imported ? `openImportedList(${id})` : `openCommunityList(${id})`;
+  const open = act(col.imported ? 'openImportedList' : 'openCommunityList', col.id);
   const meta = [`${progress.total} titre${progress.total > 1 ? 's' : ''}`, `${progress.watched} vu${progress.watched > 1 ? 's' : ''}`,
     col.imported ? '' : (col.author ? `par ${col.author}` : '')].filter(Boolean).join(' · ');
   return `
@@ -763,11 +780,11 @@ function communityShelfHtml(col) {
           ${col.description ? `<p class="list-shelf-desc">${escapeHtml(col.description)}</p>` : ''}
         </div>
         <div class="list-shelf-actions">
-          <button type="button" class="btn" onclick="${open}">Tout voir</button>
-          <button type="button" class="btn-surprise" onclick="surpriseMeFromCommunityList(${id})" title="Tirer un titre non vu de cette sélection">Roulette</button>
+          <button type="button" class="btn" ${open}>Tout voir</button>
+          <button type="button" class="btn-surprise" ${act('surpriseMeFromCommunityList', col.id)} title="Tirer un titre non vu de cette sélection">Roulette</button>
         </div>
       </div>
-      ${items.length ? `<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie')).join('')}${items.length > LIST_SHELF_SIZE ? `<button type="button" class="list-shelf-more" onclick="${open}">Voir les ${items.length} titres</button>` : ''}</div>` : '<p class="list-shelf-empty">Cette sélection est vide.</p>'}
+      ${items.length ? `<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie')).join('')}${items.length > LIST_SHELF_SIZE ? `<button type="button" class="list-shelf-more" ${open}>Voir les ${items.length} titres</button>` : ''}</div>` : '<p class="list-shelf-empty">Cette sélection est vide.</p>'}
     </section>`;
 }
 
@@ -812,7 +829,7 @@ function renderCommunityPage() {
   const filters = document.getElementById('communityActiveListFilters');
   if (filters) {
     filters.innerHTML = [['all', 'Tout'], ['todo', 'À voir'], ['watched', 'Vus']].map(([state, label]) =>
-      `<button type="button" class="chip${communityStateFilter === state ? ' active' : ''}" aria-pressed="${communityStateFilter === state}" onclick="setCommunityStateFilter('${state}')">${label} <span class="list-count">${counts[state]}</span></button>`).join('');
+      `<button type="button" class="chip${communityStateFilter === state ? ' active' : ''}" aria-pressed="${communityStateFilter === state}" ${act('setCommunityStateFilter', String(state))}>${label} <span class="list-count">${counts[state]}</span></button>`).join('');
   }
   document.getElementById('communityActiveListGrid').innerHTML = shown.length
     ? shown.map(m => posterCardHtml(m, 'movie')).join('')

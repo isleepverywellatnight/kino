@@ -3,7 +3,9 @@
 // own. The real interface scripts run on a stand-in page (tools/page_harness.js).
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const { loadPage, settle, shown } = require('../tools/page_harness.js');
 
 const FILM = { id: 'a'.repeat(32), filename: 'Le.Samourai.1967.1080p.mkv', status: 'completed', available: true,
@@ -34,7 +36,7 @@ test('without internet KINO opens on the offline files, with the reason above', 
   assert.equal(text(page, 'networkBannerTitle'), 'Sans internet');
   assert.match(text(page, 'networkBannerText'), /^Vos fichiers hors ligne restent disponibles\. Le catalogue, la recherche, les sources Debrid/);
   assert.match(page.element('postersGrid').innerHTML, /Le Samouraï/);
-  assert.match(page.element('postersGrid').innerHTML, /playOfflineDownload\('a{32}'\)">Lancer/);
+  assert.match(withCalls(page.element('postersGrid').innerHTML), /playOfflineDownload\('a{32}'\)">Lancer/);
   assert.equal(asked(page, '/api/catalog'), 0, 'the catalogue is not asked for');
   assert.equal(page.context.document.body.classList.contains('is-offline'), true);
 });
@@ -54,7 +56,7 @@ test('offline, a catalogue tab says it needs internet and offers the offline fil
     await settle();
     const grid = page.element('postersGrid').innerHTML;
     assert.match(grid, /<h3>Le catalogue a besoin d’internet<\/h3>/, tab);
-    assert.match(grid, /onclick="switchTab\('offline'\)">Voir mes fichiers hors ligne/, tab);
+    assert.match(withCalls(grid), /onclick="switchTab\('offline'\)">Voir mes fichiers hors ligne/, tab);
     for (const id of ['heroSpotlight', 'genreFilters', 'homeResumeSection', 'homeNewSection']) {
       assert.equal(shown(page.element(id)), false, `${tab}: ${id}`);
     }
@@ -70,7 +72,7 @@ test('offline, a search looks in the files kept on this Mac', async () => {
   await page.context.runSearch();
   const grid = page.element('postersGrid').innerHTML;
   assert.match(grid, /Sans internet : dans vos fichiers hors ligne/);
-  assert.match(grid, /Le Samouraï[\s\S]*playOfflineDownload\('a{32}'\)">Lancer/);
+  assert.match(withCalls(grid), /Le Samouraï[\s\S]*playOfflineDownload\('a{32}'\)">Lancer/);
   page.element('searchInput').value = 'Dune';
   await page.context.runSearch();
   assert.match(page.element('postersGrid').innerHTML, /<h3>La recherche a besoin d’internet<\/h3>/);

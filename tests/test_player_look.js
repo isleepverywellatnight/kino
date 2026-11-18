@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const app = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -27,14 +29,14 @@ test('the top bar keeps the title, languages and « Options »', () => {
   for (const id of ['inAppMpvSuggestBtn', 'inAppAudioFixBtn', 'inAppAudioTrack', 'inAppSubsBtn', 'inAppMoreBtn']) {
     assert.match(barOnly, new RegExp(`id="${id}"`), `${id} in the bar`);
   }
-  assert.match(barOnly, /id="inAppMoreBtn" onclick="toggleInAppMoreMenu\(event\)" aria-expanded="false" aria-controls="inAppMoreMenu"/);
+  assert.match(withCalls(barOnly), /id="inAppMoreBtn" onclick="toggleInAppMoreMenu\(event\)" aria-expanded="false" aria-controls="inAppMoreMenu"/);
   for (const id of ['inAppSubSizeBtn', 'inAppAudioBtn', 'inAppClarityBtn', 'inAppSpeedBtn', 'inAppSeriesPreferenceBtn',
     'inAppSaveOfflineBtn', 'inAppShotBtn', 'inAppRemoteBtn', 'inAppWpBtn', 'inAppExternalBtn']) {
     assert.doesNotMatch(barOnly, new RegExp(`id="${id}"`), `${id} left the bar`);
     assert.match(menuMarkup, new RegExp(`id="${id}"`), `${id} in the menu`);
   }
   assert.match(menuMarkup, /<div id="inAppMoreMenu" class="kp-menu" role="group" aria-label="Options de lecture" hidden>/);
-  assert.match(menuMarkup, /onclick="openPlaybackHelp\(\)" aria-haspopup="dialog">Problème de lecture<\/button>/);
+  assert.match(withCalls(menuMarkup), /onclick="openPlaybackHelp\(\)" aria-haspopup="dialog">Problème de lecture<\/button>/);
   for (const [id, name] of [['inAppSubSizeBtn', 'Taille des sous-titres'], ['inAppAudioBtn', 'Voix'], ['inAppClarityBtn', 'Clarté'], ['inAppSpeedBtn', 'Vitesse']]) {
     assert.match(menuMarkup, new RegExp(`id="${id}" data-name="${name}"`));
   }

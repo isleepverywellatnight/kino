@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -62,7 +64,7 @@ test('Ma Liste filters by type and state, with counts', () => {
   assert.deepEqual(lib.rendered.at(-1), ['tt1', 'tt2', 'tt3', 'tt4', 'tt5']);
   const filters = lib.elements.listFilters.innerHTML;
   assert.match(filters, /role="group" aria-label="Type"><span class="list-filter-label" aria-hidden="true">Type<\/span>/);
-  assert.match(filters, /class="chip active" aria-pressed="true" onclick="setListFilter\('type', 'all'\)">Tout <span class="list-count">5<\/span>/);
+  assert.match(withCalls(filters), /class="chip active" aria-pressed="true" onclick="setListFilter\('type', 'all'\)">Tout <span class="list-count">5<\/span>/);
   assert.match(filters, />Films <span class="list-count">3<\/span>/);
   assert.match(filters, />Séries <span class="list-count">2<\/span>/);
   assert.match(filters, />À voir <span class="list-count">1<\/span>/);
@@ -100,7 +102,7 @@ test('the search matches the French title, without accents', () => {
 test('when nothing matches, one button shows everything again', () => {
   const lib = load({ query: 'zzz' });
   assert.equal(lib.rendered.length, 0);
-  assert.match(lib.elements.postersGrid.innerHTML, /<h3>Aucun titre ne correspond<\/h3>[\s\S]*onclick="resetListFilters\(\)">Tout afficher<\/button>/);
+  assert.match(withCalls(lib.elements.postersGrid.innerHTML), /<h3>Aucun titre ne correspond<\/h3>[\s\S]*onclick="resetListFilters\(\)">Tout afficher<\/button>/);
   lib.setListFilter('type', 'series');
   lib.resetListFilters();
   assert.equal(lib.elements.listFilterInput.value, '');
@@ -148,7 +150,7 @@ test('offline files show the French title, the episode, the real file name and t
   }, used_bytes: 21});`, context);
   const out = grid.innerHTML;
   assert.match(out, /<strong data-title-id="tt1">Les Évadés<\/strong><span class="offline-kind">Film · 1994 · ✓ Vu<\/span><span class="offline-file">Shawshank\.1994\.1080p\.mkv<\/span>/);
-  assert.match(out, /<img src="https:\/\/img\/p\.jpg" alt="" loading="lazy" onerror="this\.remove\(\)">/, 'the catalogue poster when no local one');
+  assert.match(withCalls(out), /<img src="https:\/\/img\/p\.jpg" alt="" loading="lazy" onerror="kinoRemove\(this\)">/, 'the catalogue poster when no local one');
   assert.match(out, /<strong data-title-id="tt3">Black Doves<\/strong><span class="offline-kind">Série · S02E04 · 40 % vu<\/span><span class="offline-file">Black\.Doves\.S02E04\.mkv<\/span>/);
   assert.match(out, /<img src="\/api\/offline\/poster\/bbbb2222"/);
   assert.match(out, /<strong>home\.mp4<\/strong><span class="offline-kind">Film<\/span><span class="offline-file">home\.mp4<\/span>/);
@@ -156,7 +158,7 @@ test('offline files show the French title, the episode, the real file name and t
 
 test('filters live under the title and only on the list pages', () => {
   assert.match(html, /<div id="listFilters" class="list-filters" hidden><\/div>/);
-  assert.match(html, /id="listSortSelect" class="catalog-sort" aria-label="Trier la liste"[^>]*onchange="onChangeListSort\(this\.value\)"/);
+  assert.match(withCalls(html), /id="listSortSelect" class="catalog-sort" aria-label="Trier la liste"[^>]*onchange="onChangeListSort\(this\.value\)"/);
   assert.match(html, /type="search" id="listFilterInput"[^>]*aria-label="Filtrer la liste par titre ou année"/);
   assert.match(source, /if \(listFiltersBox\) listFiltersBox\.hidden = !\(tab === 'watchlist' \|\| tab === 'watched'\);/);
   assert.match(css, /\.list-filters\[hidden\] \{ display: none; \}/);

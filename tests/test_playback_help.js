@@ -1,7 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const app = require('../tools/interface_source.js').appSource();
 const help = fs.readFileSync('web/js/playback-help.js', 'utf8');
 const recover = 'async function recoverInAppSource(generation)' + app.split('async function recoverInAppSource(generation)')[1].split('function renderInAppAudioTracks')[0];

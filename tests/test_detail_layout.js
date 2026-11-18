@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -54,9 +56,9 @@ test('the best source first, then one group per quality', () => {
   assert.deepEqual(groups, ['4K 6', '1080p 1', '720p 1', 'Autres qualités 1']);
   const fourK = out.slice(out.indexOf('aria-label="4K"'), out.indexOf('aria-label="1080p"'));
   assert.equal((fourK.match(/class="torrent-item /g) || []).length, 4, 'four rows per group');
-  assert.match(fourK, /onclick="toggleSourceGroup\('4k'\)" aria-expanded="false">Voir 2 autres en 4K<\/button>/);
-  assert.match(out, /onclick="debridFromIndex\(0\)"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="\/icons\.svg#play-solid"><\/use><\/svg> Lancer<\/button>/);
-  assert.match(out, /onclick="debridFromIndex\(1\)">Sélectionner<\/button>/, 'rows keep their index in the filtered list');
+  assert.match(withCalls(fourK), /onclick="toggleSourceGroup\('4k'\)" aria-expanded="false">Voir 2 autres en 4K<\/button>/);
+  assert.match(withCalls(out), /onclick="debridFromIndex\(0\)"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="\/icons\.svg#play-solid"><\/use><\/svg> Lancer<\/button>/);
+  assert.match(withCalls(out), /onclick="debridFromIndex\(1\)">Sélectionner<\/button>/, 'rows keep their index in the filtered list');
   assert.equal(view.sub.textContent, '10 sources');
 });
 

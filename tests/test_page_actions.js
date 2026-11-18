@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const ROOT = path.join(__dirname, '..');
 const actions = fs.readFileSync(path.join(ROOT, 'web/js/actions.js'), 'utf8');
@@ -135,4 +137,25 @@ test('the conversion keeps the call: its function, its arguments, its stop', () 
   }
   assert.equal(convert('alert(1); evil()'), null, 'two calls: not converted');
   assert.deepEqual(convert("openConfig(); closeHeaderMenu();"), ['kinoMenuAction', ['openConfig'], false]);
+});
+
+test('each action a template declares is a function of the page', () => {
+  const dir = path.join(ROOT, 'web/js');
+  const scripts = fs.readdirSync(dir).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
+  const names = new Set([
+    ...[...scripts.matchAll(/\bact\('([\w$.]+)'/g)].map(m => m[1]),
+    ...[...scripts.matchAll(/\bactOn\('[a-z]+', '([\w$.]+)'/g)].map(m => m[1]),
+  ]);
+  assert.ok(names.size >= 10, [...names].join(', '));
+  for (const name of names) {
+    assert.match(scripts, new RegExp(`(^|\\n)\\s*(async\\s+)?function\\s+${name.split('.')[0]}\\s*\\(|window\\.${name.split('.')[0]}\\s*=`), name);
+  }
+});
+
+test('a template action carries its arguments as values', () => {
+  const { templateHelpers, withCalls } = require('../tools/interface_source.js');
+  const { act, actOn, THIS, EVENT } = templateHelpers();
+  const html = `<b ${act('toggleSourceGroup', `4k" onclick="x`)}></b><i ${actOn('error', 'kinoRemove', THIS)}></i><u ${act('copyLink', EVENT, 3)}></u>`;
+  assert.doesNotMatch(withCalls(html), /onclick="x/, 'an argument stays inside its attribute');
+  assert.equal(withCalls(html), `<b onclick="toggleSourceGroup('4k&quot; onclick=&quot;x')"></b><i onerror="kinoRemove(this)"></i><u onclick="copyLink(event, 3)"></u>`);
 });

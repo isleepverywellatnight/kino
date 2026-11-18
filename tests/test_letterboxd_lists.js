@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
@@ -57,8 +59,8 @@ test('each list is a shelf with its progress, first posters and actions', () => 
   assert.match(top, /aria-valuenow="13"><span style="width:13%"><\/span>/);
   assert.match(top, /<p class="list-shelf-desc">Les « classiques » &amp; plus<\/p>/);
   assert.equal((top.match(/class="poster-card"/g) || []).length, 12, 'twelve posters on the shelf');
-  assert.match(top, /onclick="openCustomList\(&quot;top&quot;\)">Voir les 15 titres<\/button>/);
-  assert.match(top, /onclick="openCustomList\(&quot;top&quot;\)">Tout voir<\/button>/);
+  assert.match(withCalls(top), /onclick="openCustomList\('top'\)">Voir les 15 titres<\/button>/);
+  assert.match(withCalls(top), /onclick="openCustomList\('top'\)">Tout voir<\/button>/);
   assert.match(top, /href="https:\/\/letterboxd\.com\/u\/list\/top\/"/);
   assert.match(top, /aria-label="Retirer la liste Top &lt;250&gt;">Retirer<\/button>/);
   assert.match(empty, /Cette liste est vide\./);
@@ -71,7 +73,7 @@ test('opening a list gives it Ma Liste\'s tools, in list order', () => {
   const lib = load({ lists: lists(), history });
   lib.openCustomList('top');
   assert.equal(lib.open(), 'top');
-  assert.match(lib.elements.catalogTitle.innerHTML, /onclick="closeCustomList\(\)" aria-label="Revenir aux listes">← Listes<\/button><span>Top &lt;250&gt;<\/span>/);
+  assert.match(withCalls(lib.elements.catalogTitle.innerHTML), /onclick="closeCustomList\(\)" aria-label="Revenir aux listes">← Listes<\/button><span>Top &lt;250&gt;<\/span>/);
   assert.equal(lib.elements.watchlistActionsWrap.style.display, 'flex');
   assert.equal(lib.elements.listSurpriseBtnLabel.textContent, 'Roulette sur cette liste');
   assert.equal(lib.elements.addedOption.textContent, 'Ordre de la liste');
@@ -147,7 +149,7 @@ test('an import says how many removed films it left out, and can bring them back
   assert.equal(page.element('lbxImportStatus').textContent, '✓ Synchronisation réussie : 51 dans Déjà vus.');
   assert.equal(page.element('lbxRestoreRemovedBtn').hidden, true);
   const html = require('../tools/interface_source.js').indexHtml();
-  assert.match(html, /<button type="button" id="lbxRestoreRemovedBtn" class="btn btn-secondary btn-small" hidden onclick="submitLetterboxdImport\(\{ restoreRemoved: true \}\)">Les réimporter aussi<\/button>/);
+  assert.match(withCalls(html), /<button type="button" id="lbxRestoreRemovedBtn" class="btn btn-secondary btn-small" hidden onclick="submitLetterboxdImport\(\{ restoreRemoved: true \}\)">Les réimporter aussi<\/button>/);
 });
 
 test('an import also says which wrong films it took back and which titles it could not find', async () => {

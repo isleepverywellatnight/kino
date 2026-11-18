@@ -3,7 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const Spoilers = require('../web/js/spoilers.js');
 
 const source = require('../tools/interface_source.js').appSource();
@@ -49,9 +51,9 @@ test('each episode is a still with its number, title, air date and summary', () 
   assert.match(tile(html, 1), /<span class="ep-tile-num">1\.<\/span> Premier/);
   assert.match(tile(html, 1), /<div class="ep-tile-meta">1er oct\. 2026<\/div>/);
   assert.match(tile(html, 1), /<p class="ep-tile-desc">First summary<\/p>/);
-  assert.match(tile(html, 1), /onclick="oneClickSeriesEpisode\(this, 2, 1\)" aria-label="Lancer S02E01 · Premier"/);
-  assert.match(tile(html, 1), /onclick="pickSeriesEpisodeSources\(2, 1\)">Sources/);
-  assert.match(tile(html, 1), /aria-pressed="false"[^>]*onclick="toggleWatchedSeriesEp\(2, 1\)">✓ Marquer vu/);
+  assert.match(withCalls(tile(html, 1)), /onclick="oneClickSeriesEpisode\(this, 2, 1\)" aria-label="Lancer S02E01 · Premier"/);
+  assert.match(withCalls(tile(html, 1)), /onclick="pickSeriesEpisodeSources\(2, 1\)">Sources/);
+  assert.match(withCalls(tile(html, 1)), /aria-pressed="false"[^>]*onclick="toggleWatchedSeriesEp\(2, 1\)">✓ Marquer vu/);
   assert.equal(summary, 'Saison 2 · 4 épisodes · 0 vu · 1 à venir');
 });
 
@@ -130,8 +132,8 @@ test('dates read naturally in French', () => {
 });
 
 test('the section, the row arrows and the French route are wired', () => {
-  assert.match(source, /<div id="detailEpisodesList" class="ep-row" role="list" aria-label="Épisodes" onscroll="updateEpisodeArrows\(\)"><\/div>/);
-  assert.match(source, /aria-label="Épisodes précédents" onclick="scrollEpisodes\(-1\)" hidden>‹/);
+  assert.match(withCalls(source), /<div id="detailEpisodesList" class="ep-row" role="list" aria-label="Épisodes" \$\{actOn\('scroll', 'updateEpisodeArrows'\)\}><\/div>/);
+  assert.match(source, /aria-label="Épisodes précédents" \$\{act\('scrollEpisodes', -1\)\} hidden>‹/);
   assert.match(source, /<p id="detailSeasonSummary" class="ep-summary" aria-live="polite"><\/p>/);
   assert.match(source, /window\.addEventListener\("resize", updateEpisodeArrows\);/);
   assert.match(source, /behavior: 'instant' \}\);/, 'the row opens on the episode at once');

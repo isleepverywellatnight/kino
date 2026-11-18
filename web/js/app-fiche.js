@@ -233,12 +233,12 @@ function searchPanelEntries(query, titles = []) {
 }
 
 function searchEntryHtml(entry, idx) {
-  const attrs = `class="search-suggest-item${entry.kind === 'title' ? '' : ' search-suggest-row'}" id="suggestItem_${idx}" role="option" tabindex="-1" onmousedown="event.preventDefault()" onclick="selectSearchSuggest(${idx})"`;
+  const attrs = `class="search-suggest-item${entry.kind === 'title' ? '' : ' search-suggest-row'}" id="suggestItem_${idx}" role="option" tabindex="-1" ${actOn('mousedown', 'kinoKeepFocus', EVENT)} ${act('selectSearchSuggest', idx)}`;
   if (entry.kind === 'title') {
     const it = entry.item;
     const typeLabel = it.type === 'series' ? 'Série' : 'Film';
     return `<div ${attrs}>
-        <img class="search-suggest-poster" src="${escapeHtml(it.poster || '')}" alt="" onerror="this.style.opacity=0.08">
+        <img class="search-suggest-poster" src="${escapeHtml(it.poster || '')}" alt="" ${actOn('error', 'kinoDimImage', THIS)}>
         <div class="search-suggest-info">
           <div class="search-suggest-title"${titleAttrs(it)}>${escapeHtml(displayTitle(it))}</div>
           <div class="search-suggest-meta"><span>${typeLabel}</span>${it.year ? `<span>${escapeHtml(it.year)}</span>` : ''}${it.imdbRating ? `<span>★ ${escapeHtml(it.imdbRating)}</span>` : ''}</div>
@@ -271,7 +271,7 @@ function renderSearchPanel(query, titles = []) {
   dd.innerHTML = entries.map((entry, idx) => {
     const head = entry.group === group ? ''
       : `<div class="search-panel-group" role="presentation"><span>${escapeHtml(entry.group)}</span>${entry.kind === 'recent'
-        ? '<button type="button" class="search-panel-clear" onmousedown="event.preventDefault()" onclick="forgetRecentSearches(event)">Effacer</button>' : ''}</div>`;
+        ? '<button type="button" class="search-panel-clear" ' + actOn('mousedown', 'kinoKeepFocus', EVENT) + ' ' + act('forgetRecentSearches', EVENT) + '>Effacer</button>' : ''}</div>`;
     group = entry.group;
     return head + searchEntryHtml(entry, idx);
   }).join('');
@@ -515,7 +515,7 @@ function renderSearchResults() {
   const label = { movie: 'Films', series: 'Séries' };
   const chips = several ? `<div class="search-results-tools" role="group" aria-label="Type de résultat">${
     [['all', 'Tout'], ...order.map(kind => [kind, label[kind]])].map(([kind, text]) =>
-      `<button type="button" class="chip${lastSearch.filter === kind ? ' active' : ''}" aria-pressed="${lastSearch.filter === kind}" onclick="setSearchFilter('${kind}')">${text} <span class="list-count">${counts[kind]}</span></button>`).join('')}</div>` : '';
+      `<button type="button" class="chip${lastSearch.filter === kind ? ' active' : ''}" aria-pressed="${lastSearch.filter === kind}" ${act('setSearchFilter', kind)}>${text} <span class="list-count">${counts[kind]}</span></button>`).join('')}</div>` : '';
   const groups = lastSearch.filter === 'all' ? order : [lastSearch.filter];
   grid.innerHTML = chips + groups.map(kind => {
     const items = metas.filter(m => searchKind(m) === kind).slice(0, SEARCH_GROUP_SIZE);
@@ -802,12 +802,12 @@ function preparationHtml(prep) {
   const facts = [res.status ? `Statut : ${escapeHtml(res.status)}` : '', res.speed ? `Vitesse : ${escapeHtml(res.speed)}` : '',
     `Pairs : ${Number(res.seeders) || 0}`].filter(Boolean).join(' • ');
   const ready = prep.readyAlternative
-    ? '<button type="button" class="btn" onclick="playReadyInstead()">Lancer une source prête à la place</button>' : '';
+    ? '<button type="button" class="btn" ' + act('playReadyInstead') + '>Lancer une source prête à la place</button>' : '';
   return `<h3>Préparation de la qualité choisie : ${progress} %</h3>
     <p class="preparation-note">${escapeHtml(prep.params.title || '')} : Debrid télécharge la source recommandée, la lecture démarre dès qu’elle est prête.</p>
     <p class="preparation-note">${facts}</p>
     <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
-    <div class="preparation-actions">${ready}<button type="button" class="btn btn-secondary" onclick="stopWaitingPreparation()">Arrêter d’attendre</button></div>`;
+    <div class="preparation-actions">${ready}<button type="button" class="btn btn-secondary" ${act('stopWaitingPreparation')}>Arrêter d’attendre</button></div>`;
 }
 
 function renderPreparation(prep, html) {
@@ -848,7 +848,7 @@ async function pollPreparation(prep) {
   } catch (error) {
     if (oneClickPreparation !== prep) return;
     const ready = prep.readyAlternative
-      ? '<button type="button" class="btn" onclick="playReadyInstead()">Lancer une source prête à la place</button>' : '';
+      ? '<button type="button" class="btn" ' + act('playReadyInstead') + '>Lancer une source prête à la place</button>' : '';
     renderPreparation(prep, `<p class="preparation-note">Préparation interrompue : ${escapeHtml(error.message)}</p><div class="preparation-actions">${ready}</div>`);
   }
 }
@@ -1074,9 +1074,7 @@ function buildDetailHtml(media, meta, isPreview) {
   const awards = meta.awards || '';
   const trailerId = (meta.trailers && meta.trailers[0] && meta.trailers[0].source) ? meta.trailers[0].source : '';
   const inList = isInWatchlist(media.id);
-  const mediaPayload = JSON.stringify({id: media.id, name: media.name, type: media.type, year: String(year), poster, imdbRating: String(rating)}).replace(/'/g, "&#39;");
-  const safeNameJs = JSON.stringify(meta.name || media.name).replace(/'/g, "&#39;");
-  const safeYearJs = JSON.stringify(String(year)).replace(/'/g, "&#39;");
+  const mediaInfo = {id: media.id, name: media.name, type: media.type, year: String(year), poster, imdbRating: String(rating)};
 
   const histItem = userHistory.find(h => h.id === media.id);
   const userRating = (histItem && histItem.user_rating) || media.user_rating || '';
@@ -1116,8 +1114,7 @@ function buildDetailHtml(media, meta, isPreview) {
       <div class="detail-section-title">Distribution</div>
       <div class="detail-cast-row">
         ${people.map(person => {
-          const nameJs = JSON.stringify(person.name).replace(/'/g, "&#39;");
-          return `<button type="button" class="detail-person" data-person="${escapeHtml(person.name)}" onclick='openPerson(${nameJs})' title="Films et séries de ${escapeHtml(person.name)}">
+          return `<button type="button" class="detail-person" data-person="${escapeHtml(person.name)}" ${act('openPerson', person.name)} title="Films et séries de ${escapeHtml(person.name)}">
             <span class="detail-person-photo" aria-hidden="true">${escapeHtml(personInitials(person.name))}</span>
             <span class="detail-person-name">${escapeHtml(person.name)}</span>
             <span class="detail-person-role">${person.role}</span>
@@ -1150,20 +1147,20 @@ function buildDetailHtml(media, meta, isPreview) {
           <div class="detail-extra-section detail-episodes">
             <div class="detail-season-bar">
               <div class="detail-season-pills" role="group" aria-label="Saisons">
-                ${seasons.map(s => `<button class="season-pill ${s===targetSeason?'active':''}" data-season-chip="${s}" onclick="selectDetailSeason(${s})">Saison ${s}</button>`).join('')}
+                ${seasons.map(s => `<button class="season-pill ${s===targetSeason?'active':''}" data-season-chip="${s}" ${act('selectDetailSeason', s)}>Saison ${s}</button>`).join('')}
               </div>
               <div class="detail-episodes-tools">
-                <div class="spoiler-series-setting"><label for="detailSpoilerChoice">Spoilers</label><select id="detailSpoilerChoice" aria-label="Protection des spoilers pour cette série" onchange="setSeriesSpoilerProtection(this.value)"><option value="inherit">Réglage général</option><option value="on">Masquer les épisodes non vus</option><option value="off">Tout afficher</option></select></div>
-                <button class="btn btn-secondary btn-small" id="detailSeasonAllWatchedBtn" onclick="toggleWatchedWholeSeason()">✓ Marquer la saison comme vue</button>
-                <button class="btn btn-secondary btn-small" id="detailSeasonOfflineBtn" onclick="downloadSeasonOffline(this)" title="Télécharger les épisodes sortis de cette saison, l’un après l’autre">⤓ Saison hors ligne</button>
+                <div class="spoiler-series-setting"><label for="detailSpoilerChoice">Spoilers</label><select id="detailSpoilerChoice" aria-label="Protection des spoilers pour cette série" ${actOn('change', 'setSeriesSpoilerProtection', VALUE)}><option value="inherit">Réglage général</option><option value="on">Masquer les épisodes non vus</option><option value="off">Tout afficher</option></select></div>
+                <button class="btn btn-secondary btn-small" id="detailSeasonAllWatchedBtn" ${act('toggleWatchedWholeSeason')}>✓ Marquer la saison comme vue</button>
+                <button class="btn btn-secondary btn-small" id="detailSeasonOfflineBtn" ${act('downloadSeasonOffline', THIS)} title="Télécharger les épisodes sortis de cette saison, l’un après l’autre">⤓ Saison hors ligne</button>
               </div>
             </div>
-            <div id="detailSpoilerOffer" class="spoiler-offer">Masquer les titres et images des épisodes non vus ? <button type="button" class="btn btn-secondary" onclick="setGlobalSpoilerProtection(true)">Activer la protection</button></div>
+            <div id="detailSpoilerOffer" class="spoiler-offer">Masquer les titres et images des épisodes non vus ? <button type="button" class="btn btn-secondary" ${act('setGlobalSpoilerProtection', true)}>Activer la protection</button></div>
             <p id="detailSeasonSummary" class="ep-summary" aria-live="polite"></p>
             <div class="ep-strip" id="detailEpisodesStrip">
-              <button type="button" class="ep-scroll ep-scroll-prev" aria-label="Épisodes précédents" onclick="scrollEpisodes(-1)" hidden>‹</button>
-              <div id="detailEpisodesList" class="ep-row" role="list" aria-label="Épisodes" onscroll="updateEpisodeArrows()"></div>
-              <button type="button" class="ep-scroll ep-scroll-next" aria-label="Épisodes suivants" onclick="scrollEpisodes(1)" hidden>›</button>
+              <button type="button" class="ep-scroll ep-scroll-prev" aria-label="Épisodes précédents" ${act('scrollEpisodes', -1)} hidden>‹</button>
+              <div id="detailEpisodesList" class="ep-row" role="list" aria-label="Épisodes" ${actOn('scroll', 'updateEpisodeArrows')}></div>
+              <button type="button" class="ep-scroll ep-scroll-next" aria-label="Épisodes suivants" ${act('scrollEpisodes', 1)} hidden>›</button>
             </div>
           </div>
         `;
@@ -1189,7 +1186,7 @@ function buildDetailHtml(media, meta, isPreview) {
   const latestAiredBanner = (isSeries && latestAired) ? `
     <div class="detail-latest${latestAiredUnwatched ? ' is-new' : ''}">
       <span id="latestAiredText">${latestAiredUnwatched ? '● Dernier épisode diffusé (non vu) :' : '✓ Dernier épisode diffusé :'} <strong>${escapeHtml(latestAired.code)}</strong> — ${escapeHtml(latestAiredTitle)} (${escapeHtml(latestAired.released || '')})</span>
-      ${latestAiredUnwatched ? `<button class="btn btn-secondary btn-small" onclick="oneClickSeriesEpisode(this, ${latestAired.season}, ${latestAired.episode})">Lancer</button>` : ''}
+      ${latestAiredUnwatched ? `<button class="btn btn-secondary btn-small" ${act('oneClickSeriesEpisode', THIS, Number(latestAired.season) || 1, Number(latestAired.episode) || 1)}>Lancer</button>` : ''}
     </div>
   ` : '';
 
@@ -1199,23 +1196,23 @@ function buildDetailHtml(media, meta, isPreview) {
     targetEpisode,
     html: `
       <section class="detail-hero" id="detailHero">
-        <img class="detail-hero-backdrop" src="${escapeHtml(largeBackdrop(backdropUrl))}" alt="" onload="ficheGlow(this)" onerror="detailBackdropFallback(this, ${escapeHtml(JSON.stringify(poster))})">
+        <img class="detail-hero-backdrop" src="${escapeHtml(largeBackdrop(backdropUrl))}" alt="" ${actOn('load', 'ficheGlow', THIS)} ${actOn('error', 'detailBackdropFallback', THIS, poster)}>
         <div class="detail-hero-shade"></div>
         <div class="detail-trailer" id="detailTrailer" hidden>
           <div class="detail-trailer-frame" id="detailTrailerFrame"></div>
           <div class="detail-trailer-bar">
-            <button type="button" class="btn btn-secondary" data-trailer-lang="vf" onclick="switchDetailTrailer('vf')">VF</button>
-            <button type="button" class="btn btn-secondary" data-trailer-lang="vo" onclick="switchDetailTrailer('vo')">VO</button>
+            <button type="button" class="btn btn-secondary" data-trailer-lang="vf" ${act('switchDetailTrailer', 'vf')}>VF</button>
+            <button type="button" class="btn btn-secondary" data-trailer-lang="vo" ${act('switchDetailTrailer', 'vo')}>VO</button>
             <a class="btn btn-secondary" id="detailTrailerLink" href="#" target="_blank" hidden>Ouvrir sur YouTube ↗</a>
-            <button type="button" class="btn" onclick="closeDetailTrailer()">Fermer la bande-annonce</button>
+            <button type="button" class="btn" ${act('closeDetailTrailer')}>Fermer la bande-annonce</button>
           </div>
         </div>
-        <button class="detail-close-btn" onclick="closeFiche()" title="Fermer la fiche (Échap)" aria-label="Fermer la fiche">
+        <button class="detail-close-btn" ${act('closeFiche')} title="Fermer la fiche (Échap)" aria-label="Fermer la fiche">
           <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#close"></use></svg>
         </button>
         <div class="detail-hero-body">
           <h2 class="detail-hero-title">
-            ${logoUrl ? `<img class="detail-hero-logo" src="${escapeHtml(logoUrl)}" alt="" onload="this.closest('.detail-hero')?.classList.add('has-logo')" onerror="this.remove()">` : ''}
+            ${logoUrl ? `<img class="detail-hero-logo" src="${escapeHtml(logoUrl)}" alt="" ${actOn('load', 'kinoHeroLogo', THIS)} ${actOn('error', 'kinoRemove', THIS)}>` : ''}
             <span class="detail-hero-name"${titleAttrs({...media, name: meta.name || media.name, year: String(year)}, isSeries ? 'series' : 'movie')}>${escapeHtml(displayTitle({id: media.id, name: meta.name || media.name}))}</span>
           </h2>
           <div class="detail-hero-original">${escapeHtml(meta.name || media.name)}</div>
@@ -1227,30 +1224,29 @@ function buildDetailHtml(media, meta, isPreview) {
             ${country ? `<span class="detail-meta-text">${escapeHtml(frenchCountries(country))}</span>` : ''}
             ${genres.map((g, idx) => {
               const rawG = rawGenres[idx] || g;
-              const rawGJs = JSON.stringify(rawG).replace(/'/g, "&#39;");
-              return `<span class="badge" style="cursor:pointer;" title="Filtrer par ${escapeHtml(g)}" onclick='selectGenre(${rawGJs}, document.querySelector("#genreFilters .chip[data-genre=\\"" + ${rawGJs} + "\\"]"))'>${escapeHtml(g)}</span>`;
+              return `<span class="badge" style="cursor:pointer;" title="Filtrer par ${escapeHtml(g)}" ${act('selectGenreBadge', rawG)}>${escapeHtml(g)}</span>`;
             }).join('')}
           </div>
           ${latestAiredBanner}
           <div class="detail-desc">${desc}</div>
           ${awardsFr ? `<div class="detail-awards">${escapeHtml(awardsFr)}</div>` : ''}
           <div class="detail-actions">
-            <button class="btn btn-play-hero" id="detailMainPlayBtn" onclick='oneClickCard(event, this, ${mediaPayload})'>
+            <button class="btn btn-play-hero" id="detailMainPlayBtn" ${act('oneClickCard', EVENT, THIS, mediaInfo)}>
               <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#play-solid"></use></svg>
               ${playBtnLabel}
             </button>
-            <button class="btn btn-secondary" id="detailTvBtn" onclick='oneClickCard(event, this, ${mediaPayload}, { target: "tv" })' title="Lire sur la TV du salon">
+            <button class="btn btn-secondary" id="detailTvBtn" ${act('oneClickCard', EVENT, THIS, mediaInfo, { target: 'tv' })} title="Lire sur la TV du salon">
               <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#cast"></use></svg>
               Sur la TV
             </button>
-            <button class="btn btn-secondary" onclick='playDetailTrailer(${JSON.stringify(trailerId)}, ${safeNameJs}, ${safeYearJs}, "vf")'>
+            <button class="btn btn-secondary" ${act('playDetailTrailer', trailerId, meta.name || media.name, String(year), 'vf')}>
               <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>
               Bande-annonce
             </button>
-            <button class="btn btn-secondary" id="detailWlBtn" onclick='toggleWatchlist(event, ${mediaPayload})'>
+            <button class="btn btn-secondary" id="detailWlBtn" ${act('toggleWatchlist', EVENT, mediaInfo)}>
               ${inList ? '<svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#tick"></use></svg> Dans ma liste' : '+ Ma Liste'}
             </button>
-            ${!isSeries ? `<button class="btn btn-secondary" style="${isMovieDone ? 'border-color:var(--text); color:var(--text);' : ''}" onclick='toggleWatchedItem(${mediaPayload})'>${isMovieDone ? '✓ Vu' : '✓ Marquer comme vu'}</button>` : ''}
+            ${!isSeries ? `<button class="btn btn-secondary" style="${isMovieDone ? 'border-color:var(--text); color:var(--text);' : ''}" ${act('toggleWatchedItem', mediaInfo)}>${isMovieDone ? '✓ Vu' : '✓ Marquer comme vu'}</button>` : ''}
           </div>
         </div>
       </section>
@@ -1412,7 +1408,7 @@ function personHeaderHtml(view) {
   const facts = [personRolesText(data), seen ? `${seen} déjà vu${seen > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
   const photo = data.photo ? `<img src="${escapeHtml(data.photo)}" alt="">` : escapeHtml(personInitials(data.name || view.name));
   const back = view.from
-    ? `<button type="button" class="btn btn-secondary" onclick="backFromPerson()">Retour à « ${escapeHtml(displayTitle(view.from))} »</button>` : '';
+    ? `<button type="button" class="btn btn-secondary" ${act('backFromPerson')}>Retour à « ${escapeHtml(displayTitle(view.from))} »</button>` : '';
   return `<header class="person-head">
       <div class="person-photo${data.photo ? ' has-photo' : ''}" aria-hidden="true">${photo}</div>
       <div class="person-text">
@@ -1436,7 +1432,7 @@ function renderPersonPage() {
     ...(unseen.length && unseen.length < all.length ? [['unseen', 'Pas encore vus', unseen.length]] : [])];
   if (!filters.some(([kind]) => kind === view.filter)) view.filter = 'all';
   const chips = filters.length > 2 ? `<div class="search-results-tools" role="group" aria-label="Filtrer les titres">${filters.map(([kind, label, count]) =>
-    `<button type="button" class="chip${view.filter === kind ? ' active' : ''}" aria-pressed="${view.filter === kind}" onclick="setPersonFilter('${kind}')">${label} <span class="list-count">${count}</span></button>`).join('')}</div>` : '';
+    `<button type="button" class="chip${view.filter === kind ? ' active' : ''}" aria-pressed="${view.filter === kind}" ${act('setPersonFilter', kind)}>${label} <span class="list-count">${count}</span></button>`).join('')}</div>` : '';
   const body = groups.map(([kind, label, items]) => {
     if (view.filter !== 'all' && view.filter !== 'unseen' && view.filter !== kind) return '';
     const shown = view.filter === 'unseen' ? items.filter(m => !personSeen(m)) : items;
@@ -1449,8 +1445,8 @@ function renderPersonPage() {
     ? `<h3 class="search-group-title">Autres résultats pour ce nom <span class="list-count">${others.length}</span></h3>`
       + `<p class="person-note">Le nom apparaît dans ces titres sans figurer dans les premiers noms de leur distribution : un petit rôle, ou un homonyme.</p>`
       + others.map(m => posterCardHtml(m, m.type)).join('')
-      + `<button type="button" class="btn btn-secondary person-more" onclick="togglePersonOthers()" aria-expanded="true">Masquer les autres résultats</button>`
-    : `<button type="button" class="btn btn-secondary person-more" onclick="togglePersonOthers()" aria-expanded="false">Autres résultats pour ce nom (${others.length})</button>`;
+      + `<button type="button" class="btn btn-secondary person-more" ${act('togglePersonOthers')} aria-expanded="true">Masquer les autres résultats</button>`
+    : `<button type="button" class="btn btn-secondary person-more" ${act('togglePersonOthers')} aria-expanded="false">Autres résultats pour ce nom (${others.length})</button>`;
   grid.innerHTML = personHeaderHtml(view) + chips + body + empty + otherHtml;
 }
 

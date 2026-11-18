@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
+const { withCalls } = require('../tools/interface_source.js');
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -54,7 +56,7 @@ test('Ma Liste: twelve posters, then the way to the whole list', () => {
   home.renderHomeList();
   const out = home.elements.homeListRow.innerHTML;
   assert.equal((out.match(/<card /g) || []).length, 12);
-  assert.match(out, /<button type="button" class="list-shelf-more" onclick="switchTab\('watchlist'\)">Voir les 15 titres<\/button>$/);
+  assert.match(withCalls(out), /<button type="button" class="list-shelf-more" onclick="switchTab\('watchlist'\)">Voir les 15 titres<\/button>$/);
 });
 
 test('Ma Liste: hidden when empty or away from the home tabs', () => {
@@ -105,8 +107,8 @@ test('the home order: now first, then discovery', () => {
   order.forEach(id => assert.ok(at(id) > 0, id));
   assert.deepEqual([...order].sort((a, b) => at(a) - at(b)), order);
   const list = html.slice(at('homeListSection'), at('heroSpotlight'));
-  assert.match(list, /onclick="openTonightModal\(\)">Une idée pour ce soir<\/button>/);
-  assert.match(list, /onclick="switchTab\('watchlist'\)">Ma Liste<\/button>/);
+  assert.match(withCalls(list), /onclick="openTonightModal\(\)">Une idée pour ce soir<\/button>/);
+  assert.match(withCalls(list), /onclick="switchTab\('watchlist'\)">Ma Liste<\/button>/);
   assert.match(source, /function renderHomeResume\(\) \{\n(?:  \/\/[^\n]*\n)?  if \(!networkOnline && activeTab !== 'history'\) \{\n    hideHomeRows\(\);\n    return;\n  \}\n  renderHomeList\(\);\n  if \(typeof renderHomeRate === 'function'\) renderHomeRate\(\);\n  renderHomeForYou\(\);\n  renderHomeBecause\(\);/,
     'without internet the rows step aside; otherwise Ma Liste and the similar titles come first');
   assert.match(css, /\.home-shelf:not\(\[hidden\]\) \{ display: block;/);

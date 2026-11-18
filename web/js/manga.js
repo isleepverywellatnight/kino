@@ -40,8 +40,8 @@ function setMangaLang(value) {
 // ---------- The tab ----------
 
 function mangaCardHtml(series, extra = '') {
-  return `<button type="button" class="manga-card" onclick="openMangaSeries(${attrJson(series.source)}, ${attrJson(series.id)})" title="${escapeHtml(series.title)}">
-      <span class="manga-cover">${series.cover ? `<img src="${escapeHtml(series.cover)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>
+  return `<button type="button" class="manga-card" ${act('openMangaSeries', series.source, series.id)} title="${escapeHtml(series.title)}">
+      <span class="manga-cover">${series.cover ? `<img src="${escapeHtml(series.cover)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}</span>
       <span class="manga-card-title">${escapeHtml(series.title)}</span>
       ${extra ? `<span class="manga-card-meta">${escapeHtml(extra)}</span>` : ''}
     </button>`;
@@ -78,7 +78,7 @@ async function renderMangaTab() {
   ]);
   const reading = (progress.progress || []).map(p => ({ source: p.source, id: p.series, title: p.title, cover: p.cover, progress: p }));
   const folderLabel = local.folder ? 'Changer de dossier' : 'Choisir un dossier';
-  const folderButton = `<button type="button" class="btn btn-secondary btn-small" onclick="chooseMangaFolder()">${folderLabel}</button>`;
+  const folderButton = `<button type="button" class="btn btn-secondary btn-small" ${act('chooseMangaFolder')}>${folderLabel}</button>`;
   home.innerHTML = (reading.length ? mangaShelf('Continuer la lecture', '', mangaRow(reading, '', item =>
       item.progress.number ? `Chapitre ${item.progress.number}` : '')) : '')
     + MANGA_ROWS.map(([, title, meta], index) => {
@@ -103,7 +103,7 @@ async function searchManga() {
     home.innerHTML = mangaShelf(`Résultats pour « ${query} »`, '',
       (data.series || []).length ? `<div class="manga-grid">${data.series.map(s => mangaCardHtml(s, s.year ? String(s.year) : '')).join('')}</div>`
         : '<p class="list-shelf-empty">Aucune série trouvée.</p>',
-      '<button type="button" class="btn btn-secondary btn-small" onclick="renderMangaTab()">← Manga</button>');
+      '<button type="button" class="btn btn-secondary btn-small" ' + act('renderMangaTab') + '>← Manga</button>');
   } catch (error) {
     home.innerHTML = `<p class="list-shelf-empty">${escapeHtml(error.message)}</p>`;
   }
@@ -161,7 +161,7 @@ async function openMangaSeries(source, id) {
     mangaSeries = { source, id, title: info.title, cover: info.cover, chapters, progress, info };
     renderMangaSeries(info);
   } catch (error) {
-    page.innerHTML = `<button type="button" class="btn btn-secondary lists-back" onclick="renderMangaTab()">← Manga</button><p class="list-shelf-empty">${escapeHtml(error.message)}</p>`;
+    page.innerHTML = `<button type="button" class="btn btn-secondary lists-back" ${act('renderMangaTab')}>← Manga</button><p class="list-shelf-empty">${escapeHtml(error.message)}</p>`;
   }
 }
 
@@ -172,15 +172,15 @@ function renderMangaSeries(info) {
     || (progress.number && c.number === progress.number)) : -1;
   const first = chapters.findIndex(c => !c.external);
   const start = resumeIndex >= 0
-    ? `<button type="button" class="btn" onclick="openMangaReader(${resumeIndex}, ${Number(progress.page) || 0})">Reprendre · ${escapeHtml(mangaChapterLabel(chapters[resumeIndex]))}</button>`
-    : (first >= 0 ? `<button type="button" class="btn" onclick="openMangaReader(${first}, 0)">Commencer la lecture</button>` : '');
+    ? `<button type="button" class="btn" ${act('openMangaReader', resumeIndex, Number(progress.page) || 0)}>Reprendre · ${escapeHtml(mangaChapterLabel(chapters[resumeIndex]))}</button>`
+    : (first >= 0 ? `<button type="button" class="btn" ${act('openMangaReader', first, 0)}>Commencer la lecture</button>` : '');
   const online = mangaSeries.source === 'anilist';
   const empty = online && !chapters.length ? '<p class="list-shelf-empty">Aucun chapitre trouvé pour cette série pour l’instant.</p>' : '';
   const last = chapters.length ? chapters[chapters.length - 1] : null;
   const count = online && last ? `${chapters.length} chapitre${chapters.length > 1 ? 's' : ''} · dernier : ${last.number || '?'}${last.date ? ` (${last.date})` : ''}` : '';
-  const volumes = online ? '<button type="button" class="btn btn-secondary" onclick="showMangaVolumes()">Volumes HD (torrent)</button>' : '';
+  const volumes = online ? '<button type="button" class="btn btn-secondary" ' + act('showMangaVolumes') + '>Volumes HD (torrent)</button>' : '';
   page.innerHTML = `
-    <button type="button" class="btn btn-secondary lists-back" onclick="renderMangaTab()">← Manga</button>
+    <button type="button" class="btn btn-secondary lists-back" ${act('renderMangaTab')}>← Manga</button>
     <div class="manga-series-head">
       <div class="manga-cover manga-cover-large">${info.cover ? `<img src="${escapeHtml(info.cover)}" alt="">` : ''}</div>
       <div class="manga-series-text">
@@ -199,7 +199,7 @@ function renderMangaSeries(info) {
         chapter.source ? `${chapter.source}${chapter.lang ? ` · ${chapter.lang.toUpperCase()}` : ''}` : '', chapter.date].filter(Boolean).join(' · ');
       const action = chapter.external
         ? `<a class="btn btn-secondary btn-small" href="${escapeHtml(chapter.external)}" target="_blank" rel="noopener noreferrer">Chez l’éditeur ↗</a>`
-        : `<button type="button" class="btn btn-secondary btn-small" onclick="openMangaReader(${index}, 0)">Lire</button>`;
+        : `<button type="button" class="btn btn-secondary btn-small" ${act('openMangaReader', index, 0)}>Lire</button>`;
       return `<li class="manga-chapter${read ? ' is-read' : ''}${index === resumeIndex ? ' is-current' : ''}">
           <div><strong>${escapeHtml(mangaChapterLabel(chapter))}</strong>${meta ? `<span>${escapeHtml(meta)}</span>` : ''}</div>${action}</li>`;
     }).join('')}</ol>`;
@@ -226,7 +226,7 @@ async function showMangaVolumes() {
       <p class="manga-volumes-note">Volumes complets partagés en torrent, souvent les éditions numériques officielles. Ils se téléchargent en P2P dans votre dossier manga, puis se lisent hors ligne.</p>
       ${torrents.length ? `<ul class="manga-torrents">${torrents.map(t => `<li>
           <div><strong>${escapeHtml(t.name)}</strong><span>${escapeHtml([t.size, `${t.seeders} source${t.seeders > 1 ? 's' : ''}`, t.date].filter(Boolean).join(' · '))}</span></div>
-          <button type="button" class="btn btn-secondary btn-small" onclick="openMangaTorrent(${attrJson(t.hash)}, ${attrJson(t.name)})">Voir les volumes</button>
+          <button type="button" class="btn btn-secondary btn-small" ${act('openMangaTorrent', t.hash, t.name)}>Voir les volumes</button>
         </li>`).join('')}</ul>` : '<p class="list-shelf-empty">Aucun volume en torrent pour cette série.</p>'}`);
   } catch (error) {
     mangaVolumesBox(`<p class="list-shelf-empty">${escapeHtml(error.message)}</p>`);
@@ -240,15 +240,15 @@ async function openMangaTorrent(hash, name) {
     data = await api(`/api/manga/volume/files?hash=${encodeURIComponent(hash)}&name=${encodeURIComponent(name)}`);
   } catch (error) {
     if (error.code === 'p2p_consent' && typeof askP2PConsent === 'function' && await askP2PConsent()) return openMangaTorrent(hash, name);
-    mangaVolumesBox(`<p class="list-shelf-empty">${escapeHtml(error.message)}</p><button type="button" class="btn btn-secondary btn-small" onclick="showMangaVolumes()">← Volumes</button>`);
+    mangaVolumesBox(`<p class="list-shelf-empty">${escapeHtml(error.message)}</p><button type="button" class="btn btn-secondary btn-small" ${act('showMangaVolumes')}>← Volumes</button>`);
     return;
   }
   const files = data.files || [];
   mangaVolumesBox(`<h3 class="list-shelf-title">${escapeHtml(name)}</h3>
-    <button type="button" class="btn btn-secondary btn-small" onclick="showMangaVolumes()">← Volumes</button>
+    <button type="button" class="btn btn-secondary btn-small" ${act('showMangaVolumes')}>← Volumes</button>
     ${files.length ? `<ul class="manga-torrents">${files.map(f => `<li>
         <div><strong>${escapeHtml(f.name)}</strong><span>${escapeHtml(typeof offlineSize === 'function' ? offlineSize(f.size) : `${f.size}`)}</span></div>
-        <span class="manga-volume-state" data-volume="${f.index}"><button type="button" class="btn btn-secondary btn-small" onclick="downloadMangaVolume(${attrJson(hash)}, ${f.index})">Télécharger</button></span>
+        <span class="manga-volume-state" data-volume="${f.index}"><button type="button" class="btn btn-secondary btn-small" ${act('downloadMangaVolume', hash, f.index)}>Télécharger</button></span>
       </li>`).join('')}</ul>` : `<p class="list-shelf-empty">${MANGA_NO_ARCHIVE}</p>`}`);
 }
 
@@ -278,7 +278,7 @@ function followMangaVolume(hash, index, state) {
   }
   if (state.done) {
     mangaVolumeState(index, state.local
-      ? `<button type="button" class="btn btn-small" onclick="openMangaSeries('local', ${attrJson(state.local)})">Lire</button>`
+      ? `<button type="button" class="btn btn-small" ${act('openMangaSeries', 'local', state.local)}>Lire</button>`
       : '<span class="manga-volume-progress">Téléchargé</span>');
     return;
   }
@@ -359,7 +359,7 @@ function renderMangaReader() {
 function mangaEndHtml() {
   const next = mangaSeries.chapters.slice(mangaReader.chapterIndex + 1).findIndex(c => !c.external);
   return `<div class="manga-reader-end">${next >= 0
-    ? `<button type="button" class="btn" onclick="event.stopPropagation(); openMangaReader(${mangaReader.chapterIndex + 1 + next}, 0)">Chapitre suivant · ${escapeHtml(mangaChapterLabel(mangaSeries.chapters[mangaReader.chapterIndex + 1 + next]))}</button>`
+    ? `<button type="button" class="btn" ${act('openMangaReader', mangaReader.chapterIndex + 1 + next, 0)} data-click-stop>Chapitre suivant · ${escapeHtml(mangaChapterLabel(mangaSeries.chapters[mangaReader.chapterIndex + 1 + next]))}</button>`
     : `<p>${MANGA_LAST_CHAPTER}</p>`}</div>`;
 }
 

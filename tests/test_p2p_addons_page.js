@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const ROOT = path.join(__dirname, '..');
 const read = name => fs.readFileSync(path.join(ROOT, name), 'utf8');
@@ -39,7 +41,7 @@ test('the consent dialog says what P2P means before anything is read', () => {
   for (const fact of ['adresse IP est visible', 'envoie aussi des morceaux', 'ARCOM', 'VPN', 'désactiver la lecture P2P']) {
     assert.match(dialog, new RegExp(fact), fact);
   }
-  assert.match(dialog, /onclick="answerP2PConsent\(false\)">Annuler<\/button>\s*<button type="button" class="btn" onclick="answerP2PConsent\(true\)">J’accepte, lire en P2P<\/button>/);
+  assert.match(withCalls(dialog), /onclick="answerP2PConsent\(false\)">Annuler<\/button>\s*<button type="button" class="btn" onclick="answerP2PConsent\(true\)">J’accepte, lire en P2P<\/button>/);
   assert.match(dialog, /<option value="minimum">Minimum \(64 Ko\/s\)<\/option>/, 'the least sharing is the default');
 });
 
@@ -119,9 +121,9 @@ test('add-ons are listed with what they offer, their names as text', async () =>
   await lib.loadSourcesSettings();
   const list = lib.elements.stremioAddonList.innerHTML;
   assert.match(list, /<li class="addon-row is-off">/);
-  assert.match(list, /<strong>Bad &lt;img src=x onerror=alert\(1\)&gt;<\/strong>\s*<span>Sources · 2 catalogues · v1\.0\.0<\/span>/);
+  assert.match(withCalls(list), /<strong>Bad &lt;img src=x onerror=alert\(1\)&gt;<\/strong>\s*<span>Sources · 2 catalogues · v1\.0\.0<\/span>/);
   assert.doesNotMatch(list, /<img/);
-  assert.match(list, /onclick="removeStremioAddon\(&quot;a\\&quot;b&quot;\)"/);
+  assert.match(withCalls(list), /onclick="removeStremioAddon\('a&quot;b'\)"/);
   assert.equal(lib.elements.cfgP2P.checked, true);
   assert.match(lib.elements.cfgP2PStatus.textContent, /KINO lit les torrents lui-même/);
 });

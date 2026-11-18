@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const read = name => fs.readFileSync(path.join(path.join(__dirname, '..'), name), 'utf8');
 const code = read('web/js/ratings.js');
@@ -216,5 +218,5 @@ test('the page holds the row, the card, and the players ask when they close', ()
 });
 
 test('the hero logo no longer fails once the fiche is gone (journal, 2026-11-12)', () => {
-  assert.match(read('web/js/app-fiche.js'), /this\.closest\('\.detail-hero'\)\?\.classList\.add\('has-logo'\)/);
+  assert.match(read('web/js/actions.js'), /element\.closest\('\.detail-hero'\)\?\.classList\.add\('has-logo'\)/);
 });
