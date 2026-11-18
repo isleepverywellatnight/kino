@@ -2337,11 +2337,13 @@ dependencies = [
  "objc2-user-notifications",
  "reqwest 0.12.28",
  "rfd",
+ "serde",
  "serde_json",
  "tao",
  "tempfile",
  "tokio",
  "windows-sys 0.61.2",
+ "wiremock",
  "wry",
 ]
 
