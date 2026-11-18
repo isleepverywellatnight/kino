@@ -200,7 +200,7 @@ test('the native player uses the built-in player classes and icons', async () =>
   const { NativePlayer, elements } = loadNative(state);
   await NativePlayer.open({ id: 'x', filename: 'x.mkv' }, { id: 'tt1' }, 0, 'Film');
   const markup = elements.nativePlayer.innerHTML;
-  for (const piece of ['class="inapp-hud-top native-top"', 'class="inapp-btn kp-pill kp-back" id="nativeBack"', 'class="kp-title"',
+  for (const piece of ['class="inapp-hud-top native-top pywebview-drag-region"', 'class="inapp-btn kp-pill kp-back" id="nativeBack"', 'class="kp-title"',
     'class="inapp-btn kp-pill kp-select" id="nativeAudio"', 'class="inapp-btn kp-pill kp-select" id="nativeSubs"',
     'class="inapp-hud-bottom native-bottom"', 'class="kp-range kp-seek" id="nativeSeek"', 'class="inapp-controls-row"',
     'class="inapp-btn inapp-btn-icon" id="nativePlay"', 'class="inapp-vol-group"', 'class="kp-range kp-volume" id="nativeVolume"',

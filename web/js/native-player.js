@@ -68,12 +68,14 @@
 
   function buildOverlay() {
     if (element('nativePlayer')) return;
+    // Windows has no title bar: the window's own buttons, as in KINO's player (shown by design.css).
+    const WINDOW_BUTTONS = String(element('inAppWindowButtons')?.outerHTML || '').replace(' id="inAppWindowButtons"', '');
     const root = document.createElement('div');
     root.id = 'nativePlayer';
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-label', 'Lecteur natif');
     root.innerHTML = `
-      <div class="inapp-hud-top native-top">
+      <div class="inapp-hud-top native-top pywebview-drag-region">
         <div class="kp-top-left no-drag">
           <button type="button" class="inapp-btn kp-pill kp-back" id="nativeBack">← Retour</button>
         </div>
@@ -102,6 +104,7 @@
             </div>
           </div>
         </div>
+        ${WINDOW_BUTTONS}
       </div>
       <div class="native-center" id="nativeStatus" aria-live="polite">Chargement…</div>
       <div class="inapp-floating-card" id="nativeSkipCard">
