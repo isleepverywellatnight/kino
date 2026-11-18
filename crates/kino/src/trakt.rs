@@ -34,8 +34,7 @@ impl Trakt<'_> {
     }
 
     pub fn access_token(&self) -> Option<String> {
-        self.db
-            .get_config("trakt_tokens")
+        stored_tokens(self.db)
             .and_then(|t| t["access_token"].as_str().map(str::to_string))
             .filter(|t| !t.is_empty())
     }
@@ -135,6 +134,7 @@ impl Trakt<'_> {
             Err(e) => return json!({"status": "error", "message": crate::net::describe(&e)}),
         };
         let _ = self.db.save_config("trakt_tokens", &tokens);
+        keep_in_keychain(Some(&tokens));
         let _ = self.db.delete_config("trakt_pending_device");
         let user = self
             .profile(tokens["access_token"].as_str().unwrap_or(""))
@@ -163,6 +163,7 @@ impl Trakt<'_> {
         for key in ["trakt_tokens", "trakt_user", "trakt_pending_device"] {
             let _ = self.db.delete_config(key);
         }
+        keep_in_keychain(None);
         json!({"status": "disconnected"})
     }
 
@@ -306,6 +307,20 @@ pub fn scrobble_body(media: &Value, progress: f64) -> Value {
         body["movie"] = movie;
     }
     body
+}
+
+/// Trakt's tokens: from the database, or the keychain when the database says so.
+pub fn stored_tokens(db: &crate::db::Db) -> Option<Value> {
+    crate::secrets::resolve_trakt(db.get_config("trakt_tokens"), crate::secrets::store())
+}
+
+/// Trakt's tokens (or their absence) copied to the keychain, when KINO uses one.
+fn keep_in_keychain(tokens: Option<&Value>) {
+    if let Some(store) = crate::secrets::store()
+        && let Err(e) = crate::secrets::keep_trakt(store, tokens)
+    {
+        crate::errorlog::LOG.record("trousseau", "Erreur", &format!("trakt: {e}"), &[]);
+    }
 }
 
 #[cfg(test)]

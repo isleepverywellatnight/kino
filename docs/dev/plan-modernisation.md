@@ -398,6 +398,19 @@ sur le fichier.
    aux clés (il faudra les ressaisir). C'est la seule étape sans retour
    automatique du plan.
 
+Fait en P7 (18/11/2026) : dépendance `keyring` 3.6.3, seulement pour Windows
+et Linux (sans fonctionnalité de plateforme, la crate retomberait sur un faux
+magasin en mémoire). Les entrées s'appellent `debrid:<service>@<empreinte>`,
+`tmdb_key@…`, `trakt_tokens@…`, où l'empreinte vient du chemin du fichier de
+réglages : un KINO lancé avec un autre dossier personnel (tests, autre compte)
+ne lit ni n'efface les clés du vrai. Seuls les exécutables de KINO activent le
+trousseau ; les tests restent sur le fichier.
+
+**À traiter avant P10** : la synchro Drive (`gdrive.rs`) exporte toutes les
+lignes `app_config`, donc `trakt_tokens` en clair dans `kino_sync.json` du
+dossier Drive. Il faut les exclure de l'export (la connexion Trakt ne suivra
+plus d'un ordinateur à l'autre) : décision de l'utilisateur.
+
 Sous macOS, les mises à jour remplacent le bundle : l'accès au trousseau est
 lié à la signature. Une signature ad hoc qui change à chaque build ferait
 redemander l'accès à chaque mise à jour. **La phase 4 dépend donc de la
@@ -569,7 +582,7 @@ Ordre choisi pour que chaque phase rende la suivante plus sûre, et que les
 | **P4** Journal & SQLite | tri des `let _`, `eprintln!` → `errorlog`, correction des accès lents signalés par P0 | P0 + quelques jours d'usage réel | plus d'entrée « Base lente » en usage normal ; aucune erreur ignorée sans commentaire |
 | **P5** Lecteur Windows (en cours) | `mpv.rs` commun (client libmpv + contrôleur), `mac_mpv.rs` = rendu OpenGL seul, `win_mpv.rs` (`wid` dans la fenêtre KINO, WebView2 transparente) ; `libmpv-2.dll` livrée ; `mpv.exe` reste en lecteur externe | — | Windows UI : lecture native, vidéo visible sous la page, vrai clic sur Pause, fermeture ; essai par l'utilisateur ; `win_dock.rs` et `mpv.exe` retirés à la version suivante |
 | ~~P6~~ Signature | **Reportée** (pas de comptes payants pour l'instant). Developer ID + notarisation, Trusted Signing | comptes de l'utilisateur | `spctl --assess` accepte l'app ; installeur Windows sans avertissement SmartScreen « éditeur inconnu » |
-| **P7** Secrets, expand | `secrets.rs`, double écriture, migration idempotente, Diagnostic. **Windows (Credential Manager) et Linux (Secret Service) seulement** ; macOS garde le fichier chmod 600 tant que P6 n'est pas faite | — | clés lues depuis le trousseau sous Windows et Linux ; macOS inchangé ; retour à N-1 fonctionne ; tests sur magasin en mémoire |
+| **P7** Secrets, expand ✅ | `secrets.rs` : clés des débrideurs, clé TMDB et jetons Trakt copiés dans le trousseau (Windows : Gestionnaire d'identification ; Linux : Secret Service), écrits aux deux endroits, lus depuis le fichier ; le format `@keychain` (P10) est déjà compris à la lecture ; copie au démarrage, idempotente ; Diagnostic « keys » ; macOS inchangé | — | tests sur magasin en mémoire ; aller-retour réel sur le Gestionnaire d'identification ; entrées rattachées au fichier de réglages (une autre instance de KINO ne voit ni n'efface les clés) |
 | **P8** Distribution | Linux AppImage puis Flatpak ; Windows ARM64 | P5 | artefacts publiés par la CI, `--self-check` OK sur chaque cible |
 | **P9** Télécommande & sync | manifeste + tactile ; `sync.rs`, dossier, WebDAV | P7 (identifiants WebDAV) | ajout à l'écran d'accueil iOS/Android ; sync aller-retour entre deux machines via WebDAV et via dossier |
 | **P10** Secrets, contract | fichier sans clés (Windows, Linux ; macOS après P6) | P7 publié depuis une version ; **gardée par l'utilisateur, confirmation avant publication** | plus aucune clé en clair sur ces OS ; procédure de ressaisie documentée |
