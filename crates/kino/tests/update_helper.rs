@@ -4,8 +4,6 @@
 //! rollback brings the old one back. The stand-ins are shell scripts: nothing
 //! with a window starts. And the job KINO writes has the fields the helper reads.
 
-use std::path::{Path, PathBuf};
-
 const HELPER_SOURCE: &str =
     include_str!("../../../packaging/update-helper/kino_update_helper.swift");
 const UPDATE_SOURCE: &str = include_str!("../src/update.rs");
@@ -35,8 +33,8 @@ fn the_job_has_the_fields_the_helper_reads() {
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use super::*;
     use std::os::unix::fs::PermissionsExt;
+    use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::time::{Duration, Instant};
 
