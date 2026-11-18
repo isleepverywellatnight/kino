@@ -34,6 +34,9 @@ pub fn run(state: Shared) {
     tokio::spawn(async move { revive_finished_series(&s).await });
     let s = state.clone();
     tokio::spawn(async move {
+        // The pool read and measured ahead: the first « Pour vous » is quick.
+        let warm = s.clone();
+        let _ = tokio::task::spawn_blocking(move || warm.suggestions.warm(&warm.db)).await;
         s.suggestions
             .refresh_pool(&s.db, &s.net, crate::meta::CINEMETA, false)
             .await;
