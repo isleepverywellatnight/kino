@@ -75,7 +75,7 @@ pub fn index_media(db: &Db, items: &[Value]) {
 
 /// The kind (movie or series) the catalogue knows for a title.
 pub fn media_type(db: &Db, imdb_id: &str) -> Option<String> {
-    db.with(|c| {
+    db.read(|c| {
         c.query_row(
             "SELECT media_type FROM media_catalog WHERE imdb_id = ? LIMIT 1",
             [imdb_id],
@@ -115,7 +115,7 @@ pub fn similar(db: &Db, imdb_id: &str, kind: &str, genres: &[String], limit: usi
          WHERE {} ORDER BY CAST(rating AS FLOAT) DESC LIMIT ?",
         clauses.join(" AND ")
     );
-    db.with(|c| {
+    db.read(|c| {
         let mut statement = c.prepare(&sql)?;
         let rows = statement.query_map(params_from_iter(values.iter()), row_json)?;
         rows.collect()
@@ -227,7 +227,7 @@ pub fn search_fast(db: &Db, query_text: &str, kind: Option<&str>, limit: usize) 
     let wanted = limit;
     let limit = (limit * 3).max(24) as i64;
     let kind = kind.filter(|k| *k == "movie" || *k == "series");
-    db.with(|c| {
+    db.read(|c| {
         let base = "SELECT c.imdb_id as id, c.title as name, c.media_type as type, c.year, c.poster, c.rating as imdbRating, c.overview \
                     FROM media_catalog c JOIN media_fts s ON c.id = s.rowid WHERE media_fts MATCH ?";
         let mut rows = match kind {
@@ -293,7 +293,7 @@ pub fn media_genres(db: &Db, ids: &[String]) -> Map<String, Value> {
         "SELECT imdb_id, genres FROM media_catalog WHERE imdb_id IN ({})",
         vec!["?"; unique.len()].join(",")
     );
-    db.with(|c| {
+    db.read(|c| {
         let mut statement = c.prepare(&sql)?;
         let rows = statement.query_map(params_from_iter(unique.iter()), |r| {
             Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?))

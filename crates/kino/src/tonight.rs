@@ -157,7 +157,7 @@ fn genres_of(item: &Value) -> Vec<String> {
 
 /// The decisions and the times each title was shown, by id.
 pub fn feedback_state(db: &Db) -> IndexedFeedback {
-    db.with(|c| {
+    db.read(|c| {
         let mut s = c.prepare(
             "SELECT media_id, name, media_type, genres_json, decision, until_ts, shown_count, last_shown, last_action_id, undo_json, updated_at FROM tonight_feedback",
         )?;
