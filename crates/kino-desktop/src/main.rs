@@ -173,17 +173,16 @@ fn bounds_of(window: &Window) -> Option<(i32, i32, u32, u32)> {
     ))
 }
 
-/// Remembered between launches, as the Python window does (`window_bounds`).
+/// Where the window was at the last launch (`window_bounds`), else its default size.
 fn saved_bounds() -> (f64, f64, Option<(f64, f64)>) {
-    let cfg = kino::config::load();
-    let b = &cfg.get("window_bounds").cloned().unwrap_or(Value::Null);
-    let n = |k: &str, d: f64| b[k].as_f64().unwrap_or(d);
-    let at = (b["x"].is_number() && b["y"].is_number()).then(|| (n("x", 0.0), n("y", 0.0)));
-    (
-        n("width", 1280.0).max(640.0),
-        n("height", 820.0).max(420.0),
-        at,
-    )
+    match kino::config::load().window_bounds {
+        Some(b) => (
+            (b.width as f64).max(640.0),
+            (b.height as f64).max(420.0),
+            Some((b.x as f64, b.y as f64)),
+        ),
+        None => (1280.0, 820.0, None),
+    }
 }
 
 /// Maximized: by KINO on Windows (within the work area), by the system elsewhere.

@@ -141,7 +141,7 @@ async fn debrid_status(State(s): State<Shared>, JsonBody(body): JsonBody) -> Res
 
 fn account<'a>(
     s: &'a Shared,
-    cfg: &serde_json::Map<String, Value>,
+    cfg: &crate::config::AppConfig,
     provider: Option<&str>,
 ) -> crate::cloud::Account<'a> {
     let (active, token) = search::provider_and_token(cfg);
@@ -170,7 +170,7 @@ async fn rd_history(State(s): State<Shared>) -> Response {
         .await
         .unwrap_or_default();
     let cloud = account(&s, &cfg, None);
-    let retention = cfg.get("rd_retention_days").and_then(days).unwrap_or(0);
+    let retention = cfg.rd_retention_days;
     let cleaned = if !cloud.token.is_empty() && retention > 0 {
         crate::cloud::auto_cleanup(&cloud, retention).await
     } else {
@@ -214,7 +214,7 @@ async fn rd_cleanup(State(s): State<Shared>, JsonBody(body): JsonBody) -> Respon
         .await
         .unwrap_or_default();
     let max_age = days(&body["max_age_days"])
-        .or_else(|| cfg.get("rd_retention_days").and_then(days))
+        .or(Some(cfg.rd_retention_days))
         .unwrap_or(0);
     let cleaned = account(&s, &cfg, None).cleanup(max_age).await;
     Json(json!({"ok": true, "cleaned": cleaned})).into_response()

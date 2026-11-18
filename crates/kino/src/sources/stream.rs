@@ -9,6 +9,7 @@ use serde_json::{Map, Value, json};
 use super::release::{INSTANT_BADGES, details};
 use super::relevance::{is_valid_release_for_show, plausible_size, release_years};
 use super::score::{self, Profile};
+use crate::config::{HdrMode, PrefLang, Quality, SourcePriority};
 
 pub const MERGE_ORDER: [&str; 9] = [
     "fr",
@@ -295,8 +296,8 @@ pub struct Wanted<'a> {
     pub runtime_minutes: Option<f64>,
     pub titles: &'a [String],
     pub release_year: &'a str,
-    pub pref_lang: &'a str,
-    pub pref_quality: &'a str,
+    pub pref_lang: PrefLang,
+    pub pref_quality: Quality,
 }
 
 /// Drops fakes, CAMs, other shows and other episodes; explains each release kept.
@@ -343,25 +344,21 @@ pub fn rank(
     mut items: Vec<Value>,
     sort_by: &str,
     w: &Wanted,
-    hdr_mode: &str,
-    source_priority: &str,
+    hdr_mode: HdrMode,
+    source_priority: SourcePriority,
 ) -> Vec<Value> {
     let mut title_years: Vec<i64> = w.titles.iter().flat_map(|n| release_years(n)).collect();
     title_years.sort_unstable();
     title_years.dedup();
     let profile = Profile {
-        pref_lang: w.pref_lang.into(),
-        pref_quality: w.pref_quality.into(),
-        hdr_mode: hdr_mode.into(),
+        pref_lang: w.pref_lang,
+        pref_quality: w.pref_quality,
+        hdr_mode,
         media_type: w.media_type.into(),
         runtime_minutes: w.runtime_minutes,
         target_year: w.release_year.into(),
         title_years,
-        priority: if source_priority == "quality" {
-            "quality".into()
-        } else {
-            "speed".into()
-        },
+        priority: source_priority,
     };
     for t in items.iter_mut() {
         let d = score::release_details(t);

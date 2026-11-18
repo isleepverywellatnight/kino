@@ -507,7 +507,7 @@ pub async fn resolve_episode(
     links: &EpisodeLinks,
     ep: &Episode,
     pref_hash: &str,
-    cfg: &Map<String, Value>,
+    cfg: &crate::config::AppConfig,
     update_history: bool,
 ) -> Result<String, NetError> {
     let (provider, token) = crate::sources::search::provider_and_token(cfg);
@@ -560,7 +560,7 @@ pub async fn resolve_episode(
             score(b).total_cmp(&score(a)).then(same(b).cmp(&same(a)))
         });
     }
-    if cfg.get("source_priority").and_then(Value::as_str) == Some("quality") {
+    if cfg.quality_first() {
         torrents.sort_by_key(|s| s["is_instant"].as_bool() != Some(true));
     }
     let resolver = Resolver {
@@ -611,7 +611,7 @@ pub fn prefetch_next(
     links: Arc<EpisodeLinks>,
     ep: Episode,
     pref_hash: String,
-    cfg: Map<String, Value>,
+    cfg: crate::config::AppConfig,
 ) {
     if ep.imdb_id.is_empty() || ep.season == 0 || ep.episode <= 0 {
         return;

@@ -168,7 +168,7 @@ async fn related(State(s): State<Shared>, Query(p): Query<HashMap<String, String
     let cfg = tokio::task::spawn_blocking(crate::config::load)
         .await
         .unwrap_or_default();
-    let key = cfg.get("tmdb_key").map(text).unwrap_or_default();
+    let key = cfg.tmdb_key().to_string();
     if !key.is_empty()
         && let Ok(items) = tmdb_related(&s.meta, &imdb_id, kind, &key).await
         && items.len() >= 4

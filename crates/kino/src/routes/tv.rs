@@ -61,8 +61,8 @@ async fn devices(State(s): State<Shared>, Query(p): Query<HashMap<String, String
     let chosen = tokio::task::spawn_blocking(crate::config::load)
         .await
         .ok()
-        .and_then(|c| c.get("tv_device").cloned())
-        .filter(|d| d.is_object())
+        .and_then(|c| c.tv_device)
+        .and_then(|d| serde_json::to_value(d).ok())
         .unwrap_or(json!({}));
     Json(json!({"devices": found, "chosen": chosen})).into_response()
 }

@@ -12,8 +12,9 @@ use serde_json::{Map, Value, json};
 use super::release::details;
 use super::relevance::plausible_size;
 use super::stream::{self, Wanted, py_quote, py_round};
+use crate::config::{self, AppConfig, HdrMode, PrefLang, Quality, SourcePriority};
+use crate::debrid;
 use crate::meta::Meta;
-use crate::{config, debrid};
 
 static YEAR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b(19\d\d|20\d\d)\b").unwrap());
 static FIRST_NUMBER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+)").unwrap());
@@ -32,10 +33,10 @@ pub struct Query {
     pub release_year: String,
     pub runtime_minutes: Option<i64>,
     pub sort_by: String,
-    pub pref_lang: String,
-    pub pref_quality: String,
-    pub hdr_mode: String,
-    pub source_priority: String,
+    pub pref_lang: PrefLang,
+    pub pref_quality: Quality,
+    pub hdr_mode: HdrMode,
+    pub source_priority: SourcePriority,
 }
 
 fn int_param(params: &HashMap<String, String>, key: &str) -> i64 {
@@ -47,7 +48,7 @@ fn int_param(params: &HashMap<String, String>, key: &str) -> i64 {
 }
 
 impl Query {
-    pub fn from_params(params: &HashMap<String, String>, cfg: &Map<String, Value>) -> Self {
+    pub fn from_params(params: &HashMap<String, String>, cfg: &AppConfig) -> Self {
         let pick = |a: &str, b: &str| {
             params
                 .get(a)
@@ -86,8 +87,6 @@ impl Query {
             .filter(|r| !r.is_empty())
             .and_then(|r| FIRST_NUMBER.captures(r))
             .and_then(|c| c[1].parse().ok());
-        let setting =
-            |k: &str, d: &str| cfg.get(k).and_then(Value::as_str).unwrap_or(d).to_string();
         Self {
             imdb_id,
             media_type: kind,
@@ -100,16 +99,10 @@ impl Query {
                 .get("sort_by")
                 .cloned()
                 .unwrap_or_else(|| "score".into()),
-            pref_lang: setting("pref_lang", "vf"),
-            pref_quality: setting("pref_quality", "4k"),
-            hdr_mode: setting("hdr_mode", "sdr_pref"),
-            source_priority: if cfg.get("source_priority").and_then(Value::as_str)
-                == Some("quality")
-            {
-                "quality".into()
-            } else {
-                "speed".into()
-            },
+            pref_lang: cfg.pref_lang,
+            pref_quality: cfg.pref_quality,
+            hdr_mode: cfg.hdr_mode,
+            source_priority: cfg.priority(),
         }
     }
 
@@ -544,38 +537,30 @@ impl Search<'_> {
             runtime_minutes: query.runtime_minutes.map(|r| r as f64),
             titles: &titles,
             release_year: &query.release_year,
-            pref_lang: &query.pref_lang,
-            pref_quality: &query.pref_quality,
+            pref_lang: query.pref_lang,
+            pref_quality: query.pref_quality,
         };
         let kept = stream::keep_relevant(stream::merge(&buckets), &wanted);
         stream::rank(
             kept,
             &query.sort_by,
             &wanted,
-            &query.hdr_mode,
-            &query.source_priority,
+            query.hdr_mode,
+            query.source_priority,
         )
     }
 }
 
 /// The settings a search needs: provider and key.
-pub fn provider_and_token(cfg: &Map<String, Value>) -> (String, String) {
-    let provider = cfg
-        .get("debrid_provider")
-        .and_then(Value::as_str)
-        .filter(|p| debrid::is_provider(p))
-        .unwrap_or("realdebrid")
-        .to_string();
-    let token = cfg
-        .get("rd_token")
-        .and_then(Value::as_str)
-        .unwrap_or("")
-        .trim()
-        .to_string();
-    (provider, token)
+/// The active provider's name and key (trimmed).
+pub fn provider_and_token(cfg: &AppConfig) -> (String, String) {
+    (
+        cfg.debrid_provider.as_str().to_string(),
+        cfg.rd_token.trim().to_string(),
+    )
 }
 
-pub fn load_settings() -> Map<String, Value> {
+pub fn load_settings() -> AppConfig {
     config::load()
 }
 
@@ -603,7 +588,7 @@ mod tests {
         .into_iter()
         .map(|(k, v)| (k.to_string(), v.to_string()))
         .collect();
-        let q = Query::from_params(&params, &Map::new());
+        let q = Query::from_params(&params, &AppConfig::default());
         assert_eq!(
             (
                 q.media_type.as_str(),
