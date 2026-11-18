@@ -234,7 +234,7 @@
     </div>
 
     <div class="progress-section">
-      <input type="range" class="seek-slider" id="seekSlider" min="0" max="100" value="0" oninput="onSeekInput(this.value)" onchange="onSeekChange(this.value)">
+      <input type="range" class="seek-slider" id="seekSlider" min="0" max="100" value="0" data-on-input="onSeekInput" data-input-args='[{"$":"value"}]' data-on-change="onSeekChange" data-change-args='[{"$":"value"}]'>
       <div class="time-labels">
         <span id="currentTime">0:00</span>
         <span id="duration">0:00</span>
@@ -242,36 +242,36 @@
     </div>
 
     <div class="controls-main">
-      <button class="btn-circle btn-skip" onclick="sendCommand('seek_rel', -10)" title="Reculer 10s">
+      <button class="btn-circle btn-skip" data-on-click="sendCommand" data-click-args='["seek_rel",-10]' title="Reculer 10s">
         <svg viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>
       </button>
 
-      <button class="btn-circle btn-play" id="playBtn" onclick="togglePlay()" title="Lecture / Pause">
+      <button class="btn-circle btn-play" id="playBtn" data-on-click="togglePlay" title="Lecture / Pause">
         <svg id="playIcon" viewBox="0 0 24 24"><polygon points="6,4 20,12 6,20"/></svg>
       </button>
 
-      <button class="btn-circle btn-skip" onclick="sendCommand('seek_rel', 10)" title="Avancer 10s">
+      <button class="btn-circle btn-skip" data-on-click="sendCommand" data-click-args='["seek_rel",10]' title="Avancer 10s">
         <svg viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
       </button>
     </div>
 
     <div class="controls-secondary">
-      <button class="btn-sec" onclick="sendCommand('prev')" title="Épisode précédent">
+      <button class="btn-sec" data-on-click="sendCommand" data-click-args='["prev"]' title="Épisode précédent">
         <svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
         <span>Précédent</span>
       </button>
 
-      <button class="btn-sec" onclick="sendCommand('next')" title="Épisode suivant">
+      <button class="btn-sec" data-on-click="sendCommand" data-click-args='["next"]' title="Épisode suivant">
         <svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
         <span>Suivant</span>
       </button>
 
-      <button class="btn-sec" onclick="sendCommand('cycle_subs')" title="Changer les sous-titres">
+      <button class="btn-sec" data-on-click="sendCommand" data-click-args='["cycle_subs"]' title="Changer les sous-titres">
         <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <span>Sous-titres</span>
       </button>
 
-      <button class="btn-sec" onclick="sendCommand('fullscreen')" title="Plein écran">
+      <button class="btn-sec" data-on-click="sendCommand" data-click-args='["fullscreen"]' title="Plein écran">
         <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         <span>Plein écran</span>
       </button>
@@ -279,126 +279,15 @@
   </div>
 
   <div class="volume-box">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" onclick="toggleMute()" style="cursor:pointer;">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-on-click="toggleMute" style="cursor:pointer;">
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
       <path id="volWave1" d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
       <path id="volWave2" d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
     </svg>
-    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="1" oninput="onVolumeInput(this.value)">
+    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="1" data-on-input="onVolumeInput" data-input-args='[{"$":"value"}]'>
   </div>
 
-  <script>
-    const remoteToken = new URLSearchParams(location.search).get('token') || '';
-    let isUserSeeking = false;
-    let lastState = null;
-
-    function vibrate() {
-      if (navigator.vibrate) {
-        navigator.vibrate(15);
-      }
-    }
-
-    function formatTime(seconds) {
-      if (!seconds || isNaN(seconds)) return "0:00";
-      const s = Math.floor(seconds);
-      const m = Math.floor(s / 60);
-      const remS = s % 60;
-      if (m >= 60) {
-        const h = Math.floor(m / 60);
-        const remM = m % 60;
-        return `${h}:${remM < 10 ? '0' : ''}${remM}:${remS < 10 ? '0' : ''}${remS}`;
-      }
-      return `${m}:${remS < 10 ? '0' : ''}${remS}`;
-    }
-
-    async function sendCommand(action, value = null) {
-      vibrate();
-      try {
-        await fetch('/api/remote/control?token=' + encodeURIComponent(remoteToken), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action, value })
-        });
-      } catch (e) {
-        console.error("Erreur commande:", e);
-      }
-    }
-
-    function togglePlay() {
-      const isPaused = lastState ? lastState.paused : false;
-      sendCommand(isPaused ? 'play' : 'pause');
-    }
-
-    function onSeekInput(val) {
-      isUserSeeking = true;
-      if (lastState && lastState.duration > 0) {
-        const targetSec = (val / 100) * lastState.duration;
-        document.getElementById('currentTime').textContent = formatTime(targetSec);
-      }
-    }
-
-    function onSeekChange(val) {
-      if (lastState && lastState.duration > 0) {
-        const targetSec = (val / 100) * lastState.duration;
-        sendCommand('seek', targetSec);
-      }
-      setTimeout(() => { isUserSeeking = false; }, 400);
-    }
-
-    function onVolumeInput(val) {
-      sendCommand('volume', parseFloat(val));
-    }
-
-    function toggleMute() {
-      if (lastState) {
-        const currentVol = lastState.volume || 1;
-        sendCommand('volume', currentVol > 0 ? 0 : 1);
-      }
-    }
-
-    async function pollState() {
-      try {
-        const res = await fetch('/api/remote/state?token=' + encodeURIComponent(remoteToken));
-        if (!res.ok) throw new Error("Erreur réseau");
-        const state = await res.json();
-        lastState = state;
-        document.getElementById('statusDot').style.background = '#22c55e';
-        document.getElementById('statusDot').style.boxShadow = '0 0 10px #22c55e';
-
-        document.getElementById('trackTitle').textContent = state.title || "KINO Desktop";
-        document.getElementById('trackSub').textContent = !state.playing
-          ? "Lancez une lecture dans KINO"
-          : (state.sub_title || (state.paused ? "En pause" : "En cours de lecture"));
-
-        // Bouton Play / Pause
-        const playIcon = document.getElementById('playIcon');
-        if (state.paused) {
-          playIcon.innerHTML = '<polygon points="6,4 20,12 6,20"/>';
-        } else {
-          playIcon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
-        }
-
-        // Barre de temps
-        if (!isUserSeeking && state.duration > 0) {
-          const pct = (state.current_time / state.duration) * 100;
-          document.getElementById('seekSlider').value = pct;
-          document.getElementById('currentTime').textContent = formatTime(state.current_time);
-          document.getElementById('duration').textContent = formatTime(state.duration);
-        }
-
-        // Volume
-        if (document.activeElement !== document.getElementById('volumeSlider')) {
-          document.getElementById('volumeSlider').value = state.volume != null ? state.volume : 1;
-        }
-
-      } catch (e) {
-        document.getElementById('statusDot').style.background = '#ef4444';
-        document.getElementById('statusDot').style.boxShadow = '0 0 8px #ef4444';
-      }
-    }
-
-    setInterval(pollState, 1000);
-    pollState();
-  </script>
+  <script src="/js/actions.js"></script>
+  <script src="/js/remote.js"></script>
 </body>
 </html>
