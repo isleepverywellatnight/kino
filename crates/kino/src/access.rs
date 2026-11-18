@@ -7,6 +7,8 @@ use axum::http::HeaderMap;
 
 const LOCAL_NAMES: [&str; 3] = ["127.0.0.1", "localhost", "::1"];
 const REMOTE_PATHS: [&str; 3] = ["/remote", "/api/remote/state", "/api/remote/control"];
+/// The phone remote's own code: public files, asked without the pairing token.
+const REMOTE_SCRIPTS: [&str; 2] = ["/js/actions.js", "/js/remote.js"];
 
 fn host_name(value: &str) -> &str {
     let value = value.trim();
@@ -86,7 +88,8 @@ pub fn request_allowed(
         }
         return true;
     }
-    REMOTE_PATHS.contains(&path) && same_secret(token.unwrap_or(""), pairing_token)
+    REMOTE_SCRIPTS.contains(&path)
+        || (REMOTE_PATHS.contains(&path) && same_secret(token.unwrap_or(""), pairing_token))
 }
 
 #[cfg(test)]
@@ -192,6 +195,24 @@ mod tests {
             8080,
             "secret"
         ));
+        // The remote's own code, and nothing else, without the token.
+        for script in ["/js/actions.js", "/js/remote.js"] {
+            assert!(
+                request_allowed(phone, script, &h, None, 8080, "secret"),
+                "{script}"
+            );
+        }
+        for other in [
+            "/js/app-core.js",
+            "/",
+            "/js/remote.js/../app-core.js",
+            "/api/remote/state",
+        ] {
+            assert!(
+                !request_allowed(phone, other, &h, None, 8080, "secret"),
+                "{other}"
+            );
+        }
         assert!(!request_allowed(
             phone,
             "/api/config",

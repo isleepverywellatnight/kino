@@ -36,7 +36,14 @@ async fn page(State(s): State<Shared>) -> Response {
         return needs_app();
     }
     match tokio::fs::read_to_string(s.web_root.join("remote.html")).await {
-        Ok(html) => ([(header::CONTENT_TYPE, "text/html; charset=utf-8")], html).into_response(),
+        Ok(html) => (
+            [
+                (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+                (header::CONTENT_SECURITY_POLICY, crate::server::PAGE_POLICY),
+            ],
+            html,
+        )
+            .into_response(),
         Err(_) => (
             axum::http::StatusCode::NOT_FOUND,
             Json(json!({"error": "Route introuvable"})),
