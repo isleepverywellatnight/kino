@@ -3,7 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 
@@ -51,8 +53,8 @@ test('initials and the large backdrop', () => {
 test('the hero uses the logo, the cast row and the inline trailer', () => {
   const start = source.indexOf('function buildDetailHtml(');
   const builder = source.slice(start, source.indexOf('\nfunction ', start + 10));
-  assert.match(builder, /class="detail-hero-logo"[^>]*onload="this\.closest\('\.detail-hero'\)\?\.classList\.add\('has-logo'\)" onerror="this\.remove\(\)"/);
-  assert.match(builder, /onclick='playDetailTrailer\(/);
+  assert.match(withCalls(builder), /class="detail-hero-logo"[^>]*\$\{actOn\('load', 'kinoHeroLogo', THIS\)\} \$\{actOn\('error', 'kinoRemove', THIS\)\}/);
+  assert.match(builder, /\$\{act\('playDetailTrailer', trailerId,/);
   assert.match(builder, /class="detail-person" data-person="\$\{escapeHtml\(person\.name\)\}"/);
   assert.doesNotMatch(builder, /openTrailerModal\(/, 'the fiche no longer opens the separate window');
   assert.match(source, /loadDetailPeoplePhotos\(media\.id\);/);

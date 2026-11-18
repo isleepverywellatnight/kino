@@ -6,7 +6,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const { loadPage, settle } = require('../tools/page_harness.js');
 
 const source = require('../tools/interface_source.js').appSource();
@@ -24,7 +26,7 @@ test('four groups, Lecture first; the blocks keep the ids the Diagnostic opens',
   for (const id of ['settings-sync', 'settings-discord']) assert.ok(at('settings-connections') < at(id) && at(id) < at('settings-app'), id);
   for (const id of ['settings-storage', 'settings-updates', 'settings-diagnostic', 'settings-shortcuts']) assert.ok(at('settings-app') < at(id), id);
   // no numbered kickers, nothing to save by hand.
-  assert.doesNotMatch(html, /settings-card-kicker|settings-save-bar|settingsSaveBtn|onclick="saveConfig\(\)"/);
+  assert.doesNotMatch(withCalls(html), /settings-card-kicker|settings-save-bar|settingsSaveBtn|onclick="saveConfig\(\)"/);
   assert.match(html, /<p class="settings-header-desc">Chaque changement s’applique tout de suite\.<\/p>/);
   assert.match(html, /<span id="settingsSaveStatus" class="settings-save-status" role="status" aria-live="polite"><\/span>/);
 });
@@ -63,7 +65,7 @@ test('the saved values are unchanged', () => {
 });
 
 test('without a Debrid key, the page says so and leads to the key field', () => {
-  assert.match(settings, /<div id="settingsSetupNotice" class="settings-setup" role="status" hidden>[\s\S]*Ajoutez votre clé Debrid[\s\S]*onclick="focusDebridKey\(\)">Ajouter ma clé<\/button>/);
+  assert.match(withCalls(settings), /<div id="settingsSetupNotice" class="settings-setup" role="status" hidden>[\s\S]*Ajoutez votre clé Debrid[\s\S]*onclick="focusDebridKey\(\)">Ajouter ma clé<\/button>/);
   assert.match(source, /const setupNotice = document\.getElementById\('settingsSetupNotice'\);\n\s+if \(setupNotice\) setupNotice\.hidden = Boolean\(cfg\.has_token\);/);
   const code = source.slice(source.indexOf('// From the setup notice: straight to the key field.'), source.indexOf('function closeConfig() {'));
   const calls = [];
@@ -91,7 +93,7 @@ test('each setting saves as soon as it changes; the key waits for « Vérifier �
   assert.ok(!ids.includes('cfgToken'), 'the key is only saved by « Vérifier »');
   assert.match(source, /if \(el\) el\.addEventListener\('change', scheduleSettingsSave\);/);
   assert.match(source, /initSettingsSectionNavigation\(\);\ninitSettingsAutosave\(\);/);
-  assert.match(html, /<button type="button" class="btn" id="cfgTokenVerifyBtn" onclick="verifyDebridKey\(this\)">Vérifier<\/button>/);
+  assert.match(withCalls(html), /<button type="button" class="btn" id="cfgTokenVerifyBtn" onclick="verifyDebridKey\(this\)">Vérifier<\/button>/);
 });
 
 test('a change is saved without the key; « Vérifier » sends the key with its service', async () => {

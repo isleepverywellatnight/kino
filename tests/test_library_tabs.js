@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const read = name => fs.readFileSync(path.join(path.join(__dirname, '..'), name), 'utf8');
 const source = require('../tools/interface_source.js').appSource();
@@ -73,7 +75,7 @@ test('the same names everywhere: tabs, « Retour », the ⌘K panel', () => {
 test('the tab is the title: a summary line and the tools, without inline looks', () => {
   assert.match(html, /<span id="listStatsBadge" class="lib-summary" style="display:none;"><\/span>/);
   assert.match(html, /<div id="watchlistActionsWrap" class="lib-tools" style="display:none;">/);
-  assert.match(html, /<input type="search" id="listFilterInput"[^>]*oninput="renderActiveListTab\(\)">/);
+  assert.match(withCalls(html), /<input type="search" id="listFilterInput"[^>]*oninput="renderActiveListTab\(\)">/);
   assert.doesNotMatch(html.slice(html.indexOf('id="watchlistActionsWrap"'), html.indexOf('id="listFilters"')), /font-size|#ff8000|#00e054|#40bcf4/,
     'no inline sizes, no Letterboxd colours: colour comes from the posters only');
   assert.match(html, /<h2 class="explore-title">Statistiques<\/h2>\n\s+<p class="lib-summary">/);

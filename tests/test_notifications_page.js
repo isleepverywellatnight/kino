@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -51,7 +53,7 @@ test('a click on a notification opens the series', async () => {
 });
 
 test('the setting: shown only where notifications exist, saved', () => {
-  assert.match(html, /<div class="set-row" id="cfgEpisodeNotificationsField" style="display:none;">[\s\S]*?Notifications des nouveaux épisodes[\s\S]*?onclick="testEpisodeNotification\(this\)">Envoyer un essai<\/button>[\s\S]*?<input type="checkbox" id="cfgEpisodeNotifications" role="switch" checked>/);
+  assert.match(withCalls(html), /<div class="set-row" id="cfgEpisodeNotificationsField" style="display:none;">[\s\S]*?Notifications des nouveaux épisodes[\s\S]*?onclick="testEpisodeNotification\(this\)">Envoyer un essai<\/button>[\s\S]*?<input type="checkbox" id="cfgEpisodeNotifications" role="switch" checked>/);
   assert.match(source, /notifyField\.style\.display = cfg\.notifications_available === true \? 'flex' : 'none';/);
   assert.match(source, /episode_notifications: checked\('cfgEpisodeNotifications', true\),/);
 });

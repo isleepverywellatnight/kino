@@ -2,7 +2,9 @@
 // rejected promises, each once a minute, at most 20 a minute.
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const code = source.slice(source.indexOf('// Errors of the page go to KINO\'s error log'), source.indexOf('async function api(path, opts) {'));

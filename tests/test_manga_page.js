@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const ROOT = path.join(__dirname, '..');
 const html = require('../tools/interface_source.js').indexHtml();
@@ -57,7 +59,7 @@ const ANSWERS = {
 };
 
 test('a new tab in the sidebar, its panel and its reader', () => {
-  assert.match(html, /id="tab-manga" onclick="switchTab\('manga'\)">[\s\S]*?icons\.svg#manga"[\s\S]*?icons\.svg#manga-fill"[\s\S]*?Manga<\/button>/);
+  assert.match(withCalls(html), /id="tab-manga" onclick="switchTab\('manga'\)">[\s\S]*?icons\.svg#manga"[\s\S]*?icons\.svg#manga-fill"[\s\S]*?Manga<\/button>/);
   assert.match(html, /<div id="mangaPanel" class="manga-panel" style="display:none;">/);
   assert.match(html, /<div id="mangaReader" class="manga-reader" role="dialog" aria-modal="true" aria-labelledby="mangaReaderTitle" hidden>/);
   assert.match(html, /<script src="\/js\/p2p-addons\.js"><\/script>\n\s+<script src="\/js\/manga\.js"><\/script>/);
@@ -69,8 +71,8 @@ test('the tab: rows of the catalogue, and an invitation for the user\'s own file
   assert.deepEqual(lib.calls.map(([url]) => url).filter(url => url.startsWith('/api/manga/row')),
     ['/api/manga/row?name=trending', '/api/manga/row?name=popular', '/api/manga/row?name=webtoon']);
   const home = lib.elements.mangaHome.innerHTML;
-  assert.match(home, /Tendances[\s\S]*class="manga-card" onclick="openMangaSeries\(&quot;anilist&quot;, &quot;118586&quot;\)"[\s\S]*Les plus populaires[\s\S]*Manhwa et webtoons/);
-  assert.match(home, /Sur ce Mac[\s\S]*onclick="chooseMangaFolder\(\)">Choisir un dossier[\s\S]*Choisissez le dossier qui contient vos mangas\./);
+  assert.match(withCalls(home), /Tendances[\s\S]*class="manga-card" onclick="openMangaSeries\(&quot;anilist&quot;, &quot;118586&quot;\)"[\s\S]*Les plus populaires[\s\S]*Manhwa et webtoons/);
+  assert.match(withCalls(home), /Sur ce Mac[\s\S]*onclick="chooseMangaFolder\(\)">Choisir un dossier[\s\S]*Choisissez le dossier qui contient vos mangas\./);
   assert.doesNotMatch(home, /Continuer la lecture/, 'nothing read yet');
   const hostile = lib.mangaCardHtml({ ...SERIES, title: '<img src=x onerror=alert(1)>' });
   assert.doesNotMatch(hostile, /<img src=x/);
@@ -80,7 +82,7 @@ test('a series: each chapter says where it comes from, an external one opens at 
   const lib = load(ANSWERS);
   await lib.openMangaSeries('anilist', '118586');
   const page = lib.elements.mangaSeries.innerHTML;
-  assert.match(page, /<h2>Frieren<\/h2>[\s\S]*3 chapitres · dernier : 3 \(2026-11-15\)[\s\S]*Une mage elfe\.[\s\S]*onclick="openMangaReader\(0, 0\)">Commencer la lecture[\s\S]*onclick="showMangaVolumes\(\)">Volumes HD/);
+  assert.match(withCalls(page), /<h2>Frieren<\/h2>[\s\S]*3 chapitres · dernier : 3 \(2026-11-15\)[\s\S]*Une mage elfe\.[\s\S]*onclick="openMangaReader\(0, 0\)">Commencer la lecture[\s\S]*onclick="showMangaVolumes\(\)">Volumes HD/);
   assert.match(page, /Vol\. 1 · Chapitre 1<\/strong><span>Départ · Blue Solo · 3 pages · MangaDex · FR/);
   assert.match(page, /Chapitre 3<\/strong><span>WeebCentral · EN · 2026-11-15/);
   assert.match(page, /href="https:\/\/mangaplus\.example\/2" target="_blank" rel="noopener noreferrer">Chez l’éditeur ↗/);
@@ -154,7 +156,7 @@ test('whole volumes: the torrents, the consent asked once, then the download unt
   assert.deepEqual(JSON.parse(JSON.stringify(lib.calls.find(([url]) => url === '/api/manga/volume')[1])), { hash: 'a'.repeat(40), index: 4, series: 'Frieren' });
   assert.match(lib.elements['q:[data-volume="4"]'].innerHTML, /25 %/);
   await lib.timers.at(-1)();
-  assert.match(lib.elements['q:[data-volume="4"]'].innerHTML, /onclick="openMangaSeries\('local', &quot;b{20}&quot;\)">Lire/);
+  assert.match(withCalls(lib.elements['q:[data-volume="4"]'].innerHTML), /onclick="openMangaSeries\('local', &quot;b{20}&quot;\)">Lire/);
 });
 
 test('a series opened before the catalogue moved comes back under its AniList number', async () => {

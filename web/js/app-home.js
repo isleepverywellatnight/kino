@@ -451,6 +451,12 @@ function initGenreStrip() {
   requestAnimationFrame(updateGenreArrows);
 }
 
+// A genre badge of a fiche: the catalogue on that genre, its chip selected.
+function selectGenreBadge(genre) {
+  const chip = [...document.querySelectorAll('#genreFilters .chip')].find(c => c.dataset.genre === genre) || null;
+  selectGenre(genre, chip);
+}
+
 function selectGenre(genre, el) {
   activeGenre = genre;
   const genreChips = [...document.querySelectorAll('#genreFilters .chip')];

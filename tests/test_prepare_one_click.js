@@ -3,7 +3,9 @@
 // torrent. The real interface scripts run on a stand-in page.
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const { loadPage, settle } = require('../tools/page_harness.js');
 
 const source = require('../tools/interface_source.js').appSource();
@@ -41,7 +43,7 @@ test('the preparation shows its progress and the two choices', async () => {
   assert.match(html, /Dune : Deuxième partie : Debrid télécharge la source recommandée, la lecture démarre dès qu’elle est prête\./);
   assert.match(html, /Statut : downloading • Vitesse : 8 MB\/s • Pairs : 40/);
   assert.match(html, /<div class="progress-fill" style="width:12%">/);
-  assert.match(html, /onclick="playReadyInstead\(\)">Lancer une source prête à la place<\/button>[\s\S]*onclick="stopWaitingPreparation\(\)">Arrêter d’attendre<\/button>/);
+  assert.match(withCalls(html), /onclick="playReadyInstead\(\)">Lancer une source prête à la place<\/button>[\s\S]*onclick="stopWaitingPreparation\(\)">Arrêter d’attendre<\/button>/);
   assert.doesNotMatch(html, /Film\.2160p/, 'no release name, which could name an episode');
 });
 

@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -59,14 +61,14 @@ test('imported lists first, then the selections, each a shelf', async () => {
   assert.ok(out.indexOf('Mon été') < out.indexOf('>Sélections<'));
   const [mine, top, empty] = out.split('<section').slice(1);
   assert.match(mine, /<div class="list-shelf-meta">3 titres · 2 vus<\/div>/);
-  assert.match(mine, /onclick="openImportedList\(&quot;u_list_l&#39;été&quot;\)">Tout voir<\/button>/, 'the id is passed as data');
+  assert.match(withCalls(mine), /onclick="openImportedList\(&quot;u_list_l&#39;été&quot;\)">Tout voir<\/button>/, 'the id is passed as data');
   assert.match(top, /class="list-shelf" aria-label="Top &lt;250&gt;"/);
   assert.match(top, /<div class="list-shelf-meta">20 titres · 2 vus · par Communauté Letterboxd<\/div>/);
   assert.match(top, /aria-valuenow="10"><span style="width:10%"><\/span>/);
   assert.match(top, /<p class="list-shelf-desc">Les « meilleurs » &amp; plus<\/p>/);
   assert.equal((top.match(/<card /g) || []).length, 12, 'twelve posters on the shelf');
-  assert.match(top, /onclick="openCommunityList\(&quot;top&quot;\)">Voir les 20 titres<\/button>/);
-  assert.match(top, /onclick="surpriseMeFromCommunityList\(&quot;top&quot;\)"/);
+  assert.match(withCalls(top), /onclick="openCommunityList\(&quot;top&quot;\)">Voir les 20 titres<\/button>/);
+  assert.match(withCalls(top), /onclick="surpriseMeFromCommunityList\(&quot;top&quot;\)"/);
   assert.match(empty, /Cette sélection est vide\./);
   assert.equal(page.elements.communityListsGrid.hidden, false);
   assert.equal(page.elements.communityActiveListSection.hidden, true);
@@ -85,7 +87,7 @@ test('a selection opens in full, with a state filter, and closes', async () => {
   assert.match(page.elements.communityActiveListFilters.innerHTML, />À voir <span class="list-count">18<\/span>/);
   page.setCommunityStateFilter('watched');
   assert.equal(page.elements.communityActiveListGrid.innerHTML, '<card tt1 movie><card tt2 movie>');
-  assert.match(page.elements.communityActiveListFilters.innerHTML, /class="chip active" aria-pressed="true" onclick="setCommunityStateFilter\('watched'\)"/);
+  assert.match(withCalls(page.elements.communityActiveListFilters.innerHTML), /class="chip active" aria-pressed="true" onclick="setCommunityStateFilter\('watched'\)"/);
   page.openCommunityList('empty');
   assert.match(page.elements.communityActiveListGrid.innerHTML, /Cette sélection est vide\./);
   assert.equal(page.elements.communityActiveListDesc.hidden, true);
@@ -134,11 +136,11 @@ test('an error is shown as text', async () => {
 
 test('the page: a form to import, shelves, one selection in full, monochrome', () => {
   const panel = html.slice(html.indexOf('<div id="communityPanel"'), html.indexOf('<!-- Panneau Planning Simulcast Anime -->'));
-  assert.match(panel, /<form class="explore-import" onsubmit="kinoSubmit\(event, 'importCustomLetterboxdFromInput'\)">/);
+  assert.match(withCalls(panel), /<form class="explore-import" onsubmit="kinoSubmit\(event, 'importCustomLetterboxdFromInput'\)">/);
   assert.match(panel, /<button type="submit" class="btn">Importer<\/button>/);
   assert.match(panel, /<div id="communityListsGrid" class="explore-shelves"><\/div>/);
   assert.match(panel, /<section id="communityActiveListSection" class="explore-open" hidden>/);
-  assert.match(panel, /onclick="closeCommunityActiveList\(\)" aria-label="Revenir à Explorer">← Explorer<\/button>/);
+  assert.match(withCalls(panel), /onclick="closeCommunityActiveList\(\)" aria-label="Revenir à Explorer">← Explorer<\/button>/);
   assert.match(panel, /<div id="communityActiveListGrid" class="posters-grid"><\/div>/);
   assert.doesNotMatch(panel + exploreCode, /#00e054|#4ade80|#ef4444|rgba\(0,\s*224/);
   assert.match(css, /\.explore-open:not\(\[hidden\]\) \{ display: flex;/);

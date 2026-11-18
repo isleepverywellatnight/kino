@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
 const app = require('../tools/interface_source.js').appSource();
@@ -170,10 +172,10 @@ test('incoming party events go to the native player when it plays', () => {
   context.api_.handleWpIncomingData({ type: 'chat', user: '<img src=x onerror=alert(1)>', text: '<b>salut</b> & bienvenue dans la soirée cinéma' });
   const line = msgs.appended[0].innerHTML;
   assert.doesNotMatch(line, /<img|<b>salut/);
-  assert.match(line, /&lt;img src=x onerror=alert\(1\)&gt; :/);
+  assert.match(withCalls(line), /&lt;img src=x onerror=alert\(1\)&gt; :/);
   assert.match(line, /color:#a3a3a3/, 'monochrome');
   assert.doesNotMatch(toasts.at(-1), /<b>salut|<img/);
-  assert.match(toasts.at(-1), /^<strong>&lt;img src=x onerror=alert\(1\)&gt; :<\/strong> &lt;b&gt;salut&lt;\/b&gt; &amp; bienvenue…$/);
+  assert.match(withCalls(toasts.at(-1)), /^<strong>&lt;img src=x onerror=alert\(1\)&gt; :<\/strong> &lt;b&gt;salut&lt;\/b&gt; &amp; bienvenue…$/);
 });
 
 test('toasts, party window and menu reach the native player', () => {

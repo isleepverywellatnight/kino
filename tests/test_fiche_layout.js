@@ -68,7 +68,7 @@ test('the fiche glows with its own image once it has loaded', () => {
   const panel = { style: { setProperty: (k, v) => { props[k] = v; } }, contains: el => el === img };
   vm.runInNewContext(`${code}\nficheGlow(img); ficheGlow({ currentSrc: 'https://other' });`, { document: { getElementById: () => panel }, img, encodeURIComponent });
   assert.equal(props['--hero-glow'], 'url("https://img/b%22g.jpg")', 'an image of another fiche is ignored');
-  assert.match(source, /onload="ficheGlow\(this\)"/);
+  assert.match(withCalls(source), /\$\{actOn\('load', 'ficheGlow', THIS\)\}/);
   assert.match(source, /detail\.style\.display = 'block';\n  detail\.style\.removeProperty\('--hero-glow'\);/);
   assert.match(css, /#detailPanel::before \{[\s\S]*?background: var\(--hero-glow, none\) center \/ cover no-repeat;[\s\S]*?filter: blur\(70px\)/);
 });

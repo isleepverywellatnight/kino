@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
@@ -64,6 +66,6 @@ test('statuses and actions in Hors ligne', () => {
   const { context } = load();
   assert.equal(context.status({ status: 'waiting' }), 'En file d’attente');
   assert.equal(context.status({ status: 'failed', error_code: 'source_unavailable' }), 'Aucune source disponible pour cet épisode');
-  assert.match(source, /\['queued', 'downloading', 'waiting'\]\.includes\(item\.status\)\n\s+\? `<button class="btn btn-secondary" onclick="downloadAction\('\$\{id\}', 'pause'\)">Pause<\/button>`/);
-  assert.match(source, /onclick="downloadSeasonOffline\(this\)" title="Télécharger les épisodes sortis de cette saison, l’un après l’autre">⤓ Saison hors ligne<\/button>/);
+  assert.match(withCalls(source), /\['queued', 'downloading', 'waiting'\]\.includes\(item\.status\)\n\s+\? `<button class="btn btn-secondary" onclick="downloadAction\('\$\{id\}', 'pause'\)">Pause<\/button>`/);
+  assert.match(withCalls(source), /\$\{act\('downloadSeasonOffline', THIS\)\} title="Télécharger les épisodes sortis de cette saison, l’un après l’autre">⤓ Saison hors ligne<\/button>/);
 });

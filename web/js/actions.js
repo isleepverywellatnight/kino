@@ -9,11 +9,11 @@
 // One listener per kind of event answers for the whole page, pages drawn later
 // included. Events that bubble are followed from the target up to the page,
 // in that order, as inline handlers ran; the others (focus, load, error,
-// toggle, close) are caught on their way down.
+// toggle, close, scroll) are caught on their way down.
 (function () {
   'use strict';
   const BUBBLING = ['click', 'dblclick', 'mousedown', 'change', 'input', 'keydown', 'submit'];
-  const DIRECT = ['focus', 'load', 'error', 'toggle', 'close'];
+  const DIRECT = ['focus', 'load', 'error', 'toggle', 'close', 'scroll'];
 
   // `window.name` or `window.Some.name`: a function of the page, nothing else.
   function target(name) {
@@ -114,6 +114,21 @@
   // An element that has nothing to show (an image that does not load) goes.
   window.kinoRemove = function (element) {
     element.remove();
+  };
+
+  // A press on a suggestion keeps the focus in the search field.
+  window.kinoKeepFocus = function (event) {
+    event.preventDefault();
+  };
+
+  // An image that does not load stays as a faint shape.
+  window.kinoDimImage = function (element) {
+    element.style.opacity = 0.08;
+  };
+
+  // The title's logo has loaded: the hero shows it instead of the text.
+  window.kinoHeroLogo = function (element) {
+    element.closest('.detail-hero')?.classList.add('has-logo');
   };
 
   // An image that does not load is hidden.

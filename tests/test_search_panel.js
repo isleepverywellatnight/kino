@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -57,7 +59,7 @@ test('the search sits in the top bar, « Torrent » in « Outils »', () => {
   assert.ok(header.indexOf('class="search-box no-drag"') < header.indexOf('class="header-right'));
   assert.doesNotMatch(html.slice(html.indexOf('<div class="container">')), /class="search-box/, 'no second search box in the page');
   assert.doesNotMatch(html, /header-btn-torrent|btn-search-bar/);
-  assert.match(html, /<div id="headerDropdownMenu" class="header-dropdown-menu">\s*<div class="header-dropdown-item" onclick="kinoMenuAction\('openTorrentFile'\)">/);
+  assert.match(withCalls(html), /<div id="headerDropdownMenu" class="header-dropdown-menu">\s*<div class="header-dropdown-item" onclick="kinoMenuAction\('openTorrentFile'\)">/);
   assert.match(html, /onfocus="openSearchPanel\(\)"/);
   assert.match(html, /ondblclick="kinoBarDoubleClick\(event\)"/, 'a double click in the field does not zoom the window');
   assert.doesNotMatch(oldCss, /^\s*(header|\.nav-tabs?|\.search-box|\.header-[\w-]+|\.logo[\w-]*)\s*[,{]/m, 'the old sheets hold no navigation rule');

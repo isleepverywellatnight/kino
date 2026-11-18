@@ -3,7 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
@@ -160,9 +162,9 @@ test('native buttons are left alone', () => {
 
 test('cast names, the logo and the account pill are marked as keyboard controls', () => {
   // Since the immersive fiche (step 50), cast and crew are native buttons.
-  assert.match(source, /<button type="button" class="detail-person" data-person="\$\{escapeHtml\(person\.name\)\}" onclick='openPerson\(/);
+  assert.match(withCalls(source), /<button type="button" class="detail-person" data-person="\$\{escapeHtml\(person\.name\)\}" \$\{act\('openPerson', person\.name\)\}/);
   const html = require('../tools/interface_source.js').indexHtml();
-  assert.match(html, /class="logo no-drag" onclick="switchTab\('movies'\)" aria-label="Accueil KINO"/);
+  assert.match(withCalls(html), /class="logo no-drag" onclick="switchTab\('movies'\)" aria-label="Accueil KINO"/);
   assert.match(html, /id="userBadge"/);
   assert.match(css, /\.person-link:focus-visible, #userBadge:focus-visible/);
 });

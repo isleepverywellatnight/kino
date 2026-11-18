@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -93,7 +95,7 @@ test('posters and catalogue titles come after the list, once', async () => {
   assert.equal(asked.length, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(asked[0][1].titles.map(t => t.key))), ['series:the bear', 'movie:the count of monte cristo:2024']);
   const out = cloud.elements.rdCloudList.innerHTML;
-  assert.match(out, /<button type="button" class="cloud-poster" onclick="openCloudFiche\(&quot;series:the bear&quot;\)" aria-label="Ouvrir la fiche de The Bear">/);
+  assert.match(withCalls(out), /<button type="button" class="cloud-poster" onclick="openCloudFiche\(&quot;series:the bear&quot;\)" aria-label="Ouvrir la fiche de The Bear">/);
   assert.match(out, /<img src="https:\/\/img\.example\/bear\.jpg" alt="" loading="lazy"/);
   assert.match(out, /<span data-title-id="tt26446278">Le Comte de Monte-Cristo<\/span> <span class="cloud-group-year">2024<\/span>/);
   cloud.openCloudFiche('series:the bear');
@@ -109,7 +111,7 @@ test('a series starts at its first episode not seen, and plays under its title',
   await settle();
   const row = cloud.elements.rdCloudList.innerHTML.split('<article')[1];
   assert.match(row, /Série · 3 épisodes · 1 vu · saisons 1 et 3/);
-  assert.match(row, /onclick="playCloudFile\(&quot;series:the bear&quot;, 1, this\)">Lancer S03E01<\/button>/);
+  assert.match(withCalls(row), /onclick="playCloudFile\(&quot;series:the bear&quot;, 1, this\)">Lancer S03E01<\/button>/);
   cloud.playCloudFile('series:the bear', 1, null);
   const [, url, title, options] = cloud.calls.find(call => call[0] === 'play');
   assert.equal(url, 'https://cloud.example/b2');
@@ -155,7 +157,7 @@ test('filters and search', async () => {
   await settle();
   cloud.setCloudFilter('movie');
   assert.equal(cloud.elements.rdCloudList.innerHTML.split('<article').length - 1, 1);
-  assert.match(cloud.elements.rdCloudTools.innerHTML, /class="chip active" aria-pressed="true" onclick="setCloudFilter\('movie'\)"/);
+  assert.match(withCalls(cloud.elements.rdCloudTools.innerHTML), /class="chip active" aria-pressed="true" onclick="setCloudFilter\('movie'\)"/);
   cloud.setCloudFilter('all');
   cloud.onCloudSearch('comte');
   assert.match(cloud.elements.rdCloudList.innerHTML, /Le Comte de Monte-Cristo/);

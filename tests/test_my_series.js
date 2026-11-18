@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const { loadPage, settle, shown } = require('../tools/page_harness.js');
 
 const html = require('../tools/interface_source.js').indexHtml();
@@ -36,7 +38,7 @@ async function open(answer = { series: SERIES, today: '2026-11-12' }) {
 
 test('Bibliothèque has « Mes séries » right after « En cours »', () => {
   const nav = html.slice(html.indexOf('id="librarySubNav"'), html.indexOf('</nav>', html.indexOf('id="librarySubNav"')));
-  assert.match(nav, /id="subtab-history"[^>]*>En cours[\s\S]*<button class="lib-subtab" id="subtab-myseries" onclick="switchTab\('myseries'\)">Mes séries<\/button>/);
+  assert.match(withCalls(nav), /id="subtab-history"[^>]*>En cours[\s\S]*<button class="lib-subtab" id="subtab-myseries" onclick="switchTab\('myseries'\)">Mes séries<\/button>/);
 });
 
 test('three groups, each series with where it stands, what is left and what comes next', async () => {
@@ -48,7 +50,7 @@ test('three groups, each series with where it stands, what is left and what come
   assert.deepEqual(heads, ['À continuer 2', 'À jour 1', 'À commencer 1']);
   const card = name => out.slice(out.lastIndexOf('<article', out.indexOf(name)), out.indexOf('</article>', out.indexOf(name)));
   assert.match(card('Dexter: Resurrection'), /S2 · É2 en cours \(45 %\)[\s\S]*1 épisode à voir[\s\S]*Prochain à sortir : S2 · É3 le 16 nov\. 2026/);
-  assert.match(card('Dexter: Resurrection'), /onclick="playMySeries\('tt1', this\)">Reprendre S2 · É2<\/button>/);
+  assert.match(withCalls(card('Dexter: Resurrection')), /onclick="playMySeries\('tt1', this\)">Reprendre S2 · É2<\/button>/);
   assert.match(card('Dexter: Resurrection'), /aria-label="11 épisodes vus sur 12"><div class="progress-fill" style="width:92%">/);
   assert.match(card('Black &lt;Doves&gt;'), /Vu jusqu’à S1 · É6[\s\S]*5 épisodes à voir[\s\S]*>Lancer S2 · É1<\/button>/);
   assert.match(card('MobLand'), /Vu jusqu’à S2 · É8[\s\S]*À jour[\s\S]*Prochain à sortir : S2 · É9 le 13 nov\. 2026/);
