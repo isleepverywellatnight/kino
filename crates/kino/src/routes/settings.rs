@@ -71,7 +71,7 @@ struct ConfigView {
 }
 
 async fn read(State(s): State<Shared>) -> Response {
-    let cfg = tokio::task::spawn_blocking(config::load)
+    let cfg = crate::db::spawn_blocking(config::load)
         .await
         .unwrap_or_default();
     let (user, user_status) = if cfg.rd_token.is_empty() {
@@ -119,7 +119,7 @@ async fn save(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
     if let (Some(player), Some(on)) = (&s.player, changes.discord_rpc) {
         player.discord.set_enabled(on);
     }
-    let _ = tokio::task::spawn_blocking(move || config::save_update(&changes)).await;
+    let _ = crate::db::spawn_blocking(move || config::save_update(&changes)).await;
     Json(json!({"ok": true})).into_response()
 }
 
@@ -136,7 +136,7 @@ async fn tmdb_key(JsonBody(body): JsonBody) -> Response {
     use axum::http::StatusCode;
     let key = field(&body, "key").trim().to_string();
     let store = |value: String| {
-        tokio::task::spawn_blocking(move || config::save(&json!({"tmdb_key": value})))
+        crate::db::spawn_blocking(move || config::save(&json!({"tmdb_key": value})))
     };
     if key.is_empty() {
         let _ = store(String::new()).await;
@@ -193,7 +193,7 @@ async fn client_error(JsonBody(body): JsonBody) -> Response {
         .map(str::to_string)
         .collect();
     let message = cut(field(&body, "message"), 500);
-    tokio::task::spawn_blocking(move || {
+    crate::db::spawn_blocking(move || {
         crate::errorlog::LOG.record(&place, &kind, &message, &frames)
     })
     .await
@@ -314,14 +314,14 @@ async fn trakt_sync(State(s): State<Shared>) -> Response {
 }
 
 async fn backups() -> Response {
-    let items = tokio::task::spawn_blocking(|| crate::backup::Backups::standard().list())
+    let items = crate::db::spawn_blocking(|| crate::backup::Backups::standard().list())
         .await
         .unwrap_or_default();
     Json(json!({"items": items, "keep": crate::backup::KEEP_DAILY})).into_response()
 }
 
 async fn backup_now() -> Response {
-    let made = tokio::task::spawn_blocking(|| {
+    let made = crate::db::spawn_blocking(|| {
         let backups = crate::backup::Backups::standard();
         backups.make(false).map(|entry| (entry, backups.list()))
     })
@@ -351,7 +351,7 @@ async fn backup_restore(State(s): State<Shared>, JsonBody(body): JsonBody) -> Re
     use axum::http::StatusCode;
     let id = field(&body, "id");
     let done =
-        tokio::task::spawn_blocking(move || crate::backup::Backups::standard().restore(&id)).await;
+        crate::db::spawn_blocking(move || crate::backup::Backups::standard().restore(&id)).await;
     match done {
         Ok(Ok(result)) => {
             s.net.forget();
@@ -383,7 +383,7 @@ async fn backup_restore(State(s): State<Shared>, JsonBody(body): JsonBody) -> Re
 async fn gdrive(State(s): State<Shared>) -> Response {
     let db = s.db.clone();
     let done =
-        tokio::task::spawn_blocking(move || crate::gdrive::sync(&db, crate::gdrive::find_dir()))
+        crate::db::spawn_blocking(move || crate::gdrive::sync(&db, crate::gdrive::find_dir()))
             .await
             .unwrap_or_default();
     Json(done).into_response()

@@ -661,7 +661,7 @@ pub async fn import(meta: &Meta, db: &Db, payload: &Value) -> Result<Value, NetE
     let added = crate::library::import_user_lists(db, &resolved_wanted, &watched, restore);
     if !source.is_empty() && !source.starts_with("http") && !source.contains('/') {
         let user = source.trim().trim_start_matches('@').to_string();
-        let _ = tokio::task::spawn_blocking(move || {
+        let _ = crate::db::spawn_blocking(move || {
             crate::config::save(&json!({"letterboxd_user": user}))
         })
         .await;
@@ -687,9 +687,8 @@ fn custom_lists() -> Vec<Value> {
 }
 
 async fn save_lists(lists: Vec<Value>) {
-    let _ =
-        tokio::task::spawn_blocking(move || crate::config::save(&json!({"custom_lists": lists})))
-            .await;
+    let _ = crate::db::spawn_blocking(move || crate::config::save(&json!({"custom_lists": lists})))
+        .await;
 }
 
 /// A public Letterboxd list (or a boxd.it short link), kept with the user's lists.

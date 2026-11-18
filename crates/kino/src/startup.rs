@@ -13,7 +13,7 @@ pub fn run(state: Shared) {
     let s = state.clone();
     tokio::spawn(async move {
         let db = s.db.clone();
-        let _ = tokio::task::spawn_blocking(move || {
+        let _ = crate::db::spawn_blocking(move || {
             db.purge_expired(true);
             crate::gdrive::sync(&db, crate::gdrive::find_dir());
         })
@@ -22,7 +22,7 @@ pub fn run(state: Shared) {
     let s = state.clone();
     tokio::spawn(async move {
         crate::network::online(true).await;
-        let cfg = tokio::task::spawn_blocking(crate::config::load)
+        let cfg = crate::db::spawn_blocking(crate::config::load)
             .await
             .unwrap_or_default();
         let (provider, token) = crate::sources::search::provider_and_token(&cfg);
@@ -36,7 +36,7 @@ pub fn run(state: Shared) {
     tokio::spawn(async move {
         // The pool read and measured ahead: the first « Pour vous » is quick.
         let warm = s.clone();
-        let _ = tokio::task::spawn_blocking(move || warm.suggestions.warm(&warm.db)).await;
+        let _ = crate::db::spawn_blocking(move || warm.suggestions.warm(&warm.db)).await;
         s.suggestions
             .refresh_pool(&s.db, &s.net, crate::meta::CINEMETA, false)
             .await;
@@ -44,7 +44,7 @@ pub fn run(state: Shared) {
     tokio::spawn(async move {
         tokio::time::sleep(Duration::from_secs(90)).await;
         loop {
-            let made = tokio::task::spawn_blocking(|| {
+            let made = crate::db::spawn_blocking(|| {
                 let backups = crate::backup::Backups::standard();
                 if backups.due() && backups.db_path.exists() {
                     Some(backups.make(false))

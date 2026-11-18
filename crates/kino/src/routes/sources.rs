@@ -31,7 +31,7 @@ pub fn router() -> Router<Shared> {
 }
 
 async fn torrents(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
-    let cfg = tokio::task::spawn_blocking(search::load_settings)
+    let cfg = crate::db::spawn_blocking(search::load_settings)
         .await
         .unwrap_or_default();
     let query = search::Query::from_params(&p, &cfg);
@@ -72,7 +72,7 @@ async fn debrid(State(s): State<Shared>, raw: Bytes) -> Response {
         )
             .into_response();
     };
-    let cfg = tokio::task::spawn_blocking(search::load_settings)
+    let cfg = crate::db::spawn_blocking(search::load_settings)
         .await
         .unwrap_or_default();
     let (provider, token) = search::provider_and_token(&cfg);
@@ -115,7 +115,7 @@ async fn debrid(State(s): State<Shared>, raw: Bytes) -> Response {
 }
 
 async fn debrid_status(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
-    let cfg = tokio::task::spawn_blocking(search::load_settings)
+    let cfg = crate::db::spawn_blocking(search::load_settings)
         .await
         .unwrap_or_default();
     let (provider, token) = search::provider_and_token(&cfg);
@@ -166,7 +166,7 @@ fn days(v: &Value) -> Option<i64> {
 
 /// The Cloud: the account's files grouped by work, after the retention cleanup.
 async fn rd_history(State(s): State<Shared>) -> Response {
-    let cfg = tokio::task::spawn_blocking(search::load_settings)
+    let cfg = crate::db::spawn_blocking(search::load_settings)
         .await
         .unwrap_or_default();
     let cloud = account(&s, &cfg, None);
@@ -186,7 +186,7 @@ async fn rd_history(State(s): State<Shared>) -> Response {
 }
 
 async fn rd_delete(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
-    let cfg = tokio::task::spawn_blocking(search::load_settings)
+    let cfg = crate::db::spawn_blocking(search::load_settings)
         .await
         .unwrap_or_default();
     let truthy = |v: &Value| {
@@ -210,7 +210,7 @@ async fn rd_delete(State(s): State<Shared>, JsonBody(body): JsonBody) -> Respons
 }
 
 async fn rd_cleanup(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
-    let cfg = tokio::task::spawn_blocking(search::load_settings)
+    let cfg = crate::db::spawn_blocking(search::load_settings)
         .await
         .unwrap_or_default();
     let max_age = days(&body["max_age_days"])
@@ -238,7 +238,7 @@ fn redirect(link: &str) -> Response {
 
 /// An AllDebrid Cloud file, unlocked when the player opens it.
 async fn ad_dl(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
-    let cfg = tokio::task::spawn_blocking(search::load_settings)
+    let cfg = crate::db::spawn_blocking(search::load_settings)
         .await
         .unwrap_or_default();
     let token = search::provider_and_token(&cfg).1;
@@ -273,7 +273,7 @@ async fn ad_dl(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>
 
 /// A TorBox Cloud file's link, asked when the player opens it.
 async fn torbox_dl(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
-    let cfg = tokio::task::spawn_blocking(search::load_settings)
+    let cfg = crate::db::spawn_blocking(search::load_settings)
         .await
         .unwrap_or_default();
     let token = search::provider_and_token(&cfg).1;

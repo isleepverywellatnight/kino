@@ -108,7 +108,7 @@ fn user_kinds(history: &[Value], watchlist: &[Value]) -> HashMap<String, &'stati
 /// The pool, read on a blocking thread: its first read parses thousands of titles.
 async fn pool(s: &Shared) -> Option<Arc<Space>> {
     let s = s.clone();
-    tokio::task::spawn_blocking(move || s.suggestions.space(&s.db))
+    crate::db::spawn_blocking(move || s.suggestions.space(&s.db))
         .await
         .ok()
 }
@@ -135,11 +135,10 @@ async fn for_you(State(s): State<Shared>, Query(p): Query<HashMap<String, String
     };
     let count = space.entries.len();
     // The ranking takes milliseconds of computing: off the threads that answer requests.
-    let items = tokio::task::spawn_blocking(move || {
-        recommender::for_you(&space, &signals, &known, kind, 20)
-    })
-    .await
-    .unwrap_or_default();
+    let items =
+        crate::db::spawn_blocking(move || recommender::for_you(&space, &signals, &known, kind, 20))
+            .await
+            .unwrap_or_default();
     Json(json!({"ready": true, "items": items, "pool": count})).into_response()
 }
 
@@ -167,7 +166,7 @@ async fn kino_related(s: &Shared, imdb_id: &str, kind: &'static str) -> Vec<Valu
         return vec![];
     };
     let source = known.get(imdb_id).cloned();
-    tokio::task::spawn_blocking(move || {
+    crate::db::spawn_blocking(move || {
         recommender::related(&space, source.as_ref(), kind, &exclude, 12)
     })
     .await
@@ -187,7 +186,7 @@ async fn related(State(s): State<Shared>, Query(p): Query<HashMap<String, String
             .into_response();
     }
     let kind = kind_of(p.get("type").map(String::as_str).unwrap_or(""));
-    let cfg = tokio::task::spawn_blocking(crate::config::load)
+    let cfg = crate::db::spawn_blocking(crate::config::load)
         .await
         .unwrap_or_default();
     let key = cfg.tmdb_key().to_string();

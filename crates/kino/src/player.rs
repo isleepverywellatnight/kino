@@ -681,9 +681,8 @@ impl Player {
             };
             let entry = media.entry(episode, pos, dur);
             let db = self.db.clone();
-            let _ =
-                tokio::task::spawn_blocking(move || crate::library::record_history(&db, &entry))
-                    .await;
+            let _ = crate::db::spawn_blocking(move || crate::library::record_history(&db, &entry))
+                .await;
             let paused = query("pause")
                 .await
                 .is_some_and(|v| crate::play::truthy(&v));

@@ -197,7 +197,7 @@ async fn history_record(State(s): State<Shared>, JsonBody(body): JsonBody) -> Re
         entry.insert("series_finished".into(), json!(finished && series_done));
     }
     let db = s.net.clone();
-    let history = tokio::task::spawn_blocking(move || library::record_history(db.db(), &entry))
+    let history = crate::db::spawn_blocking(move || library::record_history(db.db(), &entry))
         .await
         .unwrap_or_default();
     Json(json!({"ok": true, "history": history})).into_response()

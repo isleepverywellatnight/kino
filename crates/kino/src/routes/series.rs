@@ -74,7 +74,7 @@ async fn stats(State(s): State<Shared>) -> Response {
 
 async fn user_lists(State(s): State<Shared>) -> Response {
     let (history, watchlist) = lists(&s);
-    let cfg = tokio::task::spawn_blocking(crate::config::load)
+    let cfg = crate::db::spawn_blocking(crate::config::load)
         .await
         .unwrap_or_default();
     let user = cfg.letterboxd_user.unwrap_or_default();
@@ -88,7 +88,7 @@ async fn curated() -> Response {
 }
 
 async fn custom_lists() -> Response {
-    let lists = tokio::task::spawn_blocking(crate::letterboxd::lists)
+    let lists = crate::db::spawn_blocking(crate::letterboxd::lists)
         .await
         .unwrap_or_default();
     Json(json!({"custom_lists": lists})).into_response()

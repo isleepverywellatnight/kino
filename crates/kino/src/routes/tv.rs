@@ -58,7 +58,7 @@ async fn devices(State(s): State<Shared>, Query(p): Query<HashMap<String, String
     let found = tv
         .devices(p.get("refresh").map(String::as_str) == Some("1"))
         .await;
-    let chosen = tokio::task::spawn_blocking(crate::config::load)
+    let chosen = crate::db::spawn_blocking(crate::config::load)
         .await
         .ok()
         .and_then(|c| c.tv_device)
@@ -88,7 +88,7 @@ async fn choose(State(s): State<Shared>, request: Request) -> Response {
         return failure(StatusCode::NOT_FOUND, "Cette TV n'est plus sur le réseau.");
     };
     let change = json!({"tv_device": device});
-    let _ = tokio::task::spawn_blocking(move || crate::config::save(&change)).await;
+    let _ = crate::db::spawn_blocking(move || crate::config::save(&change)).await;
     Json(json!({"ok": true, "chosen": device})).into_response()
 }
 

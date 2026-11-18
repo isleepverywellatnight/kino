@@ -635,7 +635,7 @@ pub struct Window {
 
 /// The facts, read now, and the secrets the report must not show.
 pub async fn gather(state: &crate::server::AppState, window: &Window) -> (Value, Vec<String>) {
-    let cfg = tokio::task::spawn_blocking(crate::config::load)
+    let cfg = crate::db::spawn_blocking(crate::config::load)
         .await
         .unwrap_or_default();
     let provider = cfg.debrid_provider.as_str().to_string();
@@ -674,7 +674,7 @@ pub async fn gather(state: &crate::server::AppState, window: &Window) -> (Value,
         .unwrap_or_else(crate::config::default_download_dir);
     let offline: Vec<Value> = state.offline.list().into_iter().map(|(_, v)| v).collect();
     let db = state.db.clone();
-    let (database, drive) = tokio::task::spawn_blocking(move || {
+    let (database, drive) = crate::db::spawn_blocking(move || {
         (database_facts(&db), drive_facts(crate::gdrive::find_dir()))
     })
     .await

@@ -59,7 +59,7 @@ fn ok(state: Value) -> Response {
 }
 
 async fn blocking<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> Option<T> {
-    tokio::task::spawn_blocking(work).await.ok()
+    crate::db::spawn_blocking(work).await.ok()
 }
 
 async fn state(State(s): State<Shared>) -> Response {

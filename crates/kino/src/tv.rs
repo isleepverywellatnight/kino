@@ -483,15 +483,13 @@ impl Cast {
 
     /// The TV saved in the settings, else the first one found (saved for next time).
     pub async fn chosen(&self) -> Option<Value> {
-        let saved = tokio::task::spawn_blocking(crate::config::load)
-            .await
-            .ok()?;
+        let saved = crate::db::spawn_blocking(crate::config::load).await.ok()?;
         if let Some(device) = saved.tv().filter(|d| !d.control_url.is_empty()) {
             return serde_json::to_value(device).ok();
         }
         let first = self.devices(false).await.into_iter().next()?;
         let change = json!({"tv_device": first});
-        let _ = tokio::task::spawn_blocking(move || crate::config::save(&change)).await;
+        let _ = crate::db::spawn_blocking(move || crate::config::save(&change)).await;
         Some(first)
     }
 
@@ -819,9 +817,7 @@ impl Cast {
             year: get("year").unwrap_or_default(),
             poster: get("poster").unwrap_or_default(),
         };
-        let cfg = tokio::task::spawn_blocking(crate::config::load)
-            .await
-            .ok()?;
+        let cfg = crate::db::spawn_blocking(crate::config::load).await.ok()?;
         let url = crate::play::resolve_episode(
             &self.meta,
             &self.links,
@@ -1021,7 +1017,7 @@ impl Cast {
         };
         let db = self.db.clone();
         let _ =
-            tokio::task::spawn_blocking(move || crate::library::record_history(&db, &entry)).await;
+            crate::db::spawn_blocking(move || crate::library::record_history(&db, &entry)).await;
     }
 }
 

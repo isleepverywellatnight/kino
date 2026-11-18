@@ -50,7 +50,7 @@ fn id_of(body: &Value) -> String {
 
 async fn list(State(s): State<Shared>) -> Response {
     let library = s.offline.clone();
-    let answer = tokio::task::spawn_blocking(move || {
+    let answer = crate::db::spawn_blocking(move || {
         let dir = download_dir();
         json!({"downloads": library.list(), "used_bytes": library.usage_bytes(), "free_bytes": Library::free_bytes(&dir)})
     })
@@ -60,7 +60,7 @@ async fn list(State(s): State<Shared>) -> Response {
 }
 
 async fn create(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
-    let dir = tokio::task::spawn_blocking(download_dir)
+    let dir = crate::db::spawn_blocking(download_dir)
         .await
         .unwrap_or_default();
     let text = |v: &Value| {
@@ -86,7 +86,7 @@ async fn create(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
 
 /// The episodes of a season, queued one after another (60 at most).
 async fn season(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
-    let dir = tokio::task::spawn_blocking(download_dir)
+    let dir = crate::db::spawn_blocking(download_dir)
         .await
         .unwrap_or_default();
     let episodes = body["episodes"].as_array().cloned().unwrap_or_default();

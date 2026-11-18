@@ -113,7 +113,7 @@ async fn open_folder(State(s): State<Shared>) -> Response {
     if s.player.is_none() {
         return needs_app();
     }
-    let folder = tokio::task::spawn_blocking(download_dir)
+    let folder = crate::db::spawn_blocking(download_dir)
         .await
         .unwrap_or_default();
     let _ = std::fs::create_dir_all(&folder);
@@ -172,7 +172,7 @@ async fn save_screenshot(State(s): State<Shared>, request: Request) -> Response 
             .into_response();
     };
     let name = capture_name(&text(&body["title"]), &text(&body["time_str"]), usize::MAX);
-    let folder = tokio::task::spawn_blocking(download_dir)
+    let folder = crate::db::spawn_blocking(download_dir)
         .await
         .unwrap_or_default();
     let path = folder.join(&name);
@@ -220,7 +220,7 @@ async fn notifications_test(State(s): State<Shared>) -> Response {
     let Some(notifier) = s.notifier.clone() else {
         return Json(json!({"ok": false, "status": "unavailable"})).into_response();
     };
-    let status = tokio::task::spawn_blocking(move || {
+    let status = crate::db::spawn_blocking(move || {
         let mut status = notifier.status();
         if status == "not_determined" {
             notifier.request_permission();
@@ -266,7 +266,7 @@ async fn probe_media(State(s): State<Shared>, request: Request) -> Response {
         )
             .into_response();
     };
-    let preference = tokio::task::spawn_blocking(crate::config::load)
+    let preference = crate::db::spawn_blocking(crate::config::load)
         .await
         .ok()
         .map(|c| c.pref_lang)

@@ -35,7 +35,7 @@ async fn state(State(s): State<Shared>) -> Response {
         return needs_app();
     };
     Json(
-        tokio::task::spawn_blocking(move || p2p.state())
+        crate::db::spawn_blocking(move || p2p.state())
             .await
             .unwrap_or(json!({})),
     )
