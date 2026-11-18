@@ -32,6 +32,11 @@ pub fn run(state: Shared) {
     });
     let s = state.clone();
     tokio::spawn(async move { revive_finished_series(&s).await });
+    // The service keys copied to the system's keychain, where KINO uses one.
+    let db = state.db.clone();
+    tokio::spawn(async move {
+        let _ = crate::db::spawn_blocking(move || crate::secrets::sync_at_launch(&db)).await;
+    });
     let s = state.clone();
     tokio::spawn(async move {
         // The pool read and measured ahead: the first « Pour vous » is quick.

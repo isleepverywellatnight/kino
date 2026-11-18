@@ -40,6 +40,7 @@ pub mod recommender;
 pub mod remote;
 pub mod resolve;
 pub mod routes;
+pub mod secrets;
 pub mod series;
 pub mod server;
 pub mod sources;

@@ -657,9 +657,7 @@ pub async fn gather(state: &crate::server::AppState, window: &Window) -> (Value,
             debrid["premium"] = json!(premium);
         }
     }
-    let tokens = state
-        .db
-        .get_config("trakt_tokens")
+    let tokens = crate::trakt::stored_tokens(&state.db)
         .filter(Value::is_object)
         .unwrap_or(json!({}));
     let number = |v: &Value| v.as_f64().or_else(|| text(v).trim().parse().ok());
@@ -684,6 +682,13 @@ pub async fn gather(state: &crate::server::AppState, window: &Window) -> (Value,
     ));
     let day_ago = crate::db::now() - 86400.0;
     let notifications_on = cfg.episode_notifications != Some(false);
+    // Where the service keys are kept (never the keys themselves).
+    let keys = {
+        let cfg = cfg.clone();
+        crate::db::spawn_blocking(move || crate::secrets::report(crate::secrets::store(), &cfg))
+            .await
+            .unwrap_or(Value::Null)
+    };
     let facts = json!({
         "now": crate::db::now(),
         "version": crate::backup::app_version(),
@@ -699,6 +704,7 @@ pub async fn gather(state: &crate::server::AppState, window: &Window) -> (Value,
         "storage": storage_facts(&folder, &offline),
         "database": database,
         "errors": {"day": crate::errorlog::LOG.recent(10_000, Some(day_ago)).len(), "recent": crate::errorlog::LOG.recent(10, None)},
+        "keys": keys,
     });
     let mut secrets = vec![token, cfg.tmdb_key().to_string()];
     secrets.extend(cfg.provider_tokens.values().cloned());

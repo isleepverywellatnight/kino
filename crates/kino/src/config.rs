@@ -789,11 +789,13 @@ impl ConfigUpdate {
             .map(|d| tv_device(d).unwrap_or_default());
         if let Some(v) = data.get("tmdb_key") {
             let key = safe(v, 400);
-            out.tmdb_key = Some(if TMDB_KEY.is_match(&key) {
-                key
-            } else {
-                String::new()
-            });
+            out.tmdb_key = Some(
+                if TMDB_KEY.is_match(&key) || key == crate::secrets::IN_KEYCHAIN {
+                    key
+                } else {
+                    String::new()
+                },
+            );
         }
         out
     }
@@ -819,7 +821,9 @@ pub fn load() -> AppConfig {
     .iter()
     .map(|p| read_file(p).unwrap_or(Value::Object(Map::new())))
     .collect();
-    AppConfig::from_files(&files, std::env::var("RD_API_TOKEN").ok())
+    let mut cfg = AppConfig::from_files(&files, std::env::var("RD_API_TOKEN").ok());
+    crate::secrets::resolve(&mut cfg, crate::secrets::store());
+    cfg
 }
 
 /// Saves the checked changes; the file stays readable by the user only.
@@ -846,6 +850,12 @@ pub fn save_update(updates: &ConfigUpdate) -> std::io::Result<AppConfig> {
     {
         use std::os::unix::fs::PermissionsExt;
         let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+    }
+    // The keys follow in the keychain; the file keeps them meanwhile.
+    if let Some(store) = crate::secrets::store() {
+        for failure in crate::secrets::keep_config(store, &cfg) {
+            crate::errorlog::LOG.record("trousseau", "Erreur", &failure, &[]);
+        }
     }
     Ok(cfg)
 }

@@ -54,3 +54,12 @@ wiremock = "0.6"
 
 [target."cfg(unix)".dependencies]
 libc = "0.2"
+
+# The system's keychain for service keys (crates/kino/src/secrets.rs): Windows'
+# Credential Manager, Linux's Secret Service. Not on macOS until KINO is signed
+# with a Developer ID (docs/dev/plan-modernisation.md, chantier 4).
+[target."cfg(windows)".dependencies]
+keyring = { version = "3.6.3", features = ["windows-native"] }
+
+[target."cfg(target_os = \"linux\")".dependencies]
+keyring = { version = "3.6.3", features = ["sync-secret-service", "crypto-rust"] }

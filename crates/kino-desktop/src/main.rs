@@ -738,6 +738,8 @@ fn main() -> Result<()> {
     let Some(_instance) = single_instance() else {
         return Ok(());
     };
+    // Service keys also go to the system's keychain (Windows, Linux).
+    kino::secrets::use_system_keychain();
     let port = free_port(8080);
     let token = kino::launch::new_token();
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();

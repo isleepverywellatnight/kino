@@ -7,6 +7,8 @@ async fn main() -> Result<()> {
         println!("kino-server {}", kino::backup::app_version());
         return Ok(());
     }
+    // Service keys also go to the system's keychain (Windows, Linux).
+    kino::secrets::use_system_keychain();
     let flag = |name: &str| std::env::var(name).is_ok_and(|v| v == "1");
     if flag("KINO_EXIT_WITH_STDIN") {
         // Started by the desktop app: its end closes our input, and we end too.
