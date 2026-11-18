@@ -29,7 +29,7 @@ objc2-user-notifications = "0.3"
 block2 = "0.6"
 objc2-media-player = "0.3"
 objc2-app-kit = "0.3"
-libloading = "0.8"
+libloading = "0.9"
 tempfile = "3"
 
 [dev-dependencies]
