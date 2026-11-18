@@ -1103,7 +1103,7 @@
 <div id="inAppPlayerOverlay" class="inapp-player-overlay">
   <video id="inAppVideo" playsinline></video>
   <div id="inAppSubOverlay" style="position:absolute; left:50%; bottom:86px; transform:translateX(-50%); z-index:12; max-width:82%; text-align:center; pointer-events:none; font-size:1.32rem; font-weight:600; color:#fafafa; text-shadow:0 2px 6px rgba(0,0,0,0.95), 0 0 12px rgba(0,0,0,0.85); background:rgba(9,9,11,0.68); padding:5px 14px; border-radius:6px; display:none; line-height:1.38;"></div>
-  <div id="inAppStatusToast" class="inapp-toast"></div>
+  <div id="inAppStatusToast" class="inapp-toast" role="status" aria-live="polite"></div>
   <!-- Bouton Skip Intro Intelligent -->
   <div id="inAppSkipIntroCard" class="inapp-floating-card">
     <button class="btn" id="inAppSkipIntroBtn" style="padding:7px 14px; font-size:0.82rem;" data-on-click="skipInAppIntro">Passer l'intro</button>
@@ -1258,7 +1258,7 @@
   <div class="modal tonight-modal" role="dialog" aria-modal="true" aria-labelledby="tonightTitle" aria-describedby="tonightDescription">
     <div class="tonight-header">
       <div><span class="settings-eyebrow">MA LISTE</span><h2 id="tonightTitle">Ce soir</h2><p id="tonightDescription">Jusqu’à trois idées selon votre temps, votre envie et vos choix précédents.</p></div>
-      <button type="button" class="btn btn-secondary" data-on-click="closeTonightModal" aria-label="Fermer Ce soir">Fermer</button>
+      <button type="button" class="modal-close" data-on-click="closeTonightModal" aria-label="Fermer Ce soir" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
     <div class="tonight-form">
       <label>Temps disponible<select id="tonightMinutes" data-on-change="findTonightChoices"><option value="45">45 min</option><option value="90">1 h 30</option><option value="120" selected>2 h</option><option value="150">2 h 30</option><option value="180">3 h</option></select></label>
@@ -1280,7 +1280,7 @@
 
 <!-- Modal Roulette KINO (Mode Surprends-moi) -->
 <div id="caseModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeCaseModal"]'>
-  <div class="case-modal-box">
+  <div class="case-modal-box" role="dialog" aria-modal="true" aria-labelledby="caseModalTitle">
     <div class="case-header">
       <div class="case-title-wrap">
         <span class="case-kicker" id="caseModalKicker">ROULETTE KINO</span>
@@ -1310,17 +1310,17 @@
 
 <!-- Modal Importation Watchlist & Films Déjà Vus Letterboxd -->
 <div id="letterboxdModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeLetterboxdModal"]'>
-  <div class="modal" style="max-width:480px; width:92%; padding:20px 22px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <svg width="22" height="11" viewBox="0 0 30 12" fill="none">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="letterboxdModalTitle">
+    <div class="modal-head">
+      <h3 class="modal-title" id="letterboxdModalTitle">
+        <svg width="22" height="11" viewBox="0 0 30 12" fill="none" aria-hidden="true">
           <circle cx="6" cy="6" r="5" fill="#ff8000"/>
           <circle cx="15" cy="6" r="5" fill="#00e054"/>
           <circle cx="24" cy="6" r="5" fill="#40bcf4"/>
         </svg>
-        <h3 style="font-size:0.96rem; font-weight:600; margin:0;">Letterboxd</h3>
-      </div>
-      <button data-on-click="closeLetterboxdModal" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem; line-height:1; padding:2px 6px;" title="Fermer">✕</button>
+        <span>Letterboxd</span>
+      </h3>
+      <button type="button" class="modal-close" data-on-click="closeLetterboxdModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
 
     <!-- Onglets du modal -->
@@ -1391,14 +1391,14 @@
 
 <!-- Modal Bande-Annonce Intégré -->
 <div id="trailerModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeTrailerModal"]'>
-  <div class="modal" style="max-width:860px; width:94%; padding:16px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-      <h3 id="trailerModalTitle" style="font-size:0.95rem;">Bande-annonce</h3>
-      <div style="display:flex; gap:6px; align-items:center;">
-        <button id="trailerBtnVf" class="chip active" style="padding:4px 10px; font-size:0.75rem;" data-on-click="switchTrailerLang" data-click-args='["vf"]'>VF</button>
-        <button id="trailerBtnVo" class="chip" style="padding:4px 10px; font-size:0.75rem;" data-on-click="switchTrailerLang" data-click-args='["vo"]'>VO</button>
-        <a id="trailerExternalLink" href="#" target="_blank" class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;">YouTube ↗</a>
-        <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.76rem;" data-on-click="closeTrailerModal">Fermer (Échap)</button>
+  <div class="modal modal-video" role="dialog" aria-modal="true" aria-labelledby="trailerModalTitle">
+    <div class="modal-head">
+      <h3 class="modal-title" id="trailerModalTitle">Bande-annonce</h3>
+      <div class="modal-tools">
+        <button id="trailerBtnVf" class="chip active" data-on-click="switchTrailerLang" data-click-args='["vf"]'>VF</button>
+        <button id="trailerBtnVo" class="chip" data-on-click="switchTrailerLang" data-click-args='["vo"]'>VO</button>
+        <a id="trailerExternalLink" href="#" target="_blank" class="btn btn-secondary">YouTube ↗</a>
+        <button type="button" class="modal-close" data-on-click="closeTrailerModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
       </div>
     </div>
     <div style="position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:6px; overflow:hidden; border:1px solid var(--border);">
@@ -1414,10 +1414,10 @@
 
 <!-- Modal Raccourcis Clavier -->
 <div id="shortcutsModal" class="shortcuts-modal" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"toggleShortcutsModal"]'>
-  <div class="shortcuts-content">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
-      <h3 style="font-size:1rem; font-weight:600;">Raccourcis Clavier KINO</h3>
-      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" data-on-click="toggleShortcutsModal">Fermer (Échap)</button>
+  <div class="shortcuts-content" role="dialog" aria-modal="true" aria-labelledby="shortcutsModalTitle">
+    <div class="modal-head">
+      <h3 class="modal-title" id="shortcutsModalTitle">Raccourcis Clavier KINO</h3>
+      <button type="button" class="modal-close" data-on-click="toggleShortcutsModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
     <div class="shortcuts-grid">
       <div class="shortcut-row"><span>Lecture / Pause</span><kbd>Espace</kbd></div>
@@ -1440,13 +1440,13 @@
 
 <!-- Modal Télécommande Smartphone -->
 <div id="remoteModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeRemoteModal"]'>
-  <div class="modal" style="max-width:440px; text-align:center; padding:22px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+  <div class="modal modal-centered" role="dialog" aria-modal="true" aria-labelledby="remoteModalTitle">
+    <div class="modal-head">
+      <h3 class="modal-title" id="remoteModalTitle">
         <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#remote"></use></svg>
         <span>Télécommande KINO</span>
       </h3>
-      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" data-on-click="closeRemoteModal">✕</button>
+      <button type="button" class="modal-close" data-on-click="closeRemoteModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
     <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;">
       Scannez ce QR Code avec votre smartphone connecté au même Wi-Fi pour contrôler la lecture, le volume et naviguer depuis votre canapé.
@@ -1463,13 +1463,13 @@
 
 <!-- Modal Watch Party P2P -->
 <div id="watchPartyModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeWatchPartyModal"]'>
-  <div class="modal" style="max-width:480px; padding:20px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="watchPartyModalTitle">
+    <div class="modal-head">
+      <h3 class="modal-title" id="watchPartyModalTitle">
         <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#users"></use></svg>
         <span>Mode Watch Party P2P</span>
       </h3>
-      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" data-on-click="closeWatchPartyModal">✕</button>
+      <button type="button" class="modal-close" data-on-click="closeWatchPartyModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
     <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 16px;">
       Regardez vos films et séries en parfaite synchronisation avec vos amis. Play, pause et temps de lecture calés à la seconde près sans serveur tiers (P2P direct).
@@ -1519,13 +1519,13 @@
 
 <!-- Modal Gestionnaire d'Add-ons -->
 <div id="addonsModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeAddonsModal"]'>
-  <div class="modal" style="max-width:640px; padding:20px; max-height:85vh; display:flex; flex-direction:column;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:8px; margin:0;">
+  <div class="modal modal-wide modal-column" role="dialog" aria-modal="true" aria-labelledby="addonsModalTitle">
+    <div class="modal-head">
+      <h3 class="modal-title" id="addonsModalTitle">
         <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#puzzle"></use></svg>
         <span>Add-ons &amp; Scrapers Communautaires</span>
       </h3>
-      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" data-on-click="closeAddonsModal">✕</button>
+      <button type="button" class="modal-close" data-on-click="closeAddonsModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
     <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;">
       Activez ou ajoutez des indexeurs et scrapers communautaires pour démultiplier les sources de recherche (Nyaa Anime VOSTFR, YggTorrent, Sharewood, etc.).

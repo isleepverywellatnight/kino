@@ -745,6 +745,33 @@ function activateKeyboardCard(event) {
   if (typeof next.scrollIntoView === 'function') next.scrollIntoView({ block: 'nearest' });
 }
 
+// A window that opens takes the keyboard (its close button, else its first
+// control); when it closes, the keyboard goes back to what opened it.
+function initDialogFocus() {
+  const shown = el => el.style.display === 'flex' || el.classList.contains('active');
+  const FOCUSABLE = '.modal-close, button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+  for (const backdrop of document.querySelectorAll('.modal-bg, .shortcuts-modal')) {
+    let opener = null;
+    let open = shown(backdrop);
+    new MutationObserver(() => {
+      const now = shown(backdrop);
+      if (now === open) return;
+      open = now;
+      if (now) {
+        opener = document.activeElement;
+        const target = backdrop.querySelector('.modal-close') || backdrop.querySelector(FOCUSABLE);
+        if (target && !backdrop.contains(document.activeElement)) target.focus({ preventScroll: true });
+      } else if (opener && document.contains(opener)
+        && (!document.activeElement || document.activeElement === document.body || backdrop.contains(document.activeElement))) {
+        opener.focus({ preventScroll: true });
+        opener = null;
+      } else {
+        opener = null;
+      }
+    }).observe(backdrop, { attributes: true, attributeFilter: ['style', 'class'] });
+  }
+}
+
 function initKeyboardCards() {
   enhanceKeyboardCards(document.body);
   enhanceKeyboardControls(document.body);
@@ -998,6 +1025,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && !n
 
 initHeaderMenuKeyboard();
 initKeyboardCards();
+initDialogFocus();
 initOriginalTitles();
 initPosterPreviews();
 initGenreStrip();
