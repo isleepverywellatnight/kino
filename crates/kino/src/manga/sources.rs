@@ -12,6 +12,7 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use regex::Regex;
+use scraper::{ElementRef, Html, Selector};
 use serde_json::{Value, json};
 use unicode_normalization::UnicodeNormalization;
 
@@ -26,20 +27,12 @@ pub const NYAA_TRACKERS: [&str; 4] = [
 
 static WC_ID: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[0-9A-Z]{26}$").unwrap());
 static NUMBER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\d+(?:\.\d+)?").unwrap());
-static WC_SERIES: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"https://weebcentral\.com/series/([0-9A-Z]{26})/([^"'<> ]+)"#).unwrap()
-});
-static WC_ALT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"alt="([^"]+?) cover"[^>]*>\s*</picture>"#).unwrap());
-static WC_ROW: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"<a href="(?:https://weebcentral\.com)?/chapters/([0-9A-Z]{26})""#).unwrap()
-});
-static WC_LABEL: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"<span class="">([^<]+)</span>"#).unwrap());
-static WC_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"datetime="([^"]+)""#).unwrap());
-static WC_IMAGE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"<img[^>]+src="(https://[^"]+\.(?:png|jpe?g|webp|gif|avif))""#).unwrap()
-});
+static LINKS: LazyLock<Selector> = LazyLock::new(|| Selector::parse("a[href]").unwrap());
+static COVERS: LazyLock<Selector> = LazyLock::new(|| Selector::parse("img[alt]").unwrap());
+static SPANS: LazyLock<Selector> = LazyLock::new(|| Selector::parse("span").unwrap());
+static TIMES: LazyLock<Selector> = LazyLock::new(|| Selector::parse("time[datetime]").unwrap());
+static IMAGES: LazyLock<Selector> = LazyLock::new(|| Selector::parse("img").unwrap());
+const IMAGE_TYPES: [&str; 6] = ["png", "jpg", "jpeg", "webp", "gif", "avif"];
 static HASH40: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[0-9a-f]{40}$").unwrap());
 
 /// Where the sites are; tests point them at a local server.
@@ -155,25 +148,83 @@ pub async fn weebcentral_search(
         &[("HX-Request", "true")],
     )
     .await?;
+    Ok(parse_search(&page))
+}
+
+/// A WeebCentral address of this kind (« series », « chapters »): its id, and
+/// the name part after it. Absolute or relative, attributes in any order.
+fn weebcentral_link<'a>(href: &'a str, kind: &str) -> Option<(&'a str, &'a str)> {
+    let path = [
+        "https://weebcentral.com",
+        "http://weebcentral.com",
+        "//weebcentral.com",
+    ]
+    .iter()
+    .find_map(|base| href.strip_prefix(base))
+    .unwrap_or(href);
+    let path = path.split(['?', '#']).next().unwrap_or("");
+    let mut parts = path.strip_prefix('/')?.split('/');
+    if parts.next()? != kind {
+        return None;
+    }
+    let id = parts.next().filter(|id| WC_ID.is_match(id))?;
+    Some((id, parts.next().unwrap_or("")))
+}
+
+/// The cover's title (« … cover ») in this element, if any.
+fn cover_name(element: ElementRef) -> Option<String> {
+    element.select(&COVERS).find_map(|img| {
+        let alt = img.value().attr("alt")?.trim();
+        alt.strip_suffix(" cover")
+            .map(str::trim)
+            .filter(|n| !n.is_empty())
+            .map(str::to_string)
+    })
+}
+
+/// [(series id, name)] of a search answer, in its order: the name on the cover,
+/// else the one in the address.
+pub fn parse_search(page: &str) -> Vec<(String, String)> {
+    let document = Html::parse_fragment(page);
     let mut found = Vec::new();
     let mut seen = HashSet::new();
-    for capture in WC_SERIES.captures_iter(&page) {
-        let id = capture[1].to_string();
-        if !seen.insert(id.clone()) {
+    for link in document.select(&LINKS) {
+        let Some((id, slug)) = link
+            .value()
+            .attr("href")
+            .and_then(|h| weebcentral_link(h, "series"))
+        else {
+            continue;
+        };
+        if !seen.insert(id.to_string()) {
             continue;
         }
-        let at = page.find(&id).unwrap_or(0);
-        let window: String = page[at..].chars().take(2000).collect();
-        let name = match WC_ALT.captures(&window) {
-            Some(alt) => html_escape::decode_html_entities(&alt[1]).into_owned(),
-            None => form_urlencoded::parse(format!("x={}", &capture[2]).as_bytes())
-                .next()
-                .map(|(_, v)| v.replace('-', " "))
-                .unwrap_or_default(),
-        };
-        found.push((id, name));
+        // The cover is in the link, else elsewhere in the same result: the
+        // nearest enclosing element that names no other series.
+        let card = link
+            .ancestors()
+            .filter_map(ElementRef::wrap)
+            .take_while(|e| {
+                e.select(&LINKS).all(|other| {
+                    other
+                        .value()
+                        .attr("href")
+                        .and_then(|h| weebcentral_link(h, "series"))
+                        .is_none_or(|(other_id, _)| other_id == id)
+                })
+            })
+            .find(|e| cover_name(*e).is_some());
+        let name = cover_name(link)
+            .or_else(|| card.and_then(cover_name))
+            .unwrap_or_else(|| {
+                form_urlencoded::parse(format!("x={slug}").as_bytes())
+                    .next()
+                    .map(|(_, v)| v.replace('-', " "))
+                    .unwrap_or_default()
+            });
+        found.push((id.to_string(), name));
     }
-    Ok(found)
+    found
 }
 
 /// The WeebCentral series for these titles (the AniList ones), or None.
@@ -228,31 +279,69 @@ pub async fn weebcentral_chapters(
         &[],
     )
     .await?;
-    let starts: Vec<usize> = WC_ROW.find_iter(&page).map(|m| m.start()).collect();
+    Ok(parse_chapters(&page))
+}
+
+/// The chapter's name in its link: the first span holding text and no tag.
+fn chapter_label(link: ElementRef) -> Option<String> {
+    link.select(&SPANS).find_map(|span| {
+        if span.children().any(|c| c.value().is_element()) {
+            return None;
+        }
+        let text = span.text().collect::<String>().trim().to_string();
+        (!text.is_empty()).then_some(text)
+    })
+}
+
+/// [{id, number, label, date}] of a chapter list (newest first on the site),
+/// in reading order. A link without a chapter name is not a chapter.
+pub fn parse_chapters(page: &str) -> Vec<Value> {
+    let document = Html::parse_fragment(page);
     let mut found = Vec::new();
-    for (index, start) in starts.iter().enumerate() {
-        let block = &page[*start..starts.get(index + 1).copied().unwrap_or(page.len())];
-        let (Some(id), Some(label)) = (WC_ROW.captures(block), WC_LABEL.captures(block)) else {
+    let mut seen = HashSet::new();
+    for link in document.select(&LINKS) {
+        let Some((id, _)) = link
+            .value()
+            .attr("href")
+            .and_then(|h| weebcentral_link(h, "chapters"))
+        else {
             continue;
         };
-        let label = html_escape::decode_html_entities(&label[1])
-            .trim()
-            .to_string();
+        let Some(label) = chapter_label(link) else {
+            continue;
+        };
+        if !seen.insert(id.to_string()) {
+            continue;
+        }
         let number = NUMBER
             .find_iter(&label)
             .last()
             .map(|m| m.as_str().to_string())
             .unwrap_or_default();
-        let date = WC_DATE
-            .captures(block)
-            .map(|d| d[1].chars().take(10).collect::<String>())
+        // The date in the link, else beside it in its row (an element naming
+        // no other chapter).
+        let row = link.parent().and_then(ElementRef::wrap).filter(|row| {
+            row.select(&LINKS).all(|other| {
+                other
+                    .value()
+                    .attr("href")
+                    .and_then(|h| weebcentral_link(h, "chapters"))
+                    .is_none_or(|(other_id, _)| other_id == id)
+            })
+        });
+        let date = link
+            .select(&TIMES)
+            .next()
+            .or_else(|| row.and_then(|r| r.select(&TIMES).next()))
+            .and_then(|t| t.value().attr("datetime"))
+            .map(|d| d.chars().take(10).collect::<String>())
             .unwrap_or_default();
         found.push(
-            json!({"id": format!("wc:{}", &id[1]), "number": number, "label": label, "date": date}),
+            json!({"id": format!("wc:{id}"), "number": number, "label": label, "date": date}),
         );
     }
     found.reverse();
-    Ok(found)
+    found
 }
 
 pub async fn weebcentral_pages(
@@ -272,12 +361,39 @@ pub async fn weebcentral_pages(
         &[],
     )
     .await?;
+    Ok(parse_pages(&page))
+}
+
+/// The page images of a chapter, each once, in order: https pictures only
+/// (`src`, else a lazy `data-src`), not the site's own icons.
+pub fn parse_pages(page: &str) -> Vec<String> {
+    let document = Html::parse_fragment(page);
     let mut seen = HashSet::new();
-    Ok(WC_IMAGE
-        .captures_iter(&page)
-        .map(|c| c[1].to_string())
-        .filter(|u| !u.contains("/static/") && seen.insert(u.clone()))
-        .collect())
+    document
+        .select(&IMAGES)
+        .filter_map(|img| {
+            let attrs = img.value();
+            ["src", "data-src"]
+                .iter()
+                .filter_map(|k| attrs.attr(k))
+                .map(str::trim)
+                .find(|u| is_page_image(u))
+        })
+        .map(str::to_string)
+        .filter(|u| seen.insert(u.clone()))
+        .collect()
+}
+
+fn is_page_image(url: &str) -> bool {
+    let path = url.split(['?', '#']).next().unwrap_or("");
+    let kind = path
+        .rsplit_once('.')
+        .map_or("", |(_, ext)| ext)
+        .to_ascii_lowercase();
+    url.starts_with("https://")
+        && !path.contains("/static/")
+        && !path.contains('"')
+        && IMAGE_TYPES.contains(&kind.as_str())
 }
 
 // ---------- Nyaa: whole volumes by torrent ----------
@@ -373,6 +489,158 @@ mod tests {
         assert_eq!(number_key(""), None);
         assert!((similarity("abcd", "bcde") - 0.75).abs() < 1e-9);
         assert_eq!(similarity("", ""), 1.0);
+    }
+
+    /// The regular expressions WeebCentral was read with before, for comparison.
+    mod former {
+        use super::super::*;
+
+        static WC_SERIES: LazyLock<Regex> = LazyLock::new(|| {
+            Regex::new(r#"https://weebcentral\.com/series/([0-9A-Z]{26})/([^"'<> ]+)"#).unwrap()
+        });
+        static WC_ALT: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r#"alt="([^"]+?) cover"[^>]*>\s*</picture>"#).unwrap());
+        static WC_ROW: LazyLock<Regex> = LazyLock::new(|| {
+            Regex::new(r#"<a href="(?:https://weebcentral\.com)?/chapters/([0-9A-Z]{26})""#)
+                .unwrap()
+        });
+        static WC_LABEL: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r#"<span class="">([^<]+)</span>"#).unwrap());
+        static WC_DATE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r#"datetime="([^"]+)""#).unwrap());
+        static WC_IMAGE: LazyLock<Regex> = LazyLock::new(|| {
+            Regex::new(r#"<img[^>]+src="(https://[^"]+\.(?:png|jpe?g|webp|gif|avif))""#).unwrap()
+        });
+
+        pub fn search(page: &str) -> Vec<(String, String)> {
+            let mut found = Vec::new();
+            let mut seen = HashSet::new();
+            for capture in WC_SERIES.captures_iter(page) {
+                let id = capture[1].to_string();
+                if !seen.insert(id.clone()) {
+                    continue;
+                }
+                let at = page.find(&id).unwrap_or(0);
+                let window: String = page[at..].chars().take(2000).collect();
+                let name = match WC_ALT.captures(&window) {
+                    Some(alt) => html_escape::decode_html_entities(&alt[1]).into_owned(),
+                    None => form_urlencoded::parse(format!("x={}", &capture[2]).as_bytes())
+                        .next()
+                        .map(|(_, v)| v.replace('-', " "))
+                        .unwrap_or_default(),
+                };
+                found.push((id, name));
+            }
+            found
+        }
+
+        pub fn chapters(page: &str) -> Vec<Value> {
+            let starts: Vec<usize> = WC_ROW.find_iter(page).map(|m| m.start()).collect();
+            let mut found = Vec::new();
+            for (index, start) in starts.iter().enumerate() {
+                let block = &page[*start..starts.get(index + 1).copied().unwrap_or(page.len())];
+                let (Some(id), Some(label)) = (WC_ROW.captures(block), WC_LABEL.captures(block))
+                else {
+                    continue;
+                };
+                let label = html_escape::decode_html_entities(&label[1])
+                    .trim()
+                    .to_string();
+                let number = NUMBER
+                    .find_iter(&label)
+                    .last()
+                    .map(|m| m.as_str().to_string())
+                    .unwrap_or_default();
+                let date = WC_DATE
+                    .captures(block)
+                    .map(|d| d[1].chars().take(10).collect::<String>())
+                    .unwrap_or_default();
+                found.push(json!({"id": format!("wc:{}", &id[1]), "number": number, "label": label, "date": date}));
+            }
+            found.reverse();
+            found
+        }
+
+        pub fn pages(page: &str) -> Vec<String> {
+            let mut seen = HashSet::new();
+            WC_IMAGE
+                .captures_iter(page)
+                .map(|c| c[1].to_string())
+                .filter(|u| !u.contains("/static/") && seen.insert(u.clone()))
+                .collect()
+        }
+    }
+
+    const SEARCH: &str = include_str!("../../tests/fixtures/weebcentral/search.html");
+    const CHAPTERS: &str = include_str!("../../tests/fixtures/weebcentral/chapters.html");
+    const IMAGES: &str = include_str!("../../tests/fixtures/weebcentral/images.html");
+
+    /// On WeebCentral's own pages, the selectors read what the expressions read.
+    #[test]
+    fn weebcentral_pages_read_as_before() {
+        let search = parse_search(SEARCH);
+        assert_eq!(search, former::search(SEARCH));
+        assert_eq!(
+            search,
+            vec![(
+                "01J76XYDGDQERFSK333582BNBZ".to_string(),
+                "Frieren - Beyond Journey's End".to_string()
+            )]
+        );
+        let chapters = parse_chapters(CHAPTERS);
+        assert_eq!(chapters, former::chapters(CHAPTERS));
+        assert_eq!(chapters.len(), 4);
+        assert_eq!(
+            chapters.last().unwrap(),
+            &json!({"id": "wc:01K7JP7T3V8ZVZJSGF99FFH55K", "number": "147", "label": "Chapter 147", "date": "2025-10-15"})
+        );
+        let pages = parse_pages(IMAGES);
+        assert_eq!(pages, former::pages(IMAGES));
+        assert_eq!(pages.len(), 17);
+        assert!(pages[0].ends_with("/0147-001.png"));
+    }
+
+    /// The same content written differently: what the expressions missed.
+    #[test]
+    fn weebcentral_pages_read_whatever_the_markup() {
+        let search = r#"<div><a class='card' href='/series/01J76XYDGDQERFSK333582BNBZ/Sousou-no-Frieren'>
+            <picture><img decoding=async alt='Frieren &amp; Co cover' src=x.jpg><source></picture></a></div>
+            <article><a href="https://weebcentral.com/series/01J76XY7E9FNDZ1DBBM6PBJPFK/One-Piece?ref=1">One Piece</a>
+            <span><img alt="One Piece cover"></span></article>
+            <a href="https://weebcentral.com/series/01J76XYAQSGEJPXCSCVPQ3MHZM/Two%20Words-Here">x</a>
+            <a href="https://elsewhere.example/series/01J76XYAQSGEJPXCSCVPQ3MHZN/X">x</a>"#;
+        assert_eq!(
+            parse_search(search),
+            vec![
+                ("01J76XYDGDQERFSK333582BNBZ".into(), "Frieren & Co".into()),
+                ("01J76XY7E9FNDZ1DBBM6PBJPFK".into(), "One Piece".into()),
+                ("01J76XYAQSGEJPXCSCVPQ3MHZM".into(), "Two Words Here".into()),
+            ]
+        );
+        let chapters = r##"<a class="row" href="https://weebcentral.com/chapters/01K7JP7T3V8ZVZJSGF99FFH55K">
+              <span class="label font-bold"> Chapter 12.5 </span></a><time datetime="2025-10-15T01:02:34Z"></time>
+            <div><a data-x="1" href="/chapters/01K6EFK2XZRN17SPNVFWJYCG1A"><span><img src="/static/b.svg"></span>
+              <span class="grow"><span class="title">Episode 3 &amp; bonus</span></span><time datetime='2025-09-30T23:33:43Z'>x</time></a></div>
+            <a href="/chapters/01K6EFK2XZRN17SPNVFWJYCG1A"><span>Chapter 3</span></a>
+            <a href="#top">top</a><a href="/chapters/not-an-id"><span>Chapter 9</span></a>"##;
+        assert_eq!(
+            parse_chapters(chapters),
+            vec![
+                json!({"id": "wc:01K6EFK2XZRN17SPNVFWJYCG1A", "number": "3", "label": "Episode 3 & bonus", "date": "2025-09-30"}),
+                json!({"id": "wc:01K7JP7T3V8ZVZJSGF99FFH55K", "number": "12.5", "label": "Chapter 12.5", "date": ""}),
+            ]
+        );
+        let images = r#"<img alt='Page 1' src='https://scans.example/m/001.PNG'>
+            <img loading="lazy" data-src="https://scans.example/m/002.webp?v=2" src="data:image/gif;base64,R0">
+            <img src="https://weebcentral.com/static/images/x.png"><img src="https://scans.example/m/001.PNG">
+            <img src="http://insecure.example/003.png"><img src="https://scans.example/page.html">"#;
+        assert_eq!(
+            parse_pages(images),
+            vec![
+                "https://scans.example/m/001.PNG",
+                "https://scans.example/m/002.webp?v=2"
+            ]
+        );
     }
 
     #[test]

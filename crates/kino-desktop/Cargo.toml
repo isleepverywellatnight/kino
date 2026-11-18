@@ -8,6 +8,7 @@ description = "KINO's desktop app: the window, its bridge and the server in one 
 [dependencies]
 kino = { path = "../kino" }
 anyhow = "1"
+serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "process"] }
 tao = "0.37.2"
@@ -30,6 +31,9 @@ objc2-media-player = "0.3"
 objc2-app-kit = "0.3"
 libloading = "0.8"
 tempfile = "3"
+
+[dev-dependencies]
+wiremock = "0.6"
 
 [build-dependencies]
 embed-resource = "3"

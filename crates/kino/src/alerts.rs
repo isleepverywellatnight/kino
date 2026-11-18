@@ -175,16 +175,13 @@ pub async fn check(
     let cfg = tokio::task::spawn_blocking(crate::config::load)
         .await
         .unwrap_or_default();
-    if cfg.get("episode_notifications") == Some(&json!(false)) {
+    if cfg.episode_notifications == Some(false) {
         return vec![];
     }
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
     let (history, watchlist) = (crate::library::history(db), crate::library::watchlist(db));
     let items = crate::series::new_episodes(meta, &history, &watchlist, &today).await;
-    let seen: Option<Vec<String>> = cfg
-        .get("notified_episodes")
-        .and_then(Value::as_array)
-        .map(|a| a.iter().map(text).collect());
+    let seen: Option<Vec<String>> = cfg.notified_episodes.clone();
     let (alerts, remembered) = pending(&items, seen.as_deref());
     if Some(&remembered) != seen.as_ref() {
         let change = json!({"notified_episodes": remembered});
@@ -217,8 +214,8 @@ pub fn watch(
         let on = tokio::task::spawn_blocking(crate::config::load)
             .await
             .ok()
-            .and_then(|c| c.get("episode_notifications").cloned())
-            != Some(json!(false));
+            .and_then(|c| c.episode_notifications)
+            != Some(false);
         if on {
             let asking = notifier.clone();
             let _ = tokio::task::spawn_blocking(move || asking.request_permission()).await;

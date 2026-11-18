@@ -362,3 +362,77 @@ async fn where_the_reader_stopped() {
         .collect();
     assert_eq!(left, ["anilist", "mangadex"]);
 }
+
+/// WeebCentral's own answers (extracts kept in tests/fixtures/weebcentral):
+/// the series found by its title, its chapters in reading order, a chapter's pages.
+#[tokio::test]
+async fn weebcentral_as_it_answers() {
+    let server = MockServer::start().await;
+    let fixture = |name: &str| {
+        std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("tests/fixtures/weebcentral/{name}")),
+        )
+        .unwrap()
+    };
+    Mock::given(path("/wc/search/data"))
+        .and(query_param("text", "Sousou no Frieren"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(fixture("search.html")))
+        .mount(&server)
+        .await;
+    Mock::given(path(
+        "/wc/series/01J76XYDGDQERFSK333582BNBZ/full-chapter-list",
+    ))
+    .respond_with(ResponseTemplate::new(200).set_body_string(fixture("chapters.html")))
+    .mount(&server)
+    .await;
+    Mock::given(path("/wc/chapters/01K7JP7T3V8ZVZJSGF99FFH55K/images"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(fixture("images.html")))
+        .mount(&server)
+        .await;
+    let dir = tempfile::tempdir().unwrap();
+    let net = Net::new(Arc::new(Db::open(&dir.path().join("kino.db")).unwrap()));
+    let base = server.uri();
+    let sites = Sites {
+        anilist: format!("{base}/anilist"),
+        mangadex: format!("{base}/md"),
+        weebcentral: format!("{base}/wc"),
+        nyaa_rss: format!("{base}/nyaa?page=rss"),
+    };
+    use kino::manga::sources::{weebcentral_chapters, weebcentral_match, weebcentral_pages};
+    let titles = vec![
+        "Sousou no Frieren".to_string(),
+        "Frieren: Beyond Journey's End".to_string(),
+    ];
+    let series = weebcentral_match(&net, &sites, &titles).await.unwrap();
+    assert_eq!(series.as_deref(), Some("01J76XYDGDQERFSK333582BNBZ"));
+    let chapters = weebcentral_chapters(&net, &sites, "01J76XYDGDQERFSK333582BNBZ")
+        .await
+        .unwrap();
+    let numbers: Vec<&str> = chapters
+        .iter()
+        .map(|c| c["number"].as_str().unwrap())
+        .collect();
+    let newest = chapters.last().unwrap();
+    assert_eq!(
+        numbers.first(),
+        Some(&"1"),
+        "reading order: the oldest first"
+    );
+    assert_eq!(numbers[numbers.len() - 3..], ["145", "146", "147"]);
+    assert_eq!(newest["id"], "wc:01K7JP7T3V8ZVZJSGF99FFH55K");
+    assert_eq!(newest["date"], "2025-10-15");
+    let pages = weebcentral_pages(&net, &sites, "01K7JP7T3V8ZVZJSGF99FFH55K")
+        .await
+        .unwrap();
+    assert_eq!(pages.len(), 17);
+    assert!(
+        pages
+            .iter()
+            .all(|p| p.starts_with("https://") && p.ends_with(".png"))
+    );
+    assert!(
+        weebcentral_chapters(&net, &sites, "../etc").await.is_err(),
+        "not a series id"
+    );
+}
