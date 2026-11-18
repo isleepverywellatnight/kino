@@ -406,10 +406,11 @@ réglages : un KINO lancé avec un autre dossier personnel (tests, autre compte)
 ne lit ni n'efface les clés du vrai. Seuls les exécutables de KINO activent le
 trousseau ; les tests restent sur le fichier.
 
-**À traiter avant P10** : la synchro Drive (`gdrive.rs`) exporte toutes les
-lignes `app_config`, donc `trakt_tokens` en clair dans `kino_sync.json` du
-dossier Drive. Il faut les exclure de l'export (la connexion Trakt ne suivra
-plus d'un ordinateur à l'autre) : décision de l'utilisateur.
+Corrigé le 18/11/2026 (accord de l'utilisateur) : la synchro Drive
+(`gdrive.rs`) exportait toutes les lignes `app_config`, donc `trakt_tokens` en
+clair dans `kino_sync.json`. Les jetons Trakt ne voyagent plus, ni à l'export
+ni à l'import d'un fichier écrit par une version plus ancienne ; chaque
+ordinateur se connecte à Trakt de son côté.
 
 Sous macOS, les mises à jour remplacent le bundle : l'accès au trousseau est
 lié à la signature. Une signature ad hoc qui change à chaque build ferait
