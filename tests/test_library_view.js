@@ -7,7 +7,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = require('../tools/interface_source.js').appSource();
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const listCode = source.slice(source.indexOf('const LIST_VIEW_KEY'), source.indexOf('async function surpriseMeMedia(poolArg = null) {'));
 const offlineCode = 'function offlineFreeText(bytes)' + source.split('function offlineFreeText(bytes)', 2)[1].split('async function playOfflineDownload(', 1)[0];

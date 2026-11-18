@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
-const html = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/index.html'), 'utf8');
+const html = require('../tools/interface_source.js').indexHtml();
 const icons = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/icons.svg'), 'utf8');
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const symbols = new Set([...icons.matchAll(/<symbol id="([^"]+)"/g)].map(m => m[1]));

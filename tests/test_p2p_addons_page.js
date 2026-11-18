@@ -8,7 +8,7 @@ const vm = require('node:vm');
 
 const ROOT = path.join(__dirname, '..');
 const read = name => fs.readFileSync(path.join(ROOT, name), 'utf8');
-const html = read('web/index.html');
+const html = require('../tools/interface_source.js').indexHtml();
 const code = read('web/js/p2p-addons.js');
 const source = require('../tools/interface_source.js').appSource();
 const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
