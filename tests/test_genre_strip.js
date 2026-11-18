@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -217,9 +219,9 @@ test('selecting a genre keeps it in view', () => {
 });
 
 test('the toolbar markup groups the controls and wraps the genres', () => {
-  assert.match(html, /<div class="genre-strip" id="genreStrip">\s*<button type="button" class="genre-scroll genre-scroll-prev" aria-label="Genres précédents" onclick="scrollGenres\(-1\)" hidden>‹<\/button>\s*<div id="genreFilters" class="genre-row" role="group" aria-label="Genres">/);
-  assert.match(html, /<button type="button" class="genre-scroll genre-scroll-next" aria-label="Genres suivants" onclick="scrollGenres\(1\)" hidden>›<\/button>\s*<\/div>/);
-  assert.match(html, /<select id="catalogSortSelect" class="catalog-sort" aria-label="Trier le catalogue" onchange="onChangeCatalogSort\(this\.value\)">/);
+  assert.match(withCalls(html), /<div class="genre-strip" id="genreStrip">\s*<button type="button" class="genre-scroll genre-scroll-prev" aria-label="Genres précédents" onclick="scrollGenres\(-1\)" hidden>‹<\/button>\s*<div id="genreFilters" class="genre-row" role="group" aria-label="Genres">/);
+  assert.match(withCalls(html), /<button type="button" class="genre-scroll genre-scroll-next" aria-label="Genres suivants" onclick="scrollGenres\(1\)" hidden>›<\/button>\s*<\/div>/);
+  assert.match(withCalls(html), /<select id="catalogSortSelect" class="catalog-sort" aria-label="Trier le catalogue" onchange="onChangeCatalogSort\(this\.value\)">/);
   for (const [value, label] of [['top', 'Tendances'], ['imdbRating', 'Mieux notés'], ['recent', 'Plus récents'], ['oldest', 'Plus anciens']]) {
     assert.match(html, new RegExp(`<option value="${value}">${label}</option>`));
   }

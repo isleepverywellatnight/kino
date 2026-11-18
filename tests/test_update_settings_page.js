@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const ROOT = path.join(__dirname, '..');
 const html = require('../tools/interface_source.js').indexHtml();
@@ -22,7 +24,7 @@ function load(bridge) {
 }
 
 test('the switch sits in Settings → Updates', () => {
-  assert.match(html, /id="settings-updates"[\s\S]*<label class="settings-label" for="kinoUpdateAuto">Rechercher automatiquement<\/label>[\s\S]*toutes les 6 heures[\s\S]*id="kinoUpdateAuto" role="switch" onchange="setKinoUpdateAuto\(this\)"/);
+  assert.match(withCalls(html), /id="settings-updates"[\s\S]*<label class="settings-label" for="kinoUpdateAuto">Rechercher automatiquement<\/label>[\s\S]*toutes les 6 heures[\s\S]*id="kinoUpdateAuto" role="switch" onchange="setKinoUpdateAuto\(this\)"/);
 });
 
 test('it shows the state, and an answer of the app replaces it', async () => {

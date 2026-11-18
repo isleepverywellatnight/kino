@@ -7,7 +7,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const checker = require('../tools/frontend_check.js');
 
@@ -105,6 +107,6 @@ test('a Google Drive sync reloads the lists it brought back', async () => {
 test('the Cloud tab and the picture-in-picture button are found by their ids', () => {
   assert.match(html, /id="subtab-rdcloud"/);
   assert.match(source, /getElementById\('subtab-rdcloud'\);\n\s*if \(cloudTab\) \{\n\s*cloudTab\.textContent = `Cloud \$\{pmeta\.short\}`;/);
-  assert.match(html, /id="inAppPipBtn" onclick="toggleInAppPiP\(\)"/);
+  assert.match(withCalls(html), /id="inAppPipBtn" onclick="toggleInAppPiP\(\)"/);
   assert.doesNotMatch(source, /animePanel|'tab-rdcloud'|lbxListInput|importLetterboxdList\(|loadUserData/);
 });

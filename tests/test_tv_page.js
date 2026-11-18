@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 // Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
@@ -59,7 +60,7 @@ test('between two episodes: a countdown, « Lancer maintenant » and « Annuler 
   assert.equal(page.el('tvBarStop').textContent, 'Arrêter');
   page.renderTvBar({ active: true, device: 'TV', title: 'Lupin — S01E02', error: 'S01E03 introuvable ou pas encore sorti.' });
   assert.equal(page.el('tvBarSub').textContent, 'S01E03 introuvable ou pas encore sorti.');
-  assert.match(html, /id="tvBarStop" onclick="tvControl\('stop'\)"/);
+  assert.match(withCalls(html), /id="tvBarStop" onclick="tvControl\('stop'\)"/);
   assert.equal((html.match(/class="btn btn-secondary btn-small tv-seek"/g) || []).length, 2);
 });
 
@@ -76,7 +77,7 @@ test('the source goes to KINO with the episode, not to a player', async () => {
 });
 
 test('« Sur la TV » sits beside « Lancer » and shares its source', () => {
-  assert.match(source, /id="detailTvBtn" onclick='oneClickCard\(event, this, \$\{mediaPayload\}, \{ target: "tv" \}\)'/);
+  assert.match(withCalls(source), /id="detailTvBtn" \$\{act\('oneClickCard', EVENT, THIS, mediaInfo, \{ target: 'tv' \}\)\}/);
   assert.match(source, /if \(params\.target === 'tv'\) params\.player_mode = 'integrated';/);
   assert.match(source, /if \(params\.target === 'tv'\) \{\n\s+await sendToTv\(res, params, box\);\n\s+return;\n\s+\}/);
   assert.match(html, /<div id="tvBar" class="tv-bar" role="region" aria-label="Lecture sur la TV" hidden>/);
@@ -152,7 +153,7 @@ test('« Fichier prêt »: each file of a chosen source has « Sur la TV », fro
 test('both players offer « Sur la TV »: pause, send at this moment, then stop on the Mac', () => {
   const native = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
   const menu = html.slice(html.indexOf('id="inAppMoreMenu"'), html.indexOf('id="inAppWpChatBox"'));
-  assert.match(menu, /id="inAppTvBtn" onclick="sendInAppPlaybackToTv\(\)"[^>]*>Sur la TV<\/button>/);
+  assert.match(withCalls(menu), /id="inAppTvBtn" onclick="sendInAppPlaybackToTv\(\)"[^>]*>Sur la TV<\/button>/);
   const inApp = source.slice(source.indexOf('async function sendInAppPlaybackToTv() {'), source.indexOf('function toggleInAppMoreMenu('));
   assert.match(inApp, /const position = Math\.floor\(inAppAbsoluteTime\(video\)\);[\s\S]*video\.pause\(\);[\s\S]*await castToTv\(\{ stream_url: inAppCurrentUrl,[\s\S]*resume_sec: position \}\);[\s\S]*closeInAppPlayer\(\);/);
   assert.match(native, /id="nativeTv" title="Continuer sur la TV, au même moment" hidden>Sur la TV<\/button>/);

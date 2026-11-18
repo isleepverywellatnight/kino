@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -33,7 +35,7 @@ test('films and series in groups, the closest title first', () => {
   page.renderSearchResults();
   const out = page.grid.innerHTML;
   assert.match(out, /^<div class="search-results-tools" role="group" aria-label="Type de résultat">/);
-  assert.match(out, /class="chip active" aria-pressed="true" onclick="setSearchFilter\('all'\)">Tout <span class="list-count">3<\/span>/);
+  assert.match(withCalls(out), /class="chip active" aria-pressed="true" onclick="setSearchFilter\('all'\)">Tout <span class="list-count">3<\/span>/);
   assert.match(out, />Films <span class="list-count">2<\/span><\/button>.*>Séries <span class="list-count">1<\/span><\/button>/);
   const body = out.slice(out.indexOf('</div>') + 6);
   assert.equal(body, '<h3 class="search-group-title">Films <span class="list-count">2</span></h3><card tt1 movie><card tt2 movie>'
@@ -49,7 +51,7 @@ test('a series found first puts the series first', () => {
 test('the filter keeps one type, without group titles', () => {
   const page = load(mixed);
   page.setSearchFilter('series');
-  assert.match(page.grid.innerHTML, /class="chip active" aria-pressed="true" onclick="setSearchFilter\('series'\)"/);
+  assert.match(withCalls(page.grid.innerHTML), /class="chip active" aria-pressed="true" onclick="setSearchFilter\('series'\)"/);
   assert.match(page.grid.innerHTML, /<\/div><card tt3 series>$/);
   assert.doesNotMatch(page.grid.innerHTML, /search-group-title/);
   page.setSearchFilter('all');
@@ -72,7 +74,7 @@ test('each group shows 36 titles at most, and counts them all', () => {
 });
 
 test('« Tout » is the first choice, and the tabs no longer change it', () => {
-  assert.match(html, /<select id="searchType" class="search-type-select" onchange="toggleSearchMode\(\)" aria-label="Chercher dans">\n\s*<option value="all">Tout<\/option>\n\s*<option value="movie">Films<\/option>/);
+  assert.match(withCalls(html), /<select id="searchType" class="search-type-select" onchange="toggleSearchMode\(\)" aria-label="Chercher dans">\n\s*<option value="all">Tout<\/option>\n\s*<option value="movie">Films<\/option>/);
   const switchTab = source.slice(source.indexOf('async function switchTab(tab)'), source.indexOf('async function loadRdCloud()'));
   assert.ok(switchTab.includes("tab === 'anime'"));
   assert.doesNotMatch(switchTab, /getElementById\('searchType'\)\.value = /);

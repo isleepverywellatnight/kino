@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const { loadPage, settle } = require('../tools/page_harness.js');
 
 const html = require('../tools/interface_source.js').indexHtml();
@@ -30,7 +32,7 @@ test('Paramètres has a Diagnostic card and the Outils menu leads to it', () => 
   // The Diagnostic is a block of « Application », reached by its id.
   assert.match(html, /<div class="set-block" id="settings-diagnostic" aria-labelledby="settings-diagnostic-title">\s*<h3 class="set-block-title" id="settings-diagnostic-title">Diagnostic<\/h3>/);
   assert.match(html, /Rien n’est modifié\./);
-  assert.match(html, /onclick="kinoMenuAction\('openDiagnostic'\)"[\s\S]{0,300}<span class="hdi-title">Diagnostic<\/span>/);
+  assert.match(withCalls(html), /onclick="kinoMenuAction\('openDiagnostic'\)"[\s\S]{0,300}<span class="hdi-title">Diagnostic<\/span>/);
   assert.match(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/icons.svg'), 'utf8'), /<symbol id="check" /);
 });
 
@@ -43,7 +45,7 @@ test('each line says its state in words, with what to do and where', async () =>
   const lines = list.innerHTML.split('</li>');
   assert.match(lines[0], /class="diagnostic-item is-ok"><span class="diagnostic-mark" aria-hidden="true">✓<\/span><div><strong>Internet<span class="diagnostic-state">OK<\/span>/);
   assert.doesNotMatch(lines[0], /Ouvrir/);
-  assert.match(lines[1], /is-problem[\s\S]*>×<[\s\S]*Problème[\s\S]*Votre abonnement Real-Debrid est terminé\.[\s\S]*Renouvelez-le\.[\s\S]*onclick="openSettingsSection\('settings-account'\)">Ouvrir/);
+  assert.match(withCalls(lines[1]), /is-problem[\s\S]*>×<[\s\S]*Problème[\s\S]*Votre abonnement Real-Debrid est terminé\.[\s\S]*Renouvelez-le\.[\s\S]*onclick="openSettingsSection\('settings-account'\)">Ouvrir/);
   assert.match(lines[2], /is-warning[\s\S]*>!<[\s\S]*À vérifier/);
   assert.doesNotMatch(lines[2], /Ouvrir/, 'no section, no button');
   assert.match(lines[3], /is-off[\s\S]*>–<[\s\S]*Trakt &lt;b&gt;[\s\S]*Désactivé/);

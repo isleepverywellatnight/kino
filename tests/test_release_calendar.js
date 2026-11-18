@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const { loadPage, settle, shown } = require('../tools/page_harness.js');
 
 const html = require('../tools/interface_source.js').indexHtml();
@@ -41,7 +43,7 @@ const card = (out, name) => out.slice(out.lastIndexOf('<article', out.indexOf(na
 
 test('Bibliothèque has « Calendrier » right after « Mes séries »', () => {
   const nav = html.slice(html.indexOf('id="librarySubNav"'), html.indexOf('</nav>', html.indexOf('id="librarySubNav"')));
-  assert.match(nav, /id="subtab-myseries"[^>]*>Mes séries<\/button>\s*<button class="lib-subtab" id="subtab-calendar" onclick="switchTab\('calendar'\)">Calendrier<\/button>/);
+  assert.match(withCalls(nav), /id="subtab-myseries"[^>]*>Mes séries<\/button>\s*<button class="lib-subtab" id="subtab-calendar" onclick="switchTab\('calendar'\)">Calendrier<\/button>/);
 });
 
 test('two weeks, day by day, with today and tomorrow named', async () => {
@@ -61,7 +63,7 @@ test('two weeks, day by day, with today and tomorrow named', async () => {
 test('each episode says where it stands, and only the next one to watch can be played', async () => {
   const { grid } = await open();
   const out = grid();
-  assert.match(card(out, 'Dexter: Resurrection'), /S2 · É2[\s\S]*En cours \(45 %\)[\s\S]*onclick="playCalendarEpisode\('tt1', 2, 2, this\)">Reprendre S2 · É2<\/button>/);
+  assert.match(withCalls(card(out, 'Dexter: Resurrection')), /S2 · É2[\s\S]*En cours \(45 %\)[\s\S]*onclick="playCalendarEpisode\('tt1', 2, 2, this\)">Reprendre S2 · É2<\/button>/);
   assert.match(card(out, 'Black &lt;Doves&gt;'), /S2 · É1 à É6 \(6 épisodes\) · Nouvelle saison[\s\S]*Disponible[\s\S]*>Lancer S2 · É1<\/button>/);
   assert.match(card(out, 'MobLand'), /Disponible · 2 épisodes à voir avant/);
   assert.doesNotMatch(card(out, 'MobLand'), /playCalendarEpisode/, 'not ahead of the episodes left');

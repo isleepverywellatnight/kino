@@ -3,7 +3,9 @@
 // own. The real interface scripts run on a stand-in page (tools/page_harness.js).
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const { loadPage, settle, shown } = require('../tools/page_harness.js');
 
 const FILM = { id: 'a'.repeat(32), filename: 'Le.Samourai.1967.1080p.mkv', status: 'completed', available: true,
@@ -54,7 +56,7 @@ test('offline, a catalogue tab says it needs internet and offers the offline fil
     await settle();
     const grid = page.element('postersGrid').innerHTML;
     assert.match(grid, /<h3>Le catalogue a besoin d’internet<\/h3>/, tab);
-    assert.match(grid, /onclick="switchTab\('offline'\)">Voir mes fichiers hors ligne/, tab);
+    assert.match(withCalls(grid), /onclick="switchTab\('offline'\)">Voir mes fichiers hors ligne/, tab);
     for (const id of ['heroSpotlight', 'genreFilters', 'homeResumeSection', 'homeNewSection']) {
       assert.equal(shown(page.element(id)), false, `${tab}: ${id}`);
     }

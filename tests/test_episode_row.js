@@ -132,8 +132,8 @@ test('dates read naturally in French', () => {
 });
 
 test('the section, the row arrows and the French route are wired', () => {
-  assert.match(source, /<div id="detailEpisodesList" class="ep-row" role="list" aria-label="Épisodes" onscroll="updateEpisodeArrows\(\)"><\/div>/);
-  assert.match(withCalls(source), /aria-label="Épisodes précédents" onclick="scrollEpisodes\(-1\)" hidden>‹/);
+  assert.match(withCalls(source), /<div id="detailEpisodesList" class="ep-row" role="list" aria-label="Épisodes" \$\{actOn\('scroll', 'updateEpisodeArrows'\)\}><\/div>/);
+  assert.match(source, /aria-label="Épisodes précédents" \$\{act\('scrollEpisodes', -1\)\} hidden>‹/);
   assert.match(source, /<p id="detailSeasonSummary" class="ep-summary" aria-live="polite"><\/p>/);
   assert.match(source, /window\.addEventListener\("resize", updateEpisodeArrows\);/);
   assert.match(source, /behavior: 'instant' \}\);/, 'the row opens on the episode at once');

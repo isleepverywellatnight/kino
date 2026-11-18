@@ -3,7 +3,9 @@
 // part of the page, and inline handlers only ever receive numbers or JSON.
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const between = (start, end) => start + source.split(start, 2)[1].split(end, 1)[0];
@@ -20,7 +22,7 @@ function element() {
 function assertNoInjectedMarkup(html) {
   const outsideAttributes = html.replace(/=(["'])[\s\S]*?\1/g, '=""');
   assert.doesNotMatch(outsideAttributes, /<img src=x/);
-  assert.doesNotMatch(html, /onerror="window\.pwned/, 'no attribute of its own');
+  assert.doesNotMatch(withCalls(html), /onerror="window\.pwned/, 'no attribute of its own');
 }
 
 // Every inline handler is one call whose arguments are plain values.

@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 const { loadPage, settle, shown } = require('../tools/page_harness.js');
 
 const source = require('../tools/interface_source.js').appSource();
@@ -139,9 +141,9 @@ test('Échap, ⌘[ / Alt+← and the mouse button go back; the button sits in th
     'the fiche first, then the previous screen, then full screen');
   assert.match(source, /if \(!isInput && \(\(\(e\.metaKey \|\| e\.ctrlKey\) && e\.key === '\['\) \|\| \(e\.altKey && e\.key === 'ArrowLeft'\)\) && canGoBack\(\)\)/);
   assert.match(source, /window\.addEventListener\('mouseup', event => \{[\s\S]*?event\.button !== 3/);
-  assert.match(source, /<button class="detail-close-btn" onclick="closeFiche\(\)" title="Fermer la fiche \(Échap\)"/);
+  assert.match(withCalls(source), /<button class="detail-close-btn" \$\{act\('closeFiche'\)\} title="Fermer la fiche \(Échap\)"/);
   const bar = html.slice(html.indexOf('<div class="search-box'), html.indexOf('id="searchType"'));
-  assert.match(bar, /<button type="button" id="navBackBtn" class="nav-back-btn" onclick="goBack\(\)" hidden aria-label="Retour">[\s\S]*<span>Retour<\/span>/);
+  assert.match(withCalls(bar), /<button type="button" id="navBackBtn" class="nav-back-btn" onclick="goBack\(\)" hidden aria-label="Retour">[\s\S]*<span>Retour<\/span>/);
   assert.match(html, /<span>Écran précédent<\/span><div><kbd>Échap<\/kbd> \/ <kbd>Cmd\+\[<\/kbd> \/ <kbd>Alt\+←<\/kbd><\/div>/);
   assert.match(css, /\.nav-back-btn\[hidden\] \{ display: none; \}/);
   assert.match(css, /@media \(max-width: 640px\) \{ \.nav-back-btn span \{ display: none; \}/);

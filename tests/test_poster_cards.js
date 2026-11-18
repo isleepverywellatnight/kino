@@ -3,7 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const source = require('../tools/interface_source.js').appSource();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/redesign.css'), 'utf8');
@@ -33,10 +35,10 @@ test('a card carries a preview with French genres, length and rating, and two ac
   assert.match(html, /<div class="poster-preview">/, 'its actions can be reached with the keyboard');
   assert.match(html, /<div class="poster-preview-meta">Comédie · Famille · 1 h 36 · ★ 6.9<\/div>/);
   assert.match(html, /class="poster-preview-desc" data-preview-id="tt0107120" data-preview-type="movie"/);
-  assert.match(html, /class="poster-preview-play" onclick='oneClickCard\(event, this,/);
-  assert.match(html, /<button type="button" onclick='toggleCardWatched\(event,[^>]*>Marquer vu</);
+  assert.match(withCalls(html), /class="poster-preview-play" onclick='oneClickCard\(event, this,/);
+  assert.match(withCalls(html), /<button type="button" onclick='toggleCardWatched\(event,[^>]*>Marquer vu</);
   assert.doesNotMatch(html, /btn-oneclick|tabindex="-1"/, 'no play button repeated under the poster');
-  assert.match(html, /onload="this\.classList\.add\('is-loaded'\)"/);
+  assert.match(withCalls(html), /onload="this\.classList\.add\('is-loaded'\)"/);
   assert.doesNotMatch(html, /#4ade80|#38bdf8/, 'no green or blue: monochrome');
 });
 

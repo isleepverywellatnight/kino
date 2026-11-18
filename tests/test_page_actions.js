@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
+// Templates declare actions with the page's helpers (act, THIS…): each sandbox gets them.
+const { withCalls } = require('../tools/interface_source.js');
+const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const ROOT = path.join(__dirname, '..');
 const actions = fs.readFileSync(path.join(ROOT, 'web/js/actions.js'), 'utf8');
@@ -154,6 +156,6 @@ test('a template action carries its arguments as values', () => {
   const { templateHelpers, withCalls } = require('../tools/interface_source.js');
   const { act, actOn, THIS, EVENT } = templateHelpers();
   const html = `<b ${act('toggleSourceGroup', `4k" onclick="x`)}></b><i ${actOn('error', 'kinoRemove', THIS)}></i><u ${act('copyLink', EVENT, 3)}></u>`;
-  assert.doesNotMatch(html, /onclick="x/, 'an argument stays inside its attribute');
+  assert.doesNotMatch(withCalls(html), /onclick="x/, 'an argument stays inside its attribute');
   assert.equal(withCalls(html), `<b onclick="toggleSourceGroup('4k&quot; onclick=&quot;x')"></b><i onerror="kinoRemove(this)"></i><u onclick="copyLink(event, 3)"></u>`);
 });
