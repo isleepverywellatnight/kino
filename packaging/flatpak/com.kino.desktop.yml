@@ -1,7 +1,8 @@
 # KINO as a Flatpak (packaging/build_flatpak.sh builds it).
 # KINO's own build (target/release/kino-desktop, built on Ubuntu 22.04) runs on
-# the GNOME runtime, which has WebKitGTK 4.1 and GStreamer; the ffmpeg-full
-# extension gives the page's <video> its codecs (H.264, HEVC…).
+# the GNOME runtime, which has WebKitGTK 4.1 and GStreamer; the runtime's
+# codecs-extra extension (freedesktop 25.08) gives the page's <video> its
+# codecs (H.264, HEVC…).
 app-id: com.kino.desktop
 runtime: org.gnome.Platform
 runtime-version: '49'
@@ -21,14 +22,6 @@ finish-args:
   # Keys in the system keychain, and notifications.
   - --talk-name=org.freedesktop.secrets
   - --talk-name=org.freedesktop.Notifications
-add-extensions:
-  org.freedesktop.Platform.ffmpeg-full:
-    directory: lib/ffmpeg
-    version: '25.08'
-    add-ld-path: .
-    autodelete: false
-cleanup-commands:
-  - mkdir -p /app/lib/ffmpeg
 modules:
   - name: kino
     buildsystem: simple
