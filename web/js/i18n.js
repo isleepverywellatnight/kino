@@ -49,6 +49,9 @@
   // The French texts the observer still translates (KINO_I18N.remaining()): what
   // is not yet a key in the code. When it is empty, the observer can go.
   const observed = new Set();
+  // The texts t() gave in the language: already translated, the observer leaves
+  // them (Italian's « Liste » is not the French « Liste » to translate again).
+  const fromKeys = new Set();
   const exact = new Map();
   const patternsBySource = new Map();
   let patterns = [];
@@ -95,7 +98,7 @@
   function translate(text) {
     if (typeof text !== 'string' || !text || text.length > 600) return null;
     const core = text.trim().replace(/\s+/g, ' ');
-    if (!core || !/[A-Za-zÀ-ÿ]/.test(core)) return null;
+    if (!core || !/[A-Za-zÀ-ÿ]/.test(core) || fromKeys.has(core)) return null;
     const out = translateCore(core, 0);
     if (out === null || out === core) return null;
     const lead = text.match(/^\s*/)[0];
@@ -140,7 +143,9 @@
     // A text no dictionary has as such may still be covered by a rule with a
     // variable part (« {} s » -> « {} 秒 »), as the observer would show it.
     const text = translations[key] ?? (lang === 'fr' ? source : translate(source) ?? source);
-    return fill(text, values.map(String));
+    const out = fill(text, values.map(String));
+    if (text !== source) fromKeys.add(out.trim().replace(/\s+/g, ' '));
+    return out;
   }
 
   // The markup's fixed texts: <button data-i18n="page.parametres">,

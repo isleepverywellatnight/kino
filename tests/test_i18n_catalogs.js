@@ -186,3 +186,14 @@ test('in the page, a keyed element holds the French of its key', () => {
   }
   assert.ok(keyed > 300, `${keyed} keyed texts`);
 });
+
+test('a text t() gave is not translated a second time', () => {
+  // Italian translates a key « Liste » that is also a French text (« Liste » -> « Lista »).
+  const it = i18n.readLanguage('it');
+  const frenchOf = new Map(Object.entries(source).map(([key, text]) => [text, key]));
+  const key = Object.keys(it).find(k => frenchOf.has(it[k]) && it[frenchOf.get(it[k])] && it[frenchOf.get(it[k])] !== it[k]);
+  assert.ok(key, 'a translation that is another French text');
+  const I18N = page('it').I18N;
+  const shown = I18N.t(key);
+  assert.equal(I18N.translate(shown), shown, `« ${shown} » stays as t() gave it`);
+});
