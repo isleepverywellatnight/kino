@@ -100,7 +100,10 @@ pub fn click(parent: isize, x: i32, y: i32) {
         let send = |flags| {
             // SAFETY: one mouse input.
             let sent = unsafe { SendInput(&[button(flags)], std::mem::size_of::<INPUT>() as i32) };
-            (sent, windows::core::Error::from_win32().code().0)
+            (
+                sent,
+                unsafe { windows::Win32::Foundation::GetLastError() }.0,
+            )
         };
         // SAFETY: moves the cursor, then reads where it is.
         let moved = unsafe { SetCursorPos(point.x, point.y) };
