@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.1
+
+- Translations: texts that showed wrong in some languages now read right. The
+  average rating of a list (« IMDb 8,2 en moyenne ») is translated in German,
+  Spanish, Italian, Portuguese, Russian and Chinese; a French plural « s » no
+  longer sticks to a word (« Titel gesehens »); « ▶ Lancer S02E04 » is
+  translated; the source filter reads « Show only SDR sources » in English,
+  and « hevc » no longer turns into « Std.evc » in German or « чevc » in Russian.
+- An apostrophe or a « & » in a subtitle's name, a torrent's status or a
+  title no longer shows as « &#39; » or « &amp; ».
+- Each translated text is found by its key: a change to a French sentence no
+  longer loses its translations.
+
 ## 2.0.0
 
 - KINO is now written in Rust from end to end: the app no longer carries
