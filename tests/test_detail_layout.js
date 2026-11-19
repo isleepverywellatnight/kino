@@ -15,7 +15,7 @@ const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf
 const builder = slice('function buildDetailHtml(', '// No backdrop for this title');
 const sourcesCode = slice('// --- Sources: the best one first', 'async function copyTorrentMagnet(');
 const moreCode = slice('// Cast, similar titles and links: below the sources', 'function closeDetailPanel() {');
-const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 function torrent(title, resolution, extra = {}) {
   return { title, qualities: [resolution], langs: ['MULTI'], source: 'Comet', size_gb: 4.2, size_str: '4.2 GB', seeders: 12,
@@ -125,7 +125,7 @@ test('the lower part follows the fiche', () => {
     const body = source.slice(source.indexOf(place), source.indexOf('\n}\n', source.indexOf(place)));
     assert.match(body, /hideDetailMore\(\);/, place);
   }
-  assert.match(source, /detail\.innerHTML = rendered\.html;\n\s+showDetailMore\(rendered\.moreHtml\);\n\s+loadDetailPeoplePhotos\(media\.id\);/);
+  assert.match(source, /render\(detail, rendered\.html\);\n\s+showDetailMore\(rendered\.moreHtml\);\n\s+loadDetailPeoplePhotos\(media\.id\);/);
   assert.match(source, /querySelectorAll\('#detailMore \.detail-person\[data-person\]'\)/);
 });
 
@@ -135,12 +135,12 @@ test('the fiche: hero actions to decide, episodes, then the rest after the sourc
   assert.match(actions, /Bande-annonce/);
   assert.doesNotMatch(actions, /IMDb ↗|Letterboxd ↗|detailSpoilerChoice/);
   assert.match(builder, /<div class="detail-episodes-tools">\n\s+<div class="spoiler-series-setting"><label for="detailSpoilerChoice">Spoilers<\/label>/);
-  assert.match(builder, /<\/section>\n\s+\$\{episodesHtml\}\n\s+\$\{journeyHtml\}\n\s+`,\n\s+moreHtml: `\$\{castHtml\}\$\{similarHtml\}\$\{linksHtml\}`,/);
+  assert.match(builder, /<\/section>\n\s+\$\{episodesHtml\}\n\s+\$\{journeyHtml\}\n\s+`,\n\s+moreHtml: html`\$\{castHtml\}\$\{similarHtml\}\$\{linksHtml\}`,/);
   // one function draws « Vous aimerez aussi », for the genre match and for TMDB.
   assert.match(source, /<div class="list-shelf-row">\$\{list\.map\(sm => posterCardHtml\(sm, /);
   assert.match(builder, /const similarHtml = similarSectionHtml\(Array\.isArray\(meta\.similar\) \? meta\.similar : \[\], isSeries\);/);
   assert.match(builder, /href="https:\/\/www\.imdb\.com\/title\/\$\{encodeURIComponent\(media\.id\)\}\/" target="_blank" rel="noopener"/);
-  assert.match(builder, /\$\{!isSeries \? `<a class="btn btn-secondary" href="https:\/\/letterboxd\.com\/imdb\//);
+  assert.match(builder, /\$\{!isSeries \? html`<a class="btn btn-secondary" href="https:\/\/letterboxd\.com\/imdb\//);
   const at = id => html.indexOf(`id="${id}"`);
   assert.ok(at('detailPanel') < at('torrentsPanel') && at('torrentsPanel') < at('detailMore'));
   assert.match(html, /<div id="detailMore" class="panel detail-more" hidden><\/div>/);

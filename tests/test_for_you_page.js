@@ -1,6 +1,7 @@
 // « Pour vous » on the home: each suggestion with its reason, the
 // titles seen left out, and « Pas pour moi » that takes one out at once.
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -18,8 +19,7 @@ function load(answer) {
   const requests = [];
   const context = {
     document: { getElementById: el }, homeKind: () => 'movie', onHomeTab: () => true, HOME_SHELF_SIZE: 12,
-    getWatchedHistory: () => [{ id: 'tt3' }], posterCardHtml: m => `<card ${m.id}>`, escapeHtml: s => String(s),
-    RELATED_CLIENT_CACHE: new Map([['x', 1]]),
+    getWatchedHistory: () => [{ id: 'tt3' }], posterCardHtml: m => raw(`<card ${m.id}>`),     RELATED_CLIENT_CACHE: new Map([['x', 1]]),
     api: async (url, options) => { requests.push([url, options && options.body]); return answer(url); },
   };
   vm.runInNewContext(`${code}\nthis.api_ = { renderHomeForYou, notForMe, FOR_YOU_CACHE };`, context);

@@ -67,30 +67,26 @@ function ratingPoster(entry) {
 
 function ratingGesturesHtml(id, current, { labels = true } = {}) {
   const chosen = ratingGesture(current);
-  return `<div class="rate-gestures${labels ? '' : ' is-compact'}" role="group" aria-label="Votre avis">${RATING_GESTURES.map(g => {
+  return html`<div class="rate-gestures${labels ? '' : ' is-compact'}" role="group" aria-label="Votre avis">${RATING_GESTURES.map(g => {
     const pressed = chosen === g.key;
-    return `<button type="button" class="rate-gesture is-${g.key}" data-rate-id="${escapeHtml(id)}" data-rate-value="${g.value}"`
-      + ` aria-pressed="${pressed}" title="${pressed ? `${g.label} (cliquer pour retirer)` : g.label}"${labels ? '' : ` aria-label="${g.label}"`}`
-      + ` ${act('rateFromButton', EVENT, THIS)}>`
-      + `<svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#${g.icon}${pressed ? '-fill' : ''}"></use></svg>`
-      + `${labels ? `<span>${g.label}</span>` : ''}</button>`;
-  }).join('')}</div>`;
+    return html`<button type="button" class="rate-gesture is-${g.key}" data-rate-id="${id}" data-rate-value="${g.value}" aria-pressed="${pressed}" title="${pressed ? `${g.label} (cliquer pour retirer)` : g.label}"${labels ? '' : html` aria-label="${g.label}"`} ${act('rateFromButton', EVENT, THIS)}><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#${g.icon}${pressed ? '-fill' : ''}"></use></svg>${labels ? html`<span>${g.label}</span>` : ''}</button>`;
+  })}</div>`;
 }
 
 // The small mark on a poster: the gesture, or the stars of an imported 3.
 function ratingBadgeHtml(value) {
   const gesture = RATING_GESTURES.find(g => g.key === ratingGesture(value));
   if (gesture) {
-    return `<span class="poster-user-rating is-${gesture.key}" title="Votre avis : ${gesture.label}"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#${gesture.icon}-fill"></use></svg></span>`;
+    return html`<span class="poster-user-rating is-${gesture.key}" title="Votre avis : ${gesture.label}"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#${gesture.icon}-fill"></use></svg></span>`;
   }
-  return value ? `<span class="poster-user-rating" title="Votre note">★ ${escapeHtml(String(value))}/5</span>` : '';
+  return value ? html`<span class="poster-user-rating" title="Votre note">★ ${String(value)}/5</span>` : '';
 }
 
 // « Votre avis » in the fiche, for a title of the history.
 function ficheRatingHtml(mediaId, entry, value) {
-  if (!entry) return value ? `<span class="detail-chip detail-chip-strong">★ ${escapeHtml(String(value))}/5 · Ma note</span>` : '';
-  const stars = value && !ratingGesture(value) ? `<span class="detail-chip">★ ${escapeHtml(String(value))}/5</span>` : '';
-  return `<span class="fiche-rating" id="ficheRating" data-rating-id="${escapeHtml(mediaId)}"><span class="fiche-rating-label">Votre avis</span>${stars}${ratingGesturesHtml(mediaId, value)}<span class="rate-status" role="status"></span></span>`;
+  if (!entry) return value ? html`<span class="detail-chip detail-chip-strong">★ ${String(value)}/5 · Ma note</span>` : '';
+  const stars = value && !ratingGesture(value) ? html`<span class="detail-chip">★ ${String(value)}/5</span>` : '';
+  return html`<span class="fiche-rating" id="ficheRating" data-rating-id="${mediaId}"><span class="fiche-rating-label">Votre avis</span>${stars}${ratingGesturesHtml(mediaId, value)}<span class="rate-status" role="status"></span></span>`;
 }
 
 // --- Saving -------------------------------------------------------------------
@@ -142,7 +138,7 @@ async function rateFromButton(event, button) {
       setTimeout(renderHomeRate, 260);
     }
     if (fiche) {
-      group.outerHTML = ratingGesturesHtml(id, next);
+      replaceWith(group, ratingGesturesHtml(id, next));
       setRatingStatus(fiche, next ? 'Noté. Vos suggestions en tiennent compte.' : 'Note retirée.');
     }
   } catch (error) {
@@ -174,22 +170,19 @@ function renderHomeRate() {
   if (!sec || !row) return;
   if (!onHomeTab() || (typeof networkOnline !== 'undefined' && !networkOnline)) {
     sec.hidden = true;
-    row.innerHTML = '';
+    render(row, '');
     return;
   }
   const kind = homeKind();
   const all = ratingCandidates(userHistory, kind, Infinity);
   sec.hidden = !all.length;
-  if (!all.length) { row.innerHTML = ''; return; }
+  if (!all.length) { render(row, ''); return; }
   const count = document.getElementById('homeRateCount');
   if (count) count.textContent = all.length > 1 ? `${all.length} titres · un clic par titre suffit` : 'Un clic suffit';
-  row.innerHTML = all.slice(0, HOME_RATE_SIZE).map(entry => {
+  render(row, all.slice(0, HOME_RATE_SIZE).map(entry => {
     const media = { id: entry.id, name: entry.name, type: kind, year: entry.year || '', poster: ratingPoster(entry) };
-    return `<div class="foryou-item rate-item" data-rate-item="${escapeHtml(entry.id)}">${posterCardHtml(media, kind)}`
-      + ratingGesturesHtml(entry.id, '', { labels: false })
-      + `<button type="button" class="foryou-no" data-rate-id="${escapeHtml(entry.id)}" ${act('skipRating', EVENT, THIS)}>Passer</button>`
-      + `<span class="rate-status" role="status"></span></div>`;
-  }).join('');
+    return html`<div class="foryou-item rate-item" data-rate-item="${entry.id}">${posterCardHtml(media, kind)}${ratingGesturesHtml(entry.id, '', { labels: false })}<button type="button" class="foryou-no" data-rate-id="${entry.id}" ${act('skipRating', EVENT, THIS)}>Passer</button><span class="rate-status" role="status"></span></div>`;
+  }));
 }
 
 // --- After a playback -------------------------------------------------------------
@@ -225,7 +218,7 @@ function showRatePrompt(entry, asked) {
   document.getElementById('ratePromptKicker').textContent = asked === 'film'
     ? 'Film terminé' : (entry.series_finished ? 'Série terminée' : `Saison ${asked.slice(1)} terminée`);
   document.getElementById('ratePromptTitle').textContent = `Vous avez aimé ${name} ?`;
-  document.getElementById('ratePromptGestures').innerHTML = ratingGesturesHtml(entry.id, '');
+  render(document.getElementById('ratePromptGestures'), ratingGesturesHtml(entry.id, ''));
   setRatingStatus(prompt, '');
   prompt.classList.remove('is-done');
   prompt.hidden = false;
@@ -238,7 +231,7 @@ function thankRatePrompt(id, value) {
   if (!prompt) return;
   const gestures = document.getElementById('ratePromptGestures');
   if (gestures) {
-    gestures.innerHTML = ratingGesturesHtml(id, value);
+    render(gestures, ratingGesturesHtml(id, value));
     gestures.querySelectorAll('button').forEach(button => { button.disabled = true; });
   }
   prompt.classList.add('is-done');

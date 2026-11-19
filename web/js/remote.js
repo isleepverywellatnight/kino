@@ -86,9 +86,9 @@ async function pollState() {
     // Bouton Play / Pause
     const playIcon = document.getElementById('playIcon');
     if (state.paused) {
-      playIcon.innerHTML = '<polygon points="6,4 20,12 6,20"/>';
+      render(playIcon, html`<polygon points="6,4 20,12 6,20"/>`);
     } else {
-      playIcon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+      render(playIcon, html`<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>`);
     }
 
     // Barre de temps

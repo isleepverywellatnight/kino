@@ -361,16 +361,16 @@ function renderListFilters(rawList, view) {
     if (shown.length <= 2 && current === 'all') return '';
     const chips = shown.map(([key, text]) => {
       const active = current === key;
-      return `<button type="button" class="chip${active ? ' active' : ''}" aria-pressed="${active}" ${act('setListFilter', String(name), String(key))}>${text} <span class="list-count">${count(key)}</span></button>`;
-    }).join('');
-    return `<div class="list-filter-group" role="group" aria-label="${label}"><span class="list-filter-label" aria-hidden="true">${label}</span>${chips}</div>`;
+      return html`<button type="button" class="chip${active ? ' active' : ''}" aria-pressed="${active}" ${act('setListFilter', String(name), String(key))}>${text} <span class="list-count">${count(key)}</span></button>`;
+    });
+    return html`<div class="list-filter-group" role="group" aria-label="${label}"><span class="list-filter-label" aria-hidden="true">${label}</span>${chips}</div>`;
   };
   const ofType = rawList.filter(m => view.type === 'all' || listItemKind(m) === view.type);
   const typeGroup = group('type', 'Type', LIST_TYPES,
     key => key === 'all' ? rawList.length : rawList.filter(m => listItemKind(m) === key).length, view.type);
   const stateGroup = activeTab !== 'watched' ? group('state', 'État', LIST_STATES,
     key => key === 'all' ? ofType.length : ofType.filter(m => listItemState(m) === key).length, view.state) : '';
-  box.innerHTML = typeGroup + stateGroup;
+  render(box, [typeGroup, stateGroup]);
   box.hidden = !box.innerHTML;
 }
 
@@ -447,7 +447,7 @@ function renderActiveListTab() {
 
   if (rawList.length && !filtered.length) {
     const grid = document.getElementById('postersGrid');
-    if (grid) grid.innerHTML = '<div class="library-empty"><h3>Aucun titre ne correspond</h3><p>Changez de filtre ou de recherche.</p><button type="button" class="btn" ' + act('resetListFilters') + '>Tout afficher</button></div>';
+    if (grid) render(grid, html`<div class="library-empty"><h3>Aucun titre ne correspond</h3><p>Changez de filtre ou de recherche.</p><button type="button" class="btn" ${act('resetListFilters')}>Tout afficher</button></div>`);
     return;
   }
   renderPosterCards(filtered, 'movie');
@@ -610,29 +610,29 @@ async function surpriseMeMedia(poolArg = null) {
     slots.push(chosen);
   }
 
-  strip.innerHTML = slots.map((m, idx) => {
+  render(strip, slots.map((m, idx) => {
     const ratingVal = parseFloat(m.imdbRating || '0') || 0;
-    const ratingBadge = ratingVal > 0 ? `<span class="case-slot-rating">★ ${escapeHtml(m.imdbRating)}</span>` : '';
+    const ratingBadge = ratingVal > 0 ? html`<span class="case-slot-rating">★ ${m.imdbRating}</span>` : '';
     const yearTxt = m.releaseInfo || m.year || (m.type === 'series' ? 'Série' : 'Film');
     const poster = m.poster || '';
     const safeName = escapeHtml(m.name || 'Titre');
-    return `
+    return html`
       <div class="case-slot-card" id="caseSlot_${idx}">
         ${ratingBadge}
         ${poster
-          ? `<img class="case-slot-poster" src="${escapeHtml(poster)}" alt="${safeName}" loading="eager" ${actOn('error', 'kinoInvisible', THIS)}>`
-          : `<div class="case-slot-poster" style="display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:0.75rem;">KINO</div>`
+          ? html`<img class="case-slot-poster" src="${poster}" alt="${safeName}" loading="eager" ${actOn('error', 'kinoInvisible', THIS)}>`
+          : html`<div class="case-slot-poster" style="display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:0.75rem;">KINO</div>`
         }
         <div class="case-slot-info">
-          <div class="case-slot-title" title="${safeName}">${escapeHtml(m.name || 'Sans titre')}</div>
-          <div class="case-slot-sub">${escapeHtml(yearTxt)}</div>
+          <div class="case-slot-title" title="${safeName}">${m.name || 'Sans titre'}</div>
+          <div class="case-slot-sub">${yearTxt}</div>
         </div>
       </div>
     `;
-  }).join('');
+  }));
 
   winPanel.style.display = 'none';
-  winPanel.innerHTML = '';
+  render(winPanel, '');
   if (skipBtn) skipBtn.style.display = 'inline-flex';
   if (kickerEl) {
     if (poolMode === 'watchlist') kickerEl.textContent = 'TIRAGE · MA LISTE';
@@ -761,17 +761,17 @@ function finishCaseSpin(skipped = false) {
   if (winPanel) {
     winPanel.style.borderColor = '';
     winPanel.style.boxShadow = '';
-    winPanel.innerHTML = `
+    render(winPanel, html`
       <div style="display:flex; align-items:center; gap:14px; min-width:240px; flex:1;">
-        ${winnerRaw.poster ? `<img src="${escapeHtml(winnerRaw.poster)}" style="width:54px; height:80px; object-fit:cover; border-radius:6px; border:1px solid rgba(255,255,255,0.12);">` : ''}
+        ${winnerRaw.poster ? html`<img src="${winnerRaw.poster}" style="width:54px; height:80px; object-fit:cover; border-radius:6px; border:1px solid rgba(255,255,255,0.12);">` : ''}
         <div>
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            ${rating ? `<span class="badge" style="background:rgba(255,255,255,0.09); color:#fafafa; border-color:rgba(255,255,255,0.18); font-weight:600;">★ ${rating} IMDb</span>` : ''}
-            ${year ? `<span style="font-size:0.78rem; color:var(--muted);">${escapeHtml(year)}</span>` : ''}
-            ${genres.map(g => `<span class="badge">${escapeHtml(frenchGenre(g))}</span>`).join('')}
+            ${rating ? html`<span class="badge" style="background:rgba(255,255,255,0.09); color:#fafafa; border-color:rgba(255,255,255,0.18); font-weight:600;">★ ${rating} IMDb</span>` : ''}
+            ${year ? html`<span style="font-size:0.78rem; color:var(--muted);">${year}</span>` : ''}
+            ${genres.map(g => html`<span class="badge">${frenchGenre(g)}</span>`)}
           </div>
-          <div style="font-size:1.12rem; font-weight:700; color:#fafafa; margin-top:5px;"${titleAttrs({...winnerRaw, type: mtype})}>${escapeHtml(displayTitle(winnerRaw))}</div>
-          ${winnerRaw.description ? `<div style="font-size:0.76rem; color:var(--muted); margin-top:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; max-width:470px;">${escapeHtml(winnerRaw.description)}</div>` : ''}
+          <div style="font-size:1.12rem; font-weight:700; color:#fafafa; margin-top:5px;"${titleAttrs({...winnerRaw, type: mtype})}>${displayTitle(winnerRaw)}</div>
+          ${winnerRaw.description ? html`<div style="font-size:0.76rem; color:var(--muted); margin-top:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; max-width:470px;">${winnerRaw.description}</div>` : ''}
         </div>
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -779,10 +779,10 @@ function finishCaseSpin(skipped = false) {
         <button class="btn btn-secondary" ${act('caseOpenDetails')}>Fiche &amp; Sources</button>
         <button class="btn btn-secondary" ${act('caseOpenTrailer')}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>Bande-annonce</button>
         <button class="btn btn-secondary" id="caseWlBtn" ${act('caseToggleWatchlist', THIS)} title="Ajouter ou retirer ce titre de Ma Liste">${inWl ? '✓ Dans Ma Liste' : '+ Ma Liste'}</button>
-        ${poolMode !== 'watched' ? `<button class="btn btn-secondary" ${act('caseMarkWatchedAndRespin', THIS)} title="Marquer ce titre comme Déjà vu, le retirer de la roulette et relancer un tirage">✓ Déjà vu</button>` : ''}
+        ${poolMode !== 'watched' ? html`<button class="btn btn-secondary" ${act('caseMarkWatchedAndRespin', THIS)} title="Marquer ce titre comme Déjà vu, le retirer de la roulette et relancer un tirage">✓ Déjà vu</button>` : ''}
         <button class="btn-surprise" ${act('surpriseMeMedia', String(poolMode || 'catalog'))}>Relancer</button>
       </div>
-    `;
+    `);
     winPanel.style.display = 'flex';
   }
 }
@@ -893,13 +893,13 @@ function mySeriesItemHtml(item) {
   const share = item.aired ? Math.round(100 * item.seen / item.aired) : 0;
   const next = item.next;
   const play = next
-    ? `<button type="button" class="btn" ${act('playMySeries', String(id), THIS)}>${next.resume ? 'Reprendre' : 'Lancer'} ${seriesEpisodeLabel(next.season, next.episode)}</button>` : '';
-  return `<article class="offline-item myseries-item">
-      <div class="offline-poster">${item.poster ? `<img src="${escapeHtml(item.poster)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span aria-hidden="true">▷</span></div>
+    ? html`<button type="button" class="btn" ${act('playMySeries', String(id), THIS)}>${next.resume ? 'Reprendre' : 'Lancer'} ${seriesEpisodeLabel(next.season, next.episode)}</button>` : '';
+  return html`<article class="offline-item myseries-item">
+      <div class="offline-poster">${item.poster ? html`<img src="${item.poster}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span aria-hidden="true">▷</span></div>
       <div class="offline-info">
-        <strong${titleAttrs(item, 'series')}>${escapeHtml(displayTitle(item))}</strong>
-        ${facts.map(fact => `<span class="myseries-fact">${escapeHtml(fact)}</span>`).join('')}
-        ${item.aired && item.group !== 'start' ? `<div class="progress-bar" role="img" aria-label="${item.seen} épisodes vus sur ${item.aired}"><div class="progress-fill" style="width:${share}%"></div></div>` : ''}
+        <strong${titleAttrs(item, 'series')}>${displayTitle(item)}</strong>
+        ${facts.map(fact => html`<span class="myseries-fact">${fact}</span>`)}
+        ${item.aired && item.group !== 'start' ? html`<div class="progress-bar" role="img" aria-label="${item.seen} épisodes vus sur ${item.aired}"><div class="progress-fill" style="width:${share}%"></div></div>` : ''}
       </div>
       <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" ${act('openMySeries', String(id))}>Fiche</button></div>
     </article>`;
@@ -909,20 +909,20 @@ function renderMySeries() {
   const grid = document.getElementById('postersGrid');
   if (!grid || activeTab !== 'myseries') return;
   if (!mySeriesData.length) {
-    grid.innerHTML = '<div class="library-empty"><h3>Aucune série suivie pour l’instant</h3><p>Lancez un épisode, ou ajoutez une série à Ma Liste : elle apparaîtra ici, avec les épisodes qui restent et les prochains à sortir.</p></div>';
+    render(grid, html`<div class="library-empty"><h3>Aucune série suivie pour l’instant</h3><p>Lancez un épisode, ou ajoutez une série à Ma Liste : elle apparaîtra ici, avec les épisodes qui restent et les prochains à sortir.</p></div>`);
     return;
   }
-  grid.innerHTML = MY_SERIES_GROUPS.map(([group, label]) => {
+  render(grid, MY_SERIES_GROUPS.map(([group, label]) => {
     const items = mySeriesData.filter(item => item.group === group);
     return items.length
-      ? `<h3 class="search-group-title">${label} <span class="list-count">${items.length}</span></h3>${items.map(mySeriesItemHtml).join('')}` : '';
-  }).join('');
+      ? html`<h3 class="search-group-title">${label} <span class="list-count">${items.length}</span></h3>${items.map(mySeriesItemHtml)}` : '';
+  }));
 }
 
 async function loadMySeries() {
   const grid = document.getElementById('postersGrid');
   const request = ++mySeriesRequest;
-  if (grid) grid.innerHTML = '<p class="myseries-fact">Chargement de vos séries…</p>';
+  if (grid) render(grid, html`<p class="myseries-fact">Chargement de vos séries…</p>`);
   try {
     const data = await api('/api/my-series');
     if (request !== mySeriesRequest) return;
@@ -930,8 +930,8 @@ async function loadMySeries() {
     renderMySeries();
   } catch (error) {
     if (request !== mySeriesRequest || !grid || activeTab !== 'myseries') return;
-    grid.innerHTML = error.code === 'offline' ? needsInternetHtml('Mes séries')
-      : `<p class="myseries-fact">Impossible d’afficher vos séries : ${escapeHtml(error.message)}</p>`;
+    render(grid, error.code === 'offline' ? needsInternetHtml('Mes séries')
+      : html`<p class="myseries-fact">Impossible d’afficher vos séries : ${error.message}</p>`);
   }
 }
 
@@ -1018,12 +1018,12 @@ function calendarItemHtml(item, later = false) {
   const episode = Number(item.episode) || 1;
   const facts = later ? [calendarEpisodes(item), `Le ${episodeAirLabel(item.released)}`] : [calendarEpisodes(item), calendarState(item)];
   const play = !later && item.aired && !item.seen && !item.before
-    ? `<button type="button" class="btn" ${act('playCalendarEpisode', String(id), season, episode, THIS)}>${item.resume_pct ? 'Reprendre' : 'Lancer'} ${seriesEpisodeLabel(season, episode)}</button>` : '';
-  return `<article class="offline-item myseries-item calendar-item${item.seen ? ' is-seen' : ''}">
-      <div class="offline-poster">${item.poster ? `<img src="${escapeHtml(item.poster)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span aria-hidden="true">▷</span></div>
+    ? html`<button type="button" class="btn" ${act('playCalendarEpisode', String(id), season, episode, THIS)}>${item.resume_pct ? 'Reprendre' : 'Lancer'} ${seriesEpisodeLabel(season, episode)}</button>` : '';
+  return html`<article class="offline-item myseries-item calendar-item${item.seen ? ' is-seen' : ''}">
+      <div class="offline-poster">${item.poster ? html`<img src="${item.poster}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span aria-hidden="true">▷</span></div>
       <div class="offline-info">
-        <strong${titleAttrs(item, 'series')}>${escapeHtml(displayTitle(item))}</strong>
-        ${facts.filter(Boolean).map(fact => `<span class="myseries-fact">${escapeHtml(fact)}</span>`).join('')}
+        <strong${titleAttrs(item, 'series')}>${displayTitle(item)}</strong>
+        ${facts.filter(Boolean).map(fact => html`<span class="myseries-fact">${fact}</span>`)}
       </div>
       <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" ${act('openCalendarSeries', String(id))}>Fiche</button></div>
     </article>`;
@@ -1035,12 +1035,12 @@ function calendarWeekHtml(data, start, title, none) {
   const today = data.local_today || data.today;
   const body = days.length ? days.map(day => {
     const { label, near } = calendarDayTitle(day.date, today);
-    return `<section class="calendar-day${day.date === today ? ' is-today' : ''}">
-        <h4 class="calendar-day-title">${escapeHtml(label)}${near ? ` <span class="calendar-near">${near}</span>` : ''}</h4>
-        ${(day.items || []).map(item => calendarItemHtml(item)).join('')}
+    return html`<section class="calendar-day${day.date === today ? ' is-today' : ''}">
+        <h4 class="calendar-day-title">${label}${near ? html` <span class="calendar-near">${near}</span>` : ''}</h4>
+        ${(day.items || []).map(item => calendarItemHtml(item))}
       </section>`;
-  }).join('') : `<p class="myseries-fact calendar-none">${none}</p>`;
-  return `<h3 class="search-group-title">${title} <span class="calendar-range">${escapeHtml(calendarRange(start))}</span></h3>${body}`;
+  }) : html`<p class="myseries-fact calendar-none">${none}</p>`;
+  return html`<h3 class="search-group-title">${title} <span class="calendar-range">${calendarRange(start)}</span></h3>${body}`;
 }
 
 function renderReleaseCalendar() {
@@ -1048,23 +1048,23 @@ function renderReleaseCalendar() {
   const data = releaseCalendarData;
   if (!grid || activeTab !== 'calendar' || !data) return;
   if (!data.series) {
-    grid.innerHTML = '<div class="library-empty"><h3>Aucune série suivie pour l’instant</h3><p>Lancez un épisode, ou ajoutez une série à Ma Liste : ses prochaines sorties apparaîtront ici, jour par jour.</p></div>';
+    render(grid, html`<div class="library-empty"><h3>Aucune série suivie pour l’instant</h3><p>Lancez un épisode, ou ajoutez une série à Ma Liste : ses prochaines sorties apparaîtront ici, jour par jour.</p></div>`);
     return;
   }
   const missing = data.unavailable
-    ? `<p class="myseries-fact calendar-none">${data.unavailable} série${data.unavailable > 1 ? 's' : ''} sans liste d’épisodes pour le moment : le calendrier est incomplet.</p>` : '';
+    ? html`<p class="myseries-fact calendar-none">${data.unavailable} série${data.unavailable > 1 ? 's' : ''} sans liste d’épisodes pour le moment : le calendrier est incomplet.</p>` : '';
   const later = (data.later || []).length
-    ? `<h3 class="search-group-title">Plus tard <span class="list-count">${data.later.length}</span></h3>${data.later.map(item => calendarItemHtml(item, true)).join('')}` : '';
-  grid.innerHTML = missing
-    + calendarWeekHtml(data, data.start, 'Cette semaine', 'Rien ne sort cette semaine pour vos séries.')
-    + calendarWeekHtml(data, calendarShift(data.start, 7), 'Semaine prochaine', 'Rien ne sort la semaine prochaine pour vos séries.')
-    + later;
+    ? html`<h3 class="search-group-title">Plus tard <span class="list-count">${data.later.length}</span></h3>${data.later.map(item => calendarItemHtml(item, true))}` : '';
+  render(grid, [missing,
+    calendarWeekHtml(data, data.start, 'Cette semaine', 'Rien ne sort cette semaine pour vos séries.'),
+    calendarWeekHtml(data, calendarShift(data.start, 7), 'Semaine prochaine', 'Rien ne sort la semaine prochaine pour vos séries.'),
+    later]);
 }
 
 async function loadReleaseCalendar() {
   const grid = document.getElementById('postersGrid');
   const request = ++releaseCalendarRequest;
-  if (grid) grid.innerHTML = '<p class="myseries-fact">Chargement du calendrier…</p>';
+  if (grid) render(grid, html`<p class="myseries-fact">Chargement du calendrier…</p>`);
   try {
     const data = await api('/api/calendar');
     if (request !== releaseCalendarRequest) return;
@@ -1072,8 +1072,8 @@ async function loadReleaseCalendar() {
     renderReleaseCalendar();
   } catch (error) {
     if (request !== releaseCalendarRequest || !grid || activeTab !== 'calendar') return;
-    grid.innerHTML = error.code === 'offline' ? needsInternetHtml('Le calendrier')
-      : `<p class="myseries-fact">Impossible d’afficher le calendrier : ${escapeHtml(error.message)}</p>`;
+    render(grid, error.code === 'offline' ? needsInternetHtml('Le calendrier')
+      : html`<p class="myseries-fact">Impossible d’afficher le calendrier : ${error.message}</p>`);
   }
 }
 

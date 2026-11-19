@@ -267,19 +267,19 @@ function renderSavedListsInModal() {
   if (!wrap || !container) return;
   if (!userCustomLists.length) {
     wrap.style.display = 'none';
-    container.innerHTML = '';
+    render(container, '');
     return;
   }
   wrap.style.display = 'block';
-  container.innerHTML = userCustomLists.map(l => `
+  render(container, userCustomLists.map(l => html`
     <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--border); padding:6px 10px; border-radius:6px;">
       <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:320px;">
-        <span style="font-size:0.78rem; font-weight:600; color:#fafafa;">${escapeHtml(l.title)}</span>
+        <span style="font-size:0.78rem; font-weight:600; color:#fafafa;">${l.title}</span>
         <span style="font-size:0.72rem; color:var(--muted); margin-left:6px;">(${l.count} films)</span>
       </div>
       <button type="button" class="btn btn-secondary" style="padding:2px 7px; font-size:0.7rem; color:#f87171;" ${act('deleteLetterboxdCustomList', l.id)}>✕</button>
     </div>
-  `).join('');
+  `));
 }
 
 async function submitLetterboxdCustomListImport() {
@@ -395,27 +395,27 @@ function renderCustomListsTab() {
   if (stats) stats.style.display = 'none';
 
   if (catTitle) {
-    catTitle.innerHTML = `
+    render(catTitle, html`
       <div class="lists-title">
         <span>Listes Letterboxd</span>
         <button type="button" class="btn btn-secondary" ${act('openLetterboxdListImport')}>+ Importer une liste</button>
-      </div>`;
+      </div>`);
   }
 
   grid.style.display = 'block';
   grid.style.flexDirection = '';
   grid.style.gap = '';
   if (!userCustomLists.length) {
-    grid.innerHTML = `
+    render(grid, html`
       <div class="library-empty">
         <span class="library-empty-icon" aria-hidden="true">≡</span>
         <h3>Aucune liste Letterboxd importée</h3>
         <p>Collez le lien d'une liste Letterboxd publique (Top 250, A24, un réalisateur, une ambiance) pour la retrouver ici, prête à lancer, avec sa roulette.</p>
         <button type="button" class="btn" ${act('openLetterboxdListImport')}>Importer une liste Letterboxd</button>
-      </div>`;
+      </div>`);
     return;
   }
-  grid.innerHTML = userCustomLists.map(customListShelfHtml).join('');
+  render(grid, userCustomLists.map(customListShelfHtml));
 }
 
 // --- Letterboxd lists: one shelf per list, then a full page with filters ---
@@ -431,23 +431,23 @@ function customListShelfHtml(list) {
   const items = list.items || [];
   const progress = customListProgress(items);
   const label = escapeHtml(list.title || 'Liste');
-  return `
+  return html`
     <section class="list-shelf" aria-label="${label}">
       <div class="list-shelf-head">
         <div class="list-shelf-info">
           <h3 class="list-shelf-title">${label}</h3>
           <div class="list-shelf-meta">${progress.total} titre${progress.total > 1 ? 's' : ''} · ${progress.watched} vu${progress.watched > 1 ? 's' : ''}</div>
           <div class="list-shelf-progress" role="progressbar" aria-label="Titres vus" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.pct}"><span style="width:${progress.pct}%"></span></div>
-          ${list.description ? `<p class="list-shelf-desc">${escapeHtml(list.description)}</p>` : ''}
+          ${list.description ? html`<p class="list-shelf-desc">${list.description}</p>` : ''}
         </div>
         <div class="list-shelf-actions">
           <button type="button" class="btn" ${act('openCustomList', list.id)}>Tout voir</button>
           <button type="button" class="btn-surprise" ${act('surpriseMeFromCustomList', list.id)} title="Tirer un titre non vu de cette liste">Roulette</button>
-          ${/^https:\/\/letterboxd\.com\//.test(String(list.url || '')) ? `<a href="${escapeHtml(list.url)}" target="_blank" rel="noopener" class="btn btn-secondary">Letterboxd ↗</a>` : ''}
+          ${/^https:\/\/letterboxd\.com\//.test(String(list.url || '')) ? html`<a href="${safeUrl(list.url)}" target="_blank" rel="noopener" class="btn btn-secondary">Letterboxd ↗</a>` : ''}
           <button type="button" class="btn btn-secondary" ${act('deleteLetterboxdCustomList', list.id)} aria-label="Retirer la liste ${label}">Retirer</button>
         </div>
       </div>
-      ${items.length ? `<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie')).join('')}${items.length > LIST_SHELF_SIZE ? `<button type="button" class="list-shelf-more" ${act('openCustomList', list.id)}>Voir les ${items.length} titres</button>` : ''}</div>` : '<p class="list-shelf-empty">Cette liste est vide.</p>'}
+      ${items.length ? html`<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie'))}${items.length > LIST_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${act('openCustomList', list.id)}>Voir les ${items.length} titres</button>` : ''}</div>` : html`<p class="list-shelf-empty">Cette liste est vide.</p>`}
     </section>`;
 }
 
@@ -472,7 +472,7 @@ function renderOpenCustomList(list) {
   grid.style.gap = '';
   const catTitle = document.getElementById('catalogTitle');
   if (catTitle) {
-    catTitle.innerHTML = `<span class="lists-title"><button type="button" class="btn btn-secondary lists-back" ${act('closeCustomList')} aria-label="Revenir aux listes">← Listes</button><span>${escapeHtml(list.title || 'Liste')}</span></span>`;
+    render(catTitle, html`<span class="lists-title"><button type="button" class="btn btn-secondary lists-back" ${act('closeCustomList')} aria-label="Revenir aux listes">← Listes</button><span>${list.title || 'Liste'}</span></span>`);
   }
   const wlw = document.getElementById('watchlistActionsWrap');
   if (wlw) wlw.style.display = 'flex';

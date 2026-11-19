@@ -82,8 +82,8 @@ function renderAnimeJourney() {
   const panel = document.getElementById('animeJourneyPanel');
   if (!panel || !animeJourneyState) return;
   const current = animeJourneyState.works?.find(work => work.playback?.id === currentMedia?.id);
-  panel.innerHTML = AnimeJourneyView.render(animeJourneyState, userHistory,
-    journeyProtectionEnabled(), animeJourneyRevealed, animeJourneyMatches, current?.id);
+  render(panel, AnimeJourneyView.render(animeJourneyState, userHistory,
+    journeyProtectionEnabled(), animeJourneyRevealed, animeJourneyMatches, current?.id));
 }
 
 async function resolveJourneyWork(id, requestId = animeJourneyRequestId) {
@@ -116,7 +116,7 @@ async function loadAnimeJourney(media, meta) {
   if (!panel) return;
   const requestId = ++animeJourneyRequestId;
   const originId = media.id;
-  panel.innerHTML = '<p class="journey-empty">Chargement du parcours…</p>';
+  render(panel, html`<p class="journey-empty">Chargement du parcours…</p>`);
   try {
     const title = meta.name || media.name;
     const year = meta.releaseInfo || meta.year || media.year || '';
@@ -136,7 +136,7 @@ async function loadAnimeJourney(media, meta) {
     }));
   } catch (error) {
     if (requestId === animeJourneyRequestId && currentMedia?.id === originId) {
-      panel.innerHTML = '<p class="journey-empty">Parcours indisponible pour le moment.</p>';
+      render(panel, html`<p class="journey-empty">Parcours indisponible pour le moment.</p>`);
     }
   }
 }
@@ -480,31 +480,31 @@ async function checkConfig() {
     if (badge) {
       if (cfg.user) {
         const exp = cfg.user.premium > 0 ? Math.ceil(cfg.user.premium / 86400) + 'j' : 'Gratuit';
-        badge.innerHTML = `
+        render(badge, html`
           <span class="user-status-dot"></span>
           <span style="font-weight:600; color:#fafafa;">${pmeta.short}</span>
           <span style="color:var(--muted); opacity:0.8;">•</span>
-          <span style="color:var(--text);">${escapeHtml(cfg.user.username)}</span>
+          <span style="color:var(--text);">${cfg.user.username}</span>
           <span class="user-badge-exp">${exp}</span>
-        `;
+        `);
         badge.title = `Connecté à ${pmeta.name} — Compte actif (${exp} restants). Cliquer pour ouvrir la configuration.`;
       } else if (cfg.has_token && cfg.user_status === 'invalid') {
-        badge.innerHTML = `
+        render(badge, html`
           <span class="user-status-dot" style="background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.6);"></span>
           <span style="color:#ef4444; font-weight:600;">${pmeta.short} • Clé invalide</span>
-        `;
+        `);
         badge.title = 'Clé API invalide ou expirée. Cliquer pour reconfigurer.';
       } else if (cfg.has_token) {
-        badge.innerHTML = `
+        render(badge, html`
           <span class="user-status-dot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.6);"></span>
           <span style="color:#eab308; font-weight:600;">${pmeta.short} • Vérification impossible</span>
-        `;
+        `);
         badge.title = 'Le service débrideur ne répond pas. Réessayez plus tard.';
       } else {
-        badge.innerHTML = `
+        render(badge, html`
           <span class="user-status-dot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.6);"></span>
           <span style="color:#eab308; font-weight:600;">Non configuré</span>
-        `;
+        `);
         badge.title = 'Cliquez pour configurer votre clé débrideur';
       }
     }
@@ -595,13 +595,13 @@ function renderTonightResult(result) {
       : result.coverage?.partial ? 'Certaines durées ou ambiances restent inconnues ; les titres sont classés avec les données disponibles.'
         : `${tonightChoices.length} idée${tonightChoices.length > 1 ? 's' : ''} dans Ma Liste, selon vos choix.`
     : (emptyMessages[result.empty_reason] || emptyMessages.no_match);
-  choices.innerHTML = tonightChoices.map((choice, index) => `
+  render(choices, tonightChoices.map((choice, index) => html`
     <article class="tonight-choice">
       <div class="tonight-choice-main">
-        ${choice.item?.poster ? `<img class="tonight-poster" src="${escapeHtml(choice.item.poster)}" alt="" loading="lazy">` : '<div class="tonight-poster-placeholder" aria-hidden="true">▷</div>'}
+        ${choice.item?.poster ? html`<img class="tonight-poster" src="${choice.item.poster}" alt="" loading="lazy">` : html`<div class="tonight-poster-placeholder" aria-hidden="true">▷</div>`}
         <div><span class="tonight-choice-index">IDÉE ${String(index + 1).padStart(2, '0')}</span>
-          <h3>${escapeHtml(choice.item?.name || 'Titre inconnu')}</h3>
-          <p>${(choice.reasons || []).map(escapeHtml).join(' · ')}</p></div>
+          <h3>${choice.item?.name || 'Titre inconnu'}</h3>
+          <p>${(choice.reasons || []).join(' · ')}</p></div>
       </div>
       <div class="tonight-choice-actions">
         <button type="button" class="btn" ${act('playTonightChoice', index, EVENT)}>${choice.offline_id ? 'Lire hors ligne' : 'Regarder'}</button>
@@ -613,18 +613,18 @@ function renderTonightResult(result) {
         <button type="button" ${act('sendTonightFeedback', index, 'exclude')}>Ça ne m’intéresse pas</button>
       </div>
     </article>
-  `).join('');
+  `));
   const review = document.getElementById('tonightReview');
-  if (review) review.innerHTML = tonightReviewItems.length
-    ? tonightReviewItems.map((item, index) => `<div class="tonight-review-row"><span><strong>${escapeHtml(item.name || 'Titre')}</strong><small>${item.decision === 'deferred' ? 'Reporté 24 h' : item.decision === 'seen' ? 'Marqué déjà vu' : 'Écarté de Ce soir'}</small></span><button type="button" class="btn btn-secondary" ${act('restoreTonightChoice', index)}>${item.decision === 'seen' ? 'Annuler' : 'Réintégrer'}</button></div>`).join('')
-    : '<p class="tonight-review-empty">Aucun titre reporté ou écarté.</p>';
+  if (review) render(review, tonightReviewItems.length
+    ? tonightReviewItems.map((item, index) => html`<div class="tonight-review-row"><span><strong>${item.name || 'Titre'}</strong><small>${item.decision === 'deferred' ? 'Reporté 24 h' : item.decision === 'seen' ? 'Marqué déjà vu' : 'Écarté de Ce soir'}</small></span><button type="button" class="btn btn-secondary" ${act('restoreTonightChoice', index)}>${item.decision === 'seen' ? 'Annuler' : 'Réintégrer'}</button></div>`)
+    : html`<p class="tonight-review-empty">Aucun titre reporté ou écarté.</p>`);
   const reviewSummary = document.getElementById('tonightReviewSummary');
   if (reviewSummary) reviewSummary.textContent = `Mes choix${tonightReviewItems.length ? ` (${tonightReviewItems.length})` : ''}`;
   const undo = document.getElementById('tonightUndo');
   if (undo) {
     undo.style.display = tonightUndoAction ? 'flex' : 'none';
-    undo.innerHTML = tonightUndoAction
-      ? `<span>${escapeHtml(tonightUndoAction.label)}</span><button type="button" class="btn btn-secondary" ${act('undoTonightFeedback')}>Annuler</button>` : '';
+    render(undo, tonightUndoAction
+      ? html`<span>${tonightUndoAction.label}</span><button type="button" class="btn btn-secondary" ${act('undoTonightFeedback')}>Annuler</button>` : '');
   }
 }
 
@@ -635,7 +635,7 @@ async function findTonightChoices() {
   const button = document.getElementById('tonightSearchButton');
   if (!status || !choices || !button) return;
   button.disabled = true;
-  choices.innerHTML = '';
+  render(choices, '');
   status.textContent = 'Recherche dans Ma Liste…';
   try {
     const result = await api('/api/tonight', {

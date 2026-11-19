@@ -8,7 +8,7 @@ use axum::http::HeaderMap;
 const LOCAL_NAMES: [&str; 3] = ["127.0.0.1", "localhost", "::1"];
 const REMOTE_PATHS: [&str; 3] = ["/remote", "/api/remote/state", "/api/remote/control"];
 /// The phone remote's own code: public files, asked without the pairing token.
-const REMOTE_SCRIPTS: [&str; 2] = ["/js/actions.js", "/js/remote.js"];
+const REMOTE_SCRIPTS: [&str; 3] = ["/js/actions.js", "/js/html.js", "/js/remote.js"];
 
 fn host_name(value: &str) -> &str {
     let value = value.trim();

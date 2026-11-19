@@ -22,6 +22,7 @@ test('the interface calls only functions and ids that exist', () => {
   assert.deepEqual(result.undefinedCalls, [], 'functions called but defined nowhere');
   assert.deepEqual(result.missingHandlers, [], 'inline handlers without a global function');
   assert.deepEqual(result.missingIds, [], 'ids looked up but never created');
+  assert.deepEqual(result.htmlWrites, [], 'HTML written into the page outside web/js/html.js');
 });
 
 test('the check finds each kind of mistake', () => {
@@ -93,8 +94,7 @@ test('a Google Drive sync reloads the lists it brought back', async () => {
     document: { getElementById: () => status },
     api: async () => ({ status: 'synced', updated_at: 1, history_count: 3, watchlist_count: 2 }),
     refreshUserLists: async () => calls.push('lists'),
-    escapeHtml: value => String(value),
-    Date,
+        Date,
   };
   vm.runInNewContext(`${fn('async function triggerGdriveSync(btn)', 'function toggleDiscordRpcFields()')}; this.sync = triggerGdriveSync;`, context);
   const button = { disabled: false, textContent: '' };

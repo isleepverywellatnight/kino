@@ -21,8 +21,7 @@ test('incomplete local files never offer to start playback in the offline librar
     activeTab: 'offline',
     networkOnline: true,
     document: {getElementById: id => id === 'postersGrid' ? grid : id === 'offlineCount' ? badge : null},
-    escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'),
-  };
+      };
   vm.runInNewContext(`${offlineFunctions}; renderOfflineLibraryData({downloads: {
     abc: {id:'abc', filename:'<script>.mp4', title:'Test <script>', status:'interrupted',
       error_code:'app_closed', bytes_done:42, bytes_total:100, progress:42, available:false, media:{}}
@@ -56,8 +55,7 @@ test('the offline summary shows the free space left for downloads', () => {
     activeTab: 'offline',
     networkOnline: true,
     document: {getElementById: id => id === 'postersGrid' ? grid : null},
-    escapeHtml: value => String(value),
-  };
+      };
   vm.runInNewContext(`${offlineFunctions}; renderOfflineLibraryData({downloads: {}, used_bytes: 21.44 * 1024 ** 3, free_bytes: 15 * 1024 ** 3});`, context);
   assert.match(grid.innerHTML, /Utilisé sur ce Mac : 21 Go · Libre : 15 Go/);
   vm.runInNewContext(`${offlineFunctions}; renderOfflineLibraryData({downloads: {}, used_bytes: 0, free_bytes: null});`, context);

@@ -1,6 +1,7 @@
 // The Cloud tab: one row per work (poster, title, episodes, size), its files
 // below; a file plays under its own title, removals are confirmed.
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -15,7 +16,7 @@ const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf
 const cloudCode = slice('async function loadRdCloud() {', 'async function onChangeRdRetention(daysStr) {');
 const sizeCode = slice('function offlineSize(bytes) {', 'function offlineStatus(item) {');
 const purgeCode = slice('async function purgeRdCloud(mode, btn) {', '\n}\n') + '\n}';
-const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 const GB = 1024 ** 3;
 
 const file = (id, filename, extra = {}) => ({ id, ids: [id], filename, filesize: '2.00 GB', bytes: 2 * GB,
@@ -43,9 +44,8 @@ function load({ history = [], matches = {}, confirmAnswer = true } = {}) {
     document: { getElementById: element },
     window: { activeDebridName: 'Real-Debrid', confirm: message => { calls.push(['confirm', message]); return confirmAnswer; } },
     activeTab: 'rdcloud', userHistory: history, Date,
-    escapeHtml, attrJson: value => escapeHtml(JSON.stringify(value)),
-    displayTitle: m => m.name_fr || m.name,
-    titleAttrs: m => ` data-title-id="${m.id}"`,
+    escapeHtml,     displayTitle: m => m.name_fr || m.name,
+    titleAttrs: m => raw(` data-title-id="${m.id}"`),
     foldSearchText: value => String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(),
     listItemState: m => (history.some(h => h.id === m.id && h.completed) ? 'watched' : 'todo'),
     Spoilers: { watched: (h, id, season, episode) => h.some(x => x.id === id && (x.watched_episodes || []).includes(`s${season}e${episode}`)) },

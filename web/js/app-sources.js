@@ -64,24 +64,24 @@ function episodeTileHtml(v, ctx) {
   const air = episodeAirLabel(episodeAirDate(v));
   const meta = [upcoming ? (air ? `Diffusion le ${air}` : 'À venir') : air, inProgress ? `${Math.round(pct)} % vu` : ''].filter(Boolean).join(' · ');
   const art = hidden
-    ? `<span class="spoiler-neutral-art" aria-label="Image masquée pour l'épisode ${epNum}">ÉPISODE ${epNum}</span>`
-    : (thumb ? `<img class="ep-tile-img" src="${escapeHtml(thumb)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : '') + `<span class="ep-tile-fallback" aria-hidden="true">${epNum}</span>`;
-  const inside = `${art}${badge ? `<span class="ep-tile-badge">${escapeHtml(badge)}</span>` : ''}${upcoming ? '' : '<span class="ep-tile-play" aria-hidden="true">▶</span>'}${pct > 0 && !isWatched ? `<span class="ep-tile-progress"><span style="width:${Math.min(100, Math.max(0, pct))}%"></span></span>` : ''}`;
+    ? html`<span class="spoiler-neutral-art" aria-label="Image masquée pour l'épisode ${epNum}">ÉPISODE ${epNum}</span>`
+    : html`${thumb ? html`<img class="ep-tile-img" src="${thumb}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span class="ep-tile-fallback" aria-hidden="true">${epNum}</span>`;
+  const inside = html`${art}${badge ? html`<span class="ep-tile-badge">${badge}</span>` : ''}${upcoming ? '' : html`<span class="ep-tile-play" aria-hidden="true">▶</span>`}${pct > 0 && !isWatched ? html`<span class="ep-tile-progress"><span style="width:${Math.min(100, Math.max(0, pct))}%"></span></span>` : ''}`;
   const action = inProgress ? 'Reprendre' : 'Lancer';
   const head = upcoming
-    ? `<div class="ep-tile-art">${inside}</div>`
-    : `<button type="button" class="ep-tile-art" ${act('oneClickSeriesEpisode', THIS, seasonNum, epNum)} aria-label="${action} ${code} · ${escapeHtml(title)}">${inside}</button>`;
-  return `
-    <article class="${classes}" role="listitem" data-ep="${epNum}"${hidden ? ' data-hidden="1"' : ''}${ctx.target.focus === epNum ? ' data-focus="1"' : ''}>
+    ? html`<div class="ep-tile-art">${inside}</div>`
+    : html`<button type="button" class="ep-tile-art" ${act('oneClickSeriesEpisode', THIS, seasonNum, epNum)} aria-label="${action} ${code} · ${title}">${inside}</button>`;
+  return html`
+    <article class="${classes}" role="listitem" data-ep="${epNum}"${hidden ? html` data-hidden="1"` : ''}${ctx.target.focus === epNum ? html` data-focus="1"` : ''}>
       ${head}
       <div class="ep-tile-body">
-        <div class="ep-tile-title"><span class="ep-tile-num">${epNum}.</span> ${escapeHtml(title)}</div>
-        ${meta ? `<div class="ep-tile-meta">${escapeHtml(meta)}</div>` : ''}
-        ${overview ? `<p class="ep-tile-desc">${escapeHtml(overview)}</p>` : ''}
+        <div class="ep-tile-title"><span class="ep-tile-num">${epNum}.</span> ${title}</div>
+        ${meta ? html`<div class="ep-tile-meta">${meta}</div>` : ''}
+        ${overview ? html`<p class="ep-tile-desc">${overview}</p>` : ''}
         <div class="ep-tile-actions">
-          ${upcoming ? '' : `<button type="button" class="btn btn-secondary ep-mini" ${act('pickSeriesEpisodeSources', seasonNum, epNum)}>Sources</button>`}
-          ${hidden ? `<button type="button" class="btn btn-secondary ep-mini spoiler-reveal-btn" ${act('revealSpoilerEpisode', seasonNum, epNum)} aria-label="Afficher le titre, le résumé et l'image de l'épisode ${epNum}">Afficher pour cet épisode</button>` : ''}
-          ${upcoming ? '' : `<button type="button" class="btn btn-secondary ep-mini ep-watch${isWatched ? ' is-on' : ''}" aria-pressed="${isWatched}" title="${isWatched ? 'Démarquer comme vu' : 'Marquer cet épisode comme vu'}" ${act('toggleWatchedSeriesEp', seasonNum, epNum)}>${isWatched ? '✓ Vu' : '✓ Marquer vu'}</button>`}
+          ${upcoming ? '' : html`<button type="button" class="btn btn-secondary ep-mini" ${act('pickSeriesEpisodeSources', seasonNum, epNum)}>Sources</button>`}
+          ${hidden ? html`<button type="button" class="btn btn-secondary ep-mini spoiler-reveal-btn" ${act('revealSpoilerEpisode', seasonNum, epNum)} aria-label="Afficher le titre, le résumé et l'image de l'épisode ${epNum}">Afficher pour cet épisode</button>` : ''}
+          ${upcoming ? '' : html`<button type="button" class="btn btn-secondary ep-mini ep-watch${isWatched ? ' is-on' : ''}" aria-pressed="${isWatched}" title="${isWatched ? 'Démarquer comme vu' : 'Marquer cet épisode comme vu'}" ${act('toggleWatchedSeriesEp', seasonNum, epNum)}>${isWatched ? '✓ Vu' : '✓ Marquer vu'}</button>`}
         </div>
       </div>
     </article>`;
@@ -140,13 +140,13 @@ function onSeasonChange(triggerReload = true) {
   const eSel = document.getElementById('episodeSelect');
   const eps = seriesMetaVideos.filter(v => v.season === s).sort((a,b) => (a.episode || a.number) - (b.episode || b.number));
   if (eps.length) {
-    eSel.innerHTML = eps.map(v => {
+    render(eSel, eps.map(v => {
       const epNum = v.episode || v.number;
       const epTitle = spoilerEpisodeLabel(spoilerSeriesId(), s, epNum, v.name || v.title);
-      return `<option value="${epNum}">E${String(epNum).padStart(2,'0')} — ${escapeHtml(epTitle)}</option>`;
-    }).join('');
+      return html`<option value="${epNum}">E${String(epNum).padStart(2,'0')} — ${epTitle}</option>`;
+    }));
   } else {
-    eSel.innerHTML = Array.from({length: 24}, (_, i) => `<option value="${i+1}">Épisode ${i+1}</option>`).join('');
+    render(eSel, Array.from({length: 24}, (_, i) => html`<option value="${i+1}">Épisode ${i+1}</option>`));
   }
   if (triggerReload) reloadSeriesEpisode(false);
 }
@@ -195,7 +195,7 @@ async function loadTorrents(params, scroll = true) {
   panel.style.display = 'block';
   document.getElementById('torrentsHeading').textContent = params.title;
   document.getElementById('torrentsSub').textContent = 'Recherche des sources...';
-  list.innerHTML = '<p style="color:var(--dim); font-size:0.84rem;">Chargement...</p>';
+  render(list, html`<p style="color:var(--dim); font-size:0.84rem;">Chargement...</p>`);
   if (scroll) panel.scrollIntoView({behavior: 'smooth'});
 
   if (!params.runtime && currentMedia && currentMedia.runtime) {
@@ -217,7 +217,7 @@ async function loadTorrents(params, scroll = true) {
     renderTorrents();
   } catch (e) {
     if (requestId !== torrentRequestId) return;
-    list.innerHTML = `<p style="color:var(--muted); font-size:0.84rem;">Erreur : ${escapeHtml(e.message)}</p>`;
+    render(list, html`<p style="color:var(--muted); font-size:0.84rem;">Erreur : ${e.message}</p>`);
   }
 }
 
@@ -404,30 +404,29 @@ function sourceComparison(t, best) {
 
 function sourceWhyHtml(t, best) {
   if (!sourceWhy(t).length) return '';
-  const line = (label, items) => (items.length ? `<p><strong>${label} :</strong> ${items.map(escapeHtml).join(' · ')}</p>` : '');
+  const line = (label, items) => (items.length ? html`<p><strong>${label} :</strong> ${items.join(' · ')}</p>` : '');
   let compared = '';
   if (best && best !== t && best.score_parts && t.score_parts) {
     const { behind, ahead } = sourceComparison(t, best);
-    if (behind.length) compared = `<p><strong>Moins bien que la recommandée :</strong> ${behind.join(', ')}${ahead.length ? ` · mieux : ${ahead.join(', ')}` : ''}</p>`;
+    if (behind.length) compared = html`<p><strong>Moins bien que la recommandée :</strong> ${behind.join(', ')}${ahead.length ? ` · mieux : ${ahead.join(', ')}` : ''}</p>`;
   }
-  return `<details class="source-why"><summary>Pourquoi ce rang ?</summary>${line('Points forts', sourceReasons(t, 'good'))}`
-    + `${line('À noter', [...sourceReasons(t, 'bad'), ...sourceReasons(t, 'neutral')])}${compared}</details>`;
+  return html`<details class="source-why"><summary>Pourquoi ce rang ?</summary>${line('Points forts', sourceReasons(t, 'good'))}${line('À noter', [...sourceReasons(t, 'bad'), ...sourceReasons(t, 'neutral')])}${compared}</details>`;
 }
 
 function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
   const { t, idx, copies } = row;
-  const recBadge = isBest ? '<span class="badge badge-recommended">Recommandé</span>' : '';
+  const recBadge = isBest ? html`<span class="badge badge-recommended">Recommandé</span>` : '';
   const isCached = typeof t.is_instant === 'boolean' ? t.is_instant : Boolean((t.source && t.source.includes('+')) || (t.qualities && t.qualities.some(q => q.endsWith('+'))));
-  const cachedBadge = isCached ? '<span class="badge badge-cached" title="Disponibilité immédiate signalée par la source">Disponible</span>' : '';
+  const cachedBadge = isCached ? html`<span class="badge badge-cached" title="Disponibilité immédiate signalée par la source">Disponible</span>` : '';
   const recommendation = t.recommendation || {};
   const reasons = isBest && Array.isArray(recommendation.reasons) ? recommendation.reasons : [];
   const warnings = Array.isArray(recommendation.warnings) ? recommendation.warnings : [];
   // The recommended source says what put it first; older answers keep their announced signals.
   const strengths = isBest ? sourceReasons(t, 'good').slice(0, 4) : [];
   const explanation = sourceHidden ? ''
-    : strengths.length ? `<div class="torrent-explanation">Pourquoi celle-ci : ${strengths.map(escapeHtml).join(' · ')}</div>`
-      : reasons.length ? `<div class="torrent-explanation">Pourquoi : ${reasons.map(escapeHtml).join(' · ')}</div>` : '';
-  const warning = !sourceHidden && warnings.length ? `<div class="torrent-warning">À vérifier : ${warnings.map(escapeHtml).join(' · ')}</div>` : '';
+    : strengths.length ? html`<div class="torrent-explanation">Pourquoi celle-ci : ${strengths.join(' · ')}</div>`
+      : reasons.length ? html`<div class="torrent-explanation">Pourquoi : ${reasons.join(' · ')}</div>` : '';
+  const warning = !sourceHidden && warnings.length ? html`<div class="torrent-warning">À vérifier : ${warnings.join(' · ')}</div>` : '';
   const why = sourceHidden ? '' : sourceWhyHtml(t, best?.t);
 
   const qualBadges = (t.qualities || []).map(q => {
@@ -436,38 +435,38 @@ function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
     let tip = '';
     if (qClean === '4K' || qClean === '2160p') {
       cls = 'badge badge-res-4k';
-      tip = ' title="Ultra Haute Définition 4K"';
+      tip = html` title="Ultra Haute Définition 4K"`;
     } else if (qClean === '1080p') {
       cls = 'badge badge-res-1080p';
-      tip = ' title="Haute Définition 1080p"';
+      tip = html` title="Haute Définition 1080p"`;
     } else if (qClean === 'DV' || qClean === 'Dolby Vision') {
       cls = 'badge badge-codec-dv';
-      tip = ' title="Dolby Vision (Tone-Mapping anti-noirs bouchés actif)"';
+      tip = html` title="Dolby Vision (Tone-Mapping anti-noirs bouchés actif)"`;
     } else if (qClean === 'HDR' || qClean === 'HDR10' || qClean === 'HDR10+') {
       cls = 'badge badge-codec-hdr';
-      tip = ' title="High Dynamic Range (HDR10)"';
+      tip = html` title="High Dynamic Range (HDR10)"`;
     } else if (qClean === 'REMUX') {
       cls = 'badge badge-codec-remux';
-      tip = ' title="Qualité Blu-Ray intégrale sans recompression"';
+      tip = html` title="Qualité Blu-Ray intégrale sans recompression"`;
     } else if (['Atmos', 'DTS', 'DTS-HD', 'TrueHD', '5.1', '7.1'].includes(qClean)) {
       cls = 'badge badge-codec-audio';
-      tip = ` title="Audio spatial / multicanal ${escapeHtml(qClean)}"`;
+      tip = html` title="Audio spatial / multicanal ${qClean}"`;
     }
-    return `<span class="${cls}"${tip}>${escapeHtml(qClean)}</span>`;
-  }).join('');
+    return html`<span class="${cls}"${tip}>${qClean}</span>`;
+  });
 
   const langBadges = (t.langs || []).map(l => {
     const isFr = ['MULTI', 'TRUEFRENCH', 'VFF', 'VF', 'VOSTFR'].includes(String(l).toUpperCase());
-    return `<span class="badge ${isFr ? 'badge-lang-fr' : 'badge-hi'}">${escapeHtml(l)}</span>`;
-  }).join('');
+    return html`<span class="badge ${isFr ? 'badge-lang-fr' : 'badge-hi'}">${l}</span>`;
+  });
 
   const seeders = Number(t.seeders || 0);
   const facts = [t.source, t.size_str, sourceDetails(t), seeders > 0 ? `${seeders} pair${seeders > 1 ? 's' : ''}` : '',
     copies > 1 ? `trouvé ${copies} fois` : ''].filter(Boolean);
   // A concealed episode never shows the source's own description (it may name the episode).
-  const meta = sourceHidden || facts.length > 2 || !t.meta ? facts.map(escapeHtml).join(' • ') : escapeHtml(t.meta);
+  const meta = sourceHidden || facts.length > 2 || !t.meta ? facts.join(' • ') : escapeHtml(t.meta);
 
-  return `
+  return html`
       <div class="torrent-item ${isBest ? 'is-recommended' : ''}">
         <div class="torrent-main">
           <div class="torrent-title">
@@ -477,10 +476,10 @@ function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
           ${explanation}${warning}${why}
         </div>
         <div class="torrent-actions">
-          ${t.magnet ? `<button class="btn btn-secondary btn-icon" ${act('copyTorrentMagnet', EVENT, THIS, idx)} title="Copier le lien Magnet" aria-label="Copier le lien Magnet"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#link"></use></svg></button>` : ''}
+          ${t.magnet ? html`<button class="btn btn-secondary btn-icon" ${act('copyTorrentMagnet', EVENT, THIS, idx)} title="Copier le lien Magnet" aria-label="Copier le lien Magnet"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#link"></use></svg></button>` : ''}
           ${isBest
-            ? `<button class="btn btn-play-hero" style="padding:7px 16px !important; font-size:0.82rem !important;" ${act('debridFromIndex', idx)}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#play-solid"></use></svg> Lancer</button>`
-            : `<button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem;" ${act('debridFromIndex', idx)}>Sélectionner</button>`
+            ? html`<button class="btn btn-play-hero" style="padding:7px 16px !important; font-size:0.82rem !important;" ${act('debridFromIndex', idx)}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#play-solid"></use></svg> Lancer</button>`
+            : html`<button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem;" ${act('debridFromIndex', idx)}>Sélectionner</button>`
           }
         </div>
       </div>`;
@@ -492,7 +491,7 @@ function renderTorrents() {
   const sourceSeason = Number(document.getElementById('seasonSelect')?.value || 0);
   const sourceEpisode = Number(document.getElementById('episodeSelect')?.value || 0);
   const sourceHidden = currentMedia?.type === 'series' && spoilerConcealed(spoilerSeriesId(), sourceSeason, sourceEpisode);
-  const revealSource = sourceHidden ? `<button class="btn btn-secondary spoiler-reveal-btn" style="margin-bottom:10px" ${act('revealSpoilerEpisode', sourceSeason, sourceEpisode)}>Afficher pour cet épisode</button>` : '';
+  const revealSource = sourceHidden ? html`<button class="btn btn-secondary spoiler-reveal-btn" style="margin-bottom:10px" ${act('revealSpoilerEpisode', sourceSeason, sourceEpisode)}>Afficher pour cet épisode</button>` : '';
 
   let bestIdx = -1;
   let maxScore = -1;
@@ -514,7 +513,7 @@ function renderTorrents() {
   }
 
   if (!filtered.length) {
-    list.innerHTML = revealSource + '<p style="color:var(--dim); font-size:0.84rem;">Aucun résultat pour ce filtre.</p>';
+    render(list, [revealSource, html`<p style="color:var(--dim); font-size:0.84rem;">Aucun résultat pour ce filtre.</p>`]);
     return;
   }
 
@@ -528,22 +527,22 @@ function renderTorrents() {
       const hidden = group.rows.length - shown.length;
       const where = group.key === 'other' ? '' : ` en ${group.label}`;
       const toggle = !open && hidden > 0
-        ? `<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="false">Voir ${hidden} autre${hidden > 1 ? 's' : ''}${where}</button>`
-        : (open && group.rows.length > SOURCE_GROUP_SIZE ? `<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="true">Réduire</button>` : '');
-      return `<section class="source-group" aria-label="${group.label}">
+        ? html`<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="false">Voir ${hidden} autre${hidden > 1 ? 's' : ''}${where}</button>`
+        : (open && group.rows.length > SOURCE_GROUP_SIZE ? html`<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="true">Réduire</button>` : '');
+      return html`<section class="source-group" aria-label="${group.label}">
         <h4 class="source-group-title">${group.label} <span class="list-count">${group.rows.length}</span></h4>
-        ${shown.map(row => sourceRowHtml(row, false, sourceHidden, sourceEpisode, best)).join('')}
+        ${shown.map(row => sourceRowHtml(row, false, sourceHidden, sourceEpisode, best))}
         ${toggle}
       </section>`;
-    }).join('');
+    });
   // With a recommended source, the others wait behind « Choisir une autre source ».
   const others = rest.length;
   const folded = best && others
-    ? `<details class="sources-more"${sourcesMoreOpen ? ' open' : ''} ${actOn('toggle', 'rememberSourcesMore', THIS)}><summary>Choisir une autre source <span class="list-count">${others}</span></summary>${groupsHtml}</details>`
+    ? html`<details class="sources-more"${sourcesMoreOpen ? ' open' : ''} ${actOn('toggle', 'rememberSourcesMore', THIS)}><summary>Choisir une autre source <span class="list-count">${others}</span></summary>${groupsHtml}</details>`
     : groupsHtml;
-  list.innerHTML = revealSource
-    + (best ? `<div class="source-best">${sourceRowHtml(best, true, sourceHidden, sourceEpisode)}</div>` : '')
-    + folded;
+  render(list, [revealSource,
+    (best ? html`<div class="source-best">${sourceRowHtml(best, true, sourceHidden, sourceEpisode)}</div>` : ''),
+    folded]);
 }
 
 async function copyTorrentMagnet(ev, btnEl, idx) {
@@ -581,7 +580,7 @@ async function debridCandidates(candidates) {
 
   for (let i = 0; i < candidates.length; i++) {
     const item = candidates[i];
-    box.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">Débridage en cours (${i + 1}/${candidates.length}) : <strong style="color:var(--text);">${escapeHtml(item.title || 'Magnet')}</strong>...</p>`;
+    render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Débridage en cours (${i + 1}/${candidates.length}) : <strong style="color:var(--text);">${item.title || 'Magnet'}</strong>...</p>`);
     try {
       const res = await api('/api/debrid', {
         method: 'POST',
@@ -597,11 +596,11 @@ async function debridCandidates(candidates) {
         continue;
       }
       if (i + 1 < candidates.length && (e.message.includes('451') || e.message.includes('infringing_file') || e.message.includes('refusé'))) {
-        box.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">Source #${i + 1} indisponible (451), passage à la suivante...</p>`;
+        render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Source #${i + 1} indisponible (451), passage à la suivante...</p>`);
         await new Promise(r => setTimeout(r, 500));
         continue;
       }
-      box.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${escapeHtml(e.message)}</p>`;
+      render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${e.message}</p>`);
       return;
     }
   }
@@ -612,11 +611,11 @@ function renderDebridState(res, season, episode, chosenTorrentTitle = '', playli
   if (!res.ready) {
     // The service's words are shown as text; its progress, as a number.
     const progress = Math.min(100, Math.max(0, Number.parseFloat(res.progress) || 0));
-    box.innerHTML = `
+    render(box, html`
       <h3>Mise en cache Real-Debrid (${progress}%)</h3>
-      <p style="color:var(--muted); font-size:0.82rem; margin-top:4px;">Statut : ${escapeHtml(res.status)} • Vitesse : ${escapeHtml(res.speed)} • Pairs : ${Number(res.seeders) || 0}</p>
+      <p style="color:var(--muted); font-size:0.82rem; margin-top:4px;">Statut : ${res.status} • Vitesse : ${res.speed} • Pairs : ${Number(res.seeders) || 0}</p>
       <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
-    `;
+    `);
     setTimeout(async () => {
       try {
         const next = await api('/api/debrid-status', {
@@ -626,7 +625,7 @@ function renderDebridState(res, season, episode, chosenTorrentTitle = '', playli
         });
         renderDebridState(next, season, episode, chosenTorrentTitle, playlistCount);
       } catch (e) {
-        box.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${escapeHtml(e.message)}</p>`;
+        render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${e.message}</p>`);
       }
     }, 2500);
     return;
@@ -637,13 +636,13 @@ function renderDebridState(res, season, episode, chosenTorrentTitle = '', playli
   const selectedHidden = currentMedia?.type === 'series' && spoilerConcealed(spoilerSeriesId(), Number(season), Number(episode));
 
   const subBanner = chosenTorrentTitle
-    ? `<p style="color:var(--muted); font-size:0.8rem; margin-bottom:6px;">Lecture : ${selectedHidden ? Spoilers.neutralTitle(episode) : escapeHtml(chosenTorrentTitle)}</p>`
+    ? html`<p style="color:var(--muted); font-size:0.8rem; margin-bottom:6px;">Lecture : ${selectedHidden ? Spoilers.neutralTitle(episode) : escapeHtml(chosenTorrentTitle)}</p>`
     : '';
   const playlistNote = (playlistCount > 1 || (currentMedia && currentMedia.type === 'series'))
-    ? `<p style="color:var(--dim); font-size:0.77rem; margin-bottom:10px;">Playlist active${playlistCount > 1 ? ` (${playlistCount} épisodes)` : ''} — Touche <code style="color:var(--text); background:var(--surface-2); padding:1px 5px; border-radius:3px; border:1px solid var(--border);">&gt;</code> pour l'épisode suivant</p>`
+    ? html`<p style="color:var(--dim); font-size:0.77rem; margin-bottom:10px;">Playlist active${playlistCount > 1 ? ` (${playlistCount} épisodes)` : ''} — Touche <code style="color:var(--text); background:var(--surface-2); padding:1px 5px; border-radius:3px; border:1px solid var(--border);">&gt;</code> pour l'épisode suivant</p>`
     : '';
 
-  box.innerHTML = `
+  render(box, html`
     <h3 style="margin-bottom:6px;">Fichier prêt</h3>
     ${subBanner}
     ${playlistNote}
@@ -653,27 +652,27 @@ function renderDebridState(res, season, episode, chosenTorrentTitle = '', playli
         const fileSeason = Number(parsed?.season || (f.is_target_ep ? season : 0));
         const fileEpisode = Number(parsed?.episode || (f.is_target_ep ? episode : 0));
         const hidden = currentMedia?.type === 'series' && spoilerConcealed(spoilerSeriesId(), fileSeason, fileEpisode);
-        return `
+        return html`
         <div class="torrent-item" style="${f.is_target_ep ? 'border-color: var(--border-hover);' : ''}">
           <div style="flex:1; min-width:240px;">
             <div class="torrent-title">
-              ${f.is_target_ep ? '<span class="badge badge-hi">Épisode</span>' : ''}
+              ${f.is_target_ep ? html`<span class="badge badge-hi">Épisode</span>` : ''}
               ${hidden ? Spoilers.neutralTitle(fileEpisode) : escapeHtml(f.filename)}
             </div>
-            <div class="torrent-meta">${escapeHtml(f.filesize || '')}</div>
+            <div class="torrent-meta">${f.filesize || ''}</div>
           </div>
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            ${hidden && fileEpisode ? `<button class="btn btn-secondary spoiler-reveal-btn" ${act('revealSpoilerEpisode', fileSeason, fileEpisode)}>Afficher pour cet épisode</button>` : ''}
+            ${hidden && fileEpisode ? html`<button class="btn btn-secondary spoiler-reveal-btn" ${act('revealSpoilerEpisode', fileSeason, fileEpisode)}>Afficher pour cet épisode</button>` : ''}
             <button class="btn" ${act('openDebridFile', THIS, index)}>Lancer</button>
             <button class="btn btn-secondary" ${act('sendDebridFileToTv', THIS, index)} title="Lire ce fichier sur la TV"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#cast"></use></svg> Sur la TV</button>
             <button class="btn btn-secondary" ${act('downloadDebridFile', index)}>Télécharger</button>
             <button class="btn btn-secondary" ${act('openDebridLink', index)}>Lien direct</button>
           </div>
         </div>
-      `; }).join('')}
+      `; })}
     </div>
     <p id="debridTvStatus" class="debrid-tv-status" role="status" aria-live="polite"></p>
-  `;
+  `);
 }
 
 // Where this title (or episode) was left, to start there.
@@ -706,7 +705,7 @@ async function sendDebridFileToTv(button, index) {
     if (status) status.textContent = error.message || 'La TV ne répond pas.';
   } finally {
     button.disabled = false;
-    button.innerHTML = label;
+    render(button, label);
   }
 }
 
@@ -803,7 +802,7 @@ async function openMpv(btn, url, filename, options = null) {
   const origText = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'Play...';
+    render(btn, 'Play...');
   }
   const media = options ? (options.media || null) : currentMedia;
   const fromFiche = !options && currentMedia && currentMedia.type === 'series';
@@ -837,12 +836,12 @@ async function openMpv(btn, url, filename, options = null) {
     const nativeMedia = media ? { ...media, ...(s && e ? { season: Number(s), episode: Number(e) } : {}) } : null;
     const native = await openNativeStream({ url, title: filename, media: nativeMedia, resumeSec, filename, playlist: pl, fallback: openWeb });
     if (!native) openWeb(null);
-    if (btn) btn.innerHTML = 'Lancé';
+    if (btn) render(btn, 'Lancé');
     refreshUserLists();
     if (btn) {
       setTimeout(() => {
         btn.disabled = false;
-        btn.innerHTML = origText;
+        render(btn, origText);
       }, 2500);
     }
     return;
@@ -868,7 +867,7 @@ async function openMpv(btn, url, filename, options = null) {
         } : null
       })
     });
-    if (btn) btn.innerHTML = 'Lancé';
+    if (btn) render(btn, 'Lancé');
     refreshUserLists();
   } catch (err) {
     alert(err.message);
@@ -876,7 +875,7 @@ async function openMpv(btn, url, filename, options = null) {
     if (btn) {
       setTimeout(() => {
         btn.disabled = false;
-        btn.innerHTML = origText;
+        render(btn, origText);
       }, 2500);
     }
   }

@@ -55,11 +55,11 @@
 
   // Same icons as the built-in player (SVG_ICONS lives in app-player.js).
   const ICONS = {
-    back10: '<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/><text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text></svg>',
-    fwd10: '<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/><text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text></svg>',
-    fullscreen: '<svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
-    prev: '<svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>',
-    next: '<svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>',
+    back10: html`<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/><text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text></svg>`,
+    fwd10: html`<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/><text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text></svg>`,
+    fullscreen: html`<svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`,
+    prev: html`<svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`,
+    next: html`<svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`,
   };
   function icon(name) {
     const shared = typeof SVG_ICONS === 'object' && SVG_ICONS ? SVG_ICONS[name] : '';
@@ -69,12 +69,12 @@
   function buildOverlay() {
     if (element('nativePlayer')) return;
     // Windows has no title bar: the window's own buttons, as in KINO's player (shown by design.css).
-    const WINDOW_BUTTONS = String(element('inAppWindowButtons')?.outerHTML || '').replace(' id="inAppWindowButtons"', '');
+    const WINDOW_BUTTONS = String(element('inAppWindowButtons')?.outerHTML || '').replace(html` id="inAppWindowButtons"`, '');
     const root = document.createElement('div');
     root.id = 'nativePlayer';
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-label', 'Lecteur natif');
-    root.innerHTML = `
+    render(root, html`
       <div class="inapp-hud-top native-top pywebview-drag-region">
         <div class="kp-top-left no-drag">
           <button type="button" class="inapp-btn kp-pill kp-back" id="nativeBack">← Retour</button>
@@ -139,7 +139,7 @@
             <button type="button" class="inapp-btn inapp-btn-icon" id="nativeFullscreen" aria-label="Plein écran" title="Plein écran (F)">${icon('fullscreen')}</button>
           </div>
         </div>
-      </div>`;
+      </div>`);
     document.body.appendChild(root);
     element('nativeBack').addEventListener('click', () => close());
     element('nativePlay').addEventListener('click', () => command('toggle'));
@@ -151,7 +151,7 @@
     element('nativeNextGo').addEventListener('click', () => playIndex(session.index + 1));
     element('nativeNextCancel').addEventListener('click', () => {
       session.nextCancelled = true;
-      if (session.last) render(session.last);
+      if (session.last) renderState(session.last);
     });
     element('nativeFullscreen').addEventListener('click', () => toggleFullscreen());
     const seek = element('nativeSeek');
@@ -312,13 +312,13 @@
     if (!box) return;
     const subs = session.onlineSubs;
     if (subs === 'loading') {
-      box.innerHTML = '<p class="kp-menu-note">Recherche…</p>';
+      render(box, html`<p class="kp-menu-note">Recherche…</p>`);
     } else if (subs === 'none') {
-      box.innerHTML = '<p class="kp-menu-note">Pas de recherche possible pour ce fichier.</p>';
+      render(box, html`<p class="kp-menu-note">Pas de recherche possible pour ce fichier.</p>`);
     } else if (!Array.isArray(subs) || !subs.length) {
-      box.innerHTML = '<p class="kp-menu-note">Aucun sous-titre trouvé en ligne.</p>';
+      render(box, html`<p class="kp-menu-note">Aucun sous-titre trouvé en ligne.</p>`);
     } else {
-      box.innerHTML = subs.map((choice, index) => `<button type="button" class="inapp-btn kp-menu-item" data-online="${index}"${choice.added ? ' disabled' : ''}>${escapeHtml(choice.label)}${choice.added ? ' · ajouté' : ''}</button>`).join('');
+      render(box, subs.map((choice, index) => html`<button type="button" class="inapp-btn kp-menu-item" data-online="${index}"${choice.added ? ' disabled' : ''}>${choice.label}${choice.added ? ' · ajouté' : ''}</button>`));
       box.querySelectorAll('[data-online]').forEach(button => {
         button.addEventListener('click', () => addOnlineSubtitle(Number(button.dataset.online)));
       });
@@ -346,7 +346,7 @@
       session.onlineSubs = onlineSubtitleChoices(result.subtitles);
     } catch (error) {
       session.onlineSubs = null;
-      element('nativeOnlineSubs').innerHTML = '<p class="kp-menu-note">Recherche impossible pour le moment.</p>';
+      render(element('nativeOnlineSubs'), html`<p class="kp-menu-note">Recherche impossible pour le moment.</p>`);
       return;
     }
     renderOnlineSubtitles();
@@ -364,7 +364,7 @@
       choice.added = true;
       renderOnlineSubtitles();
       flash(message || `Sous-titres : ${choice.label}`, message ? 3200 : 2200);
-      render(result.state);
+      renderState(result.state);
     } catch (error) {
       flash(error.message || 'Sous-titre indisponible.', 3000);
     }
@@ -398,7 +398,7 @@
   function flash(message, duration) {
     session.flash = message;
     session.flashUntil = Date.now() + duration;
-    if (session.last) render(session.last);
+    if (session.last) renderState(session.last);
   }
 
   async function screenshot() {
@@ -529,13 +529,13 @@
     select.dataset.signature = signature;
     // Subtitles read « CC : … » like the built-in player's button.
     const prefix = type === 'sub' ? 'CC : ' : '';
-    const options = wanted.map(track => `<option value="${track.id}" ${track.selected ? 'selected' : ''}>${escapeHtml(prefix + trackLabel(track))}</option>`);
-    if (allowNone) options.unshift(`<option value="no" ${wanted.some(track => track.selected) ? '' : 'selected'}>CC : Off</option>`);
-    select.innerHTML = options.join('') || '<option>—</option>';
+    const options = wanted.map(track => html`<option value="${track.id}" ${track.selected ? 'selected' : ''}>${prefix + trackLabel(track)}</option>`);
+    if (allowNone) options.unshift(html`<option value="no" ${wanted.some(track => track.selected) ? '' : 'selected'}>CC : Off</option>`);
+    render(select, options || html`<option>—</option>`);
     select.disabled = wanted.length === 0;
   }
 
-  function render(state) {
+  function renderState(state) {
     if (!state || !session.open) return;
     session.last = state;
     // A source that cannot be opened (expired link, network) leaves mpv idle:
@@ -559,7 +559,7 @@
     const playState = state.paused ? 'paused' : 'playing';
     if (play.dataset.state !== playState) {
       play.dataset.state = playState;
-      play.innerHTML = icon(state.paused ? 'play' : 'pause');
+      render(play, icon(state.paused ? 'play' : 'pause'));
       play.setAttribute('aria-label', state.paused ? 'Lecture' : 'Pause');
     }
     const volumeInput = element('nativeVolume');
@@ -572,7 +572,7 @@
     const level = state.muted || Number(volumeInput.value) === 0 ? 'volMute' : Number(volumeInput.value) < 50 ? 'volLow' : 'volHigh';
     if (mute.dataset.level !== level) {
       mute.dataset.level = level;
-      mute.innerHTML = icon(level);
+      render(mute, icon(level));
       mute.setAttribute('aria-label', state.muted ? 'Remettre le son' : 'Couper le son');
     }
     const status = element('nativeStatus');
@@ -622,7 +622,7 @@
       const result = await api('/api/native-player/command', {
         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ cmd, value }),
       });
-      render(result.state);
+      renderState(result.state);
       if (!options.silent) shareWithParty(cmd, result.state);
     } catch (error) {}
   }
@@ -663,7 +663,7 @@
   async function poll() {
     if (!session.open) return;
     try {
-      render(await api('/api/native-player/state'));
+      renderState(await api('/api/native-player/state'));
     } catch (error) {}
   }
 
@@ -731,7 +731,7 @@
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ ...source, start: resumeSec > 15 ? resumeSec : 0, volume }),
       });
-      render(result.state);
+      renderState(result.state);
     } catch (error) {
       hideOverlay();
       throw error;

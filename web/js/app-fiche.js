@@ -6,7 +6,7 @@ async function handleTorrentFileSelect(files) {
   if (box) {
     box.style.display = 'block';
     box.scrollIntoView({ behavior: 'smooth' });
-    box.innerHTML = `<h3>Lecture du fichier ${escapeHtml(file.name)}...</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">Extraction de l'empreinte BitTorrent et débridage Cloud...</p>`;
+    render(box, html`<h3>Lecture du fichier ${file.name}...</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">Extraction de l'empreinte BitTorrent et débridage Cloud...</p>`);
   }
   try {
     const buf = await file.arrayBuffer();
@@ -26,7 +26,7 @@ async function handleTorrentFileSelect(files) {
       await debridMagnet(res.magnet);
     }
   } catch (e) {
-    if (box) box.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">Erreur fichier .torrent : ${escapeHtml(e.message)}</p>`;
+    if (box) render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Erreur fichier .torrent : ${e.message}</p>`);
   }
 }
 
@@ -233,15 +233,15 @@ function searchPanelEntries(query, titles = []) {
 }
 
 function searchEntryHtml(entry, idx) {
-  const attrs = `class="search-suggest-item${entry.kind === 'title' ? '' : ' search-suggest-row'}" id="suggestItem_${idx}" role="option" tabindex="-1" ${actOn('mousedown', 'kinoKeepFocus', EVENT)} ${act('selectSearchSuggest', idx)}`;
+  const attrs = html`class="search-suggest-item${entry.kind === 'title' ? '' : ' search-suggest-row'}" id="suggestItem_${idx}" role="option" tabindex="-1" ${actOn('mousedown', 'kinoKeepFocus', EVENT)} ${act('selectSearchSuggest', idx)}`;
   if (entry.kind === 'title') {
     const it = entry.item;
     const typeLabel = it.type === 'series' ? 'Série' : 'Film';
-    return `<div ${attrs}>
-        <img class="search-suggest-poster" src="${escapeHtml(it.poster || '')}" alt="" ${actOn('error', 'kinoDimImage', THIS)}>
+    return html`<div ${attrs}>
+        <img class="search-suggest-poster" src="${it.poster || ''}" alt="" ${actOn('error', 'kinoDimImage', THIS)}>
         <div class="search-suggest-info">
-          <div class="search-suggest-title"${titleAttrs(it)}>${escapeHtml(displayTitle(it))}</div>
-          <div class="search-suggest-meta"><span>${typeLabel}</span>${it.year ? `<span>${escapeHtml(it.year)}</span>` : ''}${it.imdbRating ? `<span>★ ${escapeHtml(it.imdbRating)}</span>` : ''}</div>
+          <div class="search-suggest-title"${titleAttrs(it)}>${displayTitle(it)}</div>
+          <div class="search-suggest-meta"><span>${typeLabel}</span>${it.year ? html`<span>${it.year}</span>` : ''}${it.imdbRating ? html`<span>★ ${it.imdbRating}</span>` : ''}</div>
         </div>
       </div>`;
   }
@@ -254,7 +254,7 @@ function searchEntryHtml(entry, idx) {
   const hint = entry.kind === 'place' ? (entry.place.hint || '')
     : entry.kind === 'recent' ? (SEARCH_MODE_LABELS[entry.mode] || '')
     : entry.kind === 'all' ? 'Entrée' : '';
-  return `<div ${attrs}><span class="search-row-icon"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#${icon}"></use></svg></span><span class="search-suggest-title">${escapeHtml(label)}</span>${hint ? `<span class="search-row-hint">${escapeHtml(hint)}</span>` : ''}</div>`;
+  return html`<div ${attrs}><span class="search-row-icon"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#${icon}"></use></svg></span><span class="search-suggest-title">${label}</span>${hint ? html`<span class="search-row-hint">${hint}</span>` : ''}</div>`;
 }
 
 function renderSearchPanel(query, titles = []) {
@@ -268,13 +268,13 @@ function renderSearchPanel(query, titles = []) {
     return;
   }
   let group = '';
-  dd.innerHTML = entries.map((entry, idx) => {
+  render(dd, entries.map((entry, idx) => {
     const head = entry.group === group ? ''
-      : `<div class="search-panel-group" role="presentation"><span>${escapeHtml(entry.group)}</span>${entry.kind === 'recent'
-        ? '<button type="button" class="search-panel-clear" ' + actOn('mousedown', 'kinoKeepFocus', EVENT) + ' ' + act('forgetRecentSearches', EVENT) + '>Effacer</button>' : ''}</div>`;
+      : html`<div class="search-panel-group" role="presentation"><span>${entry.group}</span>${entry.kind === 'recent'
+        ? html`<button type="button" class="search-panel-clear" ${actOn('mousedown', 'kinoKeepFocus', EVENT)} ${act('forgetRecentSearches', EVENT)}>Effacer</button>` : ''}</div>`;
     group = entry.group;
-    return head + searchEntryHtml(entry, idx);
-  }).join('');
+    return [head, searchEntryHtml(entry, idx)];
+  }));
   dd.style.display = 'block';
   document.getElementById('searchInput')?.setAttribute('aria-expanded', 'true');
 }
@@ -302,7 +302,7 @@ function hideSearchDropdown() {
   const dd = document.getElementById('searchDropdown');
   if (dd) {
     dd.style.display = 'none';
-    dd.innerHTML = '';
+    render(dd, '');
   }
   searchSuggestItems = [];
   searchSuggestIndex = -1;
@@ -458,7 +458,7 @@ async function runSearch() {
   if (setTab) setTab.classList.remove('active');
 
   if (mode === 'raw') {
-    document.getElementById('postersGrid').innerHTML = '';
+    render(document.getElementById('postersGrid'), '');
     document.getElementById('seriesControls').style.display = 'none';
     loadTorrents({q, title: q});
     return;
@@ -468,17 +468,17 @@ async function runSearch() {
   document.getElementById('catalogHeader').style.display = 'flex';
   document.getElementById('catalogTitle').textContent = `Résultats pour « ${q} »`;
   const grid = document.getElementById('postersGrid');
-  grid.innerHTML = posterSkeletons();
+  render(grid, posterSkeletons());
   document.getElementById('torrentsPanel').style.display = 'none';
   if (!networkOnline) {
-    grid.innerHTML = offlineSearchHtml(q);
+    render(grid, offlineSearchHtml(q));
     return;
   }
 
   try {
     const data = await api(`/api/search?type=${mode}&q=${encodeURIComponent(q)}`);
     if (!data.metas || !data.metas.length) {
-      grid.innerHTML = '';
+      render(grid, '');
       loadTorrents({q, title: q});
       return;
     }
@@ -489,8 +489,8 @@ async function runSearch() {
     }
     renderPosterCards(data.metas.slice(0, 36), mode);
   } catch (e) {
-    grid.innerHTML = e.code === 'offline' ? offlineSearchHtml(q)
-      : `<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${escapeHtml(e.message)}</p>`;
+    render(grid, e.code === 'offline' ? offlineSearchHtml(q)
+      : html`<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${e.message}</p>`);
   }
 }
 
@@ -513,16 +513,16 @@ function renderSearchResults() {
   const order = [...new Set(metas.map(searchKind))];
   const several = order.length > 1;
   const label = { movie: 'Films', series: 'Séries' };
-  const chips = several ? `<div class="search-results-tools" role="group" aria-label="Type de résultat">${
+  const chips = several ? html`<div class="search-results-tools" role="group" aria-label="Type de résultat">${
     [['all', 'Tout'], ...order.map(kind => [kind, label[kind]])].map(([kind, text]) =>
-      `<button type="button" class="chip${lastSearch.filter === kind ? ' active' : ''}" aria-pressed="${lastSearch.filter === kind}" ${act('setSearchFilter', kind)}>${text} <span class="list-count">${counts[kind]}</span></button>`).join('')}</div>` : '';
+      html`<button type="button" class="chip${lastSearch.filter === kind ? ' active' : ''}" aria-pressed="${lastSearch.filter === kind}" ${act('setSearchFilter', kind)}>${text} <span class="list-count">${counts[kind]}</span></button>`)}</div>` : '';
   const groups = lastSearch.filter === 'all' ? order : [lastSearch.filter];
-  grid.innerHTML = chips + groups.map(kind => {
+  render(grid, [chips, groups.map(kind => {
     const items = metas.filter(m => searchKind(m) === kind).slice(0, SEARCH_GROUP_SIZE);
     const heading = several && lastSearch.filter === 'all'
-      ? `<h3 class="search-group-title">${label[kind]} <span class="list-count">${counts[kind]}</span></h3>` : '';
-    return heading + items.map(m => posterCardHtml(m, kind)).join('');
-  }).join('');
+      ? html`<h3 class="search-group-title">${label[kind]} <span class="list-count">${counts[kind]}</span></h3>` : '';
+    return [heading, items.map(m => posterCardHtml(m, kind))];
+  })]);
 }
 
 function setSearchFilter(kind) {
@@ -605,7 +605,7 @@ async function oneClickPlay(params, btn) {
   const origHtml = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'Play...';
+    render(btn, 'Play...');
   }
 
   const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
@@ -618,10 +618,10 @@ async function oneClickPlay(params, btn) {
   const box = document.getElementById('debridResultPanel');
   box.style.display = 'block';
   box.scrollIntoView({behavior: 'smooth'});
-  box.innerHTML = `
-    <h3>${escapeHtml(params.title)}</h3>
+  render(box, html`
+    <h3>${params.title}</h3>
     <p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">Lancement du flux...</p>
-  `;
+  `);
 
   try {
     const res = await api('/api/one-click-play', {
@@ -633,7 +633,7 @@ async function oneClickPlay(params, btn) {
       showOneClickPreparation(res, params);
       return;
     }
-    if (btn) btn.innerHTML = 'Lancé';
+    if (btn) render(btn, 'Lancé');
     const plCount = (res.mpv && res.mpv.playlist_count) ? res.mpv.playlist_count : 1;
     renderDebridState(res.debrid, params.season, params.episode, res.chosen_torrent, plCount);
     refreshUserLists();
@@ -660,16 +660,16 @@ async function oneClickPlay(params, btn) {
 
   } catch (e) {
     if (e.code === 'p2p_consent') {
-      box.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">${escapeHtml(e.message)}</p>`;
+      render(box, html`<p style="color:var(--muted); font-size:0.85rem;">${e.message}</p>`);
       if (await askP2PConsent()) return oneClickPlay(params, btn);
       return;
     }
-    box.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${escapeHtml(e.message)}</p>`;
+    render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${e.message}</p>`);
   } finally {
     if (btn) {
       setTimeout(() => {
         btn.disabled = false;
-        btn.innerHTML = origHtml;
+        render(btn, origHtml);
       }, 2500);
     }
   }
@@ -716,20 +716,20 @@ async function castToTv({ stream_url, title = '', filename = '', media = null, r
 
 async function sendToTv(res, params, box) {
   if (!res.stream_url) {
-    if (box) box.innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Aucune source à envoyer à la TV.</p>';
+    if (box) render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Aucune source à envoyer à la TV.</p>`);
     return;
   }
   const isSeries = params.type === 'series' || params.type === 'anime';
   const media = { ...(currentMedia || {}), id: params.imdb_id || currentMedia?.id, type: isSeries ? 'series' : 'movie',
     name: params.name || currentMedia?.name, poster: params.poster || currentMedia?.poster || '', year: params.year || currentMedia?.year || '',
     ...(isSeries ? { season: Number(params.season) || 1, episode: Number(params.episode) || 1 } : {}) };
-  if (box) box.innerHTML = `<h3>${escapeHtml(params.title)}</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">Envoi à la TV…</p>`;
+  if (box) render(box, html`<h3>${params.title}</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">Envoi à la TV…</p>`);
   try {
     await castToTv({ stream_url: res.stream_url, title: params.title, filename: res.file?.filename || res.chosen_torrent || '',
       media, resume_sec: res.resume_sec || 0 });
     if (box) box.style.display = 'none';
   } catch (e) {
-    if (box) box.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">${escapeHtml(e.message)}</p>`;
+    if (box) render(box, html`<p style="color:var(--muted); font-size:0.85rem;">${e.message}</p>`);
   }
 }
 
@@ -802,19 +802,19 @@ function preparationHtml(prep) {
   const facts = [res.status ? `Statut : ${escapeHtml(res.status)}` : '', res.speed ? `Vitesse : ${escapeHtml(res.speed)}` : '',
     `Pairs : ${Number(res.seeders) || 0}`].filter(Boolean).join(' • ');
   const ready = prep.readyAlternative
-    ? '<button type="button" class="btn" ' + act('playReadyInstead') + '>Lancer une source prête à la place</button>' : '';
-  return `<h3>Préparation de la qualité choisie : ${progress} %</h3>
-    <p class="preparation-note">${escapeHtml(prep.params.title || '')} : Debrid télécharge la source recommandée, la lecture démarre dès qu’elle est prête.</p>
+    ? html`<button type="button" class="btn" ${act('playReadyInstead')}>Lancer une source prête à la place</button>` : '';
+  return html`<h3>Préparation de la qualité choisie : ${progress} %</h3>
+    <p class="preparation-note">${prep.params.title || ''} : Debrid télécharge la source recommandée, la lecture démarre dès qu’elle est prête.</p>
     <p class="preparation-note">${facts}</p>
     <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
     <div class="preparation-actions">${ready}<button type="button" class="btn btn-secondary" ${act('stopWaitingPreparation')}>Arrêter d’attendre</button></div>`;
 }
 
-function renderPreparation(prep, html) {
+function renderPreparation(prep, markup) {
   const box = document.getElementById('debridResultPanel');
   if (!box || oneClickPreparation !== prep) return;
   box.style.display = 'block';
-  box.innerHTML = html || preparationHtml(prep);
+  render(box, markup || preparationHtml(prep));
 }
 
 function showOneClickPreparation(res, params) {
@@ -848,8 +848,8 @@ async function pollPreparation(prep) {
   } catch (error) {
     if (oneClickPreparation !== prep) return;
     const ready = prep.readyAlternative
-      ? '<button type="button" class="btn" ' + act('playReadyInstead') + '>Lancer une source prête à la place</button>' : '';
-    renderPreparation(prep, `<p class="preparation-note">Préparation interrompue : ${escapeHtml(error.message)}</p><div class="preparation-actions">${ready}</div>`);
+      ? html`<button type="button" class="btn" ${act('playReadyInstead')}>Lancer une source prête à la place</button>` : '';
+    renderPreparation(prep, html`<p class="preparation-note">Préparation interrompue : ${error.message}</p><div class="preparation-actions">${ready}</div>`);
   }
 }
 
@@ -877,7 +877,7 @@ function playReadyInstead() {
 function stopWaitingPreparation() {
   const prep = oneClickPreparation;
   if (!prep) return;
-  renderPreparation(prep, '<p class="preparation-note">Vous n’attendez plus : Debrid continue la préparation, et la source sera prête plus tard dans votre Cloud.</p>');
+  renderPreparation(prep, html`<p class="preparation-note">Vous n’attendez plus : Debrid continue la préparation, et la source sera prête plus tard dans votre Cloud.</p>`);
   stopPreparation();
 }
 
@@ -905,7 +905,7 @@ function titleAttrs(m, type) {
   if (!/^tt\d{1,12}$/.test(id)) return '';
   const year = String(m.year || m.releaseInfo || '').match(/\d{4}/)?.[0] || '';
   const kind = (type || m.type) === 'series' || (m.is_anime && m.type !== 'movie') ? 'series' : 'movie';
-  return ` data-title-id="${escapeHtml(id)}" data-title-name="${escapeHtml(m.name || '')}" data-title-year="${year}" data-title-type="${kind}"`;
+  return html` data-title-id="${id}" data-title-name="${m.name || ''}" data-title-year="${year}" data-title-type="${kind}"`;
 }
 
 function displayTitle(m) {
@@ -1062,7 +1062,7 @@ function buildDetailHtml(media, meta, isPreview) {
   // Synopsis text comes from external catalogs: escape it; only the skeleton is markup.
   let desc = escapeHtml(meta.description_fr || meta.description || media.overview || media.description || '');
   if (!desc && isPreview) {
-    desc = '<div class="detail-skeleton-line" style="width:90%;"></div><div class="detail-skeleton-line" style="width:75%; margin-top:6px;"></div>';
+    desc = html`<div class="detail-skeleton-line" style="width:90%;"></div><div class="detail-skeleton-line" style="width:75%; margin-top:6px;"></div>`;
   } else if (!desc) {
     desc = 'Aucun synopsis disponible.';
   }
@@ -1109,24 +1109,24 @@ function buildDetailHtml(media, meta, isPreview) {
   const awardsFr = frenchAwards(awards);
   const people = [...dirArr.slice(0, 2).map(name => ({name, role: 'Réalisation'})),
     ...castArr.map(name => ({name, role: 'Distribution'}))];
-  const castHtml = people.length && !isPreview ? `
+  const castHtml = people.length && !isPreview ? html`
     <section class="detail-extra-section detail-cast" aria-label="Distribution">
       <div class="detail-section-title">Distribution</div>
       <div class="detail-cast-row">
         ${people.map(person => {
-          return `<button type="button" class="detail-person" data-person="${escapeHtml(person.name)}" ${act('openPerson', person.name)} title="Films et séries de ${escapeHtml(person.name)}">
-            <span class="detail-person-photo" aria-hidden="true">${escapeHtml(personInitials(person.name))}</span>
-            <span class="detail-person-name">${escapeHtml(person.name)}</span>
+          return html`<button type="button" class="detail-person" data-person="${person.name}" ${act('openPerson', person.name)} title="Films et séries de ${person.name}">
+            <span class="detail-person-photo" aria-hidden="true">${personInitials(person.name)}</span>
+            <span class="detail-person-name">${person.name}</span>
             <span class="detail-person-role">${person.role}</span>
           </button>`;
-        }).join('')}
+        })}
       </div>
     </section>` : '';
 
   let episodesHtml = '';
   if (isSeries) {
     if (isPreview) {
-      episodesHtml = `
+      episodesHtml = html`
         <div class="detail-extra-section">
           <div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:8px;">Épisodes</div>
           <div class="detail-skeleton-line" style="width:45%; margin-bottom:12px;"></div>
@@ -1143,11 +1143,11 @@ function buildDetailHtml(media, meta, isPreview) {
       const seasons = [...new Set(seriesMetaVideos.map(v => Number(v.season)))].sort((a,b) => a - b);
       if (seasons.length) {
         if (!seasons.includes(targetSeason)) targetSeason = seasons[0];
-        episodesHtml = `
+        episodesHtml = html`
           <div class="detail-extra-section detail-episodes">
             <div class="detail-season-bar">
               <div class="detail-season-pills" role="group" aria-label="Saisons">
-                ${seasons.map(s => `<button class="season-pill ${s===targetSeason?'active':''}" data-season-chip="${s}" ${act('selectDetailSeason', s)}>Saison ${s}</button>`).join('')}
+                ${seasons.map(s => html`<button class="season-pill ${s===targetSeason?'active':''}" data-season-chip="${s}" ${act('selectDetailSeason', s)}>Saison ${s}</button>`)}
               </div>
               <div class="detail-episodes-tools">
                 <div class="spoiler-series-setting"><label for="detailSpoilerChoice">Spoilers</label><select id="detailSpoilerChoice" aria-label="Protection des spoilers pour cette série" ${actOn('change', 'setSeriesSpoilerProtection', VALUE)}><option value="inherit">Réglage général</option><option value="on">Masquer les épisodes non vus</option><option value="off">Tout afficher</option></select></div>
@@ -1169,24 +1169,24 @@ function buildDetailHtml(media, meta, isPreview) {
   }
 
   const journeyHtml = (media.is_anime || activeTab === 'anime')
-    ? '<section class="detail-extra-section anime-journey-section" aria-label="Parcours de la saga"><div id="animeJourneyPanel"><p class="journey-empty">Chargement du parcours…</p></div></section>'
+    ? html`<section class="detail-extra-section anime-journey-section" aria-label="Parcours de la saga"><div id="animeJourneyPanel"><p class="journey-empty">Chargement du parcours…</p></div></section>`
     : '';
 
   const similarHtml = similarSectionHtml(Array.isArray(meta.similar) ? meta.similar : [], isSeries);
 
-  const linksHtml = isImdbId && !isPreview ? `
+  const linksHtml = isImdbId && !isPreview ? html`
     <section class="detail-extra-section detail-links" aria-label="Ailleurs">
       <div class="detail-section-title">Ailleurs</div>
       <div class="detail-links-row">
         <a class="btn btn-secondary" href="https://www.imdb.com/title/${encodeURIComponent(media.id)}/" target="_blank" rel="noopener" title="Voir la fiche sur IMDb">IMDb ↗</a>
-        ${!isSeries ? `<a class="btn btn-secondary" href="https://letterboxd.com/imdb/${encodeURIComponent(media.id)}/" target="_blank" rel="noopener" title="Voir sur Letterboxd">Letterboxd ↗</a>` : ''}
+        ${!isSeries ? html`<a class="btn btn-secondary" href="https://letterboxd.com/imdb/${encodeURIComponent(media.id)}/" target="_blank" rel="noopener" title="Voir sur Letterboxd">Letterboxd ↗</a>` : ''}
       </div>
     </section>` : '';
 
-  const latestAiredBanner = (isSeries && latestAired) ? `
+  const latestAiredBanner = (isSeries && latestAired) ? html`
     <div class="detail-latest${latestAiredUnwatched ? ' is-new' : ''}">
-      <span id="latestAiredText">${latestAiredUnwatched ? '● Dernier épisode diffusé (non vu) :' : '✓ Dernier épisode diffusé :'} <strong>${escapeHtml(latestAired.code)}</strong> — ${escapeHtml(latestAiredTitle)} (${escapeHtml(latestAired.released || '')})</span>
-      ${latestAiredUnwatched ? `<button class="btn btn-secondary btn-small" ${act('oneClickSeriesEpisode', THIS, Number(latestAired.season) || 1, Number(latestAired.episode) || 1)}>Lancer</button>` : ''}
+      <span id="latestAiredText">${latestAiredUnwatched ? '● Dernier épisode diffusé (non vu) :' : '✓ Dernier épisode diffusé :'} <strong>${latestAired.code}</strong> — ${latestAiredTitle} (${latestAired.released || ''})</span>
+      ${latestAiredUnwatched ? html`<button class="btn btn-secondary btn-small" ${act('oneClickSeriesEpisode', THIS, Number(latestAired.season) || 1, Number(latestAired.episode) || 1)}>Lancer</button>` : ''}
     </div>
   ` : '';
 
@@ -1194,9 +1194,9 @@ function buildDetailHtml(media, meta, isPreview) {
     isSeries,
     targetSeason,
     targetEpisode,
-    html: `
+    html: html`
       <section class="detail-hero" id="detailHero">
-        <img class="detail-hero-backdrop" src="${escapeHtml(largeBackdrop(backdropUrl))}" alt="" ${actOn('load', 'ficheGlow', THIS)} ${actOn('error', 'detailBackdropFallback', THIS, poster)}>
+        <img class="detail-hero-backdrop" src="${largeBackdrop(backdropUrl)}" alt="" ${actOn('load', 'ficheGlow', THIS)} ${actOn('error', 'detailBackdropFallback', THIS, poster)}>
         <div class="detail-hero-shade"></div>
         <div class="detail-trailer" id="detailTrailer" hidden>
           <div class="detail-trailer-frame" id="detailTrailerFrame"></div>
@@ -1212,24 +1212,24 @@ function buildDetailHtml(media, meta, isPreview) {
         </button>
         <div class="detail-hero-body">
           <h2 class="detail-hero-title">
-            ${logoUrl ? `<img class="detail-hero-logo" src="${escapeHtml(logoUrl)}" alt="" ${actOn('load', 'kinoHeroLogo', THIS)} ${actOn('error', 'kinoRemove', THIS)}>` : ''}
-            <span class="detail-hero-name"${titleAttrs({...media, name: meta.name || media.name, year: String(year)}, isSeries ? 'series' : 'movie')}>${escapeHtml(displayTitle({id: media.id, name: meta.name || media.name}))}</span>
+            ${logoUrl ? html`<img class="detail-hero-logo" src="${logoUrl}" alt="" ${actOn('load', 'kinoHeroLogo', THIS)} ${actOn('error', 'kinoRemove', THIS)}>` : ''}
+            <span class="detail-hero-name"${titleAttrs({...media, name: meta.name || media.name, year: String(year)}, isSeries ? 'series' : 'movie')}>${displayTitle({id: media.id, name: meta.name || media.name})}</span>
           </h2>
-          <div class="detail-hero-original">${escapeHtml(meta.name || media.name)}</div>
+          <div class="detail-hero-original">${meta.name || media.name}</div>
           <div class="detail-meta-row">
             ${ficheRatingHtml(media.id, histItem, userRating)}
-            ${rating ? `<span class="detail-chip detail-chip-strong">★ ${escapeHtml(rating)} IMDb</span>` : ''}
-            ${year ? `<span class="detail-chip">${escapeHtml(year)}</span>` : ''}
-            ${runtime ? `<span class="detail-meta-text">${escapeHtml(frenchRuntime(runtime))}${isSeries ? ' par épisode' : ''}</span>` : ''}
-            ${country ? `<span class="detail-meta-text">${escapeHtml(frenchCountries(country))}</span>` : ''}
+            ${rating ? html`<span class="detail-chip detail-chip-strong">★ ${rating} IMDb</span>` : ''}
+            ${year ? html`<span class="detail-chip">${year}</span>` : ''}
+            ${runtime ? html`<span class="detail-meta-text">${frenchRuntime(runtime)}${isSeries ? ' par épisode' : ''}</span>` : ''}
+            ${country ? html`<span class="detail-meta-text">${frenchCountries(country)}</span>` : ''}
             ${genres.map((g, idx) => {
               const rawG = rawGenres[idx] || g;
-              return `<span class="badge" style="cursor:pointer;" title="Filtrer par ${escapeHtml(g)}" ${act('selectGenreBadge', rawG)}>${escapeHtml(g)}</span>`;
-            }).join('')}
+              return html`<span class="badge" style="cursor:pointer;" title="Filtrer par ${g}" ${act('selectGenreBadge', rawG)}>${g}</span>`;
+            })}
           </div>
           ${latestAiredBanner}
           <div class="detail-desc">${desc}</div>
-          ${awardsFr ? `<div class="detail-awards">${escapeHtml(awardsFr)}</div>` : ''}
+          ${awardsFr ? html`<div class="detail-awards">${awardsFr}</div>` : ''}
           <div class="detail-actions">
             <button class="btn btn-play-hero" id="detailMainPlayBtn" ${act('oneClickCard', EVENT, THIS, mediaInfo)}>
               <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#play-solid"></use></svg>
@@ -1244,16 +1244,16 @@ function buildDetailHtml(media, meta, isPreview) {
               Bande-annonce
             </button>
             <button class="btn btn-secondary" id="detailWlBtn" ${act('toggleWatchlist', EVENT, mediaInfo)}>
-              ${inList ? '<svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#tick"></use></svg> Dans ma liste' : '+ Ma Liste'}
+              ${inList ? html`<svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#tick"></use></svg> Dans ma liste` : '+ Ma Liste'}
             </button>
-            ${!isSeries ? `<button class="btn btn-secondary" style="${isMovieDone ? 'border-color:var(--text); color:var(--text);' : ''}" ${act('toggleWatchedItem', mediaInfo)}>${isMovieDone ? '✓ Vu' : '✓ Marquer comme vu'}</button>` : ''}
+            ${!isSeries ? html`<button class="btn btn-secondary" style="${isMovieDone ? 'border-color:var(--text); color:var(--text);' : ''}" ${act('toggleWatchedItem', mediaInfo)}>${isMovieDone ? '✓ Vu' : '✓ Marquer comme vu'}</button>` : ''}
           </div>
         </div>
       </section>
       ${episodesHtml}
       ${journeyHtml}
     `,
-    moreHtml: `${castHtml}${similarHtml}${linksHtml}`,
+    moreHtml: html`${castHtml}${similarHtml}${linksHtml}`,
   };
 }
 
@@ -1266,10 +1266,10 @@ function ficheGlow(img) {
 }
 
 function similarSectionHtml(list, isSeries) {
-  return list.length ? `
+  return list.length ? html`
     <section class="detail-extra-section detail-similar" aria-label="Vous aimerez aussi">
       <div class="detail-section-title">Vous aimerez aussi</div>
-      <div class="list-shelf-row">${list.map(sm => posterCardHtml(sm, sm.type === 'series' || (!sm.type && isSeries) ? 'series' : 'movie')).join('')}</div>
+      <div class="list-shelf-row">${list.map(sm => posterCardHtml(sm, sm.type === 'series' || (!sm.type && isSeries) ? 'series' : 'movie'))}</div>
     </section>` : '';
 }
 
@@ -1292,13 +1292,13 @@ async function loadRelatedForFiche(media, isSeries) {
   const items = (related.items || []).filter(m => m?.id && m.id !== id && !seen.has(m.id));
   const more = document.getElementById('detailMore');
   if (!more || items.length < 4) return;
-  const html = similarSectionHtml(items, isSeries);
+  const section = similarSectionHtml(items, isSeries);
   const existing = more.querySelector('.detail-similar');
-  if (existing) existing.outerHTML = html;
+  if (existing) replaceWith(existing, section);
   else {
     const links = more.querySelector('.detail-links');
-    if (links) links.insertAdjacentHTML('beforebegin', html);
-    else more.insertAdjacentHTML('beforeend', html);
+    if (links) renderAdjacent(links, 'beforebegin', section);
+    else renderAdjacent(more, 'beforeend', section);
   }
   more.hidden = false;
 }
@@ -1359,7 +1359,7 @@ function showPersonScreen(name) {
   grid.style.flexDirection = '';
   document.getElementById('catalogHeader').style.display = 'flex';
   document.getElementById('catalogTitle').textContent = name;
-  grid.innerHTML = posterSkeletons();
+  render(grid, posterSkeletons());
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
@@ -1377,9 +1377,9 @@ async function openPerson(name) {
     renderPersonPage();
   } catch (error) {
     if (personView !== view || !searchResultsShown) return;
-    document.getElementById('postersGrid').innerHTML = error.code === 'offline'
+    render(document.getElementById('postersGrid'), error.code === 'offline'
       ? needsInternetHtml('La page de cette personne')
-      : `<p class="person-note">Impossible d’afficher cette page : ${escapeHtml(error.message)}</p>`;
+      : html`<p class="person-note">Impossible d’afficher cette page : ${error.message}</p>`);
   }
 }
 
@@ -1406,15 +1406,15 @@ function personHeaderHtml(view) {
   const data = view.data;
   const seen = [...(data.movies || []), ...(data.series || [])].filter(personSeen).length;
   const facts = [personRolesText(data), seen ? `${seen} déjà vu${seen > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
-  const photo = data.photo ? `<img src="${escapeHtml(data.photo)}" alt="">` : escapeHtml(personInitials(data.name || view.name));
+  const photo = data.photo ? html`<img src="${data.photo}" alt="">` : escapeHtml(personInitials(data.name || view.name));
   const back = view.from
-    ? `<button type="button" class="btn btn-secondary" ${act('backFromPerson')}>Retour à « ${escapeHtml(displayTitle(view.from))} »</button>` : '';
-  return `<header class="person-head">
+    ? html`<button type="button" class="btn btn-secondary" ${act('backFromPerson')}>Retour à « ${displayTitle(view.from)} »</button>` : '';
+  return html`<header class="person-head">
       <div class="person-photo${data.photo ? ' has-photo' : ''}" aria-hidden="true">${photo}</div>
       <div class="person-text">
-        ${data.description ? `<p class="person-description">${escapeHtml(data.description)}</p>` : ''}
-        ${data.bio ? `<p class="person-bio">${escapeHtml(data.bio)}</p>` : ''}
-        ${facts ? `<p class="person-facts">${escapeHtml(facts)}</p>` : ''}
+        ${data.description ? html`<p class="person-description">${data.description}</p>` : ''}
+        ${data.bio ? html`<p class="person-bio">${data.bio}</p>` : ''}
+        ${facts ? html`<p class="person-facts">${facts}</p>` : ''}
         ${back}
       </div>
     </header>`;
@@ -1431,23 +1431,23 @@ function renderPersonPage() {
   const filters = [['all', 'Tout', all.length], ...groups.map(([kind, label, items]) => [kind, label, items.length]),
     ...(unseen.length && unseen.length < all.length ? [['unseen', 'Pas encore vus', unseen.length]] : [])];
   if (!filters.some(([kind]) => kind === view.filter)) view.filter = 'all';
-  const chips = filters.length > 2 ? `<div class="search-results-tools" role="group" aria-label="Filtrer les titres">${filters.map(([kind, label, count]) =>
-    `<button type="button" class="chip${view.filter === kind ? ' active' : ''}" aria-pressed="${view.filter === kind}" ${act('setPersonFilter', kind)}>${label} <span class="list-count">${count}</span></button>`).join('')}</div>` : '';
+  const chips = filters.length > 2 ? html`<div class="search-results-tools" role="group" aria-label="Filtrer les titres">${filters.map(([kind, label, count]) =>
+    html`<button type="button" class="chip${view.filter === kind ? ' active' : ''}" aria-pressed="${view.filter === kind}" ${act('setPersonFilter', kind)}>${label} <span class="list-count">${count}</span></button>`)}</div>` : '';
   const body = groups.map(([kind, label, items]) => {
     if (view.filter !== 'all' && view.filter !== 'unseen' && view.filter !== kind) return '';
     const shown = view.filter === 'unseen' ? items.filter(m => !personSeen(m)) : items;
     if (!shown.length) return '';
-    return `<h3 class="search-group-title">${label} <span class="list-count">${shown.length}</span></h3>${shown.map(m => posterCardHtml(m, kind)).join('')}`;
-  }).join('');
-  const empty = all.length ? '' : `<div class="library-empty"><h3>Aucun titre confirmé</h3><p>Le catalogue ne relie encore aucun film ni série à ${escapeHtml(view.name)}.</p></div>`;
+    return html`<h3 class="search-group-title">${label} <span class="list-count">${shown.length}</span></h3>${shown.map(m => posterCardHtml(m, kind))}`;
+  });
+  const empty = all.length ? '' : html`<div class="library-empty"><h3>Aucun titre confirmé</h3><p>Le catalogue ne relie encore aucun film ni série à ${view.name}.</p></div>`;
   const others = data.others || [];
   const otherHtml = !others.length ? '' : view.others
-    ? `<h3 class="search-group-title">Autres résultats pour ce nom <span class="list-count">${others.length}</span></h3>`
-      + `<p class="person-note">Le nom apparaît dans ces titres sans figurer dans les premiers noms de leur distribution : un petit rôle, ou un homonyme.</p>`
-      + others.map(m => posterCardHtml(m, m.type)).join('')
-      + `<button type="button" class="btn btn-secondary person-more" ${act('togglePersonOthers')} aria-expanded="true">Masquer les autres résultats</button>`
-    : `<button type="button" class="btn btn-secondary person-more" ${act('togglePersonOthers')} aria-expanded="false">Autres résultats pour ce nom (${others.length})</button>`;
-  grid.innerHTML = personHeaderHtml(view) + chips + body + empty + otherHtml;
+    ? [html`<h3 class="search-group-title">Autres résultats pour ce nom <span class="list-count">${others.length}</span></h3>`,
+      html`<p class="person-note">Le nom apparaît dans ces titres sans figurer dans les premiers noms de leur distribution : un petit rôle, ou un homonyme.</p>`,
+      others.map(m => posterCardHtml(m, m.type)),
+      html`<button type="button" class="btn btn-secondary person-more" ${act('togglePersonOthers')} aria-expanded="true">Masquer les autres résultats</button>`]
+    : html`<button type="button" class="btn btn-secondary person-more" ${act('togglePersonOthers')} aria-expanded="false">Autres résultats pour ce nom (${others.length})</button>`;
+  render(grid, [personHeaderHtml(view), chips, body, empty, otherHtml]);
 }
 
 function setPersonFilter(kind) {
@@ -1483,7 +1483,7 @@ async function playDetailTrailer(trailerId, title, year = '', lang = 'vf') {
   hero.classList.add('playing-trailer');
   box.hidden = false;
   box.querySelectorAll('[data-trailer-lang]').forEach(button => button.classList.toggle('active', button.dataset.trailerLang === lang));
-  frame.innerHTML = '<div class="detail-trailer-message">Recherche de la bande-annonce…</div>';
+  render(frame, html`<div class="detail-trailer-message">Recherche de la bande-annonce…</div>`);
   const link = document.getElementById('detailTrailerLink');
   if (link) link.hidden = true;
   try {
@@ -1492,14 +1492,14 @@ async function playDetailTrailer(trailerId, title, year = '', lang = 'vf') {
     if (detailTrailerCtx !== ctx) return;
     if (link && data.watch_url) { link.href = data.watch_url; link.hidden = false; }
     if (data.stream_url) {
-      frame.innerHTML = `<video src="${escapeHtml(data.stream_url)}" controls autoplay playsinline></video>`;
+      render(frame, html`<video src="${safeUrl(data.stream_url)}" controls autoplay playsinline></video>`);
     } else if (data.embed_url) {
-      frame.innerHTML = `<iframe src="${escapeHtml(data.embed_url)}" title="Bande-annonce" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+      render(frame, html`<iframe src="${safeUrl(data.embed_url)}" title="Bande-annonce" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`);
     } else {
-      frame.innerHTML = '<div class="detail-trailer-message">Aucune bande-annonce trouvée.</div>';
+      render(frame, html`<div class="detail-trailer-message">Aucune bande-annonce trouvée.</div>`);
     }
   } catch (error) {
-    if (detailTrailerCtx === ctx) frame.innerHTML = '<div class="detail-trailer-message">Bande-annonce indisponible pour le moment.</div>';
+    if (detailTrailerCtx === ctx) render(frame, html`<div class="detail-trailer-message">Bande-annonce indisponible pour le moment.</div>`);
   }
 }
 
@@ -1510,7 +1510,7 @@ function switchDetailTrailer(lang) {
 function closeDetailTrailer() {
   detailTrailerCtx = null;
   const frame = document.getElementById('detailTrailerFrame');
-  if (frame) frame.innerHTML = '';
+  if (frame) render(frame, '');
   const box = document.getElementById('detailTrailer');
   if (box) box.hidden = true;
   document.getElementById('detailHero')?.classList.remove('playing-trailer');
@@ -1521,7 +1521,7 @@ function applyMediaDetails(media, meta) {
   const sc = document.getElementById('seriesControls');
   detailTrailerCtx = null;
   const rendered = buildDetailHtml(media, meta, false);
-  detail.innerHTML = rendered.html;
+  render(detail, rendered.html);
   showDetailMore(rendered.moreHtml);
   loadDetailPeoplePhotos(media.id);
 
@@ -1534,7 +1534,7 @@ function applyMediaDetails(media, meta) {
     // the menus above the sources stay for a series without its episode list.
     sc.style.display = seasons.length ? 'none' : 'flex';
     if (seasons.length) {
-      sSel.innerHTML = seasons.map(s => `<option value="${s}">Saison ${s}</option>`).join('');
+      render(sSel, seasons.map(s => html`<option value="${s}">Saison ${s}</option>`));
       sSel.value = String(rendered.targetSeason);
       onSeasonChange(false);
       const eSel = document.getElementById('episodeSelect');
@@ -1543,7 +1543,7 @@ function applyMediaDetails(media, meta) {
       }
       renderDetailEpisodes(rendered.targetSeason);
     } else {
-      sSel.innerHTML = '<option value="1">Saison 1</option>';
+      render(sSel, html`<option value="1">Saison 1</option>`);
       onSeasonChange(false);
     }
     reloadSeriesEpisode(false);
@@ -1598,7 +1598,7 @@ async function selectMedia(media) {
 
   // 2. Affichage instantane optimiste (0ms de latence percue)
   const preview = buildDetailHtml(media, {}, true);
-  detail.innerHTML = preview.html;
+  render(detail, preview.html);
   detail.scrollIntoView({behavior: 'smooth'});
 
   // 3. Requete asynchrone des metadonnees enrichies
@@ -1621,11 +1621,11 @@ async function selectMedia(media) {
 }
 
 // Cast, similar titles and links: below the sources, shown and hidden with the fiche.
-function showDetailMore(html) {
+function showDetailMore(markup) {
   const more = document.getElementById('detailMore');
   if (!more) return;
-  more.innerHTML = html || '';
-  more.hidden = !html;
+  render(more, markup || '');
+  more.hidden = !markup;
 }
 
 function hideDetailMore() {
@@ -1665,7 +1665,7 @@ function renderDetailEpisodes(seasonNum) {
   const eps = seriesMetaVideos.filter(v => v.season === seasonNum).sort((a,b) => (a.episode || a.number) - (b.episode || b.number));
   const summary = document.getElementById('detailSeasonSummary');
   if (!eps.length) {
-    container.innerHTML = '<p class="ep-empty">Aucun détail d\'épisode disponible.</p>';
+    render(container, html`<p class="ep-empty">Aucun détail d'épisode disponible.</p>`);
     if (summary) summary.textContent = '';
     updateEpisodeArrows();
     return;
@@ -1695,7 +1695,7 @@ function renderDetailEpisodes(seasonNum) {
     const filler = currentMedia?.is_anime || activeTab === 'anime' ? ' · Classement canon / hors-série indisponible sans source vérifiée.' : '';
     summary.textContent = `Saison ${seasonNum} · ${parts.join(' · ')}${filler}`;
   }
-  container.innerHTML = eps.map(v => episodeTileHtml(v, ctx)).join('');
+  render(container, eps.map(v => episodeTileHtml(v, ctx)));
   revealEpisodeToWatch(container);
   updateEpisodeArrows();
   requestEpisodeOverviews(seriesId, seasonNum);

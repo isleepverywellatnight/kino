@@ -16,8 +16,7 @@ test('Ce soir shows three distinct feedback actions and escapes media titles', (
   const context = {
     document: {getElementById: id => elements[id] || null},
     navigator: {onLine: true},
-    escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'),
-  };
+      };
   vm.runInNewContext(`${tonightCode}; renderTonightResult({choices:[{item:{id:'tt1', name:'<film>'}, reasons:['80 min'], offline_id:null}], review:[], coverage:{total:1,partial:false}});`, context);
   assert.match(elements.tonightChoices.innerHTML, /Pas ce soir/);
   assert.match(elements.tonightChoices.innerHTML, /Déjà vu/);

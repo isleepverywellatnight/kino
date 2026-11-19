@@ -1,6 +1,7 @@
 // « Noter en un geste »: the three gestures, when the end of a
 // playback asks, the Home row « Vos derniers vus, à noter », and the fiche.
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -43,10 +44,9 @@ function load({ history = [], tab = 'movies', fail = false, playing = false } = 
       if ('skip' in body) fields.rating_skipped = body.skip;
       return { ok: true, id: body.id, fields };
     },
-    escapeHtml: s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'),
-    onHomeTab: () => tab === 'movies' || tab === 'series',
+        onHomeTab: () => tab === 'movies' || tab === 'series',
     homeKind: () => (tab === 'series' ? 'series' : 'movie'),
-    posterCardHtml: m => `<poster ${m.id} ${m.poster}>`,
+    posterCardHtml: m => raw(`<poster ${m.id} ${m.poster}>`),
     displayTitle: m => m.name,
     refreshUserLists: async () => {},
     renderHomeForYou: () => calls.push(['renderHomeForYou']),
@@ -68,8 +68,8 @@ test('three gestures, read from any stored value', () => {
     [['disliked', '1', 'Pas aimé'], ['liked', '4', 'Aimé'], ['loved', '5', 'Adoré']]);
   assert.deepEqual(['', '1', '2.5', '3', '3.5', '4', '4.5', '5'].map(context.ratingGesture),
     ['', 'disliked', 'disliked', '', 'liked', 'liked', 'liked', 'loved']);
-  assert.match(context.ratingBadgeHtml('5'), /title="Votre avis : Adoré".*#heart-fill/);
-  assert.match(context.ratingBadgeHtml('3'), /★ 3\/5/, 'an imported 3 keeps its stars');
+  assert.match(String(context.ratingBadgeHtml('5')), /title="Votre avis : Adoré".*#heart-fill/);
+  assert.match(String(context.ratingBadgeHtml('3')), /★ 3\/5/, 'an imported 3 keeps its stars');
   assert.equal(context.ratingBadgeHtml(''), '');
 });
 
@@ -124,19 +124,19 @@ test('a gesture saves the rating; the same one twice takes it back', async () =>
 
 test('the gestures: pressed state, labels, and a compact form for the Home row', () => {
   const { context } = load();
-  const full = context.ratingGesturesHtml('tt1', '4');
+  const full = String(context.ratingGesturesHtml('tt1', '4'));
   assert.equal((full.match(/class="rate-gesture /g) || []).length, 3);
   assert.match(full, /is-liked" data-rate-id="tt1" data-rate-value="4" aria-pressed="true" title="Aimé \(cliquer pour retirer\)"/);
   assert.match(full, /#thumb-up-fill/);
   assert.match(full, /#thumb-down"/);
   assert.match(full, /<span>Pas aimé<\/span>/);
-  const compact = context.ratingGesturesHtml('tt1', '', { labels: false });
+  const compact = String(context.ratingGesturesHtml('tt1', '', { labels: false }));
   assert.match(compact, /is-compact/);
   assert.match(compact, /aria-label="Adoré"/);
   assert.doesNotMatch(compact, /<span>/);
-  assert.match(context.ficheRatingHtml('tt1', heat(), '3'), /Votre avis<\/span><span class="detail-chip">★ 3\/5<\/span>/);
-  assert.match(context.ficheRatingHtml('tt1', null, '4'), /★ 4\/5 · Ma note/, 'a Ma Liste title out of the history keeps the chip');
-  assert.equal(context.ficheRatingHtml('tt1', null, ''), '');
+  assert.match(String(context.ficheRatingHtml('tt1', heat(), '3')), /Votre avis<\/span><span class="detail-chip">★ 3\/5<\/span>/);
+  assert.match(String(context.ficheRatingHtml('tt1', null, '4')), /★ 4\/5 · Ma note/, 'a Ma Liste title out of the history keeps the chip');
+  assert.equal(String(context.ficheRatingHtml('tt1', null, '')), '');
 });
 
 test('the Home row shows the titles of the tab, and hides when all are rated', () => {

@@ -19,8 +19,7 @@ function renderCards(metas, history = []) {
     document: { getElementById: id => (id === 'postersGrid' ? grid : null) },
     hideWatchedInCatalog: false, activeTab: 'movies', userHistory: history,
     isInWatchlist: () => false, getSeriesTargetEpisode: () => ({ season: 1, episode: 1 }),
-    escapeHtml: value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
-    escapeJsString: value => String(value),
+        escapeJsString: value => String(value),
   };
   vm.runInNewContext(`${between('const ORIGINAL_TITLES = new Map();', '// --- Immersive fiche: French labels')}
     ${between('function frenchRuntime(value) {', '// « Won 2 Oscars')}
@@ -52,11 +51,11 @@ test('progress is drawn on the poster and series have no « Marquer vu »', () =
 
 test('placeholders keep the grid shape and are announced once', () => {
   const { skeletons } = renderCards([]);
-  const html = skeletons(3);
+  const html = String([].concat(skeletons(3)).join(''));
   assert.equal((html.match(/poster-card is-skeleton/g) || []).length, 3);
   assert.match(html, /role="status">Chargement…</);
   assert.match(html, /aria-hidden="true"/);
-  assert.match(source, /grid\.innerHTML = posterSkeletons\(\);/);
+  assert.match(source, /render\(grid, posterSkeletons\(\)\);/);
 });
 
 test('the synopsis is fetched once after a pause, then reused by the fiche cache', async () => {

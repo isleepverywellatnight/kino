@@ -11,7 +11,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const source = require('../tools/interface_source.js').appSource();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const sourcesCode = source.slice(source.indexOf('// --- Sources: the best one first'), source.indexOf('async function copyTorrentMagnet('));
-const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 const PARTS = ['instant_points', 'quality_points', 'language_points', 'picture_points', 'sound_points', 'seeder_points',
   'fake_penalty', 'size_points', 'anime_group_points', 'year_points'];

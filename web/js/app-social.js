@@ -2,43 +2,13 @@
 // --- KINO SOCIAL, REMOTE, TRAKT & ADDONS ---
 // ==========================================
 
-function escapeHtml(s) {
-  if (s === null || s === undefined) return '';
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-// JSON for an inline handler inside a double-quoted HTML attribute.
-function attrJson(value) {
-  return escapeHtml(JSON.stringify(value === undefined ? null : value));
-}
+// escapeHtml, attrJson, act, actOn and html`…` are in web/js/html.js.
 
 function listMediaArg(m) {
   return attrJson({
     id: m.id, name: m.name || '', type: 'movie', poster: m.poster || '',
     year: String(m.year || ''), imdbRating: String(m.imdbRating || ''),
   });
-}
-
-// A declared action for a template, run by web/js/actions.js:
-// `<button ${act('debridFromIndex', idx)}>` gives data-on-click="debridFromIndex"
-// and data-click-args="[3]". The arguments are values, not code; THIS and EVENT
-// stand for the element and the event, VALUE and CHECKED for its value and state.
-const THIS = { $: 'this' };
-const EVENT = { $: 'event' };
-const VALUE = { $: 'value' };
-const CHECKED = { $: 'checked' };
-
-function actOn(type, name, ...args) {
-  return `data-on-${type}="${escapeHtml(name)}"${args.length ? ` data-${type}-args="${attrJson(args)}"` : ''}`;
-}
-
-function act(name, ...args) {
-  return actOn('click', name, ...args);
 }
 
 function escapeJsString(s) {
@@ -63,7 +33,7 @@ async function checkTraktStatus() {
     const authBox = document.getElementById('traktAuthBox');
     
     if (res && res.authenticated) {
-      if (statusEl) statusEl.innerHTML = `<span style="color:#4ade80;">✓ Connecté (${res.username ? '@' + res.username : 'Actif'})</span>`;
+      if (statusEl) render(statusEl, html`<span style="color:#4ade80;">✓ Connecté (${res.username ? '@' + res.username : 'Actif'})</span>`);
       if (connectBtn) { connectBtn.textContent = 'Déconnecter'; connectBtn.style.color = '#ef4444'; }
       if (syncBtn) syncBtn.style.display = 'inline-block';
       if (authBox) authBox.style.display = 'none';
@@ -183,7 +153,7 @@ async function openRemoteModal() {
   modal.style.display = 'flex';
   
   if (qrBox) {
-    qrBox.innerHTML = '<div style="color:#71717a; font-size:0.8rem; margin:auto;">Génération du QR Code local...</div>';
+    render(qrBox, html`<div style="color:#71717a; font-size:0.8rem; margin:auto;">Génération du QR Code local...</div>`);
   }
   try {
     const res = await api('/api/remote/qr');
@@ -192,7 +162,7 @@ async function openRemoteModal() {
       urlBox.textContent = remoteUrl;
     }
     if (qrBox) {
-      qrBox.innerHTML = '';
+      render(qrBox, '');
       if (typeof QRCode !== 'undefined') {
         new QRCode(qrBox, {
           text: remoteUrl,
@@ -203,14 +173,14 @@ async function openRemoteModal() {
           correctLevel: QRCode.CorrectLevel.M
         });
       } else {
-        qrBox.innerHTML = `<div style="padding:20px; text-align:center;"><a href="${remoteUrl}" target="_blank" style="color:#09090b; font-weight:600; font-size:0.85rem; word-break:break-all;">${remoteUrl}</a></div>`;
+        render(qrBox, html`<div style="padding:20px; text-align:center;"><a href="${safeUrl(remoteUrl)}" target="_blank" style="color:#09090b; font-weight:600; font-size:0.85rem; word-break:break-all;">${remoteUrl}</a></div>`);
       }
     }
   } catch(e) {
     const fallbackUrl = `http://${window.location.hostname || '127.0.0.1'}:${window.location.port || '8080'}/remote`;
     if (urlBox) urlBox.textContent = fallbackUrl;
     if (qrBox) {
-      qrBox.innerHTML = '';
+      render(qrBox, '');
       if (typeof QRCode !== 'undefined') {
         new QRCode(qrBox, {
           text: fallbackUrl,
@@ -620,11 +590,11 @@ function appendWpChatMessage(user, text) {
     div.style.borderRadius = '6px';
     div.style.wordBreak = 'break-word';
     // Names and messages come from other people: always escaped.
-    div.innerHTML = `<b style="color:${user === 'Moi' ? '#fafafa' : '#a3a3a3'}; font-size:0.75rem;">${escapeHtml(user)} :</b> <span style="color:#f4f4f5;">${escapeHtml(text)}</span>`;
+    render(div, html`<b style="color:${user === 'Moi' ? '#fafafa' : '#a3a3a3'}; font-size:0.75rem;">${user} :</b> <span style="color:#f4f4f5;">${text}</span>`);
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
   }
-  showInAppToast(`<strong>${escapeHtml(user)} :</strong> ${escapeHtml(text.length > 25 ? text.substring(0, 25).trimEnd() + '…' : text)}`);
+  showInAppToast(html`<strong>${user} :</strong> ${text.length > 25 ? text.substring(0, 25).trimEnd() + '…' : text}`);
 }
 
 // --- Gestionnaire d'Add-ons ---
@@ -642,30 +612,30 @@ function closeAddonsModal() {
 async function loadAddonsList() {
   const container = document.getElementById('addonsListContainer');
   if (!container) return;
-  container.innerHTML = '<div style="color:var(--dim); font-size:0.8rem; text-align:center; padding:20px;">Chargement des add-ons...</div>';
+  render(container, html`<div style="color:var(--dim); font-size:0.8rem; text-align:center; padding:20px;">Chargement des add-ons...</div>`);
 
   try {
     const data = await api('/api/addons');
     const addons = data.addons || [];
     if (addons.length === 0) {
-      container.innerHTML = '<div style="color:var(--muted); font-size:0.82rem; text-align:center; padding:30px;">Aucun add-on installé. Cliquez sur "+ Installer un Add-on" pour en ajouter.</div>';
+      render(container, html`<div style="color:var(--muted); font-size:0.82rem; text-align:center; padding:30px;">Aucun add-on installé. Cliquez sur "+ Installer un Add-on" pour en ajouter.</div>`);
       return;
     }
 
-    container.innerHTML = addons.map(addon => {
+    render(container, addons.map(addon => {
       const isEnabled = Boolean(addon.enabled);
       const isBuiltin = Boolean(addon.builtin);
-      return `
+      return html`
         <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
           <div style="flex:1;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:0.92rem; font-weight:700; color:var(--text);">${escapeHtml(addon.name || addon.id)}</span>
-              <span class="badge" style="font-size:0.68rem; background:rgba(255,255,255,0.06);">${escapeHtml(addon.version || '1.0.0')}</span>
-              ${isBuiltin ? `<span class="badge" style="font-size:0.68rem; background:rgba(56,189,248,0.15); color:#38bdf8;">Officiel</span>` : ''}
-              <span class="badge" style="font-size:0.68rem; background:rgba(74,222,128,0.15); color:#4ade80;">${escapeHtml(addon.type || 'scraper')}</span>
+              <span style="font-size:0.92rem; font-weight:700; color:var(--text);">${addon.name || addon.id}</span>
+              <span class="badge" style="font-size:0.68rem; background:rgba(255,255,255,0.06);">${addon.version || '1.0.0'}</span>
+              ${isBuiltin ? html`<span class="badge" style="font-size:0.68rem; background:rgba(56,189,248,0.15); color:#38bdf8;">Officiel</span>` : ''}
+              <span class="badge" style="font-size:0.68rem; background:rgba(74,222,128,0.15); color:#4ade80;">${addon.type || 'scraper'}</span>
             </div>
-            <p style="color:var(--muted); font-size:0.77rem; margin:4px 0 0; line-height:1.4;">${escapeHtml(addon.description || 'Add-on de recherche')}</p>
-            ${addon.author ? `<span style="font-size:0.7rem; color:var(--dim); margin-top:2px; display:block;">Par ${escapeHtml(addon.author)}</span>` : ''}
+            <p style="color:var(--muted); font-size:0.77rem; margin:4px 0 0; line-height:1.4;">${addon.description || 'Add-on de recherche'}</p>
+            ${addon.author ? html`<span style="font-size:0.7rem; color:var(--dim); margin-top:2px; display:block;">Par ${addon.author}</span>` : ''}
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
             <label style="position:relative; display:inline-block; width:38px; height:20px; cursor:pointer;">
@@ -676,9 +646,9 @@ async function loadAddonsList() {
           </div>
         </div>
       `;
-    }).join('');
+    }));
   } catch(e) {
-    container.innerHTML = `<div style="color:#ef4444; font-size:0.8rem; text-align:center; padding:20px;">Erreur : ${escapeHtml(e.message)}</div>`;
+    render(container, html`<div style="color:#ef4444; font-size:0.8rem; text-align:center; padding:20px;">Erreur : ${e.message}</div>`);
   }
 }
 
@@ -732,7 +702,7 @@ async function loadCommunityTab() {
   if (!grid) return;
   openCommunityListId = null;
   communityStateFilter = 'all';
-  if (!currentCommunityLists.length) grid.innerHTML = '<p class="list-shelf-empty">Chargement des sélections…</p>';
+  if (!currentCommunityLists.length) render(grid, html`<p class="list-shelf-empty">Chargement des sélections…</p>`);
   renderCommunityPage();
   if (typeof renderAddonCatalogs === 'function') renderAddonCatalogs();
   try {
@@ -758,7 +728,7 @@ async function loadCommunityTab() {
     currentCommunityLists = curated;
     renderCommunityListsGrid(currentCommunityLists);
   } catch(e) {
-    grid.innerHTML = `<p class="list-shelf-empty">Erreur : ${escapeHtml(e.message)}</p>`;
+    render(grid, html`<p class="list-shelf-empty">Erreur : ${e.message}</p>`);
   }
 }
 
@@ -770,21 +740,21 @@ function communityShelfHtml(col) {
   const open = act(col.imported ? 'openImportedList' : 'openCommunityList', col.id);
   const meta = [`${progress.total} titre${progress.total > 1 ? 's' : ''}`, `${progress.watched} vu${progress.watched > 1 ? 's' : ''}`,
     col.imported ? '' : (col.author ? `par ${col.author}` : '')].filter(Boolean).join(' · ');
-  return `
+  return html`
     <section class="list-shelf" aria-label="${label}">
       <div class="list-shelf-head">
         <div class="list-shelf-info">
           <h3 class="list-shelf-title">${label}</h3>
-          <div class="list-shelf-meta">${escapeHtml(meta)}</div>
+          <div class="list-shelf-meta">${meta}</div>
           <div class="list-shelf-progress" role="progressbar" aria-label="Titres vus" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.pct}"><span style="width:${progress.pct}%"></span></div>
-          ${col.description ? `<p class="list-shelf-desc">${escapeHtml(col.description)}</p>` : ''}
+          ${col.description ? html`<p class="list-shelf-desc">${col.description}</p>` : ''}
         </div>
         <div class="list-shelf-actions">
           <button type="button" class="btn" ${open}>Tout voir</button>
           <button type="button" class="btn-surprise" ${act('surpriseMeFromCommunityList', col.id)} title="Tirer un titre non vu de cette sélection">Roulette</button>
         </div>
       </div>
-      ${items.length ? `<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie')).join('')}${items.length > LIST_SHELF_SIZE ? `<button type="button" class="list-shelf-more" ${open}>Voir les ${items.length} titres</button>` : ''}</div>` : '<p class="list-shelf-empty">Cette sélection est vide.</p>'}
+      ${items.length ? html`<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie'))}${items.length > LIST_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${open}>Voir les ${items.length} titres</button>` : ''}</div>` : html`<p class="list-shelf-empty">Cette sélection est vide.</p>`}
     </section>`;
 }
 
@@ -792,15 +762,15 @@ function renderCommunityListsGrid(lists) {
   const grid = document.getElementById('communityListsGrid');
   if (!grid) return;
   if (!lists || lists.length === 0) {
-    grid.innerHTML = '<p class="list-shelf-empty">Aucune sélection disponible.</p>';
+    render(grid, html`<p class="list-shelf-empty">Aucune sélection disponible.</p>`);
     return;
   }
   const imported = lists.filter(col => col.imported);
   const curated = lists.filter(col => !col.imported);
-  grid.innerHTML = [
-    imported.length ? `<h2 class="explore-section-title">Vos listes Letterboxd</h2>${imported.map(communityShelfHtml).join('')}` : '',
-    curated.length ? `<h2 class="explore-section-title">Sélections</h2>${curated.map(communityShelfHtml).join('')}` : '',
-  ].join('');
+  render(grid, [
+    imported.length ? html`<h2 class="explore-section-title">Vos listes Letterboxd</h2>${imported.map(communityShelfHtml)}` : '',
+    curated.length ? html`<h2 class="explore-section-title">Sélections</h2>${curated.map(communityShelfHtml)}` : '',
+  ]);
 }
 
 // Shelves, or one selection in full with a state filter.
@@ -828,12 +798,12 @@ function renderCommunityPage() {
   desc.hidden = !col.description;
   const filters = document.getElementById('communityActiveListFilters');
   if (filters) {
-    filters.innerHTML = [['all', 'Tout'], ['todo', 'À voir'], ['watched', 'Vus']].map(([state, label]) =>
-      `<button type="button" class="chip${communityStateFilter === state ? ' active' : ''}" aria-pressed="${communityStateFilter === state}" ${act('setCommunityStateFilter', String(state))}>${label} <span class="list-count">${counts[state]}</span></button>`).join('');
+    render(filters, [['all', 'Tout'], ['todo', 'À voir'], ['watched', 'Vus']].map(([state, label]) =>
+      html`<button type="button" class="chip${communityStateFilter === state ? ' active' : ''}" aria-pressed="${communityStateFilter === state}" ${act('setCommunityStateFilter', String(state))}>${label} <span class="list-count">${counts[state]}</span></button>`));
   }
-  document.getElementById('communityActiveListGrid').innerHTML = shown.length
-    ? shown.map(m => posterCardHtml(m, 'movie')).join('')
-    : `<p class="list-shelf-empty">${items.length ? 'Aucun titre dans ce filtre.' : 'Cette sélection est vide.'}</p>`;
+  render(document.getElementById('communityActiveListGrid'), shown.length
+    ? shown.map(m => posterCardHtml(m, 'movie'))
+    : html`<p class="list-shelf-empty">${items.length ? 'Aucun titre dans ce filtre.' : 'Cette sélection est vide.'}</p>`);
 }
 
 function openCommunityList(listId) {

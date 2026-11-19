@@ -11,7 +11,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
 const app = require('../tools/interface_source.js').appSource();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
-const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 function loadNative(state, globals = {}) {
   const elements = {};
@@ -51,7 +51,7 @@ function loadNative(state, globals = {}) {
       if (url.startsWith('/api/intro-times')) return { op: { start: 10, end: 95 } };
       return { ok: true, state };
     },
-    escapeHtml: value => String(value), setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {},
+    setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {},
     Date: FakeDate, URLSearchParams,
     broadcastWpEvent: (event, time) => broadcasts.push(`${event}@${Math.round(time)}`),
     ...globals,
@@ -174,7 +174,7 @@ test('incoming party events go to the native player when it plays', () => {
   assert.doesNotMatch(line, /<img|<b>salut/);
   assert.match(withCalls(line), /&lt;img src=x onerror=alert\(1\)&gt; :/);
   assert.match(line, /color:#a3a3a3/, 'monochrome');
-  assert.doesNotMatch(toasts.at(-1), /<b>salut|<img/);
+  assert.doesNotMatch(String(toasts.at(-1)), /<b>salut|<img/);
   assert.match(withCalls(toasts.at(-1)), /^<strong>&lt;img src=x onerror=alert\(1\)&gt; :<\/strong> &lt;b&gt;salut&lt;\/b&gt; &amp; bienvenue…$/);
 });
 

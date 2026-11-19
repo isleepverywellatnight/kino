@@ -40,28 +40,30 @@ function setMangaLang(value) {
 
 // ---------- The tab ----------
 
+/** @param {any} series @param {unknown} [extra] */
 function mangaCardHtml(series, extra = '') {
-  return `<button type="button" class="manga-card" ${act('openMangaSeries', series.source, series.id)} title="${escapeHtml(series.title)}">
-      <span class="manga-cover">${series.cover ? `<img src="${escapeHtml(series.cover)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}</span>
-      <span class="manga-card-title">${escapeHtml(series.title)}</span>
-      ${extra ? `<span class="manga-card-meta">${escapeHtml(extra)}</span>` : ''}
+  return html`<button type="button" class="manga-card" ${act('openMangaSeries', series.source, series.id)} title="${series.title}">
+      <span class="manga-cover">${series.cover ? html`<img src="${series.cover}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}</span>
+      <span class="manga-card-title">${series.title}</span>
+      ${extra ? html`<span class="manga-card-meta">${extra}</span>` : ''}
     </button>`;
 }
 
+/** @param {unknown} body @param {unknown} [actions] */
 function mangaShelf(title, meta, body, actions = '') {
-  return `<section class="list-shelf manga-shelf" aria-label="${escapeHtml(title)}">
+  return html`<section class="list-shelf manga-shelf" aria-label="${title}">
       <div class="list-shelf-head">
-        <div class="list-shelf-info"><h3 class="list-shelf-title">${escapeHtml(title)}</h3>${meta ? `<div class="list-shelf-meta">${escapeHtml(meta)}</div>` : ''}</div>
-        ${actions ? `<div class="list-shelf-actions">${actions}</div>` : ''}
+        <div class="list-shelf-info"><h3 class="list-shelf-title">${title}</h3>${meta ? html`<div class="list-shelf-meta">${meta}</div>` : ''}</div>
+        ${actions ? html`<div class="list-shelf-actions">${actions}</div>` : ''}
       </div>
       ${body}
     </section>`;
 }
 
-/** @param {(item: any) => string} [extra] */
+/** @param {(item: any) => unknown} [extra] */
 function mangaRow(items, empty, extra = () => '') {
-  return items.length ? `<div class="list-shelf-row">${items.map(item => mangaCardHtml(item, extra(item))).join('')}</div>`
-    : `<p class="list-shelf-empty">${escapeHtml(empty)}</p>`;
+  return items.length ? html`<div class="list-shelf-row">${items.map(item => mangaCardHtml(item, extra(item)))}</div>`
+    : html`<p class="list-shelf-empty">${empty}</p>`;
 }
 
 async function renderMangaTab() {
@@ -72,7 +74,7 @@ async function renderMangaTab() {
   mangaSeries = null;
   if (page) page.hidden = true;
   home.hidden = false;
-  home.innerHTML = '<p class="list-shelf-empty">Chargement…</p>';
+  render(home, html`<p class="list-shelf-empty">Chargement…</p>`);
   const [progress, local, ...rows] = await Promise.all([
     api('/api/manga/progress').catch(() => ({ progress: [] })),
     api('/api/manga/local').catch(() => ({ folder: '', series: [] })),
@@ -80,17 +82,17 @@ async function renderMangaTab() {
   ]);
   const reading = (progress.progress || []).map(p => ({ source: p.source, id: p.series, title: p.title, cover: p.cover, progress: p }));
   const folderLabel = local.folder ? 'Changer de dossier' : 'Choisir un dossier';
-  const folderButton = `<button type="button" class="btn btn-secondary btn-small" ${act('chooseMangaFolder')}>${folderLabel}</button>`;
-  home.innerHTML = (reading.length ? mangaShelf('Continuer la lecture', '', mangaRow(reading, '', item =>
-      item.progress.number ? `Chapitre ${item.progress.number}` : '')) : '')
-    + MANGA_ROWS.map(([, title, meta], index) => {
+  const folderButton = html`<button type="button" class="btn btn-secondary btn-small" ${act('chooseMangaFolder')}>${folderLabel}</button>`;
+  render(home, [(reading.length ? mangaShelf('Continuer la lecture', '', mangaRow(reading, '', item =>
+      item.progress.number ? `Chapitre ${item.progress.number}` : '')) : ''),
+    MANGA_ROWS.map(([, title, meta], index) => {
       const data = rows[index] || {};
-      return mangaShelf(title, meta, data.error ? `<p class="list-shelf-empty">${escapeHtml(data.error)}</p>`
+      return mangaShelf(title, meta, data.error ? html`<p class="list-shelf-empty">${data.error}</p>`
         : mangaRow(data.series || [], 'Aucune série pour l’instant.'));
-    }).join('')
-    + mangaShelf('Sur ce Mac', local.folder || 'Vos fichiers CBZ et dossiers d’images',
+    }),
+    mangaShelf('Sur ce Mac', local.folder || 'Vos fichiers CBZ et dossiers d’images',
       mangaRow(local.series || [], local.folder ? 'Aucune série trouvée dans ce dossier.' : 'Choisissez le dossier qui contient vos mangas.',
-        item => `${item.chapters} chapitre${item.chapters > 1 ? 's' : ''}`), folderButton);
+        item => `${item.chapters} chapitre${item.chapters > 1 ? 's' : ''}`), folderButton)]);
 }
 
 async function searchManga() {
@@ -99,15 +101,15 @@ async function searchManga() {
   if (!query || !home) return renderMangaTab();
   document.getElementById('mangaSeries').hidden = true;
   home.hidden = false;
-  home.innerHTML = '<p class="list-shelf-empty">Recherche…</p>';
+  render(home, html`<p class="list-shelf-empty">Recherche…</p>`);
   try {
     const data = await api(`/api/manga/search?lang=${encodeURIComponent(mangaLang)}&q=${encodeURIComponent(query)}`);
-    home.innerHTML = mangaShelf(`Résultats pour « ${query} »`, '',
-      (data.series || []).length ? `<div class="manga-grid">${data.series.map(s => mangaCardHtml(s, s.year ? String(s.year) : '')).join('')}</div>`
-        : '<p class="list-shelf-empty">Aucune série trouvée.</p>',
-      '<button type="button" class="btn btn-secondary btn-small" ' + act('renderMangaTab') + '>← Manga</button>');
+    render(home, mangaShelf(`Résultats pour « ${query} »`, '',
+      (data.series || []).length ? html`<div class="manga-grid">${data.series.map(s => mangaCardHtml(s, s.year ? String(s.year) : ''))}</div>`
+        : html`<p class="list-shelf-empty">Aucune série trouvée.</p>`,
+      html`<button type="button" class="btn btn-secondary btn-small" ${act('renderMangaTab')}>← Manga</button>`));
   } catch (error) {
-    home.innerHTML = `<p class="list-shelf-empty">${escapeHtml(error.message)}</p>`;
+    render(home, html`<p class="list-shelf-empty">${error.message}</p>`);
   }
 }
 
@@ -138,7 +140,7 @@ async function openMangaSeries(source, id) {
   if (!page) return;
   home.hidden = true;
   page.hidden = false;
-  page.innerHTML = '<p class="list-shelf-empty">Chargement…</p>';
+  render(page, html`<p class="list-shelf-empty">Chargement…</p>`);
   window.scrollTo({ top: 0, behavior: 'auto' });
   try {
     const saved = (await api('/api/manga/progress')).progress || [];
@@ -163,7 +165,7 @@ async function openMangaSeries(source, id) {
     mangaSeries = { source, id, title: info.title, cover: info.cover, chapters, progress, info };
     renderMangaSeries(info);
   } catch (error) {
-    page.innerHTML = `<button type="button" class="btn btn-secondary lists-back" ${act('renderMangaTab')}>← Manga</button><p class="list-shelf-empty">${escapeHtml(error.message)}</p>`;
+    render(page, html`<button type="button" class="btn btn-secondary lists-back" ${act('renderMangaTab')}>← Manga</button><p class="list-shelf-empty">${error.message}</p>`);
   }
 }
 
@@ -174,22 +176,22 @@ function renderMangaSeries(info) {
     || (progress.number && c.number === progress.number)) : -1;
   const first = chapters.findIndex(c => !c.external);
   const start = resumeIndex >= 0
-    ? `<button type="button" class="btn" ${act('openMangaReader', resumeIndex, Number(progress.page) || 0)}>Reprendre · ${escapeHtml(mangaChapterLabel(chapters[resumeIndex]))}</button>`
-    : (first >= 0 ? `<button type="button" class="btn" ${act('openMangaReader', first, 0)}>Commencer la lecture</button>` : '');
+    ? html`<button type="button" class="btn" ${act('openMangaReader', resumeIndex, Number(progress.page) || 0)}>Reprendre · ${mangaChapterLabel(chapters[resumeIndex])}</button>`
+    : (first >= 0 ? html`<button type="button" class="btn" ${act('openMangaReader', first, 0)}>Commencer la lecture</button>` : '');
   const online = mangaSeries.source === 'anilist';
-  const empty = online && !chapters.length ? '<p class="list-shelf-empty">Aucun chapitre trouvé pour cette série pour l’instant.</p>' : '';
+  const empty = online && !chapters.length ? html`<p class="list-shelf-empty">Aucun chapitre trouvé pour cette série pour l’instant.</p>` : '';
   const last = chapters.length ? chapters[chapters.length - 1] : null;
   const count = online && last ? `${chapters.length} chapitre${chapters.length > 1 ? 's' : ''} · dernier : ${last.number || '?'}${last.date ? ` (${last.date})` : ''}` : '';
-  const volumes = online ? '<button type="button" class="btn btn-secondary" ' + act('showMangaVolumes') + '>Volumes HD (torrent)</button>' : '';
-  page.innerHTML = `
+  const volumes = online ? html`<button type="button" class="btn btn-secondary" ${act('showMangaVolumes')}>Volumes HD (torrent)</button>` : '';
+  render(page, html`
     <button type="button" class="btn btn-secondary lists-back" ${act('renderMangaTab')}>← Manga</button>
     <div class="manga-series-head">
-      <div class="manga-cover manga-cover-large">${info.cover ? `<img src="${escapeHtml(info.cover)}" alt="">` : ''}</div>
+      <div class="manga-cover manga-cover-large">${info.cover ? html`<img src="${info.cover}" alt="">` : ''}</div>
       <div class="manga-series-text">
-        <h2>${escapeHtml(info.title)}</h2>
-        <p class="manga-series-meta">${escapeHtml([info.authors?.join(', '), info.year, info.tags?.slice(0, 4).join(' · ')].filter(Boolean).join(' · '))}</p>
-        ${count ? `<p class="manga-series-meta">${escapeHtml(count)}</p>` : ''}
-        ${info.description ? `<p class="manga-series-desc">${escapeHtml(info.description)}</p>` : ''}
+        <h2>${info.title}</h2>
+        <p class="manga-series-meta">${[info.authors?.join(', '), info.year, info.tags?.slice(0, 4).join(' · ')].filter(Boolean).join(' · ')}</p>
+        ${count ? html`<p class="manga-series-meta">${count}</p>` : ''}
+        ${info.description ? html`<p class="manga-series-desc">${info.description}</p>` : ''}
         <div class="manga-series-actions">${start}${volumes}</div>
       </div>
     </div>
@@ -200,74 +202,74 @@ function renderMangaSeries(info) {
       const meta = [chapter.title, chapter.group, chapter.pages ? `${chapter.pages} pages` : '',
         chapter.source ? `${chapter.source}${chapter.lang ? ` · ${chapter.lang.toUpperCase()}` : ''}` : '', chapter.date].filter(Boolean).join(' · ');
       const action = chapter.external
-        ? `<a class="btn btn-secondary btn-small" href="${escapeHtml(chapter.external)}" target="_blank" rel="noopener noreferrer">Chez l’éditeur ↗</a>`
-        : `<button type="button" class="btn btn-secondary btn-small" ${act('openMangaReader', index, 0)}>Lire</button>`;
-      return `<li class="manga-chapter${read ? ' is-read' : ''}${index === resumeIndex ? ' is-current' : ''}">
-          <div><strong>${escapeHtml(mangaChapterLabel(chapter))}</strong>${meta ? `<span>${escapeHtml(meta)}</span>` : ''}</div>${action}</li>`;
-    }).join('')}</ol>`;
+        ? html`<a class="btn btn-secondary btn-small" href="${safeUrl(chapter.external)}" target="_blank" rel="noopener noreferrer">Chez l’éditeur ↗</a>`
+        : html`<button type="button" class="btn btn-secondary btn-small" ${act('openMangaReader', index, 0)}>Lire</button>`;
+      return html`<li class="manga-chapter${read ? ' is-read' : ''}${index === resumeIndex ? ' is-current' : ''}">
+          <div><strong>${mangaChapterLabel(chapter)}</strong>${meta ? html`<span>${meta}</span>` : ''}</div>${action}</li>`;
+    })}</ol>`);
 }
 
 // ---------- Whole volumes by torrent ----------
 
-function mangaVolumesBox(html) {
+function mangaVolumesBox(markup) {
   const box = document.getElementById('mangaVolumes');
   if (box) {
     box.hidden = false;
-    box.innerHTML = html;
+    render(box, markup);
   }
   return box;
 }
 
 async function showMangaVolumes() {
   if (!mangaSeries) return;
-  mangaVolumesBox('<p class="list-shelf-empty">Recherche des volumes…</p>');
+  mangaVolumesBox(html`<p class="list-shelf-empty">Recherche des volumes…</p>`);
   try {
     const data = await api(`/api/manga/volumes?id=${encodeURIComponent(mangaSeries.id)}`);
     const torrents = data.torrents || [];
-    mangaVolumesBox(`<h3 class="list-shelf-title">Volumes HD</h3>
+    mangaVolumesBox(html`<h3 class="list-shelf-title">Volumes HD</h3>
       <p class="manga-volumes-note">Volumes complets partagés en torrent, souvent les éditions numériques officielles. Ils se téléchargent en P2P dans votre dossier manga, puis se lisent hors ligne.</p>
-      ${torrents.length ? `<ul class="manga-torrents">${torrents.map(t => `<li>
-          <div><strong>${escapeHtml(t.name)}</strong><span>${escapeHtml([t.size, `${t.seeders} source${t.seeders > 1 ? 's' : ''}`, t.date].filter(Boolean).join(' · '))}</span></div>
+      ${torrents.length ? html`<ul class="manga-torrents">${torrents.map(t => html`<li>
+          <div><strong>${t.name}</strong><span>${[t.size, `${t.seeders} source${t.seeders > 1 ? 's' : ''}`, t.date].filter(Boolean).join(' · ')}</span></div>
           <button type="button" class="btn btn-secondary btn-small" ${act('openMangaTorrent', t.hash, t.name)}>Voir les volumes</button>
-        </li>`).join('')}</ul>` : '<p class="list-shelf-empty">Aucun volume en torrent pour cette série.</p>'}`);
+        </li>`)}</ul>` : html`<p class="list-shelf-empty">Aucun volume en torrent pour cette série.</p>`}`);
   } catch (error) {
-    mangaVolumesBox(`<p class="list-shelf-empty">${escapeHtml(error.message)}</p>`);
+    mangaVolumesBox(html`<p class="list-shelf-empty">${error.message}</p>`);
   }
 }
 
 async function openMangaTorrent(hash, name) {
-  mangaVolumesBox('<p class="list-shelf-empty">Ouverture du torrent… (jusqu’à 30 secondes)</p>');
+  mangaVolumesBox(html`<p class="list-shelf-empty">Ouverture du torrent… (jusqu’à 30 secondes)</p>`);
   let data;
   try {
     data = await api(`/api/manga/volume/files?hash=${encodeURIComponent(hash)}&name=${encodeURIComponent(name)}`);
   } catch (error) {
     if (error.code === 'p2p_consent' && typeof askP2PConsent === 'function' && await askP2PConsent()) return openMangaTorrent(hash, name);
-    mangaVolumesBox(`<p class="list-shelf-empty">${escapeHtml(error.message)}</p><button type="button" class="btn btn-secondary btn-small" ${act('showMangaVolumes')}>← Volumes</button>`);
+    mangaVolumesBox(html`<p class="list-shelf-empty">${error.message}</p><button type="button" class="btn btn-secondary btn-small" ${act('showMangaVolumes')}>← Volumes</button>`);
     return;
   }
   const files = data.files || [];
-  mangaVolumesBox(`<h3 class="list-shelf-title">${escapeHtml(name)}</h3>
+  mangaVolumesBox(html`<h3 class="list-shelf-title">${name}</h3>
     <button type="button" class="btn btn-secondary btn-small" ${act('showMangaVolumes')}>← Volumes</button>
-    ${files.length ? `<ul class="manga-torrents">${files.map(f => `<li>
-        <div><strong>${escapeHtml(f.name)}</strong><span>${escapeHtml(typeof offlineSize === 'function' ? offlineSize(f.size) : `${f.size}`)}</span></div>
+    ${files.length ? html`<ul class="manga-torrents">${files.map(f => html`<li>
+        <div><strong>${f.name}</strong><span>${typeof offlineSize === 'function' ? offlineSize(f.size) : `${f.size}`}</span></div>
         <span class="manga-volume-state" data-volume="${f.index}"><button type="button" class="btn btn-secondary btn-small" ${act('downloadMangaVolume', hash, f.index)}>Télécharger</button></span>
-      </li>`).join('')}</ul>` : `<p class="list-shelf-empty">${MANGA_NO_ARCHIVE}</p>`}`);
+      </li>`)}</ul>` : html`<p class="list-shelf-empty">${MANGA_NO_ARCHIVE}</p>`}`);
 }
 
-function mangaVolumeState(index, html) {
+function mangaVolumeState(index, markup) {
   const cell = document.querySelector(`[data-volume="${index}"]`);
-  if (cell) cell.innerHTML = html;
+  if (cell) render(cell, markup);
 }
 
 async function downloadMangaVolume(hash, index) {
-  mangaVolumeState(index, '<span class="manga-volume-progress">Démarrage…</span>');
+  mangaVolumeState(index, html`<span class="manga-volume-progress">Démarrage…</span>`);
   try {
     const state = await api('/api/manga/volume', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hash, index, series: mangaSeries?.title || '' }) });
     followMangaVolume(hash, index, state);
   } catch (error) {
     if (error.code === 'p2p_consent' && typeof askP2PConsent === 'function' && await askP2PConsent()) return downloadMangaVolume(hash, index);
-    mangaVolumeState(index, `<span class="manga-volume-progress">${escapeHtml(error.message)}</span>`);
+    mangaVolumeState(index, html`<span class="manga-volume-progress">${error.message}</span>`);
   }
 }
 
@@ -275,21 +277,21 @@ function followMangaVolume(hash, index, state) {
   const key = `${hash}:${index}`;
   clearTimeout(mangaVolumeTimers[key]);
   if (state.error) {
-    mangaVolumeState(index, `<span class="manga-volume-progress">${escapeHtml(state.error)}</span>`);
+    mangaVolumeState(index, html`<span class="manga-volume-progress">${state.error}</span>`);
     return;
   }
   if (state.done) {
     mangaVolumeState(index, state.local
-      ? `<button type="button" class="btn btn-small" ${act('openMangaSeries', 'local', state.local)}>Lire</button>`
-      : '<span class="manga-volume-progress">Téléchargé</span>');
+      ? html`<button type="button" class="btn btn-small" ${act('openMangaSeries', 'local', state.local)}>Lire</button>`
+      : html`<span class="manga-volume-progress">Téléchargé</span>`);
     return;
   }
-  mangaVolumeState(index, `<span class="manga-volume-progress">${Math.floor((state.progress || 0) * 100)} %</span>`);
+  mangaVolumeState(index, html`<span class="manga-volume-progress">${Math.floor((state.progress || 0) * 100)} %</span>`);
   mangaVolumeTimers[key] = setTimeout(async () => {
     try {
       followMangaVolume(hash, index, await api(`/api/manga/volume/status?hash=${encodeURIComponent(hash)}&index=${index}`));
     } catch (error) {
-      mangaVolumeState(index, `<span class="manga-volume-progress">${escapeHtml(error.message)}</span>`);
+      mangaVolumeState(index, html`<span class="manga-volume-progress">${error.message}</span>`);
     }
   }, 2000);
 }
@@ -315,11 +317,11 @@ async function openMangaReader(chapterIndex, startPage = 0) {
   document.body.classList.add('manga-reading');
   document.getElementById('mangaReaderTitle').textContent = mangaSeries.title;
   document.getElementById('mangaReaderChapter').textContent = mangaChapterLabel(chapter);
-  document.getElementById('mangaReaderPages').innerHTML = '<p class="manga-reader-note">Chargement du chapitre…</p>';
+  render(document.getElementById('mangaReaderPages'), html`<p class="manga-reader-note">Chargement du chapitre…</p>`);
   try {
     mangaReader.pages = await mangaPages(chapter);
   } catch (error) {
-    document.getElementById('mangaReaderPages').innerHTML = `<p class="manga-reader-note">${escapeHtml(error.message)}</p>`;
+    render(document.getElementById('mangaReaderPages'), html`<p class="manga-reader-note">${error.message}</p>`);
     return;
   }
   mangaReader.page = Math.min(Math.max(0, startPage), Math.max(0, mangaReader.pages.length - 1));
@@ -337,12 +339,12 @@ function renderMangaReader() {
   direction.style.display = mode === 'scroll' ? 'none' : '';
   box.className = `manga-reader-pages is-${mode}`;
   if (!pages.length) {
-    box.innerHTML = '<p class="manga-reader-note">Ce chapitre n’a pas de pages.</p>';
+    render(box, html`<p class="manga-reader-note">Ce chapitre n’a pas de pages.</p>`);
     return;
   }
   if (mode === 'scroll') {
-    box.innerHTML = pages.map((src, index) => `<img src="${escapeHtml(src)}" alt="Page ${index + 1}" loading="lazy" data-page="${index}">`).join('')
-      + mangaEndHtml();
+    render(box, [pages.map((src, index) => html`<img src="${src}" alt="Page ${index + 1}" loading="lazy" data-page="${index}">`),
+      mangaEndHtml()]);
     const current = box.querySelector(`[data-page="${page}"]`);
     if (current && typeof current.scrollIntoView === 'function') current.scrollIntoView({ block: 'start' });
     box.onscroll = () => {
@@ -351,18 +353,18 @@ function renderMangaReader() {
     };
   } else {
     box.onscroll = null;
-    box.innerHTML = `<img src="${escapeHtml(pages[page])}" alt="Page ${page + 1}">`
-      + pages.slice(page + 1, page + 3).map(src => `<link rel="prefetch" href="${escapeHtml(src)}">`).join('')
-      + (page === pages.length - 1 ? mangaEndHtml() : '');
+    render(box, [html`<img src="${pages[page]}" alt="Page ${page + 1}">`,
+      pages.slice(page + 1, page + 3).map(src => html`<link rel="prefetch" href="${safeUrl(src)}">`),
+      (page === pages.length - 1 ? mangaEndHtml() : '')]);
   }
   updateMangaCount();
 }
 
 function mangaEndHtml() {
   const next = mangaSeries.chapters.slice(mangaReader.chapterIndex + 1).findIndex(c => !c.external);
-  return `<div class="manga-reader-end">${next >= 0
-    ? `<button type="button" class="btn" ${act('openMangaReader', mangaReader.chapterIndex + 1 + next, 0)} data-click-stop>Chapitre suivant · ${escapeHtml(mangaChapterLabel(mangaSeries.chapters[mangaReader.chapterIndex + 1 + next]))}</button>`
-    : `<p>${MANGA_LAST_CHAPTER}</p>`}</div>`;
+  return html`<div class="manga-reader-end">${next >= 0
+    ? html`<button type="button" class="btn" ${act('openMangaReader', mangaReader.chapterIndex + 1 + next, 0)} data-click-stop>Chapitre suivant · ${mangaChapterLabel(mangaSeries.chapters[mangaReader.chapterIndex + 1 + next])}</button>`
+    : html`<p>${MANGA_LAST_CHAPTER}</p>`}</div>`;
 }
 
 function updateMangaCount() {
@@ -370,7 +372,7 @@ function updateMangaCount() {
   if (count && mangaReader) count.textContent = `${mangaReader.page + 1} / ${mangaReader.pages.length}`;
 }
 
-function setMangaPage(page, render = true) {
+function setMangaPage(page, redraw = true) {
   if (!mangaReader?.pages.length) return;
   const last = mangaReader.pages.length - 1;
   if (page > last && render) {
@@ -378,12 +380,12 @@ function setMangaPage(page, render = true) {
     if (next >= 0) openMangaReader(mangaReader.chapterIndex + 1 + next, 0);
     return;
   }
-  if (page < 0 && render) {
+  if (page < 0 && redraw) {
     if (mangaReader.chapterIndex > 0) openMangaReader(mangaReader.chapterIndex - 1, 0);
     return;
   }
   mangaReader.page = Math.min(Math.max(0, page), last);
-  if (render) renderMangaReader();
+  if (redraw) renderMangaReader();
   else updateMangaCount();
   saveMangaProgressSoon();
 }
@@ -436,7 +438,7 @@ function closeMangaReader() {
   saveMangaProgress();
   box.hidden = true;
   document.body.classList.remove('manga-reading');
-  document.getElementById('mangaReaderPages').innerHTML = '';
+  render(document.getElementById('mangaReaderPages'), '');
   mangaReader = null;
   if (mangaSeries) openMangaSeries(mangaSeries.source, mangaSeries.id);
   return true;

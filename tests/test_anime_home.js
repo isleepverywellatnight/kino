@@ -16,7 +16,9 @@ const html = require('../tools/interface_source.js').indexHtml();
 const css = read('web/css/design.css');
 const animeHome = require('../tools/interface_source.js').inFrench(read('web/js/anime-home.js'));
 const between = (start, end) => start + source.split(start, 2)[1].split(end, 1)[0];
-const helpers = between('function escapeHtml(s)', 'async function checkTraktStatus()');
+// The page's render helpers (web/js/html.js), then app-social's own.
+const helpers = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'web', 'js', 'html.js'), 'utf8')
+  + between('function listMediaArg(m)', 'async function checkTraktStatus()');
 const frenchTitles = between('const ORIGINAL_TITLES = new Map();', '// --- Immersive fiche: French labels');
 const spoilerTarget = between('function scheduleSpoilerTarget(item) {', 'function refreshSpoilerSurfaces() {');
 
@@ -127,13 +129,13 @@ test('a card carries the poster card look, its badge and what the user did with 
   assert.deepEqual(plain([...mine]), [['tt1', 'Ma Liste'], ['tt2', 'En cours'], ['tt3', '✓ Vu'], ['tt4', 'En cours'], ['tt5', '✓ Vu']]);
   const work = { id: 42, title: 'Frieren', romaji: 'Sousou no Frieren', format: 'TV', episodes: 28, score: 90, status: 'RELEASING',
     poster: 'https://img/42.jpg', next: { episode: 8, airing_at: at(16, 30) / 1000 }, kino: { id: 'tt2', type: 'series', season: 2 } };
-  const card = context.animeCardHtml(work, NOW, mine);
+  const card = String(context.animeCardHtml(work, NOW, mine));
   assert.match(withCalls(card), /<div class="poster-card anime-card" data-anime="42" onclick="openAnimeWork\(42\)">/);
   assert.match(card, /<span class="poster-watched is-static">En cours<\/span>/);
   assert.match(card, /<span class="anime-card-next">Ép\. 8 · 16:30<\/span>/);
   assert.match(card, /<div class="poster-title" title="Sousou no Frieren">Frieren<\/div>\s*<div class="poster-year">Série · 28 ép\. · 90 %<\/div>/);
   assert.equal(context.animeWorks.get(42), work, 'kept for the click');
-  const bare = context.animeCardHtml({ id: 43, title: 'Autre', format: 'MOVIE', kino: null }, NOW, mine);
+  const bare = String(context.animeCardHtml({ id: 43, title: 'Autre', format: 'MOVIE', kino: null }, NOW, mine));
   assert.doesNotMatch(bare, /poster-watched|anime-card-next| title="/);
   // Keyboard: the cards are poster cards, reached and opened like the others.
   assert.match(source, /const KEYBOARD_CARD_SELECTOR = '\.poster-card, \.card, \.search-suggest-item';/);
@@ -259,13 +261,13 @@ test('a line says when: the hour first, then how long', () => {
   assert.equal(label(at(6, 14, 16)), 'Dans 3 j');
   assert.equal(label(at(4)), 'Diffusé il y a 2 h 14');
   assert.equal(label(at(6, 13)), 'Diffusé il y a 1 min');
-  const row = context.animeWeekRowHtml({ id: 5, title: 'Frieren', romaji: 'Sousou no Frieren', episode: 7, airing_at: at(9) / 1000, format: 'TV',
-    genres: ['Adventure', 'Drama', 'Fantasy'], score: 90, poster: 'p.jpg', kino: { id: 'tt9', type: 'series', season: 2 } }, NOW, new Map([['tt9', 'Ma Liste']]));
+  const row = String(context.animeWeekRowHtml({ id: 5, title: 'Frieren', romaji: 'Sousou no Frieren', episode: 7, airing_at: at(9) / 1000, format: 'TV',
+    genres: ['Adventure', 'Drama', 'Fantasy'], score: 90, poster: 'p.jpg', kino: { id: 'tt9', type: 'series', season: 2 } }, NOW, new Map([['tt9', 'Ma Liste']])));
   assert.match(row, /<article class="offline-item myseries-item week-row" data-anime="5">\s*<time class="week-time" datetime="[^"]+">09:00<\/time>/);
   assert.match(row, /<strong title="Sousou no Frieren">Frieren<\/strong>\s*<span class="myseries-fact">Épisode 7 · Ma Liste<\/span>\s*<span class="myseries-fact">Série · Aventure · Drame · 90 %<\/span>/);
   assert.match(withCalls(row), /<span class="week-when">Dans 2 h 46<\/span>\s*<button type="button" class="btn btn-secondary" onclick="openAnimeWork\(5\)">Fiche<\/button>/);
-  assert.match(context.animeWeekRowHtml({ id: 6, title: 'Vu', episode: 1, airing_at: at(5) / 1000 }, NOW, new Map()), /week-row is-aired"/);
-  assert.match(context.animeWeekRowHtml({ id: 8, title: 'K-On', episode: 1, airing_at: at(9) / 1000, format: 'TV_SHORT', genres: ['Slice of Life', 'Supernatural'] }, NOW, new Map()),
+  assert.match(String(context.animeWeekRowHtml({ id: 6, title: 'Vu', episode: 1, airing_at: at(5) / 1000 }, NOW, new Map())), /week-row is-aired"/);
+  assert.match(String(context.animeWeekRowHtml({ id: 8, title: 'K-On', episode: 1, airing_at: at(9) / 1000, format: 'TV_SHORT', genres: ['Slice of Life', 'Supernatural'] }, NOW, new Map())),
     /<span class="myseries-fact">Série courte · Tranche de vie · Surnaturel<\/span>/);
 });
 

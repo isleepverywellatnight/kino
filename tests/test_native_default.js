@@ -51,7 +51,7 @@ function loadNative(state, { intro = null, cues = null } = {}) {
       if (url === '/api/download') return { dl_id: 'x', duplicate: false };
       return { ok: true, state };
     },
-    escapeHtml: value => String(value), setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {},
+    setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {},
     Date: FakeDate, URLSearchParams,
     downloadMediaContext: media => ({ id: media.id, name: media.name, type: media.type, season: media.season, episode: media.episode }),
   };

@@ -131,32 +131,32 @@ function animeCardHtml(item, nowMs = Date.now(), mine = new Map()) {
   const title = escapeHtml(item.title || 'Sans titre');
   const next = animeNextLabel(item.next, nowMs);
   const state = item.kino ? mine.get(item.kino.id) : '';
-  return `
+  return html`
       <div class="poster-card anime-card" data-anime="${id}" ${act('openAnimeWork', id)}>
-        ${state ? `<span class="poster-watched is-static">${escapeHtml(state)}</span>` : ''}
+        ${state ? html`<span class="poster-watched is-static">${state}</span>` : ''}
         <div class="poster-art">
-          <img src="${escapeHtml(item.poster || '')}" alt="${title}" loading="lazy" ${actOn('load', 'kinoLoaded', THIS)} ${actOn('error', 'kinoPosterFailed', THIS, '')}>
-          ${next ? `<span class="anime-card-next">${escapeHtml(next)}</span>` : ''}
+          <img src="${item.poster || ''}" alt="${title}" loading="lazy" ${actOn('load', 'kinoLoaded', THIS)} ${actOn('error', 'kinoPosterFailed', THIS, '')}>
+          ${next ? html`<span class="anime-card-next">${next}</span>` : ''}
         </div>
         <div class="poster-info">
-          <div class="poster-title"${item.romaji ? ` title="${escapeHtml(item.romaji)}"` : ''}>${title}</div>
-          <div class="poster-year">${escapeHtml(animeWorkFacts(item))}</div>
+          <div class="poster-title"${item.romaji ? html` title="${item.romaji}"` : ''}>${title}</div>
+          <div class="poster-year">${animeWorkFacts(item)}</div>
         </div>
       </div>`;
 }
 
 function animeHomeSkeleton() {
-  const cards = Array.from({ length: 8 }, () => `
+  const cards = Array.from({ length: 8 }, () => html`
       <div class="poster-card is-skeleton" aria-hidden="true">
         <div class="poster-art"></div>
         <div class="poster-info"><span class="skeleton-line" style="width:82%"></span><span class="skeleton-line" style="width:44%"></span></div>
-      </div>`).join('');
-  return `<div class="poster-skeleton-status" role="status">Chargement…</div>`
-    + ['Tendances', 'Cette saison'].map(title => `
+      </div>`);
+  return [html`<div class="poster-skeleton-status" role="status">Chargement…</div>`,
+    ['Tendances', 'Cette saison'].map(title => html`
     <section class="home-shelf anime-shelf">
       <div class="section-header"><span class="section-title">${title}</span></div>
       <div class="list-shelf-row">${cards}</div>
-    </section>`).join('');
+    </section>`)];
 }
 
 function renderAnimeHome() {
@@ -166,26 +166,26 @@ function renderAnimeHome() {
   if (activeTab === 'anime' && currentAnimeSubTab === 'home') renderHomeResume();
   const data = animeHomeData;
   if (!data) {
-    panel.innerHTML = animeHomeSkeleton();
+    render(panel, animeHomeSkeleton());
     return;
   }
   if (!(data.rows || []).length) {
-    panel.innerHTML = `<div class="anime-home-none"><p>${escapeHtml(data.message || 'Les rangées anime sont indisponibles pour le moment.')}</p>`
-      + `<div class="lib-tools"><button type="button" class="btn btn-secondary" ${act('loadAnimeHome', true)}>Réessayer</button>`
-      + `<button type="button" class="btn btn-secondary" ${act('switchAnimeSubTab', 'catalog')}>Ouvrir le catalogue</button></div></div>`;
+    render(panel, [html`<div class="anime-home-none"><p>${data.message || 'Les rangées anime sont indisponibles pour le moment.'}</p>`,
+      html`<div class="lib-tools"><button type="button" class="btn btn-secondary" ${act('loadAnimeHome', true)}>Réessayer</button>`,
+      html`<button type="button" class="btn btn-secondary" ${act('switchAnimeSubTab', 'catalog')}>Ouvrir le catalogue</button></div></div>`]);
     return;
   }
   const now = Date.now();
   const mine = animeMineStates();
-  panel.innerHTML = (data.stale ? '<p class="anime-home-stale">AniList ne répond pas : voici les rangées de la dernière visite.</p>' : '')
-    + data.rows.map(row => `
-    <section class="home-shelf anime-shelf" aria-label="${escapeHtml(row.title)}">
+  render(panel, [(data.stale ? html`<p class="anime-home-stale">AniList ne répond pas : voici les rangées de la dernière visite.</p>` : ''),
+    data.rows.map(row => html`
+    <section class="home-shelf anime-shelf" aria-label="${row.title}">
       <div class="section-header">
-        <span class="section-title">${escapeHtml(row.title)}</span>
-        ${row.note ? `<span class="section-note">${escapeHtml(row.note)}</span>` : ''}
+        <span class="section-title">${row.title}</span>
+        ${row.note ? html`<span class="section-note">${row.note}</span>` : ''}
       </div>
-      <div class="list-shelf-row">${(row.items || []).map(item => animeCardHtml(item, now, mine)).join('')}</div>
-    </section>`).join('');
+      <div class="list-shelf-row">${(row.items || []).map(item => animeCardHtml(item, now, mine))}</div>
+    </section>`)]);
 }
 
 function loadAnimeHome(force = false) {
@@ -319,18 +319,18 @@ function animeWeekRowHtml(episode, nowMs, mine) {
   const facts = [ANIME_FORMATS[episode.format] || 'Anime', ...(episode.genres || []).slice(0, 2).map(genre => ANIME_GENRES[genre] || frenchGenre(genre)),
     Number(episode.score) > 0 ? `${Number(episode.score)} %` : ''].filter(Boolean).join(' · ');
   const aired = episode.airing_at * 1000 <= nowMs;
-  const poster = hidden || !episode.poster ? '' : `<img src="${escapeHtml(episode.poster)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>`;
-  return `<article class="offline-item myseries-item week-row${aired ? ' is-aired' : ''}" data-anime="${id}">
+  const poster = hidden || !episode.poster ? '' : html`<img src="${episode.poster}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>`;
+  return html`<article class="offline-item myseries-item week-row${aired ? ' is-aired' : ''}" data-anime="${id}">
       <time class="week-time" datetime="${new Date(episode.airing_at * 1000).toISOString()}">${animeClock(new Date(episode.airing_at * 1000))}</time>
-      <div class="offline-poster"${hidden ? ` role="img" aria-label="Image masquée pour l’épisode ${number}"` : ''}>${poster}<span aria-hidden="true">${hidden ? number : '▷'}</span></div>
+      <div class="offline-poster"${hidden ? html` role="img" aria-label="Image masquée pour l’épisode ${number}"` : ''}>${poster}<span aria-hidden="true">${hidden ? number : '▷'}</span></div>
       <div class="offline-info">
-        <strong${episode.romaji ? ` title="${escapeHtml(episode.romaji)}"` : ''}>${escapeHtml(episode.title || 'Sans titre')}</strong>
+        <strong${episode.romaji ? html` title="${episode.romaji}"` : ''}>${episode.title || 'Sans titre'}</strong>
         <span class="myseries-fact">Épisode ${number}${state ? ` · ${escapeHtml(state)}` : ''}</span>
-        <span class="myseries-fact">${escapeHtml(facts)}</span>
+        <span class="myseries-fact">${facts}</span>
       </div>
       <div class="offline-actions">
-        <span class="week-when">${escapeHtml(animeAiringLabel(episode.airing_at, nowMs))}</span>
-        ${hidden ? `<button type="button" class="btn btn-secondary spoiler-reveal-btn" ${act('revealScheduleEpisode', id, number)} aria-label="Afficher l’image de l’épisode ${number}">Afficher</button>` : ''}
+        <span class="week-when">${animeAiringLabel(episode.airing_at, nowMs)}</span>
+        ${hidden ? html`<button type="button" class="btn btn-secondary spoiler-reveal-btn" ${act('revealScheduleEpisode', id, number)} aria-label="Afficher l’image de l’épisode ${number}">Afficher</button>` : ''}
         <button type="button" class="btn btn-secondary" ${act('openAnimeWork', id)}>Fiche</button>
       </div>
     </article>`;
@@ -345,15 +345,15 @@ function renderAnimeWeek() {
   if (filter) filter.value = animeWeekFilter;
   const data = animeWeekData;
   if (!data) {
-    daysBar.innerHTML = '';
+    render(daysBar, '');
     if (summary) summary.textContent = 'Chargement du planning…';
-    list.innerHTML = '';
+    render(list, '');
     return;
   }
   if (!data.ok) {
-    daysBar.innerHTML = '';
+    render(daysBar, '');
     if (summary) summary.textContent = data.message || 'Planning indisponible pour le moment.';
-    list.innerHTML = '';
+    render(list, '');
     return;
   }
   const now = Date.now();
@@ -369,13 +369,13 @@ function renderAnimeWeek() {
     summary.textContent = [`${total} épisode${total > 1 ? 's' : ''} sur sept jours`,
       followed ? `${followed} de vos animes` : '', data.stale ? 'planning de la dernière visite' : ''].filter(Boolean).join(' · ');
   }
-  daysBar.innerHTML = days.map((day, index) => `<button type="button" class="chip${index === animeWeekDay ? ' active' : ''}" aria-pressed="${index === animeWeekDay}" ${act('selectAnimeWeekDay', index)}>${escapeHtml(day.label)} <span class="lib-count">${day.shown.length || ''}</span></button>`).join('');
+  render(daysBar, days.map((day, index) => html`<button type="button" class="chip${index === animeWeekDay ? ' active' : ''}" aria-pressed="${index === animeWeekDay}" ${act('selectAnimeWeekDay', index)}>${day.label} <span class="lib-count">${day.shown.length || ''}</span></button>`));
   const day = days[animeWeekDay];
-  list.innerHTML = day.shown.length
-    ? day.shown.map(episode => animeWeekRowHtml(episode, now, mine)).join('')
-    : `<p class="myseries-fact calendar-none">${animeWeekFilter === 'mine'
+  render(list, day.shown.length
+    ? day.shown.map(episode => animeWeekRowHtml(episode, now, mine))
+    : html`<p class="myseries-fact calendar-none">${animeWeekFilter === 'mine'
       ? 'Aucun de vos animes ce jour-là. Ajoutez une série à Ma Liste pour la retrouver ici.'
-      : 'Aucune diffusion ce jour-là.'}</p>`;
+      : 'Aucune diffusion ce jour-là.'}</p>`);
 }
 
 function selectAnimeWeekDay(index) {

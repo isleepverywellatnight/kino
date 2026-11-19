@@ -1,6 +1,7 @@
 // Mes statistiques: four figures, three one-series charts in grey, readable
 // without the mouse; reached from Bibliothèque → Plus.
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -12,7 +13,7 @@ const statsCode = require('../tools/interface_source.js').inFrench(fs.readFileSy
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
-const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 function load({ stats = null, fail = false } = {}) {
   const body = { innerHTML: '' };
@@ -20,7 +21,7 @@ function load({ stats = null, fail = false } = {}) {
     activeTab: 'stats',
     document: { getElementById: id => (id === 'viewingStatsBody' ? body : null) },
     api: async () => { if (fail) throw new Error('hors ligne'); return stats; },
-    escapeHtml, titleAttrs: m => ` data-title-id="${m.id}"`, displayTitle: m => m.name,
+    escapeHtml, titleAttrs: m => raw(` data-title-id="${m.id}"`), displayTitle: m => m.name,
     GENRE_FR: { Drama: 'Drame', Crime: 'Policier' },
     CLOUD_MONTHS: ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'],
   };

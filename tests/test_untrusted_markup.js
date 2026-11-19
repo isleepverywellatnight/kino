@@ -9,7 +9,9 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 
 const source = require('../tools/interface_source.js').appSource();
 const between = (start, end) => start + source.split(start, 2)[1].split(end, 1)[0];
-const helpers = between('function escapeHtml(s)', 'async function checkTraktStatus()');
+// The page's render helpers (web/js/html.js), then app-social's own.
+const helpers = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'web', 'js', 'html.js'), 'utf8')
+  + between('function listMediaArg(m)', 'async function checkTraktStatus()');
 
 const HOSTILE = `Tom & "Jerry's" <img src=x onerror="window.pwned=1">`;
 const BREAKOUT = `1); window.pwned = 1; (`;
@@ -19,14 +21,16 @@ function element() {
 }
 
 // Outside quoted attribute values, no tag the data carried.
-function assertNoInjectedMarkup(html) {
+function assertNoInjectedMarkup(fragment) {
+  const html = String(fragment);
   const outsideAttributes = html.replace(/=(["'])[\s\S]*?\1/g, '=""');
   assert.doesNotMatch(outsideAttributes, /<img src=x/);
   assert.doesNotMatch(withCalls(html), /onerror="window\.pwned/, 'no attribute of its own');
 }
 
 // Every inline handler is one call whose arguments are plain values.
-function assertHandlersAreCalls(html) {
+function assertHandlersAreCalls(fragment) {
+  const html = String(fragment);
   const decode = text => text.replaceAll('&quot;', '"').replaceAll('&#39;', "'").replaceAll('&lt;', '<')
     .replaceAll('&gt;', '>').replaceAll('&amp;', '&');
   for (const [, , body] of html.matchAll(/on(?:click|error)=(["'])(.*?)\1/g)) {
@@ -53,7 +57,7 @@ test('episode tiles show hostile episode data as text and keep numeric handlers'
       today: '2026-01-01', fr: {}, target: {} })`, context);
   assertNoInjectedMarkup(html);
   assertHandlersAreCalls(html);
-  assert.match(html, /&lt;img src=x/, 'the hostile title is still shown, as text');
+  assert.match(String(html), /&lt;img src=x/, 'the hostile title is still shown, as text');
 });
 
 test('debrid progress shows the service’s words as text', () => {
@@ -91,9 +95,9 @@ test('a source row shows hostile release data as text', () => {
 });
 
 test('the slot machine shows a hostile rating and title as text', () => {
-  const start = 'strip.innerHTML = slots.map((m, idx) => {';
-  const body = source.split(start, 2)[1].split("  }).join('');", 1)[0];
-  const render = `function renderSlots(slots) { return slots.map((m, idx) => {${body}}).join(''); }`;
+  const start = 'render(strip, slots.map((m, idx) => {';
+  const body = source.split(start, 2)[1].split('  }));', 1)[0];
+  const render = 'function renderSlots(slots) { return String(html`${slots.map((m, idx) => {' + body + '})}`); }';
   const html = vm.runInNewContext(`${helpers}; ${render};
     renderSlots([{ name: ${JSON.stringify(HOSTILE)}, imdbRating: ${JSON.stringify(`8.1<img src=x onerror="window.pwned=1">`)},
       year: ${JSON.stringify(HOSTILE)}, poster: ${JSON.stringify(`x" onerror="window.pwned=1`)} }])`, {});

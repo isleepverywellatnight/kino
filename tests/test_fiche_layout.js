@@ -2,6 +2,7 @@
 // one season and episode chooser (the row of the fiche), the recommended source
 // first and the others folded under « Choisir une autre source ».
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -14,7 +15,7 @@ const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
 const sourcesCode = slice('// --- Sources: the best one first', 'async function copyTorrentMagnet(');
-const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 function torrent(title, resolution) {
   return { title, qualities: [resolution], langs: ['MULTI'], source: 'Comet', size_str: '4 GB', seeders: 3,
@@ -82,7 +83,7 @@ test('« Vous aimerez aussi » takes TMDB\'s recommendations once known', async 
   const context = {
     RELATED_CLIENT_CACHE: new Map(), currentMedia: { id: 'tt0137523' },
     getWatchedHistory: () => [{ id: 'tt2' }],
-    posterCardHtml: m => `<card ${m.id}>`,
+    posterCardHtml: m => raw(`<card ${m.id}>`),
     document: { getElementById: () => more },
     api: async url => { requests.push(url); return { source: 'tmdb', items }; },
   };

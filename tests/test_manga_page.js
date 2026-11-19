@@ -11,7 +11,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const ROOT = path.join(__dirname, '..');
 const html = require('../tools/interface_source.js').indexHtml();
 const code = fs.readFileSync(path.join(ROOT, 'web/js/manga.js'), 'utf8');
-const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 const SERIES = { id: '118586', source: 'anilist', title: 'Frieren', cover: 'c.jpg', year: 2020 };
 const CHAPTERS = [
@@ -34,7 +34,7 @@ function load(answers = {}) {
     askP2PConsent: async () => { calls.push(['consent']); return true; }, offlineSize: bytes => `${bytes} o`,
     window: { KINO_LANG: 'fr', scrollTo() {}, open: url => calls.push(['open', url]) }, innerHeight: 800,
     localStorage: { getItem: key => store[key] ?? null, setItem: (key, value) => { store[key] = value; } },
-    escapeHtml, attrJson: value => escapeHtml(JSON.stringify(value)), encodeURIComponent, Promise,
+    escapeHtml, encodeURIComponent, Promise,
     setTimeout: fn => { timers.push(fn); return timers.length; }, clearTimeout() {}, alert() {}, prompt: () => null,
     api: async (url, options) => {
       calls.push([url, options?.body ? JSON.parse(options.body) : null]);
@@ -75,7 +75,7 @@ test('the tab: rows of the catalogue, and an invitation for the user\'s own file
   assert.match(withCalls(home), /Sur ce Mac[\s\S]*onclick="chooseMangaFolder\(\)">Choisir un dossier[\s\S]*Choisissez le dossier qui contient vos mangas\./);
   assert.doesNotMatch(home, /Continuer la lecture/, 'nothing read yet');
   const hostile = lib.mangaCardHtml({ ...SERIES, title: '<img src=x onerror=alert(1)>' });
-  assert.doesNotMatch(hostile, /<img src=x/);
+  assert.doesNotMatch(String(hostile), /<img src=x/);
 });
 
 test('a series: each chapter says where it comes from, an external one opens at its publisher', async () => {

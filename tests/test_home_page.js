@@ -1,6 +1,7 @@
 // Accueil: what to watch now first (À continuer, new episodes, Ma Liste), then
 // « À la une », titles like the last one seen, and the catalogue.
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -15,7 +16,7 @@ const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf
 const homeCode = slice('// --- Accueil: personal rows first', 'function renderHomeResume() {');
 const historyCode = slice('function getInProgressHistory() {', 'function getWatchedHistory() {') + slice('function getWatchedHistory() {', '\n}\n') + '\n}\n';
 const listCode = slice('function listItemKind(m) {', 'function foldSearchText(value) {');
-const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 const film = (id, extra = {}) => ({ id, name: `Film ${id}`, type: 'movie', ...extra });
 const similar = count => Array.from({ length: count }, (_, i) => film(`tt9${i}`));
@@ -29,9 +30,9 @@ function load({ tab = 'movies', watchlist = [], history = [], related = {} } = {
     RELATED_CLIENT_CACHE: new Map(Object.entries(related)),
     document: { getElementById: element },
     escapeHtml,
-    titleAttrs: m => ` data-title-id="${m.id}"`,
+    titleAttrs: m => raw(` data-title-id="${m.id}"`),
     displayTitle: m => m.name_fr || m.name,
-    posterCardHtml: (m, kind) => `<card ${m.id} ${kind}>`,
+    posterCardHtml: (m, kind) => raw(`<card ${m.id} ${kind}>`),
     api: path => { requests.push(path); return new Promise(() => {}); },
   };
   vm.runInNewContext(`${historyCode}\n${listCode}\n${homeCode}\nthis.api_ = { renderHomeList, renderHomeBecause, homeListItems, homeBecauseSource };`, context);
