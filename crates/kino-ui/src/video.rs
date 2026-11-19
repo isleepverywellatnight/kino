@@ -173,14 +173,16 @@ impl Video {
                 return Err("mpv_initialize failed".into());
             }
             let ready = Arc::new(AtomicBool::new(false));
-            if window.is_some() {
+            if window.is_some() || source.is_empty() {
                 let video = Self {
                     lib,
                     handle,
                     render: std::ptr::null_mut(),
                     ready,
                 };
-                video.command(&["loadfile", source])?;
+                if !source.is_empty() {
+                    video.command(&["loadfile", source])?;
+                }
                 return Ok(video);
             }
             let api = c("sw");
@@ -328,6 +330,92 @@ impl Video {
         }
         let buffer = image::RgbaImage::from_raw(w as u32, h as u32, pixels)?;
         Some(RenderImage::new(vec![image::Frame::new(buffer)]))
+    }
+}
+
+/// macOS: mpv draws with OpenGL into a view under gpui's (`mac_native.rs`).
+#[cfg(target_os = "macos")]
+impl Video {
+    /// With the view's OpenGL context current, before the file opens.
+    pub fn create_gl_render(
+        &mut self,
+        get_proc_address: extern "C" fn(*mut c_void, *const c_char) -> *mut c_void,
+    ) -> Result<(), String> {
+        #[repr(C)]
+        struct Init {
+            get_proc_address: extern "C" fn(*mut c_void, *const c_char) -> *mut c_void,
+            ctx: *mut c_void,
+        }
+        let mut init = Init {
+            get_proc_address,
+            ctx: std::ptr::null_mut(),
+        };
+        let api = c("opengl");
+        let mut params = [
+            Param {
+                kind: RENDER_API_TYPE,
+                data: api.as_ptr() as *mut c_void,
+            },
+            Param {
+                kind: 2, // MPV_RENDER_PARAM_OPENGL_INIT_PARAMS
+                data: (&raw mut init).cast(),
+            },
+            Param {
+                kind: RENDER_INVALID,
+                data: std::ptr::null_mut(),
+            },
+        ];
+        let mut render = std::ptr::null_mut();
+        // SAFETY: the parameters outlive the call; mpv copies what it keeps.
+        if unsafe { (self.lib.render_create)(&mut render, self.handle, params.as_mut_ptr()) } < 0 {
+            return Err("mpv's OpenGL renderer".into());
+        }
+        self.render = render;
+        Ok(())
+    }
+
+    /// Whether mpv has a new frame to draw (on the main thread).
+    pub fn gl_frame_ready(&self) -> bool {
+        // SAFETY: a live render context.
+        !self.render.is_null()
+            && unsafe { (self.lib.render_update)(self.render) } & RENDER_UPDATE_FRAME != 0
+    }
+
+    /// Draws the current frame into framebuffer `fbo` of `width`×`height`.
+    pub fn gl_render(&self, fbo: c_int, width: c_int, height: c_int) {
+        #[repr(C)]
+        struct Fbo {
+            fbo: c_int,
+            w: c_int,
+            h: c_int,
+            internal_format: c_int,
+        }
+        if self.render.is_null() {
+            return;
+        }
+        let mut target = Fbo {
+            fbo,
+            w: width,
+            h: height,
+            internal_format: 0,
+        };
+        let mut flip: c_int = 1;
+        let mut params = [
+            Param {
+                kind: 3, // MPV_RENDER_PARAM_OPENGL_FBO
+                data: (&raw mut target).cast(),
+            },
+            Param {
+                kind: 4, // MPV_RENDER_PARAM_FLIP_Y
+                data: (&raw mut flip).cast(),
+            },
+            Param {
+                kind: RENDER_INVALID,
+                data: std::ptr::null_mut(),
+            },
+        ];
+        // SAFETY: a live render context and parameters that outlive the call.
+        unsafe { (self.lib.render_render)(self.render, params.as_mut_ptr()) };
     }
 }
 

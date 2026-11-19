@@ -95,28 +95,39 @@ jobs:
           frames=$(echo "${out#KINO-UI VIDEO }" | $(command -v python3 || command -v python) -c "import json,sys; print(json.load(sys.stdin)['video_frames'])")
           [ "$frames" -ge 60 ] || { echo "::error::Only $frames video frames reached the screen"; exit 1; }
           echo "::notice title=video ${{ matrix.os }}::${out#KINO-UI VIDEO }"
-      - name: Native video under gpui (Windows)
-        if: runner.os == 'Windows'
+      - name: Native video under gpui (Windows, macOS)
+        if: runner.os != 'Linux'
         working-directory: crates/kino-ui
         run: |
-          # mpv draws in a child window under gpui's transparent surface; at
-          # 3 s a real click on the play button must reach gpui.
-          target/release/kino-ui.exe --video --native --bench > native.log 2>&1 &
+          # mpv draws itself under gpui's transparent surface: a child window on
+          # Windows (a real click on the play button must reach gpui), an
+          # OpenGL view under gpui's on macOS (mpv must draw the frames).
+          exe=target/release/kino-ui
+          [ "$RUNNER_OS" = Windows ] && exe=target/release/kino-ui.exe
+          "$exe" --video --native --bench > native.log 2>&1 &
           sleep 5
-          pwsh -NoProfile -Command '
-            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-            $p = New-Object System.Drawing.Bitmap $b.Width, $b.Height
-            [System.Drawing.Graphics]::FromImage($p).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-            $p.Save("video-native.png")'
+          if [ "$RUNNER_OS" = Windows ]; then
+            pwsh -NoProfile -Command '
+              Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+              $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+              $p = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+              [System.Drawing.Graphics]::FromImage($p).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+              $p.Save("video-native.png")'
+          else
+            screencapture -x video-native.png || true
+          fi
           wait || true
           cat native.log
-          grep "KINO-UI CLICK" video.log native.log || true
           out=$(grep "KINO-UI VIDEO {" native.log || true)
           [ -n "$out" ] || { echo "::error::The native player printed nothing"; exit 1; }
           echo "::notice title=native video ${{ matrix.os }}::${out#KINO-UI VIDEO }"
-          echo "$out" | grep -q '"click_reached_controls":true' \
-            || { echo "::error::A click over mpv's window did not reach gpui's controls"; exit 1; }
+          if [ "$RUNNER_OS" = Windows ]; then
+            echo "$out" | grep -q '"click_reached_controls":true' \
+              || { echo "::error::A click over mpv's window did not reach gpui's controls"; exit 1; }
+          else
+            frames=$(echo "${out#KINO-UI VIDEO }" | python3 -c "import json,sys; print(json.load(sys.stdin)['video_frames'])")
+            [ "$frames" -ge 60 ] || { echo "::error::mpv drew only $frames frames under gpui"; exit 1; }
+          fi
       - uses: actions/upload-artifact@v7
         if: always()
         with:

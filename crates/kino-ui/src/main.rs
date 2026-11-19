@@ -14,8 +14,19 @@
 
 use std::sync::{Arc, Mutex};
 
+#[cfg(target_os = "macos")]
+mod mac_native;
 #[cfg(windows)]
 mod native;
+
+/// Where mpv draws on the native path: on Windows, KINO's window and the
+/// child window inside it; on macOS, mpv's OpenGL view under gpui's.
+#[cfg(windows)]
+type Host = (isize, isize);
+#[cfg(target_os = "macos")]
+type Host = mac_native::Host;
+#[cfg(not(any(windows, target_os = "macos")))]
+type Host = ();
 mod video;
 
 /// Processor time this process has used, in ms.
@@ -325,7 +336,7 @@ struct Player {
     draws: Vec<f64>,
     bench: Option<Bench>,
     /// The native path (Windows): KINO's window and the child mpv draws in.
-    host: Option<(isize, isize)>,
+    host: Option<Host>,
     /// `--bench --native`: whether a real click on the play button, over
     /// mpv's window, reached gpui (pause state before the click).
     click: Option<(bool, Option<bool>)>,
@@ -341,12 +352,11 @@ struct Player {
 
 impl Player {
     fn new(
-        video: video::Video,
-        host: Option<(isize, isize)>,
+        video: Arc<Mutex<video::Video>>,
+        host: Option<Host>,
         bench: bool,
         cx: &mut Context<Self>,
     ) -> Self {
-        let video = Arc::new(Mutex::new(video));
         let shared = video.clone();
         if host.is_some() {
             // mpv draws by itself: gpui only refreshes its controls.
@@ -482,6 +492,13 @@ impl Player {
                 report["path"] = "native".into();
                 report["video_dropped"] = count("frame-drop-count").into();
                 report["decoder_dropped"] = count("decoder-frame-drop-count").into();
+                #[cfg(target_os = "macos")]
+                if let Some(host) = &self.host {
+                    report["video_frames"] = host
+                        .frames
+                        .load(std::sync::atomic::Ordering::Relaxed)
+                        .into();
+                }
             } else {
                 report["path"] = "software".into();
             }
@@ -644,8 +661,8 @@ fn main() {
             .unwrap_or_else(|| TEST_PATTERN.to_string())
     });
     let native = args.iter().any(|a| a == "--native");
-    if native && !cfg!(windows) {
-        eprintln!("KINO-UI VIDEO ERROR --native is for Windows");
+    if native && !cfg!(any(windows, target_os = "macos")) {
+        eprintln!("KINO-UI VIDEO ERROR --native is for Windows and macOS");
         std::process::exit(2);
     }
     Application::new().run(move |cx: &mut App| {
@@ -678,13 +695,12 @@ fn main() {
             Some(source) => cx
                 .open_window(options, |window, cx| {
                     window.set_window_title("KINO");
-                    let host = if native { native_host(window) } else { None };
                     // The test pattern loops; a bench run makes no sound.
                     let mut settings = vec![("loop-file", "inf")];
                     if bench {
                         settings.push(("ao", "null"));
                     }
-                    let video = video::Video::open(&source, &settings, host.map(|(_, h)| h))
+                    let (video, host) = open_player(window, &source, &settings, native)
                         .unwrap_or_else(|error| {
                             eprintln!("KINO-UI VIDEO ERROR {error}");
                             std::process::exit(2);
@@ -724,14 +740,47 @@ fn window_hwnd(_: &Window) -> Option<isize> {
     None
 }
 
-/// KINO's window and the child window mpv draws in (Windows).
-#[cfg(windows)]
-fn native_host(window: &Window) -> Option<(isize, isize)> {
-    let parent = window_hwnd(window)?;
-    native::create_host(parent).map(|host| (parent, host))
-}
+type Opened = (Arc<Mutex<video::Video>>, Option<Host>);
 
-#[cfg(not(windows))]
-fn native_host(_: &Window) -> Option<(isize, isize)> {
-    None
+/// The player for `source`: on the native path, mpv draws itself under
+/// gpui (Windows: a child window; macOS: an OpenGL view); otherwise its frames
+/// come through memory (`video.rs`).
+fn open_player(
+    window: &Window,
+    source: &str,
+    settings: &[(&str, &str)],
+    native: bool,
+) -> Result<Opened, String> {
+    if !native {
+        let video = video::Video::open(source, settings, None)?;
+        return Ok((Arc::new(Mutex::new(video)), None));
+    }
+    #[cfg(windows)]
+    {
+        let parent = window_hwnd(window).ok_or("KINO's window")?;
+        let child = native::create_host(parent).ok_or("mpv's window")?;
+        let video = video::Video::open(source, settings, Some(child))?;
+        Ok((Arc::new(Mutex::new(video)), Some((parent, child))))
+    }
+    #[cfg(target_os = "macos")]
+    {
+        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+        let RawWindowHandle::AppKit(handle) = HasWindowHandle::window_handle(window)
+            .map_err(|e| e.to_string())?
+            .as_raw()
+        else {
+            return Err("KINO's view".into());
+        };
+        let mut settings = settings.to_vec();
+        settings.push(("hwdec", "videotoolbox"));
+        // Opened without a file: mpv's OpenGL renderer comes first.
+        let video = Arc::new(Mutex::new(video::Video::open("", &settings, None)?));
+        let host = mac_native::attach(handle.ns_view.as_ptr(), video.clone(), source)?;
+        Ok((video, Some(host)))
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    {
+        let _ = window;
+        Err("no native video path on this system".into())
+    }
 }
