@@ -2566,7 +2566,7 @@ dependencies = [
 
 [[package]]
 name = "kino"
-version = "1.9.2"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -2611,7 +2611,7 @@ dependencies = [
 
 [[package]]
 name = "kino-desktop"
-version = "1.9.2"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "block2",
