@@ -33,6 +33,7 @@ KINO 不托管、不提供也不分发任何内容。它查询用户自选的来
 |---|---|
 | **macOS** — Apple 芯片 Mac（M1 或更新），macOS 14 或更新 | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
 | **Windows** — Windows 10 或 11，64 位 | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
+| **Windows on ARM** — ARM 电脑（骁龙等）上的 Windows 11 | [**KINO-Windows-arm64.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows-arm64.exe) |
 | **Linux** — x86_64：Ubuntu 22.04、Debian 12、Fedora 36 或更高版本 | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
 
 KINO 自带所需的一切：视频播放器、FFmpeg、界面。无需另外安装任何东西。之后在设置中粘贴你的 Debrid 服务密钥即可。

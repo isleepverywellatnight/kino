@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.0
+
+- Windows on ARM: KINO comes built for ARM64 (KINO-Windows-arm64.exe), with
+  its player and FFmpeg: no emulation on Snapdragon PCs. It updates from the
+  ARM64 installer; the install command picks it by itself on an ARM PC.
+
 ## 2.1.1
 
 - Linux: the AppImage carries JACK's client library, which FFmpeg needs to

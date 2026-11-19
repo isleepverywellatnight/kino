@@ -5,6 +5,7 @@
 //!   kino-release --init-key [--key K]                  create the key pair (once)
 //!   kino-release --app dist/KINO.app --output X        macOS: signed package
 //!   kino-release --installer dist/KINO-Windows.exe     Windows: writes KINO-Windows.exe.sig
+//!   kino-release --installer dist/KINO-Windows-arm64.exe   Windows on ARM: its .sig
 //!   kino-release --appimage dist/KINO-Linux-x86_64.AppImage   Linux: writes its .sig
 //!
 //! Common: --key PATH (PKCS#8 PEM), --notes TEXT, --min-macos 14.0, --public-key PATH
@@ -16,8 +17,8 @@ use base64::Engine;
 use ed25519_dalek::SigningKey;
 use ed25519_dalek::pkcs8::{DecodePrivateKey, EncodePrivateKey, spki::der::pem::LineEnding};
 use kino::update::{
-    self, BUNDLE_ID, DATA_SCHEMA, LINUX_ARTIFACT, SignedArtifact, UPDATE_FORMAT, WINDOWS_ARTIFACT,
-    canonical_json,
+    self, BUNDLE_ID, DATA_SCHEMA, LINUX_ARTIFACT, SignedArtifact, UPDATE_FORMAT,
+    WINDOWS_ARM64_ARTIFACT, WINDOWS_ARM64_INSTALLER, WINDOWS_ARTIFACT, canonical_json,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -204,7 +205,13 @@ fn main() {
     let done = if args.iter().any(|a| a == "--init-key") {
         init_key(&key)
     } else if let Some(installer) = value("--installer") {
-        sign_artifact(Path::new(&installer), &key, &text, &WINDOWS_ARTIFACT)
+        let path = Path::new(&installer);
+        let target = if path.file_name().and_then(|n| n.to_str()) == Some(WINDOWS_ARM64_INSTALLER) {
+            &WINDOWS_ARM64_ARTIFACT
+        } else {
+            &WINDOWS_ARTIFACT
+        };
+        sign_artifact(path, &key, &text, target)
     } else if let Some(image) = value("--appimage") {
         sign_artifact(Path::new(&image), &key, &text, &LINUX_ARTIFACT)
     } else if let (Some(app), Some(output)) = (value("--app"), value("--output")) {

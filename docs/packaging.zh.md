@@ -6,7 +6,7 @@
 
 ## 发布新版本
 
-修改 `Cargo.toml` ([workspace.package]) 中的 `version` 并推送到 `main`，就这么简单。当 `main` 上的版本还没有发布时，GitHub Actions（`.github/workflows/build.yml`）会构建三个应用、进行测试、发布带 `vX.Y.Z` 标签的版本（`KINO-macOS.dmg`、`KINO-Windows.exe`、`KINO-Linux-x86_64.AppImage`、`SHA256SUMS.txt`），然后用 README 中的命令在全新的 Mac 和 Windows 上重新安装验证。
+修改 `Cargo.toml` ([workspace.package]) 中的 `version` 并推送到 `main`，就这么简单。当 `main` 上的版本还没有发布时，GitHub Actions（`.github/workflows/build.yml`）会构建三个应用、进行测试、发布带 `vX.Y.Z` 标签的版本（`KINO-macOS.dmg`、`KINO-Windows.exe`、`KINO-Windows-arm64.exe`、`KINO-Linux-x86_64.AppImage`、`SHA256SUMS.txt`），然后用 README 中的命令在全新的 Mac 和 Windows 上重新安装验证。
 
 要让 KINO 自动安装新版本，CI 会用 `KINO_UPDATE_SIGNING_KEY` 机密（Settings → Secrets and variables → Actions）为更新签名：其内容是 `cargo run -p kino --bin kino-release -- --init-key` 生成的私钥，对应的公钥是 `assets/update_public_key.hex`。没有这个机密时，KINO 只会提示有新版本并提供下载。
 
@@ -41,6 +41,8 @@ cargo build --release --locked -p kino-desktop
 pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
 ```
+
+Windows on ARM（`KINO-Windows-arm64.exe`）需在 ARM64 电脑上构建，并向两个下载脚本传入 `-Arch arm64`，向 `iscc` 传入 `/DArch=arm64`。
 
 ### Linux (x86_64)
 

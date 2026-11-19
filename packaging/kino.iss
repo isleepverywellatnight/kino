@@ -4,10 +4,14 @@
 ; menu and desktop shortcuts, then starts KINO. User data (~\.kino_data.db, the
 ; settings and %APPDATA%\KINO) is never touched, neither on update nor on uninstall.
 ;
-; Build: iscc /DAppVersion=1.2.0 packaging\kino.iss   (after pyinstaller packaging\kino_windows.spec)
+; Build: iscc /DAppVersion=1.2.0 packaging\kino.iss   (after packaging\build_windows_app.ps1)
+; Windows on ARM: iscc /DAppVersion=1.2.0 /DArch=arm64 packaging\kino.iss  (KINO-Windows-arm64.exe)
 
 #ifndef AppVersion
   #error Pass the version: iscc /DAppVersion=x.y.z packaging\kino.iss
+#endif
+#ifndef Arch
+  #define Arch "x64"
 #endif
 
 [Setup]
@@ -27,13 +31,22 @@ DisableProgramGroupPage=yes
 DisableReadyPage=yes
 DisableFinishedPage=yes
 PrivilegesRequired=lowest
+#if Arch == "arm64"
+ArchitecturesAllowed=arm64
+ArchitecturesInstallIn64BitMode=arm64
+#else
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+#endif
 ; Windows 10 1809 or newer (WebView2).
 MinVersion=10.0.17763
 OutputDir=..\dist
 ; Same name for every version: the download link never changes.
+#if Arch == "arm64"
+OutputBaseFilename=KINO-Windows-arm64
+#else
 OutputBaseFilename=KINO-Windows
+#endif
 SetupIconFile=..\assets\kino.ico
 UninstallDisplayIcon={app}\KINO.exe
 UninstallDisplayName=KINO
