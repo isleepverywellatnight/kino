@@ -22,7 +22,9 @@ function escapeJsString(s) {
 // --- Trakt.tv Integration ---
 let traktAuthPollTimer = null;
 let traktScrobbledStarted = false;
+function setTraktScrobbledStarted(value) { traktScrobbledStarted = value; return value; }
 let traktScrobbledStop = false;
+function setTraktScrobbledStop(value) { traktScrobbledStop = value; return value; }
 
 async function checkTraktStatus() {
   try {
@@ -877,7 +879,7 @@ async function toggleWatchedItem(mediaObj) {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(mediaObj)
   });
-  userHistory = res.history || [];
+  setUserHistory(res.history || []);
   updateListBadges();
   renderHomeResume();
   if (searchResultsShown) {
@@ -908,7 +910,7 @@ async function toggleWatchedSeriesEp(seasonNum, epNum) {
       episode: epNum
     })
   });
-  userHistory = res.history || [];
+  setUserHistory(res.history || []);
   updateListBadges();
   renderHomeResume();
   renderDetailEpisodes(seasonNum);
@@ -940,7 +942,7 @@ async function toggleWatchedWholeSeason(customSeason = null) {
       episodes: eps
     })
   });
-  userHistory = res.history || [];
+  setUserHistory(res.history || []);
   updateListBadges();
   renderHomeResume();
   renderDetailEpisodes(s);

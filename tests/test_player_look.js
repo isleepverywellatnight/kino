@@ -188,7 +188,7 @@ function loadNative(state) {
     activeElement: null,
   };
   const context = {
-    window: { addEventListener() {} }, document, localStorage: { getItem: () => '0.8', setItem() {} },
+    window: { addEventListener() {} }, playerPrefs: {}, document, localStorage: { getItem: () => '0.8', setItem() {} },
     api: async () => ({ state }),     SVG_ICONS: { play: raw('<svg data-icon="play"/>'), pause: raw('<svg data-icon="pause"/>'), volHigh: raw('<svg data-icon="volHigh"/>'), volLow: raw('<svg data-icon="volLow"/>'), volMute: raw('<svg data-icon="volMute"/>') },
     setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {}, Date,
   };

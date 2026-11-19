@@ -365,7 +365,7 @@ async function resetInAppSeriesPreference() {
     if (inAppGlobalAudioTrack && inAppSelectedAudioIndex !== inAppGlobalAudioTrack.index) {
       changeInAppAudioTrack(inAppGlobalAudioTrack.index, false);
     }
-    const globalSubs = SeriesPlayback.globalSubtitles(window.kinoPrefLang || 'vf');
+    const globalSubs = SeriesPlayback.globalSubtitles(playerPrefs.prefLang || 'vf');
     const chosen = SeriesPlayback.chooseSubtitles(inAppAvailableSubs, globalSubs);
     await activateInAppSubtitle(chosen.index, false);
     updateInAppSeriesPreferenceUI();
@@ -948,7 +948,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
     } catch (error) {}
     const selected = SeriesPlayback.resolveSubtitles(inAppAvailableSubs,
       inAppSessionSubtitleChoice, inAppSeriesPreference?.subtitles,
-      SeriesPlayback.automaticSubtitles(window.kinoPrefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, window.kinoAutoFrSubs !== false));
+      SeriesPlayback.automaticSubtitles(playerPrefs.prefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, playerPrefs.autoFrSubs !== false));
     await activateInAppSubtitle(selected.index, false);
     updateInAppSeriesPreferenceUI();
     return;
@@ -995,10 +995,10 @@ async function loadInAppSubtitlesForCurrentMedia() {
   if (generation !== inAppPlaybackGeneration) return;
   const selected = SeriesPlayback.resolveSubtitles(inAppAvailableSubs,
     inAppSessionSubtitleChoice, inAppSeriesPreference?.subtitles,
-    SeriesPlayback.automaticSubtitles(window.kinoPrefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, window.kinoAutoFrSubs !== false));
+    SeriesPlayback.automaticSubtitles(playerPrefs.prefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, playerPrefs.autoFrSubs !== false));
   await activateInAppSubtitle(selected.index, false);
-  const automatic = !SeriesPlayback.globalSubtitles(window.kinoPrefLang || 'vf').enabled
-    && SeriesPlayback.automaticSubtitles(window.kinoPrefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, window.kinoAutoFrSubs !== false).enabled;
+  const automatic = !SeriesPlayback.globalSubtitles(playerPrefs.prefLang || 'vf').enabled
+    && SeriesPlayback.automaticSubtitles(playerPrefs.prefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, playerPrefs.autoFrSubs !== false).enabled;
   if (automatic && selected.source === 'global' && generation === inAppPlaybackGeneration) {
     showInAppToast(selected.missing
       ? 'Version originale : aucun sous-titre français trouvé. Le bouton CC propose les autres langues.'
@@ -1136,15 +1136,15 @@ function updateInAppSubtitleOverlay(currentTime) {
 
 // --- Mode Boost Voix / Audio Nuit ---
 function applyInAppAudioUI(mode, showToast = false) {
-  window.kinoAudioMode = mode || 'voice_boost';
+  playerPrefs.audioMode = mode || 'voice_boost';
   const btn = document.getElementById('inAppAudioBtn');
-  const isBoost = window.kinoAudioMode === 'voice_boost';
+  const isBoost = playerPrefs.audioMode === 'voice_boost';
   if (btn) {
     btn.textContent = isBoost ? 'Boost' : 'Normal';
     btn.style.borderColor = isBoost ? '#fafafa' : '';
   }
   const sel = document.getElementById('cfgAudioMode');
-  if (sel) sel.value = window.kinoAudioMode;
+  if (sel) sel.value = playerPrefs.audioMode;
   if (showToast) {
     showInAppToast(
       isBoost
@@ -1157,7 +1157,7 @@ function applyInAppAudioUI(mode, showToast = false) {
 
 function cycleInAppAudioBoost() {
   resetInAppIdleTimer();
-  const nextMode = (window.kinoAudioMode || 'voice_boost') === 'voice_boost' ? 'normal' : 'voice_boost';
+  const nextMode = (playerPrefs.audioMode || 'voice_boost') === 'voice_boost' ? 'normal' : 'voice_boost';
   applyInAppAudioUI(nextMode, true);
   api('/api/config', {
     method: 'POST',
@@ -1402,8 +1402,8 @@ async function openInAppPlayer(streamUrl, title, playlist = null, media = null, 
   if (runtimeMinutes > 0 && runtimeMinutes < 1000) inAppTotalDuration = runtimeMinutes * 60;
   inAppSkipIntroDismissed = false;
   inAppNextEpCancelled = false;
-  traktScrobbledStarted = false;
-  traktScrobbledStop = false;
+  setTraktScrobbledStarted(false);
+  setTraktScrobbledStop(false);
   startRemotePolling();
   dismissUndoSkip();
   if (!inAppCurrentMedia?.offline_id) loadInAppIntroData(streamUrl, inAppCurrentMedia);
@@ -1431,9 +1431,9 @@ async function openInAppPlayer(streamUrl, title, playlist = null, media = null, 
   resetInAppIdleTimer();
 
   const isHdrStream = /\b(hdr|hdr10|dv|dovi|dolby[\s\.\-]*vision)\b/i.test(`${title || ''} ${streamUrl || ''}`);
-  if ((window.kinoHdrMode || 'sdr_pref') === 'hdr_boost') {
+  if ((playerPrefs.hdrMode || 'sdr_pref') === 'hdr_boost') {
     applyInAppClarity(2, false);
-  } else if (isHdrStream && (window.kinoHdrMode || 'sdr_pref') !== 'hdr_native' && inAppClarityIdx === 0) {
+  } else if (isHdrStream && (playerPrefs.hdrMode || 'sdr_pref') !== 'hdr_native' && inAppClarityIdx === 0) {
     applyInAppClarity(1, true);
   } else {
     applyInAppClarity(inAppClarityIdx, false);
@@ -1524,7 +1524,7 @@ async function openInAppPlayer(streamUrl, title, playlist = null, media = null, 
   } catch(e) {}
   video.volume = (savedVol !== null && !isNaN(savedVol) && parseFloat(savedVol) > 0) ? Math.max(0.05, parseFloat(savedVol)) : 1.0;
 
-  applyInAppAudioUI(window.kinoAudioMode || 'voice_boost', false);
+  applyInAppAudioUI(playerPrefs.audioMode || 'voice_boost', false);
   applyInAppSpeed(1, false);
   loadInAppSubtitlesForCurrentMedia();
 
@@ -1721,7 +1721,7 @@ function closeInAppPlayer() {
     setTimeout(() => {
       if (!document.getElementById('inAppPlayerOverlay')?.classList.contains('active')) {
         const action = kinoUpdatePendingAction;
-        kinoUpdatePendingAction = '';
+        setKinoUpdatePendingAction('');
         if (action === 'install') installKinoUpdate();
         else rollbackKinoUpdate();
       }
@@ -1955,7 +1955,7 @@ if (inAppVideoEl) {
     updatePlayPauseBtn(true);
     updateDiscordRpc(false);
     if (!traktScrobbledStarted && inAppCurrentMedia) {
-      traktScrobbledStarted = true;
+      setTraktScrobbledStarted(true);
       const duration = inAppDuration(inAppVideoEl);
       const pct = duration > 0 ? Math.round((inAppAbsoluteTime(inAppVideoEl) / duration) * 100) : 0;
       scrobbleTrakt('start', inAppCurrentMedia, pct);
@@ -1991,7 +1991,7 @@ if (inAppVideoEl) {
 
       // Scrobble Trakt.tv automatique dès 80% de visionnage
       if (pct >= 80 && !traktScrobbledStop && inAppCurrentMedia) {
-        traktScrobbledStop = true;
+        setTraktScrobbledStop(true);
         scrobbleTrakt('stop', inAppCurrentMedia, Math.round(pct)).then(sent => {
           if (sent) showInAppToast('✓ Scrobblé sur Trakt.tv (80%)', 2200);
         });

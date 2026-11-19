@@ -289,6 +289,7 @@ async function clearAllHistory() {
 }
 
 let classicsCatalogCache = [];
+function setClassicsCatalogCache(value) { classicsCatalogCache = value; return value; }
 
 function updateClassicsStatsBadge() {
   const statsEl = document.getElementById('listStatsBadge');
@@ -457,7 +458,7 @@ function selectGenreBadge(genre) {
 }
 
 function selectGenre(genre, el) {
-  activeGenre = genre;
+  setActiveGenre(genre);
   const genreChips = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#genreFilters .chip'))];
   genreChips.forEach(c => c.classList.remove('active'));
   if (el) el.classList.add('active');
@@ -469,7 +470,7 @@ function selectGenre(genre, el) {
 }
 
 function onChangeCatalogSort(sortVal) {
-  catalogSort = CATALOG_SORTS.includes(sortVal) ? sortVal : 'top';
+  setCatalogSort(CATALOG_SORTS.includes(sortVal) ? sortVal : 'top');
   saveCatalogView();
   const type = activeTab === 'series' ? 'series' : (activeTab === 'classics' ? 'classics' : (activeTab === 'anime' ? 'anime' : 'movie'));
   updateCatalogHeading();

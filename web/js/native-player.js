@@ -375,7 +375,7 @@
   async function autoFrenchSubtitles(state) {
     if (session.autoSubs) return;
     session.autoSubs = true;
-    if (window.kinoAutoFrSubs === false || session.subsOff || typeof SeriesPlayback === 'undefined') return;
+    if (playerPrefs.autoFrSubs === false || session.subsOff || typeof SeriesPlayback === 'undefined') return;
     const plan = SeriesPlayback.frenchSubtitlePlan(state.tracks, session.filename || session.title);
     if (plan.action === 'select') {
       await command('subtitles', plan.id, { silent: true });

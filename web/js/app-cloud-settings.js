@@ -1,5 +1,6 @@
 // --- Cloud: files gathered by work (cloud_titles.py), with the catalogue poster ---
 let cloudGroups = [];
+function setCloudGroups(value) { cloudGroups = value; return value; }
 let cloudFilter = 'all';
 let cloudQuery = '';
 const cloudOpen = new Set();
@@ -162,7 +163,7 @@ function renderCloud() {
   const list = document.getElementById('rdCloudList');
   if (!cloudGroups.length) {
     if (tools) { tools.hidden = true; render(tools, ''); }
-    render(list, html`<p class="cloud-empty">Aucun fichier récent sur votre compte ${window.activeDebridName || 'Debrid'}.</p>`);
+    render(list, html`<p class="cloud-empty">Aucun fichier récent sur votre compte ${linkedAccounts.debridName || 'Debrid'}.</p>`);
     return;
   }
   const counts = { all: cloudGroups.length, movie: 0, series: 0, other: 0 };
@@ -260,7 +261,7 @@ function playCloudFile(key, index, btn) {
 async function deleteCloudFile(key, index, btn) {
   const file = cloudGroup(key)?.files[index];
   if (!file) return;
-  const pName = window.activeDebridName || 'votre débrideur';
+  const pName = linkedAccounts.debridName || 'votre débrideur';
   if (!window.confirm(`Retirer « ${file.filename} » du Cloud ${pName} ?`)) return;
   await deleteRdCloudItem(btn, file.ids || [file.id]);
 }
@@ -268,7 +269,7 @@ async function deleteCloudFile(key, index, btn) {
 async function deleteCloudGroup(key, btn) {
   const group = cloudGroup(key);
   if (!group) return;
-  const pName = window.activeDebridName || 'votre débrideur';
+  const pName = linkedAccounts.debridName || 'votre débrideur';
   if (!window.confirm(`Retirer les ${group.count} fichiers de « ${cloudName(group)} » du Cloud ${pName} ?`)) return;
   await deleteRdCloudItem(btn, group.files.flatMap(file => file.ids || [file.id]));
 }
@@ -304,7 +305,7 @@ async function onChangeRdRetention(daysStr) {
 
 async function purgeRdCloud(mode, btn) {
   const orig = btn ? btn.textContent : '';
-  const pName = window.activeDebridName || 'votre débrideur';
+  const pName = linkedAccounts.debridName || 'votre débrideur';
   if (mode === 'all' && !window.confirm(`Vider tout le Cloud ${pName} ? Tous les fichiers et torrents du compte seront supprimés, sans retour possible.`)) return;
   if (btn) { btn.disabled = true; btn.textContent = 'Suppression...'; }
   try {
@@ -326,7 +327,7 @@ async function purgeRdCloud(mode, btn) {
 }
 
 async function openTrailerModal(trailerId, title, year = '', lang = 'vf') {
-  currentTrailerCtx = {trailerId: trailerId || '', title: title || '', year: year || '', lang: lang || 'vf'};
+  setCurrentTrailerCtx({trailerId: trailerId || '', title: title || '', year: year || '', lang: lang || 'vf'});
   const modal = document.getElementById('trailerModal');
   const video = document.getElementById('trailerVideo');
   const iframe = document.getElementById('trailerIframe');
@@ -424,7 +425,7 @@ window.addEventListener('click', (e) => {
 
 function openConfig() { 
   if (activeTab && activeTab !== 'settings') {
-    previousTab = activeTab;
+    setPreviousTab(activeTab);
   }
   switchTab('settings');
 }
@@ -837,7 +838,7 @@ function settingsPayload(withKey) {
   const nativeToggle = document.getElementById('cfgNativePlayer');
   const payload = {
     download_dir: value('cfgDir', '').trim(),
-    player_mode: value('cfgPlayerMode', window.kinoPlayerMode || (isMacPlatform ? 'integrated' : 'kino')),
+    player_mode: value('cfgPlayerMode', playerPrefs.playerMode || (isMacPlatform ? 'integrated' : 'kino')),
     pref_lang: value('cfgPrefLang', 'vf'),
     pref_quality: value('cfgPrefQuality', '4k'),
     source_priority: value('cfgSourcePriority', '') === 'quality' ? 'quality' : 'speed',
@@ -858,7 +859,7 @@ function settingsPayload(withKey) {
       : presetEl.value;
   }
   payload.discord_client_id = discord_client_id;
-  const keyReady = Boolean(configuredProviders && configuredProviders[debrid_provider]) || debrid_provider === window.activeDebridProvider;
+  const keyReady = Boolean(configuredProviders && configuredProviders[debrid_provider]) || debrid_provider === linkedAccounts.debridProvider;
   if (withKey) {
     payload.debrid_provider = debrid_provider;
     payload.rd_token = value('cfgToken', '').trim();
@@ -887,9 +888,9 @@ async function saveConfigNow(withKey) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
-    window.kinoPlayerMode = payload.player_mode;
-    window.kinoHdrMode = payload.hdr_mode;
-    window.kinoAudioMode = payload.audio_mode;
+    playerPrefs.playerMode = payload.player_mode;
+    playerPrefs.hdrMode = payload.hdr_mode;
+    playerPrefs.audioMode = payload.audio_mode;
     if (withKey && document.getElementById('cfgToken')) document.getElementById('cfgToken').value = '';
     if (!settingsSaveTimer) await checkConfig();
     if (providerWaits && document.getElementById('cfgProvider')) {

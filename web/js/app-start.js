@@ -452,7 +452,7 @@ function initSettingsSectionNavigation() {
     select(link);
     section.scrollIntoView({ block: 'start', behavior: 'auto' });
   }));
-  refreshSettingsSectionNavigation = () => {
+  setRefreshSettingsSectionNavigation(() => {
     if (document.body.dataset.activeTab !== 'settings') return;
     const topLimit = window.innerWidth <= 760 ? 180 : 105;
     let current = 0;
@@ -464,7 +464,7 @@ function initSettingsSectionNavigation() {
       current = sections.length - 1;
     }
     select(links[current]);
-  };
+  });
   let pending = false;
   window.addEventListener('scroll', () => {
     if (pending) return;
@@ -478,6 +478,7 @@ function initSettingsSectionNavigation() {
 }
 
 let kinoUpdatePendingAction = '';
+function setKinoUpdatePendingAction(value) { kinoUpdatePendingAction = value; return value; }
 let kinoUpdatePollTimer = null;
 let kinoUpdateRetryTimer = null;
 

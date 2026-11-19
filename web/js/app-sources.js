@@ -1,6 +1,9 @@
 // --- Episode row helpers (kept with renderDetailEpisodes) ---
 let detailEpisodeSeason = 0;
+function setDetailEpisodeSeason(value) { detailEpisodeSeason = value; return value; }
 const EPISODE_OVERVIEWS_FR = new Map();
+// The files of the last ready debrid result, by the index the page shows them at.
+let lastDebridFiles = [];
 const EPISODE_MONTHS = KINO_I18N.months('short');
 
 function episodeAirDate(video) {
@@ -187,8 +190,8 @@ function extractTorrentSeeders(t) {
 }
 
 async function loadTorrents(params, scroll = true) {
-  const requestId = ++torrentRequestId;
-  lastReadyDebrid = null;
+  const requestId = setTorrentRequestId(torrentRequestId + 1);
+  setLastReadyDebrid(null);
   sourcesMoreOpen = false;
   const panel = document.getElementById('torrentsPanel');
   const list = document.getElementById('torrentsList');
@@ -212,7 +215,7 @@ async function loadTorrents(params, scroll = true) {
   try {
     const data = await api('/api/torrents?' + qs);
     if (requestId !== torrentRequestId) return;
-    allTorrents = data.torrents || [];
+    setAllTorrents(data.torrents || []);
     expandedSourceGroups.clear();
     renderTorrents();
   } catch (e) {
@@ -222,7 +225,7 @@ async function loadTorrents(params, scroll = true) {
 }
 
 function setFilter(flt, el) {
-  activeFilter = flt;
+  setActiveFilter(flt);
   const filterChips = [...document.querySelectorAll('.filters .chip')];
   filterChips.forEach(c => c.classList.remove('active'));
   el.classList.add('active');
@@ -631,8 +634,8 @@ function renderDebridState(res, season, episode, chosenTorrentTitle = '', playli
     return;
   }
 
-  window.lastDebridFiles = res.files || [];
-  lastReadyDebrid = [res, season, episode, chosenTorrentTitle, playlistCount];
+  lastDebridFiles = res.files || [];
+  setLastReadyDebrid([res, season, episode, chosenTorrentTitle, playlistCount]);
   const selectedHidden = currentMedia?.type === 'series' && spoilerConcealed(spoilerSeriesId(), Number(season), Number(episode));
 
   const subBanner = chosenTorrentTitle
@@ -685,7 +688,7 @@ function savedPosition(media, season, episode) {
 
 // « Sur la TV » for one file of the chosen source.
 async function sendDebridFileToTv(button, index) {
-  const file = window.lastDebridFiles?.[index];
+  const file = lastDebridFiles?.[index];
   if (!file?.download) return;
   const [, chosenSeason, chosenEpisode] = lastReadyDebrid || [];
   const isSeries = currentMedia?.type === 'series' || currentMedia?.type === 'anime';
@@ -710,17 +713,17 @@ async function sendDebridFileToTv(button, index) {
 }
 
 function openDebridFile(button, index) {
-  const file = window.lastDebridFiles?.[index];
+  const file = lastDebridFiles?.[index];
   if (file) openMpv(button, file.download, file.filename);
 }
 
 function downloadDebridFile(index) {
-  const file = window.lastDebridFiles?.[index];
+  const file = lastDebridFiles?.[index];
   if (file) startPcDownload(file.download, file.filename, downloadMediaContext());
 }
 
 function openDebridLink(index) {
-  const file = window.lastDebridFiles?.[index];
+  const file = lastDebridFiles?.[index];
   if (file?.download) window.open(file.download, '_blank', 'noopener');
 }
 
@@ -795,8 +798,8 @@ async function saveCurrentPlaybackOffline() {
 // (options: {media, season, episode, files: [{filename, download}]}).
 async function openMpv(btn, url, filename, options = null) {
   if (_isGlobalPlayLaunching) return;
-  _isGlobalPlayLaunching = true;
-  setTimeout(() => { _isGlobalPlayLaunching = false; }, 3000);
+  setIsGlobalPlayLaunching(true);
+  setTimeout(() => { setIsGlobalPlayLaunching(false); }, 3000);
 
   if (btn && btn.disabled) return;
   const origText = btn ? raw(btn.innerHTML) : '';
@@ -809,14 +812,14 @@ async function openMpv(btn, url, filename, options = null) {
   const s = options ? (options.season ?? null) : (fromFiche ? document.getElementById('seasonSelect')?.value : null);
   const e = options ? (options.episode ?? null) : (fromFiche ? document.getElementById('episodeSelect')?.value : null);
   let packFiles = options?.files?.length > 1 ? options.files : null;
-  if (!options && window.lastDebridFiles && window.lastDebridFiles.length > 1 && window.lastDebridFiles.some(f => f.download === url)) {
-    const sorted = [...window.lastDebridFiles].sort((a, b) => (a.filename || '').localeCompare(b.filename || ''));
+  if (!options && lastDebridFiles && lastDebridFiles.length > 1 && lastDebridFiles.some(f => f.download === url)) {
+    const sorted = [...lastDebridFiles].sort((a, b) => (a.filename || '').localeCompare(b.filename || ''));
     const idx = sorted.findIndex(f => f.download === url);
     if (idx >= 0) packFiles = sorted.slice(idx);
   }
 
   const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
-  const isIntegrated = window.kinoPlayerMode === 'integrated' || (window.kinoPlayerMode !== 'external' && isMacPlatform);
+  const isIntegrated = playerPrefs.playerMode === 'integrated' || (playerPrefs.playerMode !== 'external' && isMacPlatform);
   if (isIntegrated) {
     const pl = (packFiles && packFiles.length > 1)
       ? packFiles.map(p => ({ title: p.filename, url: p.download }))

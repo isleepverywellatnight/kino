@@ -1,24 +1,44 @@
+// The page's shared state. Another file changes one of these variables through
+// its setter (setCurrentMedia…): a file cannot assign a variable it imports.
 let allTorrents = [];
+function setAllTorrents(value) { allTorrents = value; return value; }
 let torrentRequestId = 0;
+function setTorrentRequestId(value) { torrentRequestId = value; return value; }
 let activeFilter = '';
+function setActiveFilter(value) { activeFilter = value; return value; }
 let activeGenre = '';
+function setActiveGenre(value) { activeGenre = value; return value; }
 let searchDebounceTimer = null;
 let currentMedia = null;
+function setCurrentMedia(value) { currentMedia = value; return value; }
 let seriesMetaVideos = [];
+function setSeriesMetaVideos(value) { seriesMetaVideos = value; return value; }
 let userWatchlist = [];
+function setUserWatchlist(value) { userWatchlist = value; return value; }
 let userHistory = [];
+function setUserHistory(value) { userHistory = value; return value; }
 let activeTab = 'movies';
+function setActiveTab(value) { activeTab = value; return value; }
 let configuredProviders = {};
+// Player settings and linked accounts read from /api/config, shared by every file.
+const playerPrefs = { prefLang: undefined, autoFrSubs: undefined, hdrMode: undefined, audioMode: undefined, playerMode: undefined };
+const linkedAccounts = { debridProvider: undefined, debridName: undefined, letterboxdUser: undefined };
 const META_CLIENT_CACHE = new Map();
 // Titles close to a title, from /api/related (TMDB with the user's key, else genres).
 const RELATED_CLIENT_CACHE = new Map();
 let spoilerState = Spoilers.empty();
 let lastReadyDebrid = null;
+function setLastReadyDebrid(value) { lastReadyDebrid = value; return value; }
 let currentSelectMediaId = null;
+function setCurrentSelectMediaId(value) { currentSelectMediaId = value; return value; }
 let animeJourneyState = null;
+function setAnimeJourneyState(value) { animeJourneyState = value; return value; }
 let animeJourneyMatches = new Map();
+function setAnimeJourneyMatches(value) { animeJourneyMatches = value; return value; }
 let animeJourneyRevealed = new Set();
+function setAnimeJourneyRevealed(value) { animeJourneyRevealed = value; return value; }
 let animeJourneyRequestId = 0;
+function setAnimeJourneyRequestId(value) { animeJourneyRequestId = value; return value; }
 
 function spoilerSeriesId(media = currentMedia) {
   return String(media?.id || '').toLowerCase();
@@ -350,8 +370,8 @@ async function checkConfig() {
     configuredProviders = cfg.configured_providers || {};
     const prov = cfg.debrid_provider || 'realdebrid';
     const pmeta = PROVIDER_META[prov] || PROVIDER_META.realdebrid;
-    window.activeDebridProvider = prov;
-    window.activeDebridName = pmeta.name;
+    linkedAccounts.debridProvider = prov;
+    linkedAccounts.debridName = pmeta.name;
 
     if (document.getElementById('cfgProvider')) {
       document.getElementById('cfgProvider').value = prov;
@@ -379,15 +399,15 @@ async function checkConfig() {
     if (document.getElementById('cfgPrefLang')) {
       document.getElementById('cfgPrefLang').value = cfg.pref_lang || 'vf';
     }
-    window.kinoPrefLang = cfg.pref_lang || 'vf';
+    playerPrefs.prefLang = cfg.pref_lang || 'vf';
     if (typeof showTmdbStatus === 'function') showTmdbStatus(cfg.has_tmdb_key === true);
-    window.kinoAutoFrSubs = cfg.auto_fr_subs !== false;
+    playerPrefs.autoFrSubs = cfg.auto_fr_subs !== false;
     const notifyField = document.getElementById('cfgEpisodeNotificationsField');
     if (notifyField) notifyField.style.display = cfg.notifications_available === true ? 'flex' : 'none';
     const notifyBox = document.getElementById('cfgEpisodeNotifications');
     if (notifyBox) notifyBox.checked = cfg.episode_notifications !== false;
     const autoSubs = document.getElementById('cfgAutoFrSubs');
-    if (autoSubs) autoSubs.checked = window.kinoAutoFrSubs;
+    if (autoSubs) autoSubs.checked = playerPrefs.autoFrSubs;
     if (document.getElementById('cfgPrefQuality')) {
       document.getElementById('cfgPrefQuality').value = cfg.pref_quality || '4k';
     }
@@ -400,8 +420,8 @@ async function checkConfig() {
     if (document.getElementById('cfgAudioMode')) {
       document.getElementById('cfgAudioMode').value = cfg.audio_mode || 'voice_boost';
     }
-    window.kinoHdrMode = cfg.hdr_mode || 'sdr_pref';
-    window.kinoAudioMode = cfg.audio_mode || 'voice_boost';
+    playerPrefs.hdrMode = cfg.hdr_mode || 'sdr_pref';
+    playerPrefs.audioMode = cfg.audio_mode || 'voice_boost';
     const retVal = String(cfg.rd_retention_days || 0);
     if (document.getElementById('cfgRdRetention')) {
       document.getElementById('cfgRdRetention').value = retVal;
@@ -437,7 +457,7 @@ async function checkConfig() {
       }
     }
     toggleDiscordRpcFields();
-    window.kinoPlayerMode = effPlayerMode;
+    playerPrefs.playerMode = effPlayerMode;
     const cfgAccTitle = document.getElementById('cfgAccountTitle');
     const cfgAccSub = document.getElementById('cfgAccountSub');
     const cfgAccBadge = document.getElementById('cfgAccountBadge');
@@ -537,7 +557,7 @@ async function refreshUserLists() {
     userWatchlist = data.watchlist || [];
     userHistory = data.history || [];
     if (data.letterboxd_user) {
-      window.savedLetterboxdUser = data.letterboxd_user;
+      linkedAccounts.letterboxdUser = data.letterboxd_user;
     }
     await fetchCustomLists();
     updateListBadges();
@@ -777,11 +797,16 @@ function formatRemaining(pos, dur) {
 }
 
 let catalogSort = 'top';
+function setCatalogSort(value) { catalogSort = value; return value; }
 let catalogSkip = 0;
+function setCatalogSkip(value) { catalogSkip = value; return value; }
 let catalogItems = [];
+function setCatalogItems(value) { catalogItems = value; return value; }
 // The last page of the catalogue was full: « Voir plus » has more to bring.
 let catalogHasMore = false;
+function setCatalogHasMore(value) { catalogHasMore = value; return value; }
 let currentTrailerCtx = {trailerId: '', title: '', year: '', lang: 'vf'};
+function setCurrentTrailerCtx(value) { currentTrailerCtx = value; return value; }
 
 function getSeriesTargetEpisode(h) {
   if (!h || h.type !== 'series') return {season: 1, episode: 1, isNext: false};

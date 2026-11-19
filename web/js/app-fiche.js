@@ -22,7 +22,7 @@ async function handleTorrentFileSelect(files) {
       body: JSON.stringify({ filename: file.name, data_b64: b64 })
     });
     if (res && res.magnet) {
-      currentMedia = { id: '', name: res.name || file.name, type: 'movie', year: '', poster: '' };
+      setCurrentMedia({ id: '', name: res.name || file.name, type: 'movie', year: '', poster: '' });
       await debridMagnet(res.magnet);
     }
   } catch (e) {
@@ -430,7 +430,7 @@ async function runSearch() {
   rememberSearch(q, mode);
 
   // Results stand alone: nothing of the tab they were searched from stays around them.
-  searchResultsShown = true;
+  setSearchResultsShown(true);
   personView = null;
   for (const id of ['communityPanel', 'mangaPanel', 'animeSchedulePanel', 'animeHomePanel', 'librarySubNav', 'animeSubNav', 'watchlistActionsWrap', 'listStatsBadge']) {
     const el = document.getElementById(id);
@@ -534,7 +534,7 @@ async function oneClickCard(ev, btn, media, options = {}) {
   ev.stopPropagation();
   // « Sur la TV »: the same source, sent to the TV instead of a player.
   const target = options.target === 'tv' ? { target: 'tv' } : {};
-  currentMedia = media;
+  setCurrentMedia(media);
   const histItem = userHistory.find(h => h.id === media.id);
   const isSeries = Boolean(media.type === 'series' || (media.is_anime && media.type !== 'movie'));
   if (isSeries) {
@@ -595,6 +595,7 @@ async function openNativeStream(options) {
 }
 
 let _isGlobalPlayLaunching = false;
+function setIsGlobalPlayLaunching(value) { _isGlobalPlayLaunching = value; return value; }
 async function oneClickPlay(params, btn) {
   if (_isGlobalPlayLaunching) return;
   _isGlobalPlayLaunching = true;
@@ -612,7 +613,7 @@ async function oneClickPlay(params, btn) {
   // For the TV the server only resolves the source: no player opens on the Mac.
   if (params.target === 'tv') params.player_mode = 'integrated';
   if (!params.player_mode) {
-    params.player_mode = window.kinoPlayerMode || (isMacPlatform ? 'integrated' : 'kino');
+    params.player_mode = playerPrefs.playerMode || (isMacPlatform ? 'integrated' : 'kino');
   }
 
   const box = document.getElementById('debridResultPanel');
@@ -1138,7 +1139,7 @@ function buildDetailHtml(media, meta, isPreview) {
         </div>
       `;
     } else {
-      seriesMetaVideos = (meta.videos || []).filter(v => v.season > 0);
+      setSeriesMetaVideos((meta.videos || []).filter(v => v.season > 0));
       // Numbers only: they go into handlers as they are.
       const seasons = [...new Set(seriesMetaVideos.map(v => Number(v.season)))].sort((a,b) => a - b);
       if (seasons.length) {
@@ -1346,7 +1347,7 @@ const PERSON_HIDDEN = ['communityPanel', 'mangaPanel', 'animeSchedulePanel', 'an
 function showPersonScreen(name) {
   closeDetailPanel();
   hideHomeRows();
-  searchResultsShown = true;
+  setSearchResultsShown(true);
   for (const id of PERSON_HIDDEN) {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
@@ -1566,19 +1567,19 @@ function applyMediaDetails(media, meta) {
 
 async function selectMedia(media) {
   noteFiche(media);
-  animeJourneyRequestId++;
-  animeJourneyState = null;
-  animeJourneyMatches = new Map();
-  animeJourneyRevealed = new Set();
-  currentMedia = media;
-  torrentRequestId++;
-  lastReadyDebrid = null;
-  allTorrents = [];
+  setAnimeJourneyRequestId(animeJourneyRequestId + 1);
+  setAnimeJourneyState(null);
+  setAnimeJourneyMatches(new Map());
+  setAnimeJourneyRevealed(new Set());
+  setCurrentMedia(media);
+  setTorrentRequestId(torrentRequestId + 1);
+  setLastReadyDebrid(null);
+  setAllTorrents([]);
   document.getElementById('torrentsPanel').style.display = 'none';
   document.getElementById('debridResultPanel').style.display = 'none';
   hideDetailMore();
   const reqId = media.id;
-  currentSelectMediaId = reqId;
+  setCurrentSelectMediaId(reqId);
 
   const setP = document.getElementById('settingsPanel');
   if (setP) setP.style.display = 'none';
@@ -1635,15 +1636,15 @@ function hideDetailMore() {
 function closeDetailPanel() {
   closeDetailTrailer();
   hideDetailMore();
-  animeJourneyRequestId++;
-  animeJourneyState = null;
+  setAnimeJourneyRequestId(animeJourneyRequestId + 1);
+  setAnimeJourneyState(null);
   const p = document.getElementById('detailPanel');
   if (p) p.style.display = 'none';
   const tor = document.getElementById('torrentsPanel');
   if (tor) tor.style.display = 'none';
   const deb = document.getElementById('debridResultPanel');
   if (deb) deb.style.display = 'none';
-  currentMedia = null;
+  setCurrentMedia(null);
 }
 
 function selectDetailSeason(seasonNum) {
@@ -1661,7 +1662,7 @@ function selectDetailSeason(seasonNum) {
 function renderDetailEpisodes(seasonNum) {
   const container = document.getElementById('detailEpisodesList');
   if (!container) return;
-  detailEpisodeSeason = seasonNum;
+  setDetailEpisodeSeason(seasonNum);
   const eps = seriesMetaVideos.filter(v => v.season === seasonNum).sort((a,b) => (a.episode || a.number) - (b.episode || b.number));
   const summary = document.getElementById('detailSeasonSummary');
   if (!eps.length) {

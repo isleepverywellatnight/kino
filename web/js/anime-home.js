@@ -12,6 +12,7 @@ let animeWeekRequest = null;
 let animeWeekDay = -1;
 let animeWeekFilter = 'popular';
 let animeWeekTimer = null;
+function setAnimeWeekTimer(value) { animeWeekTimer = value; return value; }
 const animeWorks = new Map();
 
 const ANIME_PAGES = { home: 'animeSubTabHome', schedule: 'animeSubTabSchedule', catalog: 'animeSubTabCatalog' };
