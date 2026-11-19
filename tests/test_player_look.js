@@ -165,7 +165,7 @@ test('Escape, closing the player and the idle timer respect the menu', () => {
   assert.match(app, /if \(isInput\) return;\n  if \(handleInAppMenuKey\(e\)\) return;/);
   assert.match(extract('resetInAppIdleTimer'), /!inAppIsDraggingVol && !isInAppMoreMenuOpen\(\)/);
   assert.match(app, /overlay\.classList\.remove\('active', 'idle'\);\n  \}\n  closeInAppMoreMenu\(false\);/);
-  assert.match(app, /initGenreStrip\(\);\ninitInAppMoreMenu\(\);/);
+  assert.match(app, /initGenreStrip\(\);\n\s+initInAppMoreMenu\(\);/);
 });
 
 // A tiny DOM, enough for the native overlay to build and render.

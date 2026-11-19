@@ -135,7 +135,7 @@ test('the section, the row arrows and the French route are wired', () => {
   assert.match(withCalls(source), /<div id="detailEpisodesList" class="ep-row" role="list" aria-label="Épisodes" \$\{actOn\('scroll', 'updateEpisodeArrows'\)\}><\/div>/);
   assert.match(source, /aria-label="Épisodes précédents" \$\{act\('scrollEpisodes', -1\)\} hidden>‹/);
   assert.match(source, /<p id="detailSeasonSummary" class="ep-summary" aria-live="polite"><\/p>/);
-  assert.match(source, /window\.addEventListener\("resize", updateEpisodeArrows\);/);
+  assert.match(source, /window\.addEventListener\('resize', updateEpisodeArrows\);/);
   assert.match(source, /behavior: 'instant' \}\);/, 'the row opens on the episode at once');
   assert.match(css, /\.ep-row \{[^}]*grid-auto-flow: column;[^}]*overflow-x: auto;/);
   assert.match(css, /\.ep-tile\.is-next \{ border-color: #fafafa; \}/);

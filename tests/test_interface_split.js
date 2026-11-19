@@ -49,8 +49,13 @@ test('nothing run at load time calls a part loaded later', () => {
   assert.deepEqual(late, []);
 });
 
-test('the start-up stays at the end, and the document lists every part', () => {
-  assert.match(read('app-start.js'), /\nloadSpoilerState\(\)\.finally\(openFirstTab\);\n/);
+test('KINO starts from the last script, and the document lists every part', () => {
+  const start = read('app-start.js');
+  const body = start.slice(start.indexOf('function startKino() {'), start.indexOf('\n}\n', start.indexOf('function startKino() {')));
+  assert.match(body, /\n  checkConfig\(\);\n[\s\S]*\n  loadSpoilerState\(\)\.finally\(openFirstTab\);\n/);
+  const scripts = interfaceScripts();
+  assert.equal(scripts[scripts.length - 1], 'main.js', 'every part is loaded before KINO starts');
+  assert.match(read('main.js'), /^startKino\(\);$/m);
   for (const name of parts) assert.match(doc, new RegExp(`\\| \`${name.replace('.', '\\.')}\` \\|`), name);
   assert.equal((doc.match(/^\| `app-[\w-]+\.js` \|/gm) || []).length, parts.length);
 });

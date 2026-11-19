@@ -92,7 +92,7 @@ test('each setting saves as soon as it changes; the key waits for « Vérifier �
   }
   assert.ok(!ids.includes('cfgToken'), 'the key is only saved by « Vérifier »');
   assert.match(source, /if \(el\) el\.addEventListener\('change', scheduleSettingsSave\);/);
-  assert.match(source, /initSettingsSectionNavigation\(\);\ninitSettingsAutosave\(\);/);
+  assert.match(source, /initSettingsSectionNavigation\(\);\n\s+initSettingsAutosave\(\);/);
   assert.match(withCalls(html), /<button type="button" class="btn" id="cfgTokenVerifyBtn" onclick="verifyDebridKey\(this\)">Vérifier<\/button>/);
 });
 

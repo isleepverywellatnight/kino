@@ -34,7 +34,8 @@ depuis internet.
   appels faits plus tard (clic, minuterie, réponse du serveur) peuvent viser
   n'importe quel fichier. `test_interface_split.js` le vérifie.
 - **Démarrage :** le code de démarrage (`checkConfig()`, `switchTab('movies')`…)
-  reste à la fin de `app-start.js`.
+  est dans `startKino()` (`app-start.js`), que `main.js`, chargé en dernier,
+  appelle une fois toutes les parties chargées.
 - **Tests :** ils lisent les fichiers recollés dans l'ordre de `index.html`
   (`tools/interface_source.js`). Déplacer une
   fonction d'un fichier à l'autre ne les dérange pas tant que l'ordre du texte
