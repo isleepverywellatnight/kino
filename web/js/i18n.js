@@ -154,10 +154,14 @@
     for (const [name, attribute] of KEYED) {
       const key = data[name];
       if (!key) continue;
-      if (attribute) {
-        el.setAttribute(attribute, t(key));
-        keyed.add(attribute);
-      } else el.textContent = t(key);
+      // Only while it still holds its key's French: what the code wrote since is
+      // translated by the observer, as any other text.
+      const now = attribute ? el.getAttribute(attribute) : el.textContent;
+      if (now !== null && same(now, french[key])) {
+        if (attribute) el.setAttribute(attribute, t(key));
+        else el.textContent = t(key);
+      } else if (now !== null && !same(now, t(key))) continue;
+      if (attribute) keyed.add(attribute);
     }
     return keyed;
   }
@@ -170,6 +174,8 @@
   function skipped(el) {
     return !el || SKIP.has(el.nodeName) || el.isContentEditable || (el.closest && el.closest('[translate="no"], .notranslate'));
   }
+
+  const same = (a, b) => String(a).trim().replace(/\s+/g, ' ') === String(b).trim().replace(/\s+/g, ' ');
 
   // A text its element's key gave: nothing to translate. If the code has since
   // written another text there, it is translated as any other.
