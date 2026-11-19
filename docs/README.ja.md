@@ -33,6 +33,7 @@ KINO はコンテンツをホスト・提供・配布しません。ユーザー
 |---|---|
 | **macOS** — Apple シリコン搭載 Mac（M1 以降）、macOS 14 以降 | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
 | **Windows** — Windows 10 または 11、64 ビット | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
+| **Windows on ARM** — ARM 搭載 PC（Snapdragon など）の Windows 11 | [**KINO-Windows-arm64.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows-arm64.exe) |
 | **Linux** — x86_64：Ubuntu 22.04、Debian 12、Fedora 36 以降 | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
 
 KINO には必要なものがすべて入っています：ビデオプレーヤー、FFmpeg、インターフェース。ほかに何もインストールする必要はありません。あとは設定で Debrid サービスのキーを貼り付けるだけです。

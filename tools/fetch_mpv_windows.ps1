@@ -12,15 +12,31 @@
 # SourceForge; both archives come from the same build. mpv and FFmpeg are under
 # GPL/LGPL: sources at mpv.io and ffmpeg.org.
 #
-# Usage: pwsh tools\fetch_mpv_windows.ps1 [-Archive mpv-x86_64-....7z] [-DevArchive mpv-dev-x86_64-....7z]
+# -Arch arm64 takes the builds for Windows on ARM (KINO-Windows-arm64.exe),
+# published on shinchiro's GitHub releases only.
+#
+# Usage: pwsh tools\fetch_mpv_windows.ps1 [-Arch x64|arm64] [-Archive mpv-....7z] [-DevArchive mpv-dev-....7z]
 # Needs 7-Zip (7z.exe; installed on GitHub's Windows runners) or Windows' own tar.exe.
-param([string]$Archive, [string]$DevArchive)
+param([string]$Archive, [string]$DevArchive, [ValidateSet("x64", "arm64")][string]$Arch = "x64")
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
 $build = "20261018"
 $commit = "git-01e2533f31"
-$archives = @(
+$archives = if ($Arch -eq "arm64") { @(
+  [ordered]@{
+    name = "mpv-aarch64-$build-$commit.7z"
+    sha256 = "736934c6f960f937851577d21f4d57695ff930a0b9aebe5521112f1c74d4c0d0"
+    mirror = "arm64"; given = $Archive
+    keep = @("mpv.exe", "mpv.com"); dest = "vendor\mpv-windows"
+  },
+  [ordered]@{
+    name = "mpv-dev-aarch64-$build-$commit.7z"
+    sha256 = "062b07022d1fadefd341485602658a51d973c216bb4282859e10daa09ad55478"
+    mirror = "libmpv-arm64"; given = $DevArchive
+    keep = @("libmpv-2.dll"); dest = "vendor\libmpv-windows"
+  }
+) } else { @(
   [ordered]@{
     name = "mpv-x86_64-$build-$commit.7z"
     sha256 = "d7157567a2fd88e46f739d2e8b8e6c02d2ad812db04547b45c59a2800821991f"
@@ -33,7 +49,7 @@ $archives = @(
     mirror = "libmpv"; given = $DevArchive
     keep = @("libmpv-2.dll"); dest = "vendor\libmpv-windows"
   }
-)
+) }
 
 function Get-Archive($spec, $work) {
   if ($spec.given) {

@@ -6,7 +6,7 @@
 
 ## Публикация версии
 
-Измените `version` в `Cargo.toml` ([workspace.package]) и отправьте в `main` — это всё. Если у версии в `main` ещё нет релиза, GitHub Actions (`.github/workflows/build.yml`) собирает все три приложения, тестирует их, публикует релиз с тегом `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Linux-x86_64.AppImage`, `SHA256SUMS.txt`), а затем переустанавливает его на чистых Mac и Windows командами из README.
+Измените `version` в `Cargo.toml` ([workspace.package]) и отправьте в `main` — это всё. Если у версии в `main` ещё нет релиза, GitHub Actions (`.github/workflows/build.yml`) собирает все три приложения, тестирует их, публикует релиз с тегом `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Windows-arm64.exe`, `KINO-Linux-x86_64.AppImage`, `SHA256SUMS.txt`), а затем переустанавливает его на чистых Mac и Windows командами из README.
 
 Чтобы KINO сам устанавливал новые версии, CI подписывает обновления секретом `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables → Actions): это содержимое закрытого ключа, созданного `cargo run -p kino --bin kino-release -- --init-key`; его открытая часть — `assets/update_public_key.hex`. Без этого секрета KINO сообщает о новой версии и предлагает её скачать.
 
@@ -41,6 +41,8 @@ cargo build --release --locked -p kino-desktop
 pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
 ```
+
+Для Windows на ARM (`KINO-Windows-arm64.exe`) собирайте на ПК с ARM64 и передайте `-Arch arm64` обоим скриптам загрузки и `/DArch=arm64` в `iscc`.
 
 ### Linux (x86_64)
 

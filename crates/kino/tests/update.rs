@@ -484,3 +484,37 @@ fn the_restart_forgets_the_old_mount() {
         ]
     );
 }
+
+/// Windows on ARM: the ARM64 installer's .sig is for KINO built for ARM64
+/// only, and the x64 one for KINO built for x64 only.
+#[test]
+fn windows_signatures_name_their_architecture() {
+    let signed = |architecture: &str, name: &str| {
+        envelope(
+            &json!({"format": update::UPDATE_FORMAT, "version": "9.0.0", "platform": "win32",
+                    "architecture": architecture, "bundle_id": update::BUNDLE_ID,
+                    "data_schema": update::DATA_SCHEMA, "notes": "Notes",
+                    "artifact": {"name": name, "sha256": "b".repeat(64), "size": 1000}}),
+            &key(),
+        )
+    };
+    let arm = signed("arm64", update::WINDOWS_ARM64_INSTALLER);
+    let x64 = signed("x64", update::WINDOWS_INSTALLER);
+    let check =
+        |raw: &[u8], target| update::verify_artifact_signature(raw, &public_hex(), "1.0.0", target);
+    assert!(check(&arm, &update::WINDOWS_ARM64_ARTIFACT).is_ok());
+    assert!(check(&x64, &update::WINDOWS_ARTIFACT).is_ok());
+    assert_eq!(
+        check(&arm, &update::WINDOWS_ARTIFACT).unwrap_err(),
+        "Cet installateur ne cible pas KINO sur Windows."
+    );
+    assert_eq!(
+        check(&x64, &update::WINDOWS_ARM64_ARTIFACT).unwrap_err(),
+        "Cet installateur ne cible pas KINO sur Windows."
+    );
+    let renamed = signed("arm64", update::WINDOWS_INSTALLER);
+    assert_eq!(
+        check(&renamed, &update::WINDOWS_ARM64_ARTIFACT).unwrap_err(),
+        "Nom d'installateur incohérent."
+    );
+}
