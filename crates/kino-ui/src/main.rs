@@ -649,7 +649,17 @@ fn main() {
         std::process::exit(2);
     }
     Application::new().run(move |cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(1180.0), px(760.0)), cx);
+        // 1180×760, or less on a smaller screen: the whole window stays on it.
+        let screen = cx
+            .primary_display()
+            .map(|display| display.bounds().size)
+            .unwrap_or(size(px(1280.0), px(800.0)));
+        let fit = |wanted: f32, room: gpui::Pixels| px(wanted.min(f32::from(room) - 48.0));
+        let bounds = Bounds::centered(
+            None,
+            size(fit(1180.0, screen.width), fit(760.0, screen.height)),
+            cx,
+        );
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
             titlebar: None,
