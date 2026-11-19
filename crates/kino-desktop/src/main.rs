@@ -896,8 +896,20 @@ fn main() -> Result<()> {
                 Err(e) => UserEvent::Reply(message.id, Err(e)),
             };
             let _ = proxy.send_event(event);
-        })
-        .build(&window)?;
+        });
+    // Linux: the page goes into the window's GTK box; built as an X11 child
+    // window it stayed empty (the window's own grey showed instead of KINO).
+    #[cfg(target_os = "linux")]
+    let webview = {
+        use tao::platform::unix::WindowExtUnix;
+        use wry::WebViewBuilderExtUnix;
+        let vbox = window
+            .default_vbox()
+            .ok_or_else(|| anyhow::anyhow!("the window has no GTK box"))?;
+        webview.build_gtk(vbox)?
+    };
+    #[cfg(not(target_os = "linux"))]
+    let webview = webview.build(&window)?;
 
     let replies = event_loop.create_proxy();
     // Windows: the mpv window held inside KINO's, if any.
