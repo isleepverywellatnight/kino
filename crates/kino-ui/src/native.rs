@@ -78,31 +78,38 @@ pub fn place_host(parent: isize, host: isize, top: i32) {
 }
 
 /// `--bench`: a real left click at `(x, y)` in `parent`'s client area
-/// (physical pixels), through Windows' input queue like a user's.
+/// (physical pixels), through Windows' input queue like a user's: the cursor
+/// moves, rests, then the button goes down and up, from another thread so
+/// gpui's own thread handles each message as it comes.
 pub fn click(parent: isize, x: i32, y: i32) {
     let mut point = POINT { x, y };
-    let button = |flags| INPUT {
-        r#type: INPUT_MOUSE,
-        Anonymous: INPUT_0 {
-            mi: MOUSEINPUT {
-                dwFlags: flags,
-                ..Default::default()
-            },
-        },
-    };
-    // SAFETY: plain input calls on this process's window.
-    unsafe {
-        if !ClientToScreen(hwnd(parent), &mut point).as_bool() {
-            return;
-        }
-        if SetCursorPos(point.x, point.y).is_err() {
-            return;
-        }
-        SendInput(
-            &[button(MOUSEEVENTF_LEFTDOWN), button(MOUSEEVENTF_LEFTUP)],
-            std::mem::size_of::<INPUT>() as i32,
-        );
+    // SAFETY: a query on this process's window.
+    if !unsafe { ClientToScreen(hwnd(parent), &mut point) }.as_bool() {
+        return;
     }
+    std::thread::spawn(move || {
+        let button = |flags| INPUT {
+            r#type: INPUT_MOUSE,
+            Anonymous: INPUT_0 {
+                mi: MOUSEINPUT {
+                    dwFlags: flags,
+                    ..Default::default()
+                },
+            },
+        };
+        let send = |flags| {
+            // SAFETY: one mouse input.
+            unsafe { SendInput(&[button(flags)], std::mem::size_of::<INPUT>() as i32) };
+        };
+        // SAFETY: moves the cursor.
+        if unsafe { SetCursorPos(point.x, point.y) }.is_err() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        send(MOUSEEVENTF_LEFTDOWN);
+        std::thread::sleep(std::time::Duration::from_millis(60));
+        send(MOUSEEVENTF_LEFTUP);
+    });
 }
 
 /// `--bench`: what Windows finds at `(x, y)` in `parent`'s client area —

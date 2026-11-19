@@ -418,7 +418,7 @@ impl Player {
         let elapsed = bench.tick();
         #[cfg(windows)]
         if let Some((parent, _)) = self.host {
-            // At 3 s, a real click on the play button; at 4 s, its effect.
+            // At 3 s, a real click on the play button; at 4.5 s, its effect.
             let paused = self.video.lock().map(|v| v.paused()).unwrap_or(false);
             match self.click {
                 None if elapsed >= Duration::from_secs(3) => {
@@ -431,7 +431,7 @@ impl Player {
                     }
                     native::click(parent, x as i32, y as i32);
                 }
-                Some((before, None)) if elapsed >= Duration::from_secs(4) => {
+                Some((before, None)) if elapsed >= Duration::from_millis(4500) => {
                     self.click = Some((before, Some(paused != before)));
                     // The run goes on playing.
                     if paused {
