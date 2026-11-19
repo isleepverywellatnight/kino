@@ -8,14 +8,19 @@
 //! - `--bench`: the grid scrolls by itself (fast, down then up), each frame's
 //!   time is measured, and the figures are printed as JSON before quitting.
 //!   The CI runs it on macOS, Windows and Linux.
+//! - `--video [source]`: the player screen instead, a video drawn by libmpv
+//!   under gpui's own controls (`video.rs`). With `--bench`, it plays a 1080p
+//!   test pattern and prints how long each frame took to reach the screen.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+
+mod video;
 use std::time::{Duration, Instant};
 
 use gpui::{
-    App, Application, Bounds, Context, Image, ImageFormat, MouseButton, MouseDownEvent,
-    SharedString, UniformListScrollHandle, Window, WindowBounds, WindowDecorations, WindowOptions,
-    div, img, point, prelude::*, px, rgb, size, uniform_list,
+    App, Application, Bounds, Context, Image, ImageFormat, MouseButton, MouseDownEvent, ObjectFit,
+    RenderImage, SharedString, StyledImage, UniformListScrollHandle, Window, WindowBounds,
+    WindowDecorations, WindowOptions, div, img, point, prelude::*, px, rgb, size, uniform_list,
 };
 
 const POSTERS: usize = 300;
@@ -43,6 +48,25 @@ struct Bench {
 }
 
 impl Bench {
+    fn new() -> Self {
+        Self {
+            started: Instant::now(),
+            last: None,
+            frames: Vec::new(),
+        }
+    }
+
+    /// Records this frame; the time since the start.
+    fn tick(&mut self) -> Duration {
+        let now = Instant::now();
+        if let Some(last) = self.last {
+            self.frames
+                .push(now.duration_since(last).as_secs_f64() * 1000.0);
+        }
+        self.last = Some(now);
+        now.duration_since(self.started)
+    }
+
     fn report(&self) -> String {
         let mut frames = self.frames.clone();
         frames.sort_by(f64::total_cmp);
@@ -116,11 +140,7 @@ impl Kino {
         Self {
             posters: vec![None; POSTERS],
             list: UniformListScrollHandle::new(),
-            bench: bench.then(|| Bench {
-                started: Instant::now(),
-                last: None,
-                frames: Vec::new(),
-            }),
+            bench: bench.then(Bench::new),
         }
     }
 
@@ -129,14 +149,7 @@ impl Kino {
         let Some(bench) = self.bench.as_mut() else {
             return;
         };
-        let now = Instant::now();
-        if let Some(last) = bench.last {
-            bench
-                .frames
-                .push(now.duration_since(last).as_secs_f64() * 1000.0);
-        }
-        bench.last = Some(now);
-        let elapsed = now.duration_since(bench.started);
+        let elapsed = bench.tick();
         if elapsed >= BENCH_LEG * 2 {
             println!("KINO-UI BENCH {}", bench.report());
             cx.quit();
@@ -154,8 +167,11 @@ impl Kino {
             .set_offset(point(px(0.0), px(-y)));
         window.request_animation_frame();
     }
+}
 
-    fn bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+/// KINO's bar: a press moves the window, a double press maximizes it.
+fn bar() -> impl IntoElement {
+    {
         let button = |id: &'static str, label: &'static str| {
             div()
                 .id(id)
@@ -199,7 +215,7 @@ impl Kino {
             .child(
                 button("close", "✕")
                     .hover(|style| style.bg(rgb(0xc42b1c)).text_color(rgb(TEXT)))
-                    .on_click(cx.listener(|_, _, _, cx| cx.quit())),
+                    .on_click(|_, _, cx| cx.quit()),
             )
     }
 }
@@ -245,7 +261,7 @@ impl Render for Kino {
             .flex_col()
             .bg(rgb(BACKGROUND))
             .text_color(rgb(TEXT))
-            .child(self.bar(cx))
+            .child(bar())
             .child(
                 uniform_list(
                     "posters",
@@ -274,22 +290,247 @@ impl Render for Kino {
     }
 }
 
+/// The 1080p test pattern `--video --bench` plays: moving, with a clock.
+const TEST_PATTERN: &str = "av://lavfi:testsrc2=size=1920x1080:rate=30";
+
+/// The player screen: libmpv's frames as an image, gpui's controls over them.
+struct Player {
+    video: Arc<Mutex<video::Video>>,
+    frame: Option<Arc<RenderImage>>,
+    /// Time to draw each frame in memory, in ms (`--bench`).
+    draws: Vec<f64>,
+    bench: Option<Bench>,
+}
+
+impl Player {
+    fn new(video: video::Video, bench: bool, cx: &mut Context<Self>) -> Self {
+        let video = Arc::new(Mutex::new(video));
+        let shared = video.clone();
+        // mpv says when a frame is ready; it is drawn off the main thread.
+        cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(4))
+                    .await;
+                let video = shared.clone();
+                let drawn = cx
+                    .background_executor()
+                    .spawn(async move {
+                        let started = Instant::now();
+                        let frame = video.lock().ok()?.frame()?;
+                        Some((frame, started.elapsed().as_secs_f64() * 1000.0))
+                    })
+                    .await;
+                let alive = this.update(cx, |player, cx| {
+                    if let Some((frame, ms)) = drawn {
+                        player.draws.push(ms);
+                        if let Some(old) = player.frame.replace(Arc::new(frame)) {
+                            // The last frame leaves the GPU's atlas.
+                            cx.drop_image(old, None);
+                        }
+                        cx.notify();
+                    }
+                });
+                if alive.is_err() {
+                    return;
+                }
+            }
+        })
+        .detach();
+        Self {
+            video,
+            frame: None,
+            draws: Vec::new(),
+            bench: bench.then(Bench::new),
+        }
+    }
+
+    fn bench_frame(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(bench) = self.bench.as_mut() else {
+            return;
+        };
+        if bench.tick() >= BENCH_LEG * 2 {
+            let mut draws = self.draws.clone();
+            draws.sort_by(f64::total_cmp);
+            let at = |q: f64| {
+                draws
+                    .get(((draws.len() as f64) * q) as usize)
+                    .map_or(0.0, |d| (d * 10.0).round() / 10.0)
+            };
+            let mut report: serde_json::Value =
+                serde_json::from_str(&bench.report()).unwrap_or_default();
+            report["video_frames"] = self.draws.len().into();
+            report["draw_p50_ms"] = at(0.5).into();
+            report["draw_p95_ms"] = at(0.95).into();
+            println!("KINO-UI VIDEO {report}");
+            cx.quit();
+            return;
+        }
+        window.request_animation_frame();
+    }
+
+    fn controls(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let (position, duration, paused) = match self.video.lock() {
+            Ok(video) => (
+                video.seconds("time-pos").unwrap_or(0.0),
+                video.seconds("duration").unwrap_or(0.0),
+                video.paused(),
+            ),
+            Err(_) => (0.0, 0.0, false),
+        };
+        let clock = |s: f64| format!("{}:{:02}", (s as u64) / 60, (s as u64) % 60);
+        let done = if duration > 0.0 {
+            (position / duration).clamp(0.0, 1.0) as f32
+        } else {
+            0.0
+        };
+        div()
+            .absolute()
+            .bottom_0()
+            .left_0()
+            .right_0()
+            .px_6()
+            .py_4()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .bg(gpui::rgba(0x000000b0))
+            .child(
+                // The progress bar.
+                div()
+                    .h(px(4.0))
+                    .w_full()
+                    .rounded_full()
+                    .bg(gpui::rgba(0xffffff40))
+                    .child(
+                        div()
+                            .h_full()
+                            .w(gpui::relative(done))
+                            .rounded_full()
+                            .bg(rgb(0xe50914)),
+                    ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_4()
+                    .child(
+                        div()
+                            .id("play")
+                            .w(px(40.0))
+                            .h(px(40.0))
+                            .rounded_full()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .bg(gpui::rgba(0xffffff26))
+                            .hover(|style| style.bg(gpui::rgba(0xffffff40)))
+                            .child(if paused { "▶" } else { "❚❚" })
+                            .on_click(cx.listener(|player, _, _, cx| {
+                                if let Ok(video) = player.video.lock() {
+                                    video.set_paused(!video.paused());
+                                }
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(TEXT_2))
+                            .child(SharedString::from(format!(
+                                "{} / {}",
+                                clock(position),
+                                clock(duration)
+                            ))),
+                    ),
+            )
+    }
+}
+
+impl Render for Player {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.bench_frame(window, cx);
+        let picture = div().size_full().bg(gpui::black());
+        let picture = match &self.frame {
+            Some(frame) => picture.child(
+                img(frame.clone())
+                    .size_full()
+                    .object_fit(ObjectFit::Contain),
+            ),
+            None => picture,
+        };
+        div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .bg(rgb(BACKGROUND))
+            .text_color(rgb(TEXT))
+            .child(bar())
+            .child(
+                div()
+                    .relative()
+                    .flex_grow()
+                    .child(picture)
+                    .child(
+                        div()
+                            .absolute()
+                            .top_4()
+                            .left_6()
+                            .px_3()
+                            .py_1()
+                            .rounded_md()
+                            .bg(gpui::rgba(0x000000b0))
+                            .child("Mire de test KINO"),
+                    )
+                    .child(self.controls(cx)),
+            )
+    }
+}
+
 fn main() {
-    let bench = std::env::args().any(|a| a == "--bench");
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let bench = args.iter().any(|a| a == "--bench");
+    let video = args.iter().position(|a| a == "--video").map(|at| {
+        args.get(at + 1)
+            .filter(|a| !a.starts_with("--"))
+            .cloned()
+            .unwrap_or_else(|| TEST_PATTERN.to_string())
+    });
+    // The test pattern loops; a bench run makes no sound.
+    let video = video.map(|source| {
+        let mut options = vec![("loop-file", "inf")];
+        if bench {
+            options.push(("ao", "null"));
+        }
+        video::Video::open(&source, &options).unwrap_or_else(|error| {
+            eprintln!("KINO-UI VIDEO ERROR {error}");
+            std::process::exit(2);
+        })
+    });
     Application::new().run(move |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(1180.0), px(760.0)), cx);
-        cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                titlebar: None,
-                window_decorations: Some(WindowDecorations::Client),
-                app_id: Some("kino".into()),
-                window_min_size: Some(size(px(640.0), px(420.0))),
-                ..Default::default()
-            },
-            |_, cx| cx.new(|cx| Kino::new(bench, cx)),
-        )
-        .expect("KINO's window");
+        let options = WindowOptions {
+            window_bounds: Some(WindowBounds::Windowed(bounds)),
+            titlebar: None,
+            window_decorations: Some(WindowDecorations::Client),
+            app_id: Some("kino".into()),
+            window_min_size: Some(size(px(640.0), px(420.0))),
+            ..Default::default()
+        };
+        let mut video = video;
+        let opened = match video.take() {
+            Some(video) => cx
+                .open_window(options, |_, cx| cx.new(|cx| Player::new(video, bench, cx)))
+                .map(|_| ()),
+            None => cx
+                .open_window(options, |window, cx| {
+                    window.set_window_title("KINO");
+                    cx.new(|cx| Kino::new(bench, cx))
+                })
+                .map(|_| ()),
+        };
+        opened.expect("KINO's window");
         cx.activate(true);
     });
 }

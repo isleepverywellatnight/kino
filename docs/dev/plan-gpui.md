@@ -48,3 +48,25 @@ serveur Rust ; le navigateur du téléphone n'a pas d'autre choix.
 - **Accessibilité** : gpui n'expose pas encore tout aux lecteurs d'écran.
 - **Durée** : plusieurs mois pour G1–G5. Les correctifs urgents continuent sur
   la version web jusqu'à G6.
+
+## État de G0
+
+- **Fenêtre et grille** (fait) : fenêtre sans cadre avec la barre KINO, grille
+  virtualisée de 300 affiches décodées hors du fil principal. Défilement
+  automatique à 4 000 px/s mesuré en CI :
+
+  | Runner | Images | Médiane | p95 | > 33 ms |
+  |---|---|---|---|---|
+  | macOS 15 (vraie puce graphique) | 462 | 16,7 ms (60 i/s) | 19,5 ms | 4 |
+  | Windows (rendu logiciel WARP, sans GPU) | 358 | 21,5 ms | 40,8 ms | 29 |
+  | Linux (Vulkan logiciel lavapipe) | 229 | 32 ms | 32 ms | 2 |
+
+  Seul le Mac a une vraie puce graphique : il tient 60 images/s. Les deux autres
+  mesurent un GPU émulé par le processeur, pas gpui.
+- **Vidéo sous les contrôles gpui** (fait, voie universelle) : le rendu
+  logiciel de libmpv dessine chaque image en mémoire, gpui l'affiche sous ses
+  contrôles (`crates/kino-ui/src/video.rs`, même code sur les 3 systèmes). La CI
+  lit une mire 1080p avec les libmpv publiées par KINO et garde une capture.
+- **Reste** : les voies natives, plus économes en processeur (fenêtre enfant
+  mpv sous gpui transparent sous Windows, vue OpenGL sous la vue Metal sur
+  macOS), mesurées contre la voie universelle ; CPU au repos.

@@ -12,6 +12,7 @@ license = "MIT"
 gpui = "=0.2.2"
 image = { version = "0.25", default-features = false, features = ["jpeg"] }
 serde_json = "1"
+libloading = "0.8"
 
 [profile.release]
 debug = false

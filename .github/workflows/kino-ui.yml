@@ -1,6 +1,8 @@
 # KINO's native interface (crates/kino-ui, gpui), phase G0 of docs/dev/plan-gpui.md:
 # it builds on macOS, Windows and Linux, opens its window and scrolls a grid of
-# 300 posters by itself (--bench), printing each system's frame times.
+# 300 posters by itself (--bench), printing each system's frame times; then it
+# plays a 1080p test pattern with libmpv under gpui's controls (--video --bench)
+# and keeps a screenshot of it.
 name: Native UI (gpui)
 
 on:
@@ -37,7 +39,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libxkbcommon-x11-dev libxcb1-dev libfontconfig1-dev libfreetype-dev \
-            libwayland-dev libvulkan1 mesa-vulkan-drivers xvfb openbox
+            libwayland-dev libvulkan1 mesa-vulkan-drivers xvfb openbox libmpv2 imagemagick
+      - name: libmpv (the builds KINO ships)
+        if: runner.os != 'Linux'
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then
+            brew install --cask iina
+            tools/vendor_libmpv.sh
+            echo "KINO_LIBMPV=$PWD/vendor/libmpv/libmpv.2.dylib" >> "$GITHUB_ENV"
+          else
+            pwsh tools/fetch_mpv_windows.ps1
+            echo "KINO_LIBMPV=$PWD/vendor/libmpv-windows/libmpv-2.dll" >> "$GITHUB_ENV"
+          fi
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: crates/kino-ui
@@ -57,3 +70,34 @@ jobs:
           out=$("$exe" --bench | tee /dev/stderr | grep "KINO-UI BENCH" || true)
           [ -n "$out" ] || { echo "::error::The bench printed nothing (the window did not run)"; exit 1; }
           echo "::notice title=${{ matrix.os }}::${out#KINO-UI BENCH }"
+      - name: Video under gpui's controls
+        working-directory: crates/kino-ui
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then export DISPLAY=:99; fi
+          exe=target/release/kino-ui
+          [ "$RUNNER_OS" = Windows ] && exe=target/release/kino-ui.exe
+          "$exe" --video --bench > video.log 2>&1 &
+          sleep 5
+          case "$RUNNER_OS" in
+            Linux) import -window root video.png ;;
+            macOS) screencapture -x video.png || true ;;
+            Windows) pwsh -NoProfile -Command '
+              Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+              $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+              $p = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+              [System.Drawing.Graphics]::FromImage($p).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+              $p.Save("video.png")' ;;
+          esac
+          wait || true
+          cat video.log
+          out=$(grep "KINO-UI VIDEO {" video.log || true)
+          [ -n "$out" ] || { echo "::error::The player printed nothing"; exit 1; }
+          frames=$(echo "${out#KINO-UI VIDEO }" | $(command -v python3 || command -v python) -c "import json,sys; print(json.load(sys.stdin)['video_frames'])")
+          [ "$frames" -ge 60 ] || { echo "::error::Only $frames video frames reached the screen"; exit 1; }
+          echo "::notice title=video ${{ matrix.os }}::${out#KINO-UI VIDEO }"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: video-${{ matrix.os }}
+          path: crates/kino-ui/video.png
+          if-no-files-found: ignore
