@@ -6,7 +6,7 @@ Estas etapas são para o desenvolvimento. Para usar o KINO, basta baixá-lo (vej
 
 ## Publicar uma versão
 
-Mude `version` em `Cargo.toml` ([workspace.package]) e faça push na `main`: só isso. Quando a versão da `main` ainda não tem release, o GitHub Actions (`.github/workflows/build.yml`) compila os três aplicativos, testa, publica a release com a tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Windows-arm64.exe`, `KINO-Linux-x86_64.AppImage`, `SHA256SUMS.txt`) e depois a reinstala num Mac e num Windows limpos com os comandos do README.
+Mude `version` em `Cargo.toml` ([workspace.package]) e faça push na `main`: só isso. Quando a versão da `main` ainda não tem release, o GitHub Actions (`.github/workflows/build.yml`) compila os três aplicativos, testa, publica a release com a tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Windows-arm64.exe`, `KINO-Linux-x86_64.AppImage`, `KINO-Linux-x86_64.flatpak`, `SHA256SUMS.txt`) e depois a reinstala num Mac e num Windows limpos com os comandos do README.
 
 Para que o KINO instale sozinho as novas versões, a CI assina as atualizações com o secret `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables → Actions): o conteúdo da chave privada criada por `cargo run -p kino --bin kino-release -- --init-key`, cuja parte pública é `assets/update_public_key.hex`. Sem esse secret, o KINO anuncia a nova versão e oferece o download.
 
@@ -58,6 +58,8 @@ cargo build --release --locked -p kino-desktop
 packaging/build_linux_appimage.sh                     # dist/KINO-Linux-x86_64.AppImage
 tools/linux_appimage_test.sh                          # autoverificação, inicialização e vídeo, numa tela virtual
 ```
+
+O Flatpak (`KINO-Linux-x86_64.flatpak`, runtime do GNOME) empacota a mesma compilação: `tools/fetch_ffmpeg.sh` e depois `packaging/build_flatpak.sh` (requer `flatpak`, `flatpak-builder` e o Flathub como remoto de usuário).
 
 Um aplicativo compilado verifica o próprio conteúdo com `--self-check`.
 

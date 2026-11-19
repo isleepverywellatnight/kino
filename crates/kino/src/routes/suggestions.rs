@@ -135,10 +135,11 @@ async fn for_you(State(s): State<Shared>, Query(p): Query<HashMap<String, String
     };
     let count = space.entries.len();
     // The ranking takes milliseconds of computing: off the threads that answer requests.
-    let items =
+    let mut items =
         crate::db::spawn_blocking(move || recommender::for_you(&space, &signals, &known, kind, 20))
             .await
             .unwrap_or_default();
+    crate::anime_home::mark_anime(&s.db, &mut items);
     Json(json!({"ready": true, "items": items, "pool": count})).into_response()
 }
 
@@ -191,16 +192,18 @@ async fn related(State(s): State<Shared>, Query(p): Query<HashMap<String, String
         .unwrap_or_default();
     let key = cfg.tmdb_key().to_string();
     if !key.is_empty()
-        && let Ok(items) = tmdb_related(&s.meta, &imdb_id, kind, &key).await
+        && let Ok(mut items) = tmdb_related(&s.meta, &imdb_id, kind, &key).await
         && items.len() >= 4
     {
+        crate::anime_home::mark_anime(&s.db, &mut items);
         return Json(json!({"source": "tmdb", "items": items})).into_response();
     }
-    let items = kino_related(&s, &imdb_id, kind).await;
+    let mut items = kino_related(&s, &imdb_id, kind).await;
+    crate::anime_home::mark_anime(&s.db, &mut items);
     if items.len() >= 4 {
         return Json(json!({"source": "kino", "items": items})).into_response();
     }
-    let similar = s
+    let mut similar = s
         .meta
         .media(&imdb_id, kind)
         .await
@@ -208,6 +211,9 @@ async fn related(State(s): State<Shared>, Query(p): Query<HashMap<String, String
         .map(|m| m["similar"].clone())
         .filter(|v| v.is_array())
         .unwrap_or(json!([]));
+    if let Some(items) = similar.as_array_mut() {
+        crate::anime_home::mark_anime(&s.db, items);
+    }
     Json(json!({"source": "genres", "items": similar})).into_response()
 }
 
