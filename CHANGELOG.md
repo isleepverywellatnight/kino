@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.2.1
+
+- Fast scrolling no longer freezes KINO, and the page no longer lags. Each
+  poster still loading shimmered without end, and posters below the screen
+  load only when shown: hundreds shimmered all the time, and kept the page
+  busy even when nothing moved (a fifth of its time). They are now a still
+  grey. The « + » button of each card no longer blurs what is behind it, and
+  cards ignore the cursor while the page scrolls.
+- Windows: the player no longer vanishes for a moment as it starts. The page
+  turned transparent before the video was there; it now waits for it.
+
 ## 2.2.0
 
 - Windows on ARM: KINO comes built for ARM64 (KINO-Windows-arm64.exe), with

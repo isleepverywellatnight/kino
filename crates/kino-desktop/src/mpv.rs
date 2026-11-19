@@ -235,6 +235,10 @@ impl Drop for Mpv {
 /// What the window's event loop does for the controller, on the main thread.
 pub enum MainCall {
     Open(Arc<Mpv>, String, mpsc::Sender<Result<(), String>>),
+    /// Windows: the player's video is up, the page may let it show through
+    /// (macOS draws in its own view under the page from the start).
+    #[cfg(windows)]
+    Reveal(Arc<Mpv>),
     Close(mpsc::Sender<()>),
 }
 
@@ -250,8 +254,11 @@ struct Playing {
     subtitle_dir: Option<tempfile::TempDir>,
 }
 
+/// How the controller reaches the main thread.
+type ToMain = Arc<Mutex<Box<dyn Fn(MainCall) + Send>>>;
+
 pub struct Controller {
-    to_main: Mutex<Box<dyn Fn(MainCall) + Send>>,
+    to_main: ToMain,
     window_options: WindowOptions,
     playing: Mutex<Playing>,
 }
@@ -259,7 +266,7 @@ pub struct Controller {
 impl Controller {
     pub fn new(to_main: Box<dyn Fn(MainCall) + Send>, window_options: WindowOptions) -> Self {
         Self {
-            to_main: Mutex::new(to_main),
+            to_main: Arc::new(Mutex::new(to_main)),
             window_options,
             playing: Mutex::default(),
         }
@@ -267,6 +274,27 @@ impl Controller {
 
     fn main(&self, call: MainCall) {
         (self.to_main.lock().unwrap_or_else(|e| e.into_inner()))(call);
+    }
+
+    /// Once mpv shows the video (its output is configured), the main thread
+    /// reveals it; a player closed before, or a file without video, never is.
+    #[cfg(windows)]
+    fn reveal_when_shown(&self, player: &Arc<Mpv>) {
+        let to_main = self.to_main.clone();
+        let player = Arc::downgrade(player);
+        std::thread::spawn(move || {
+            let start = std::time::Instant::now();
+            while start.elapsed() < Duration::from_secs(30) {
+                std::thread::sleep(Duration::from_millis(40));
+                let Some(player) = player.upgrade() else {
+                    return;
+                };
+                if player.get_flag("vo-configured") == Some(true) {
+                    (to_main.lock().unwrap_or_else(|e| e.into_inner()))(MainCall::Reveal(player));
+                    return;
+                }
+            }
+        });
     }
 
     fn close_playing(&self, playing: &mut Playing) {
@@ -342,6 +370,8 @@ impl kino::native::NativePlayer for Controller {
         self.main(MainCall::Open(player.clone(), path.to_string(), tx));
         rx.recv_timeout(Duration::from_secs(10))
             .map_err(|_| "main thread".to_string())??;
+        #[cfg(windows)]
+        self.reveal_when_shown(&player);
         playing.player = Some(player);
         playing.path = path.to_string();
         Ok(Self::state_of(&mut playing))

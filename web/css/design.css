@@ -1677,10 +1677,17 @@ select.inapp-btn.kp-select option { background: #1b1b1b; color: #fafafa; }
 
 /* Livelier catalogue cards: grey placeholder until the poster arrives, a preview
    on hover or keyboard focus, progress drawn on the poster. */
-.poster-art { position: relative; width: 100%; aspect-ratio: 2 / 3; overflow: hidden;
+/* A poster not loaded yet is a still grey: a shimmer on every card kept the page
+   busy all the time (lazy posters off screen never load), and fast scrolling froze. */
+.poster-art { position: relative; width: 100%; aspect-ratio: 2 / 3; overflow: hidden; background: #1d1d1d; }
+/* While the page scrolls (app-start.js), cards ignore the cursor: no hover to
+   recompute for each card passing under it. */
+html.is-scrolling .poster-card, html.is-scrolling .resume-card, html.is-scrolling .card,
+html.is-scrolling .manga-card, html.is-scrolling .anime-card { pointer-events: none; }
+/* Only the few grey cards shown while a grid loads shimmer, and they are replaced. */
+.poster-card.is-skeleton .poster-art {
   background: linear-gradient(100deg, #1d1d1d 30%, #292929 50%, #1d1d1d 70%); background-size: 220% 100%;
   animation: posterShimmer 1.4s ease-in-out infinite; }
-.poster-art:has(img.is-loaded) { animation: none; background: #1d1d1d; }
 .poster-art img { opacity: 0; transition: opacity .35s ease, filter .25s; }
 .poster-art img.is-loaded { opacity: 1; }
 @keyframes posterShimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
@@ -2109,9 +2116,8 @@ body {
   height: 30px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, .22);
-  background: rgba(9, 9, 11, .62);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  /* No backdrop blur: one per card made every scrolled frame recompute them all. */
+  background: rgba(9, 9, 11, .78);
   color: var(--k-text);
   font-size: .95rem;
   opacity: 0;
