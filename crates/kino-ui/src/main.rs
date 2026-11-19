@@ -14,13 +14,32 @@
 
 use std::sync::{Arc, Mutex};
 
+#[cfg(windows)]
+mod native;
 mod video;
+
+/// Processor time this process has used, in ms.
+fn cpu_ms() -> f64 {
+    #[cfg(windows)]
+    {
+        native::cpu_ms()
+    }
+    #[cfg(unix)]
+    {
+        // SAFETY: getrusage fills the struct it is given.
+        let mut usage: libc::rusage = unsafe { std::mem::zeroed() };
+        unsafe { libc::getrusage(libc::RUSAGE_SELF, &mut usage) };
+        let ms = |t: libc::timeval| t.tv_sec as f64 * 1000.0 + t.tv_usec as f64 / 1000.0;
+        ms(usage.ru_utime) + ms(usage.ru_stime)
+    }
+}
 use std::time::{Duration, Instant};
 
 use gpui::{
     App, Application, Bounds, Context, Image, ImageFormat, MouseButton, MouseDownEvent, ObjectFit,
-    RenderImage, SharedString, StyledImage, UniformListScrollHandle, Window, WindowBounds,
-    WindowDecorations, WindowOptions, div, img, point, prelude::*, px, rgb, size, uniform_list,
+    RenderImage, SharedString, StyledImage, UniformListScrollHandle, Window,
+    WindowBackgroundAppearance, WindowBounds, WindowDecorations, WindowOptions, div, img, point,
+    prelude::*, px, rgb, size, uniform_list,
 };
 
 const POSTERS: usize = 300;
@@ -45,6 +64,7 @@ struct Bench {
     started: Instant,
     last: Option<Instant>,
     frames: Vec<f64>,
+    cpu_start: f64,
 }
 
 impl Bench {
@@ -53,6 +73,7 @@ impl Bench {
             started: Instant::now(),
             last: None,
             frames: Vec::new(),
+            cpu_start: cpu_ms(),
         }
     }
 
@@ -82,6 +103,9 @@ impl Bench {
             "p95_ms": (at(0.95) * 10.0).round() / 10.0,
             "longest_ms": (frames.last().copied().unwrap_or(0.0) * 10.0).round() / 10.0,
             "over_33ms": frames.iter().filter(|f| **f > 33.4).count(),
+            // Processor use over the run, as a share of one core.
+            "cpu_pct": ((cpu_ms() - self.cpu_start)
+                / (self.started.elapsed().as_secs_f64() * 1000.0) * 1000.0).round() / 10.0,
         })
         .to_string()
     }
@@ -300,12 +324,56 @@ struct Player {
     /// Time to draw each frame in memory, in ms (`--bench`).
     draws: Vec<f64>,
     bench: Option<Bench>,
+    /// The native path (Windows): KINO's window and the child mpv draws in.
+    host: Option<(isize, isize)>,
+    /// `--bench --native`: whether a real click on the play button, over
+    /// mpv's window, reached gpui (pause state before the click).
+    click: Option<(bool, Option<bool>)>,
+    /// `--bench --native`: what Windows found under the click, and whether
+    /// gpui saw the button pressed.
+    probe: Option<String>,
+    pressed: bool,
+    /// KINO's window (Windows), for the bench's click on either path.
+    parent: Option<isize>,
+    /// Where gpui saw the last press anywhere in the window (`--bench`).
+    root_press: Option<(f32, f32)>,
 }
 
 impl Player {
-    fn new(video: video::Video, bench: bool, cx: &mut Context<Self>) -> Self {
+    fn new(
+        video: video::Video,
+        host: Option<(isize, isize)>,
+        bench: bool,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let video = Arc::new(Mutex::new(video));
         let shared = video.clone();
+        if host.is_some() {
+            // mpv draws by itself: gpui only refreshes its controls.
+            cx.spawn(async move |this, cx| {
+                loop {
+                    cx.background_executor()
+                        .timer(Duration::from_millis(250))
+                        .await;
+                    if this.update(cx, |_, cx| cx.notify()).is_err() {
+                        return;
+                    }
+                }
+            })
+            .detach();
+            return Self {
+                video,
+                frame: None,
+                draws: Vec::new(),
+                bench: bench.then(Bench::new),
+                host,
+                click: None,
+                probe: None,
+                pressed: false,
+                parent: None,
+                root_press: None,
+            };
+        }
         // mpv says when a frame is ready; it is drawn off the main thread.
         cx.spawn(async move |this, cx| {
             loop {
@@ -342,6 +410,12 @@ impl Player {
             frame: None,
             draws: Vec::new(),
             bench: bench.then(Bench::new),
+            host: None,
+            click: None,
+            probe: None,
+            pressed: false,
+            parent: None,
+            root_press: None,
         }
     }
 
@@ -349,7 +423,40 @@ impl Player {
         let Some(bench) = self.bench.as_mut() else {
             return;
         };
-        if bench.tick() >= BENCH_LEG * 2 {
+        let elapsed = bench.tick();
+        #[cfg(windows)]
+        if let Some(parent) = self.parent {
+            // At 3 s, a real click on the play button; at 4.5 s, its effect.
+            let paused = self.video.lock().map(|v| v.paused()).unwrap_or(false);
+            match self.click {
+                None if elapsed >= Duration::from_secs(3) => {
+                    let scale = window.scale_factor();
+                    let height = f32::from(window.viewport_size().height);
+                    let (x, y) = (44.0 * scale, (height - 36.0) * scale);
+                    self.click = Some((paused, None));
+                    if let Some((_, host)) = self.host {
+                        self.probe = Some(native::probe(parent, host, x as i32, y as i32));
+                    }
+                    self.probe = Some(format!(
+                        "{} target=({x},{y}) viewport={:?} scale={scale}",
+                        self.probe.take().unwrap_or_default(),
+                        window.viewport_size()
+                    ));
+                    native::click(parent, x as i32, y as i32);
+                }
+                Some((before, None)) if elapsed >= Duration::from_millis(4500) => {
+                    self.click = Some((before, Some(paused != before)));
+                    // The run goes on playing.
+                    if paused {
+                        if let Ok(video) = self.video.lock() {
+                            video.set_paused(false);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        if elapsed >= BENCH_LEG * 2 {
             let mut draws = self.draws.clone();
             draws.sort_by(f64::total_cmp);
             let at = |q: f64| {
@@ -362,6 +469,22 @@ impl Player {
             report["video_frames"] = self.draws.len().into();
             report["draw_p50_ms"] = at(0.5).into();
             report["draw_p95_ms"] = at(0.95).into();
+            if self.parent.is_some() {
+                report["click_reached_controls"] =
+                    self.click.and_then(|(_, reached)| reached).into();
+                report["click_probe"] = self.probe.clone().into();
+                report["press_seen"] = self.pressed.into();
+                report["root_press"] = format!("{:?}", self.root_press).into();
+            }
+            if self.host.is_some() {
+                let video = self.video.lock().ok();
+                let count = |name| video.as_ref().and_then(|v| v.count(name));
+                report["path"] = "native".into();
+                report["video_dropped"] = count("frame-drop-count").into();
+                report["decoder_dropped"] = count("decoder-frame-drop-count").into();
+            } else {
+                report["path"] = "software".into();
+            }
             println!("KINO-UI VIDEO {report}");
             cx.quit();
             return;
@@ -427,6 +550,10 @@ impl Player {
                             .bg(gpui::rgba(0xffffff26))
                             .hover(|style| style.bg(gpui::rgba(0xffffff40)))
                             .child(if paused { "▶" } else { "❚❚" })
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|player, _, _, _| player.pressed = true),
+                            )
                             .on_click(cx.listener(|player, _, _, cx| {
                                 if let Ok(video) = player.video.lock() {
                                     video.set_paused(!video.paused());
@@ -451,7 +578,19 @@ impl Player {
 impl Render for Player {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.bench_frame(window, cx);
-        let picture = div().size_full().bg(gpui::black());
+        #[cfg(windows)]
+        if let Some((parent, host)) = self.host {
+            // mpv's window sits under the area below the bar.
+            native::place_host(parent, host, (44.0 * window.scale_factor()).round() as i32);
+        }
+        // On the native path the picture's area stays transparent: mpv's
+        // window shows through it.
+        let picture = div().size_full();
+        let picture = if self.host.is_some() {
+            picture
+        } else {
+            picture.bg(gpui::black())
+        };
         let picture = match &self.frame {
             Some(frame) => picture.child(
                 img(frame.clone())
@@ -460,31 +599,38 @@ impl Render for Player {
             ),
             None => picture,
         };
-        div()
+        let root = div()
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(BACKGROUND))
             .text_color(rgb(TEXT))
-            .child(bar())
-            .child(
-                div()
-                    .relative()
-                    .flex_grow()
-                    .child(picture)
-                    .child(
-                        div()
-                            .absolute()
-                            .top_4()
-                            .left_6()
-                            .px_3()
-                            .py_1()
-                            .rounded_md()
-                            .bg(gpui::rgba(0x000000b0))
-                            .child("KINO test pattern"),
-                    )
-                    .child(self.controls(cx)),
-            )
+            .capture_any_mouse_down(cx.listener(|player, event: &MouseDownEvent, _, _| {
+                player.root_press =
+                    Some((f32::from(event.position.x), f32::from(event.position.y)));
+            }));
+        let root = if self.host.is_some() {
+            root
+        } else {
+            root.bg(rgb(BACKGROUND))
+        };
+        root.child(bar()).child(
+            div()
+                .relative()
+                .flex_grow()
+                .child(picture)
+                .child(
+                    div()
+                        .absolute()
+                        .top_4()
+                        .left_6()
+                        .px_3()
+                        .py_1()
+                        .rounded_md()
+                        .bg(gpui::rgba(0x000000b0))
+                        .child("KINO test pattern"),
+                )
+                .child(self.controls(cx)),
+        )
     }
 }
 
@@ -497,31 +643,59 @@ fn main() {
             .cloned()
             .unwrap_or_else(|| TEST_PATTERN.to_string())
     });
-    // The test pattern loops; a bench run makes no sound.
-    let video = video.map(|source| {
-        let mut options = vec![("loop-file", "inf")];
-        if bench {
-            options.push(("ao", "null"));
-        }
-        video::Video::open(&source, &options).unwrap_or_else(|error| {
-            eprintln!("KINO-UI VIDEO ERROR {error}");
-            std::process::exit(2);
-        })
-    });
+    let native = args.iter().any(|a| a == "--native");
+    if native && !cfg!(windows) {
+        eprintln!("KINO-UI VIDEO ERROR --native is for Windows");
+        std::process::exit(2);
+    }
     Application::new().run(move |cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(1180.0), px(760.0)), cx);
+        // 1180×760, or less on a smaller screen: the whole window stays on it.
+        let screen = cx
+            .primary_display()
+            .map(|display| display.bounds().size)
+            .unwrap_or(size(px(1280.0), px(800.0)));
+        let fit = |wanted: f32, room: gpui::Pixels| px(wanted.min(f32::from(room) - 48.0));
+        let bounds = Bounds::centered(
+            None,
+            size(fit(1180.0, screen.width), fit(760.0, screen.height)),
+            cx,
+        );
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
             titlebar: None,
             window_decorations: Some(WindowDecorations::Client),
             app_id: Some("kino".into()),
             window_min_size: Some(size(px(640.0), px(420.0))),
+            // The native path shows mpv's window through gpui's surface.
+            window_background: if native {
+                WindowBackgroundAppearance::Transparent
+            } else {
+                WindowBackgroundAppearance::Opaque
+            },
             ..Default::default()
         };
-        let mut video = video;
-        let opened = match video.take() {
-            Some(video) => cx
-                .open_window(options, |_, cx| cx.new(|cx| Player::new(video, bench, cx)))
+        let opened = match video.clone() {
+            Some(source) => cx
+                .open_window(options, |window, cx| {
+                    window.set_window_title("KINO");
+                    let host = if native { native_host(window) } else { None };
+                    // The test pattern loops; a bench run makes no sound.
+                    let mut settings = vec![("loop-file", "inf")];
+                    if bench {
+                        settings.push(("ao", "null"));
+                    }
+                    let video = video::Video::open(&source, &settings, host.map(|(_, h)| h))
+                        .unwrap_or_else(|error| {
+                            eprintln!("KINO-UI VIDEO ERROR {error}");
+                            std::process::exit(2);
+                        });
+                    let parent = window_hwnd(window);
+                    cx.new(|cx| {
+                        let mut player = Player::new(video, host, bench, cx);
+                        player.parent = parent;
+                        player
+                    })
+                })
                 .map(|_| ()),
             None => cx
                 .open_window(options, |window, cx| {
@@ -533,4 +707,31 @@ fn main() {
         opened.expect("KINO's window");
         cx.activate(true);
     });
+}
+
+/// KINO's window handle (Windows).
+#[cfg(windows)]
+fn window_hwnd(window: &Window) -> Option<isize> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    match HasWindowHandle::window_handle(window).ok()?.as_raw() {
+        RawWindowHandle::Win32(handle) => Some(handle.hwnd.get()),
+        _ => None,
+    }
+}
+
+#[cfg(not(windows))]
+fn window_hwnd(_: &Window) -> Option<isize> {
+    None
+}
+
+/// KINO's window and the child window mpv draws in (Windows).
+#[cfg(windows)]
+fn native_host(window: &Window) -> Option<(isize, isize)> {
+    let parent = window_hwnd(window)?;
+    native::create_host(parent).map(|host| (parent, host))
+}
+
+#[cfg(not(windows))]
+fn native_host(_: &Window) -> Option<(isize, isize)> {
+    None
 }

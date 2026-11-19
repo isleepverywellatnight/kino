@@ -2740,8 +2740,11 @@ version = "0.1.0"
 dependencies = [
  "gpui",
  "image",
+ "libc",
  "libloading",
+ "raw-window-handle",
  "serde_json",
+ "windows 0.61.3",
 ]
 
 [[package]]

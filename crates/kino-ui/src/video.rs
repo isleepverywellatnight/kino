@@ -146,7 +146,13 @@ unsafe impl Send for Video {}
 unsafe impl Sync for Video {}
 
 impl Video {
-    pub fn open(source: &str, options: &[(&str, &str)]) -> Result<Self, String> {
+    /// Opens `source`. With `window` (a native window's handle), mpv draws in
+    /// it with the GPU (`native.rs`); without, frames come through `frame`.
+    pub fn open(
+        source: &str,
+        options: &[(&str, &str)],
+        window: Option<isize>,
+    ) -> Result<Self, String> {
         let lib = load()?;
         // SAFETY: each call follows libmpv's client and render API.
         unsafe {
@@ -154,15 +160,28 @@ impl Video {
             if handle.is_null() {
                 return Err("mpv_create failed".into());
             }
-            for (name, value) in [("vo", "libmpv"), ("hwdec", "auto-copy-safe")]
-                .iter()
-                .chain(options)
-            {
+            let wid = window.map(|w| w.to_string());
+            let base: Vec<(&str, &str)> = match &wid {
+                Some(wid) => vec![("wid", wid), ("hwdec", "auto-safe")],
+                None => vec![("vo", "libmpv"), ("hwdec", "auto-copy-safe")],
+            };
+            for (name, value) in base.iter().chain(options) {
                 (lib.set_option_string)(handle, c(name).as_ptr(), c(value).as_ptr());
             }
             if (lib.initialize)(handle) < 0 {
                 (lib.terminate_destroy)(handle);
                 return Err("mpv_initialize failed".into());
+            }
+            let ready = Arc::new(AtomicBool::new(false));
+            if window.is_some() {
+                let video = Self {
+                    lib,
+                    handle,
+                    render: std::ptr::null_mut(),
+                    ready,
+                };
+                video.command(&["loadfile", source])?;
+                return Ok(video);
             }
             let api = c("sw");
             let mut params = [
@@ -180,7 +199,6 @@ impl Video {
                 (lib.terminate_destroy)(handle);
                 return Err("this libmpv has no software renderer".into());
             }
-            let ready = Arc::new(AtomicBool::new(false));
             (lib.render_set_update_callback)(
                 render,
                 frame_ready,
@@ -227,6 +245,10 @@ impl Video {
         self.property::<f64>(name, FORMAT_DOUBLE)
     }
 
+    pub fn count(&self, name: &str) -> Option<i64> {
+        self.property::<i64>(name, FORMAT_INT64)
+    }
+
     pub fn paused(&self) -> bool {
         self.property::<c_int>("pause", FORMAT_FLAG).unwrap_or(0) != 0
     }
@@ -261,7 +283,7 @@ impl Video {
 
     /// The next frame, if mpv has one: drawn into memory, ready for gpui.
     pub fn frame(&mut self) -> Option<RenderImage> {
-        if !self.ready.swap(false, Ordering::Acquire) {
+        if self.render.is_null() || !self.ready.swap(false, Ordering::Acquire) {
             return None;
         }
         // SAFETY: called after mpv's update callback, as the render API asks.
@@ -313,7 +335,9 @@ impl Drop for Video {
     fn drop(&mut self) {
         // SAFETY: the render context goes before the player, as libmpv asks.
         unsafe {
-            (self.lib.render_free)(self.render);
+            if !self.render.is_null() {
+                (self.lib.render_free)(self.render);
+            }
             (self.lib.terminate_destroy)(self.handle);
         }
     }
