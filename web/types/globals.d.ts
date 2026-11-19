@@ -15,8 +15,8 @@ declare const QRCode: any;
 declare const Peer: any;
 
 interface Window {
-  /** The desktop app's bridge (crates/kino-desktop/src/bridge.rs). */
-  pywebview?: { api: Record<string, (...args: unknown[]) => Promise<any>> };
+  /** The desktop app's bridge (web/types/bridge.d.ts). */
+  pywebview?: { api: KinoBridge; platform: string };
   KINO_I18N: typeof KINO_I18N;
   KINO_LANG: string;
   KINO_LOCALE: string;
