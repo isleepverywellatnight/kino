@@ -46,7 +46,7 @@ function showPlaybackHelp(kind) {
       playbackHelpStatus('Son réactivé à 70 %. Vérifiez aussi le volume et la sortie audio de macOS.');
     });
     if (inAppAudioTracks.length) {
-      const label = document.createElement('label'); label.textContent = 'Piste audio ';
+      const label = document.createElement('label'); label.textContent = KINO_I18N.t('page.piste_audio');
       const select = document.createElement('select'); select.className = 'inapp-btn';
       inAppAudioTracks.forEach((track, index) => {
         const option = document.createElement('option'); option.value = track.index;

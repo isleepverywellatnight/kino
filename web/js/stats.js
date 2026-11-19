@@ -61,7 +61,7 @@ function statsMonthsChart(months) {
         <span class="stats-col-label" aria-hidden="true">${label.short}</span>
       </div>`;
   });
-  const table = html`<table class="sr-only"><caption>Titres ouverts par mois</caption><tr><th>Mois</th><th>Titres</th></tr>${
+  const table = html`<table class="sr-only"><caption>${KINO_I18N.t('stats.titres_ouverts_par_mois')}</caption><tr><th>${KINO_I18N.t('stats.mois')}</th><th>${KINO_I18N.t('fiche.titres')}</th></tr>${
     months.map(month => html`<tr><td>${name(month.month).long}</td><td>${month.count}</td></tr>`)}</table>`;
   return html`<div class="stats-columns">${columns}</div>${table}`;
 }
@@ -71,7 +71,7 @@ function statsHtml(stats) {
   const series = stats.series || {};
   const seen = Number(stats.titles_seen || 0);
   if (!seen && !films.started && !series.total) {
-    return html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>Rien à compter pour l’instant</h3><p>Vos statistiques apparaîtront après vos premiers films et épisodes.</p><button class="btn" ${act('switchTab', 'movies')}>Découvrir les films</button></div>`;
+    return html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>${KINO_I18N.t('stats.rien_a_compter_pour_l_instant')}</h3><p>${KINO_I18N.t('stats.vos_statistiques_apparaitront_apres_vos')}</p><button class="btn" ${act('switchTab', 'movies')}>${KINO_I18N.t('home.decouvrir_les_films')}</button></div>`;
   }
   const time = statsDuration(stats.watch_seconds);
   const filmDetail = [films.imported ? `dont ${films.imported} importé${films.imported > 1 ? 's' : ''}` : '', films.started ? `${films.started} en cours` : ''].filter(Boolean).join(' · ');
@@ -89,29 +89,29 @@ function statsHtml(stats) {
     <div class="stats-tiles">${tiles}</div>
     <div class="stats-grid">
       <section class="stats-card" aria-labelledby="statsGenresTitle">
-        <h3 id="statsGenresTitle">Genres préférés</h3>
+        <h3 id="statsGenresTitle">${KINO_I18N.t('stats.genres_preferes')}</h3>
         <p class="stats-sub">${seen ? `Sur ${statsPlural(stats.genres_known || 0, 'titre')} vu${(stats.genres_known || 0) > 1 ? 's' : ''} dont le genre est connu, sur ${seen}.` : ''}</p>
-        ${genres.length ? statsMeterList(genres, 'Genres préférés') : html`<p class="stats-empty">Pas encore de genre connu.</p>`}
+        ${genres.length ? statsMeterList(genres, 'Genres préférés') : html`<p class="stats-empty">${KINO_I18N.t('stats.pas_encore_de_genre_connu')}</p>`}
       </section>
       <section class="stats-card" aria-labelledby="statsMonthsTitle">
-        <h3 id="statsMonthsTitle">Titres ouverts par mois</h3>
-        <p class="stats-sub">Les 12 derniers mois, d’après la dernière lecture de chaque titre.</p>
+        <h3 id="statsMonthsTitle">${KINO_I18N.t('stats.titres_ouverts_par_mois')}</h3>
+        <p class="stats-sub">${KINO_I18N.t('stats.les_12_derniers_mois_d_apres_la_derniere')}</p>
         ${statsMonthsChart(stats.months || [])}
       </section>
       <section class="stats-card" aria-labelledby="statsDecadesTitle">
-        <h3 id="statsDecadesTitle">Époques des titres vus</h3>
-        <p class="stats-sub">Par décennie de sortie.</p>
-        ${decades.length ? statsMeterList(decades, 'Époques des titres vus') : html`<p class="stats-empty">Pas encore d’année connue.</p>`}
+        <h3 id="statsDecadesTitle">${KINO_I18N.t('stats.epoques_des_titres_vus')}</h3>
+        <p class="stats-sub">${KINO_I18N.t('stats.par_decennie_de_sortie')}</p>
+        ${decades.length ? statsMeterList(decades, 'Époques des titres vus') : html`<p class="stats-empty">${KINO_I18N.t('stats.pas_encore_d_annee_connue')}</p>`}
         ${oldest}
       </section>
     </div>
-    <p class="stats-note">Calculées sur ce Mac à partir de votre historique, sans rien envoyer. Les films importés comme vus comptent parmi les films vus, pas dans le temps de lecture ni dans les mois.</p>`;
+    <p class="stats-note">${KINO_I18N.t('stats.calculees_sur_ce_mac_a_partir_de_votre')}</p>`;
 }
 
 export async function loadStats() {
   const body = document.getElementById('viewingStatsBody');
   if (!body) return;
-  render(body, html`<p class="stats-empty">Calcul de vos statistiques…</p>`);
+  render(body, html`<p class="stats-empty">${KINO_I18N.t('stats.calcul_de_vos_statistiques')}</p>`);
   try {
     const stats = await api('/api/stats');
     if (activeTab === 'stats') render(body, statsHtml(stats));

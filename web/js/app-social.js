@@ -61,13 +61,13 @@ export async function checkTraktStatus() {
     
     if (res && res.authenticated) {
       if (statusEl) render(statusEl, html`<span style="color:#4ade80;">✓ Connecté (${res.username ? '@' + res.username : 'Actif'})</span>`);
-      if (connectBtn) { connectBtn.textContent = 'Déconnecter'; connectBtn.style.color = '#ef4444'; }
+      if (connectBtn) { connectBtn.textContent = KINO_I18N.t('social.deconnecter'); connectBtn.style.color = '#ef4444'; }
       if (syncBtn) syncBtn.style.display = 'inline-block';
       if (authBox) authBox.style.display = 'none';
       if (traktAuthPollTimer) { clearInterval(traktAuthPollTimer); traktAuthPollTimer = null; }
     } else {
-      if (statusEl) statusEl.textContent = 'Non connecté';
-      if (connectBtn) { connectBtn.textContent = 'Connecter'; connectBtn.style.color = ''; }
+      if (statusEl) statusEl.textContent = KINO_I18N.t('page.non_connecte');
+      if (connectBtn) { connectBtn.textContent = KINO_I18N.t('page.connecter'); connectBtn.style.color = ''; }
       if (syncBtn) syncBtn.style.display = 'none';
     }
     return Boolean(res && res.authenticated);
@@ -94,7 +94,7 @@ async function toggleTraktAuth(btn) {
   }
 
   try {
-    if (btn) { btn.disabled = true; btn.textContent = 'Connexion...'; }
+    if (btn) { btn.disabled = true; btn.textContent = KINO_I18N.t('social.connexion'); }
     const res = await api('/api/trakt/auth/start', {method: 'POST'});
     if (res && res.user_code) {
       if (codeEl) codeEl.textContent = res.user_code;
@@ -119,7 +119,7 @@ async function toggleTraktAuth(btn) {
           } else if (pollRes && (pollRes.status === 'expired' || pollRes.status === 'denied')) {
             clearInterval(traktAuthPollTimer);
             traktAuthPollTimer = null;
-            if (cdEl) cdEl.textContent = 'Code expiré ou refusé. Réessayez.';
+            if (cdEl) cdEl.textContent = KINO_I18N.t('social.code_expire_ou_refuse_reessayez');
           }
         } catch(err) {}
       }, (res.interval || 5) * 1000);
@@ -127,12 +127,12 @@ async function toggleTraktAuth(btn) {
   } catch(e) {
     alert('Erreur initialisation Trakt : ' + e.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Connecter'; }
+    if (btn) { btn.disabled = false; btn.textContent = KINO_I18N.t('page.connecter'); }
   }
 }
 
 async function triggerTraktSync(btn) {
-  if (btn) { btn.disabled = true; btn.textContent = 'Sync...'; }
+  if (btn) { btn.disabled = true; btn.textContent = KINO_I18N.t('social.sync'); }
   try {
     const res = await api('/api/trakt/sync', {method: 'POST'});
     if (res && res.success) {
@@ -144,7 +144,7 @@ async function triggerTraktSync(btn) {
   } catch(e) {
     alert('Erreur Trakt sync : ' + e.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Synchroniser'; }
+    if (btn) { btn.disabled = false; btn.textContent = KINO_I18N.t('page.synchroniser'); }
   }
 }
 
@@ -180,7 +180,7 @@ export async function openRemoteModal() {
   modal.style.display = 'flex';
   
   if (qrBox) {
-    render(qrBox, html`<div style="color:#71717a; font-size:0.8rem; margin:auto;">Génération du QR Code local...</div>`);
+    render(qrBox, html`<div style="color:#71717a; font-size:0.8rem; margin:auto;">${KINO_I18N.t('social.generation_du_qr_code_local')}</div>`);
   }
   try {
     const res = await api('/api/remote/qr');
@@ -639,13 +639,13 @@ export function closeAddonsModal() {
 async function loadAddonsList() {
   const container = document.getElementById('addonsListContainer');
   if (!container) return;
-  render(container, html`<div style="color:var(--dim); font-size:0.8rem; text-align:center; padding:20px;">Chargement des add-ons...</div>`);
+  render(container, html`<div style="color:var(--dim); font-size:0.8rem; text-align:center; padding:20px;">${KINO_I18N.t('page.chargement_des_add_ons')}</div>`);
 
   try {
     const data = await api('/api/addons');
     const addons = data.addons || [];
     if (addons.length === 0) {
-      render(container, html`<div style="color:var(--muted); font-size:0.82rem; text-align:center; padding:30px;">Aucun add-on installé. Cliquez sur "+ Installer un Add-on" pour en ajouter.</div>`);
+      render(container, html`<div style="color:var(--muted); font-size:0.82rem; text-align:center; padding:30px;">${KINO_I18N.t('social.aucun_add_on_installe_cliquez_sur')}</div>`);
       return;
     }
 
@@ -658,7 +658,7 @@ async function loadAddonsList() {
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:0.92rem; font-weight:700; color:var(--text);">${addon.name || addon.id}</span>
               <span class="badge" style="font-size:0.68rem; background:rgba(255,255,255,0.06);">${addon.version || '1.0.0'}</span>
-              ${isBuiltin ? html`<span class="badge" style="font-size:0.68rem; background:rgba(56,189,248,0.15); color:#38bdf8;">Officiel</span>` : ''}
+              ${isBuiltin ? html`<span class="badge" style="font-size:0.68rem; background:rgba(56,189,248,0.15); color:#38bdf8;">${KINO_I18N.t('social.officiel')}</span>` : ''}
               <span class="badge" style="font-size:0.68rem; background:rgba(74,222,128,0.15); color:#4ade80;">${addon.type || 'scraper'}</span>
             </div>
             <p style="color:var(--muted); font-size:0.77rem; margin:4px 0 0; line-height:1.4;">${addon.description || 'Add-on de recherche'}</p>
@@ -729,7 +729,7 @@ export async function loadCommunityTab() {
   if (!grid) return;
   openCommunityListId = null;
   communityStateFilter = 'all';
-  if (!currentCommunityLists.length) render(grid, html`<p class="list-shelf-empty">Chargement des sélections…</p>`);
+  if (!currentCommunityLists.length) render(grid, html`<p class="list-shelf-empty">${KINO_I18N.t('social.chargement_des_selections')}</p>`);
   renderCommunityPage();
   if (typeof renderAddonCatalogs === 'function') renderAddonCatalogs();
   try {
@@ -773,15 +773,15 @@ function communityShelfHtml(col) {
         <div class="list-shelf-info">
           <h3 class="list-shelf-title">${label}</h3>
           <div class="list-shelf-meta">${meta}</div>
-          <div class="list-shelf-progress" role="progressbar" aria-label="Titres vus" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.pct}"><span style="width:${progress.pct}%"></span></div>
+          <div class="list-shelf-progress" role="progressbar" aria-label="${KINO_I18N.t('letterboxd.titres_vus')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.pct}"><span style="width:${progress.pct}%"></span></div>
           ${col.description ? html`<p class="list-shelf-desc">${col.description}</p>` : ''}
         </div>
         <div class="list-shelf-actions">
-          <button type="button" class="btn" ${open}>Tout voir</button>
-          <button type="button" class="btn-surprise" ${act('surpriseMeFromCommunityList', col.id)} title="Tirer un titre non vu de cette sélection">Roulette</button>
+          <button type="button" class="btn" ${open}>${KINO_I18N.t('letterboxd.tout_voir')}</button>
+          <button type="button" class="btn-surprise" ${act('surpriseMeFromCommunityList', col.id)} title="${KINO_I18N.t('page.tirer_un_titre_non_vu_de_cette_selection')}">${KINO_I18N.t('page.roulette')}</button>
         </div>
       </div>
-      ${items.length ? html`<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie'))}${items.length > LIST_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${open}>Voir les ${items.length} titres</button>` : ''}</div>` : html`<p class="list-shelf-empty">Cette sélection est vide.</p>`}
+      ${items.length ? html`<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie'))}${items.length > LIST_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${open}>Voir les ${items.length} titres</button>` : ''}</div>` : html`<p class="list-shelf-empty">${KINO_I18N.t('social.cette_selection_est_vide')}</p>`}
     </section>`;
 }
 
@@ -789,14 +789,14 @@ function renderCommunityListsGrid(lists) {
   const grid = document.getElementById('communityListsGrid');
   if (!grid) return;
   if (!lists || lists.length === 0) {
-    render(grid, html`<p class="list-shelf-empty">Aucune sélection disponible.</p>`);
+    render(grid, html`<p class="list-shelf-empty">${KINO_I18N.t('social.aucune_selection_disponible')}</p>`);
     return;
   }
   const imported = lists.filter(col => col.imported);
   const curated = lists.filter(col => !col.imported);
   render(grid, [
-    imported.length ? html`<h2 class="explore-section-title">Vos listes Letterboxd</h2>${imported.map(communityShelfHtml)}` : '',
-    curated.length ? html`<h2 class="explore-section-title">Sélections</h2>${curated.map(communityShelfHtml)}` : '',
+    imported.length ? html`<h2 class="explore-section-title">${KINO_I18N.t('social.vos_listes_letterboxd')}</h2>${imported.map(communityShelfHtml)}` : '',
+    curated.length ? html`<h2 class="explore-section-title">${KINO_I18N.t('social.selections')}</h2>${curated.map(communityShelfHtml)}` : '',
   ]);
 }
 

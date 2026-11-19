@@ -76,7 +76,7 @@ function ratingPoster(entry) {
 
 function ratingGesturesHtml(id, current, { labels = true } = {}) {
   const chosen = ratingGesture(current);
-  return html`<div class="rate-gestures${labels ? '' : ' is-compact'}" role="group" aria-label="Votre avis">${RATING_GESTURES.map(g => {
+  return html`<div class="rate-gestures${labels ? '' : ' is-compact'}" role="group" aria-label="${KINO_I18N.t('ratings.votre_avis')}">${RATING_GESTURES.map(g => {
     const pressed = chosen === g.key;
     return html`<button type="button" class="rate-gesture is-${g.key}" data-rate-id="${id}" data-rate-value="${g.value}" aria-pressed="${pressed}" title="${pressed ? `${g.label} (cliquer pour retirer)` : g.label}"${labels ? '' : html` aria-label="${g.label}"`} ${act('rateFromButton', EVENT, THIS)}><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#${g.icon}${pressed ? '-fill' : ''}"></use></svg>${labels ? html`<span>${g.label}</span>` : ''}</button>`;
   })}</div>`;
@@ -88,14 +88,14 @@ export function ratingBadgeHtml(value) {
   if (gesture) {
     return html`<span class="poster-user-rating is-${gesture.key}" title="Votre avis : ${gesture.label}"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#${gesture.icon}-fill"></use></svg></span>`;
   }
-  return value ? html`<span class="poster-user-rating" title="Votre note">★ ${String(value)}/5</span>` : '';
+  return value ? html`<span class="poster-user-rating" title="${KINO_I18N.t('ratings.votre_note')}">★ ${String(value)}/5</span>` : '';
 }
 
 // « Votre avis » in the fiche, for a title of the history.
 export function ficheRatingHtml(mediaId, entry, value) {
   if (!entry) return value ? html`<span class="detail-chip detail-chip-strong">★ ${String(value)}/5 · Ma note</span>` : '';
   const stars = value && !ratingGesture(value) ? html`<span class="detail-chip">★ ${String(value)}/5</span>` : '';
-  return html`<span class="fiche-rating" id="ficheRating" data-rating-id="${mediaId}"><span class="fiche-rating-label">Votre avis</span>${stars}${ratingGesturesHtml(mediaId, value)}<span class="rate-status" role="status"></span></span>`;
+  return html`<span class="fiche-rating" id="ficheRating" data-rating-id="${mediaId}"><span class="fiche-rating-label">${KINO_I18N.t('ratings.votre_avis')}</span>${stars}${ratingGesturesHtml(mediaId, value)}<span class="rate-status" role="status"></span></span>`;
 }
 
 // --- Saving -------------------------------------------------------------------
@@ -190,7 +190,7 @@ export function renderHomeRate() {
   if (count) count.textContent = all.length > 1 ? `${all.length} titres · un clic par titre suffit` : 'Un clic suffit';
   render(row, all.slice(0, HOME_RATE_SIZE).map(entry => {
     const media = { id: entry.id, name: entry.name, type: kind, year: entry.year || '', poster: ratingPoster(entry) };
-    return html`<div class="foryou-item rate-item" data-rate-item="${entry.id}">${posterCardHtml(media, kind)}${ratingGesturesHtml(entry.id, '', { labels: false })}<button type="button" class="foryou-no" data-rate-id="${entry.id}" ${act('skipRating', EVENT, THIS)}>Passer</button><span class="rate-status" role="status"></span></div>`;
+    return html`<div class="foryou-item rate-item" data-rate-item="${entry.id}">${posterCardHtml(media, kind)}${ratingGesturesHtml(entry.id, '', { labels: false })}<button type="button" class="foryou-no" data-rate-id="${entry.id}" ${act('skipRating', EVENT, THIS)}>${KINO_I18N.t('ratings.passer')}</button><span class="rate-status" role="status"></span></div>`;
   }));
 }
 

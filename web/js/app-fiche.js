@@ -42,7 +42,7 @@ async function handleTorrentFileSelect(files) {
   if (box) {
     box.style.display = 'block';
     box.scrollIntoView({ behavior: 'smooth' });
-    render(box, html`<h3>Lecture du fichier ${file.name}...</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">Extraction de l'empreinte BitTorrent et débridage Cloud...</p>`);
+    render(box, html`<h3>Lecture du fichier ${file.name}...</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">${KINO_I18N.t('fiche.extraction_de_l_empreinte_bittorrent_et')}</p>`);
   }
   try {
     const buf = await file.arrayBuffer();
@@ -117,7 +117,7 @@ export function initSearchPlatformShortcuts() {
   const kbd = document.getElementById('searchKbdBadge');
   if (kbd) kbd.textContent = isMac ? '⌘K' : 'Ctrl+K';
   const inp = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
-  if (inp && !inp.value) inp.placeholder = 'Rechercher un film, une série…';
+  if (inp && !inp.value) inp.placeholder = KINO_I18N.t('page.rechercher_un_film_une_serie');
 }
 
 export function updateSearchClearBtn() {
@@ -145,9 +145,9 @@ export function toggleSearchMode() {
   const mode = /** @type {HTMLSelectElement} */ (document.getElementById('searchType')).value;
   const inp = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
   hideSearchDropdown();
-  if (mode === 'magnet') inp.placeholder = 'Coller un lien magnet:?xt=urn:btih:…';
-  else if (mode === 'raw') inp.placeholder = 'Recherche par mots-clés…';
-  else inp.placeholder = 'Rechercher un film, une série…';
+  if (mode === 'magnet') inp.placeholder = KINO_I18N.t('fiche.coller_un_lien_magnet_xt_urn_btih');
+  else if (mode === 'raw') inp.placeholder = KINO_I18N.t('fiche.recherche_par_mots_cles');
+  else inp.placeholder = KINO_I18N.t('page.rechercher_un_film_une_serie');
   updateSearchClearBtn();
 }
 
@@ -307,7 +307,7 @@ function renderSearchPanel(query, titles = []) {
   render(dd, entries.map((entry, idx) => {
     const head = entry.group === group ? ''
       : html`<div class="search-panel-group" role="presentation"><span>${entry.group}</span>${entry.kind === 'recent'
-        ? html`<button type="button" class="search-panel-clear" ${actOn('mousedown', 'kinoKeepFocus', EVENT)} ${act('forgetRecentSearches', EVENT)}>Effacer</button>` : ''}</div>`;
+        ? html`<button type="button" class="search-panel-clear" ${actOn('mousedown', 'kinoKeepFocus', EVENT)} ${act('forgetRecentSearches', EVENT)}>${KINO_I18N.t('fiche.effacer')}</button>` : ''}</div>`;
     group = entry.group;
     return [head, searchEntryHtml(entry, idx)];
   }));
@@ -549,7 +549,7 @@ function renderSearchResults() {
   const order = [...new Set(metas.map(searchKind))];
   const several = order.length > 1;
   const label = { movie: 'Films', series: 'Séries' };
-  const chips = several ? html`<div class="search-results-tools" role="group" aria-label="Type de résultat">${
+  const chips = several ? html`<div class="search-results-tools" role="group" aria-label="${KINO_I18N.t('fiche.type_de_resultat')}">${
     [['all', 'Tout'], ...order.map(kind => [kind, label[kind]])].map(([kind, text]) =>
       html`<button type="button" class="chip${lastSearch.filter === kind ? ' active' : ''}" aria-pressed="${lastSearch.filter === kind}" ${act('setSearchFilter', kind)}>${text} <span class="list-count">${counts[kind]}</span></button>`)}</div>` : '';
   const groups = lastSearch.filter === 'all' ? order : [lastSearch.filter];
@@ -657,7 +657,7 @@ export async function oneClickPlay(params, btn) {
   box.scrollIntoView({behavior: 'smooth'});
   render(box, html`
     <h3>${params.title}</h3>
-    <p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">Lancement du flux...</p>
+    <p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">${KINO_I18N.t('fiche.lancement_du_flux')}</p>
   `);
 
   try {
@@ -753,14 +753,14 @@ export async function castToTv({ stream_url, title = '', filename = '', media = 
 
 async function sendToTv(res, params, box) {
   if (!res.stream_url) {
-    if (box) render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Aucune source à envoyer à la TV.</p>`);
+    if (box) render(box, html`<p style="color:var(--muted); font-size:0.85rem;">${KINO_I18N.t('fiche.aucune_source_a_envoyer_a_la_tv')}</p>`);
     return;
   }
   const isSeries = params.type === 'series' || params.type === 'anime';
   const media = { ...(currentMedia || {}), id: params.imdb_id || currentMedia?.id, type: isSeries ? 'series' : 'movie',
     name: params.name || currentMedia?.name, poster: params.poster || currentMedia?.poster || '', year: params.year || currentMedia?.year || '',
     ...(isSeries ? { season: Number(params.season) || 1, episode: Number(params.episode) || 1 } : {}) };
-  if (box) render(box, html`<h3>${params.title}</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">Envoi à la TV…</p>`);
+  if (box) render(box, html`<h3>${params.title}</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">${KINO_I18N.t('fiche.envoi_a_la_tv')}</p>`);
   try {
     await castToTv({ stream_url: res.stream_url, title: params.title, filename: res.file?.filename || res.chosen_torrent || '',
       media, resume_sec: res.resume_sec || 0 });
@@ -839,12 +839,12 @@ function preparationHtml(prep) {
   const facts = [res.status ? `Statut : ${escapeHtml(res.status)}` : '', res.speed ? `Vitesse : ${escapeHtml(res.speed)}` : '',
     `Pairs : ${Number(res.seeders) || 0}`].filter(Boolean).join(' • ');
   const ready = prep.readyAlternative
-    ? html`<button type="button" class="btn" ${act('playReadyInstead')}>Lancer une source prête à la place</button>` : '';
+    ? html`<button type="button" class="btn" ${act('playReadyInstead')}>${KINO_I18N.t('fiche.lancer_une_source_prete_a_la_place')}</button>` : '';
   return html`<h3>Préparation de la qualité choisie : ${progress} %</h3>
     <p class="preparation-note">${prep.params.title || ''} : Debrid télécharge la source recommandée, la lecture démarre dès qu’elle est prête.</p>
     <p class="preparation-note">${facts}</p>
     <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
-    <div class="preparation-actions">${ready}<button type="button" class="btn btn-secondary" ${act('stopWaitingPreparation')}>Arrêter d’attendre</button></div>`;
+    <div class="preparation-actions">${ready}<button type="button" class="btn btn-secondary" ${act('stopWaitingPreparation')}>${KINO_I18N.t('fiche.arreter_d_attendre')}</button></div>`;
 }
 
 function renderPreparation(prep, markup) {
@@ -885,7 +885,7 @@ async function pollPreparation(prep) {
   } catch (error) {
     if (oneClickPreparation !== prep) return;
     const ready = prep.readyAlternative
-      ? html`<button type="button" class="btn" ${act('playReadyInstead')}>Lancer une source prête à la place</button>` : '';
+      ? html`<button type="button" class="btn" ${act('playReadyInstead')}>${KINO_I18N.t('fiche.lancer_une_source_prete_a_la_place')}</button>` : '';
     renderPreparation(prep, html`<p class="preparation-note">Préparation interrompue : ${error.message}</p><div class="preparation-actions">${ready}</div>`);
   }
 }
@@ -914,7 +914,7 @@ function playReadyInstead() {
 function stopWaitingPreparation() {
   const prep = oneClickPreparation;
   if (!prep) return;
-  renderPreparation(prep, html`<p class="preparation-note">Vous n’attendez plus : Debrid continue la préparation, et la source sera prête plus tard dans votre Cloud.</p>`);
+  renderPreparation(prep, html`<p class="preparation-note">${KINO_I18N.t('fiche.vous_n_attendez_plus_debrid_continue_la')}</p>`);
   stopPreparation();
 }
 
@@ -1148,8 +1148,8 @@ function buildDetailHtml(media, meta, isPreview) {
   const people = [...dirArr.slice(0, 2).map(name => ({name, role: 'Réalisation'})),
     ...castArr.map(name => ({name, role: 'Distribution'}))];
   const castHtml = people.length && !isPreview ? html`
-    <section class="detail-extra-section detail-cast" aria-label="Distribution">
-      <div class="detail-section-title">Distribution</div>
+    <section class="detail-extra-section detail-cast" aria-label="${KINO_I18N.t('fiche.distribution')}">
+      <div class="detail-section-title">${KINO_I18N.t('fiche.distribution')}</div>
       <div class="detail-cast-row">
         ${people.map(person => {
           return html`<button type="button" class="detail-person" data-person="${person.name}" ${act('openPerson', person.name)} title="Films et séries de ${person.name}">
@@ -1167,7 +1167,7 @@ function buildDetailHtml(media, meta, isPreview) {
     if (isPreview) {
       episodesHtml = html`
         <div class="detail-extra-section">
-          <div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:8px;">Épisodes</div>
+          <div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:8px;">${KINO_I18N.t('fiche.episodes')}</div>
           <div class="detail-skeleton-line" style="width:45%; margin-bottom:12px;"></div>
           <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px;">
             <div class="detail-skeleton-line" style="height:48px;"></div>
@@ -1185,21 +1185,21 @@ function buildDetailHtml(media, meta, isPreview) {
         episodesHtml = html`
           <div class="detail-extra-section detail-episodes">
             <div class="detail-season-bar">
-              <div class="detail-season-pills" role="group" aria-label="Saisons">
+              <div class="detail-season-pills" role="group" aria-label="${KINO_I18N.t('fiche.saisons')}">
                 ${seasons.map(s => html`<button class="season-pill ${s===targetSeason?'active':''}" data-season-chip="${s}" ${act('selectDetailSeason', s)}>Saison ${s}</button>`)}
               </div>
               <div class="detail-episodes-tools">
-                <div class="spoiler-series-setting"><label for="detailSpoilerChoice">Spoilers</label><select id="detailSpoilerChoice" aria-label="Protection des spoilers pour cette série" ${actOn('change', 'setSeriesSpoilerProtection', VALUE)}><option value="inherit">Réglage général</option><option value="on">Masquer les épisodes non vus</option><option value="off">Tout afficher</option></select></div>
-                <button class="btn btn-secondary btn-small" id="detailSeasonAllWatchedBtn" ${act('toggleWatchedWholeSeason')}>✓ Marquer la saison comme vue</button>
-                <button class="btn btn-secondary btn-small" id="detailSeasonOfflineBtn" ${act('downloadSeasonOffline', THIS)} title="Télécharger les épisodes sortis de cette saison, l’un après l’autre">⤓ Saison hors ligne</button>
+                <div class="spoiler-series-setting"><label for="detailSpoilerChoice">${KINO_I18N.t('fiche.spoilers')}</label><select id="detailSpoilerChoice" aria-label="${KINO_I18N.t('fiche.protection_des_spoilers_pour_cette_serie')}" ${actOn('change', 'setSeriesSpoilerProtection', VALUE)}><option value="inherit">${KINO_I18N.t('fiche.reglage_general')}</option><option value="on">${KINO_I18N.t('fiche.masquer_les_episodes_non_vus')}</option><option value="off">${KINO_I18N.t('page.tout_afficher')}</option></select></div>
+                <button class="btn btn-secondary btn-small" id="detailSeasonAllWatchedBtn" ${act('toggleWatchedWholeSeason')}>${KINO_I18N.t('fiche.marquer_la_saison_comme_vue')}</button>
+                <button class="btn btn-secondary btn-small" id="detailSeasonOfflineBtn" ${act('downloadSeasonOffline', THIS)} title="${KINO_I18N.t('fiche.telecharger_les_episodes_sortis_de_cette')}">${KINO_I18N.t('fiche.saison_hors_ligne')}</button>
               </div>
             </div>
-            <div id="detailSpoilerOffer" class="spoiler-offer">Masquer les titres et images des épisodes non vus ? <button type="button" class="btn btn-secondary" ${act('setGlobalSpoilerProtection', true)}>Activer la protection</button></div>
+            <div id="detailSpoilerOffer" class="spoiler-offer">Masquer les titres et images des épisodes non vus ? <button type="button" class="btn btn-secondary" ${act('setGlobalSpoilerProtection', true)}>${KINO_I18N.t('fiche.activer_la_protection')}</button></div>
             <p id="detailSeasonSummary" class="ep-summary" aria-live="polite"></p>
             <div class="ep-strip" id="detailEpisodesStrip">
-              <button type="button" class="ep-scroll ep-scroll-prev" aria-label="Épisodes précédents" ${act('scrollEpisodes', -1)} hidden>‹</button>
-              <div id="detailEpisodesList" class="ep-row" role="list" aria-label="Épisodes" ${actOn('scroll', 'updateEpisodeArrows')}></div>
-              <button type="button" class="ep-scroll ep-scroll-next" aria-label="Épisodes suivants" ${act('scrollEpisodes', 1)} hidden>›</button>
+              <button type="button" class="ep-scroll ep-scroll-prev" aria-label="${KINO_I18N.t('fiche.episodes_precedents')}" ${act('scrollEpisodes', -1)} hidden>‹</button>
+              <div id="detailEpisodesList" class="ep-row" role="list" aria-label="${KINO_I18N.t('fiche.episodes')}" ${actOn('scroll', 'updateEpisodeArrows')}></div>
+              <button type="button" class="ep-scroll ep-scroll-next" aria-label="${KINO_I18N.t('fiche.episodes_suivants')}" ${act('scrollEpisodes', 1)} hidden>›</button>
             </div>
           </div>
         `;
@@ -1208,24 +1208,24 @@ function buildDetailHtml(media, meta, isPreview) {
   }
 
   const journeyHtml = (media.is_anime || activeTab === 'anime')
-    ? html`<section class="detail-extra-section anime-journey-section" aria-label="Parcours de la saga"><div id="animeJourneyPanel"><p class="journey-empty">Chargement du parcours…</p></div></section>`
+    ? html`<section class="detail-extra-section anime-journey-section" aria-label="${KINO_I18N.t('anime.parcours_de_la_saga')}"><div id="animeJourneyPanel"><p class="journey-empty">${KINO_I18N.t('core.chargement_du_parcours')}</p></div></section>`
     : '';
 
   const similarHtml = similarSectionHtml(Array.isArray(meta.similar) ? meta.similar : [], isSeries);
 
   const linksHtml = isImdbId && !isPreview ? html`
-    <section class="detail-extra-section detail-links" aria-label="Ailleurs">
-      <div class="detail-section-title">Ailleurs</div>
+    <section class="detail-extra-section detail-links" aria-label="${KINO_I18N.t('fiche.ailleurs')}">
+      <div class="detail-section-title">${KINO_I18N.t('fiche.ailleurs')}</div>
       <div class="detail-links-row">
-        <a class="btn btn-secondary" href="https://www.imdb.com/title/${encodeURIComponent(media.id)}/" target="_blank" rel="noopener" title="Voir la fiche sur IMDb">IMDb ↗</a>
-        ${!isSeries ? html`<a class="btn btn-secondary" href="https://letterboxd.com/imdb/${encodeURIComponent(media.id)}/" target="_blank" rel="noopener" title="Voir sur Letterboxd">Letterboxd ↗</a>` : ''}
+        <a class="btn btn-secondary" href="https://www.imdb.com/title/${encodeURIComponent(media.id)}/" target="_blank" rel="noopener" title="${KINO_I18N.t('fiche.voir_la_fiche_sur_imdb')}">${KINO_I18N.t('fiche.imdb')}</a>
+        ${!isSeries ? html`<a class="btn btn-secondary" href="https://letterboxd.com/imdb/${encodeURIComponent(media.id)}/" target="_blank" rel="noopener" title="${KINO_I18N.t('fiche.voir_sur_letterboxd')}">${KINO_I18N.t('fiche.letterboxd')}</a>` : ''}
       </div>
     </section>` : '';
 
   const latestAiredBanner = (isSeries && latestAired) ? html`
     <div class="detail-latest${latestAiredUnwatched ? ' is-new' : ''}">
       <span id="latestAiredText">${latestAiredUnwatched ? '● Dernier épisode diffusé (non vu) :' : '✓ Dernier épisode diffusé :'} <strong>${latestAired.code}</strong> — ${latestAiredTitle} (${latestAired.released || ''})</span>
-      ${latestAiredUnwatched ? html`<button class="btn btn-secondary btn-small" ${act('oneClickSeriesEpisode', THIS, Number(latestAired.season) || 1, Number(latestAired.episode) || 1)}>Lancer</button>` : ''}
+      ${latestAiredUnwatched ? html`<button class="btn btn-secondary btn-small" ${act('oneClickSeriesEpisode', THIS, Number(latestAired.season) || 1, Number(latestAired.episode) || 1)}>${KINO_I18N.t('page.lancer')}</button>` : ''}
     </div>
   ` : '';
 
@@ -1242,11 +1242,11 @@ function buildDetailHtml(media, meta, isPreview) {
           <div class="detail-trailer-bar">
             <button type="button" class="btn btn-secondary" data-trailer-lang="vf" ${act('switchDetailTrailer', 'vf')}>VF</button>
             <button type="button" class="btn btn-secondary" data-trailer-lang="vo" ${act('switchDetailTrailer', 'vo')}>VO</button>
-            <a class="btn btn-secondary" id="detailTrailerLink" href="#" target="_blank" hidden>Ouvrir sur YouTube ↗</a>
-            <button type="button" class="btn" ${act('closeDetailTrailer')}>Fermer la bande-annonce</button>
+            <a class="btn btn-secondary" id="detailTrailerLink" href="#" target="_blank" hidden>${KINO_I18N.t('fiche.ouvrir_sur_youtube')}</a>
+            <button type="button" class="btn" ${act('closeDetailTrailer')}>${KINO_I18N.t('fiche.fermer_la_bande_annonce')}</button>
           </div>
         </div>
-        <button class="detail-close-btn" ${act('closeFiche')} title="Fermer la fiche (Échap)" aria-label="Fermer la fiche">
+        <button class="detail-close-btn" ${act('closeFiche')} title="${KINO_I18N.t('fiche.fermer_la_fiche_echap')}" aria-label="${KINO_I18N.t('fiche.fermer_la_fiche')}">
           <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#close"></use></svg>
         </button>
         <div class="detail-hero-body">
@@ -1274,13 +1274,13 @@ function buildDetailHtml(media, meta, isPreview) {
               <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#play-solid"></use></svg>
               ${playBtnLabel}
             </button>
-            <button class="btn btn-secondary" id="detailTvBtn" ${act('oneClickCard', EVENT, THIS, mediaInfo, { target: 'tv' })} title="Lire sur la TV du salon">
+            <button class="btn btn-secondary" id="detailTvBtn" ${act('oneClickCard', EVENT, THIS, mediaInfo, { target: 'tv' })} title="${KINO_I18N.t('fiche.lire_sur_la_tv_du_salon')}">
               <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#cast"></use></svg>
-              Sur la TV
+              ${KINO_I18N.t('page.sur_la_tv')}
             </button>
             <button class="btn btn-secondary" ${act('playDetailTrailer', trailerId, meta.name || media.name, String(year), 'vf')}>
               <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>
-              Bande-annonce
+              ${KINO_I18N.t('page.bande_annonce')}
             </button>
             <button class="btn btn-secondary" id="detailWlBtn" ${act('toggleWatchlist', EVENT, mediaInfo)}>
               ${inList ? html`<svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#tick"></use></svg> Dans ma liste` : '+ Ma Liste'}

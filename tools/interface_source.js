@@ -35,8 +35,15 @@ const FRENCH_MONTHS = {
   narrow: 'JFMAMJJASOND'.split(''),
 };
 
+// A text by key (KINO_I18N.t('home.films_anime')) reads as its French: in a
+// template « ${KINO_I18N.t('…')} » as the text itself, elsewhere as a string.
+const asMarkup = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/[`\\]|\$\{/g, m => `\\${m}`);
 function inFrench(text) {
+  const french = frenchTexts();
   return text.replace(/KINO_I18N\.months\('(long|short|narrow)'\)/g, (_, kind) => JSON.stringify(FRENCH_MONTHS[kind]))
+    .replace(/\$\{KINO_I18N\.t\('([\w.]+)'\)\}/g, (all, key) => (Object.hasOwn(french, key) ? asMarkup(french[key]) : all))
+    .replace(/KINO_I18N\.t\('([\w.]+)'\)/g, (all, key) => (Object.hasOwn(french, key) ? JSON.stringify(french[key]) : all))
     .replace(/window\.KINO_LANG\b/g, "'fr'").replace(/window\.KINO_LOCALE\b/g, "'fr-FR'");
 }
 
