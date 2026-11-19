@@ -6,6 +6,8 @@
 //! (packaging/update-helper), which keeps the previous version for a rollback.
 //! Windows: the release's installer is downloaded with its signed description
 //! (.sig), checked against it, then run silently; it relaunches KINO.
+//! Linux (AppImage): the release's AppImage is downloaded with its .sig,
+//! checked against it, then put in place of the running one; KINO restarts.
 
 use std::collections::BTreeMap;
 use std::io::Read;
@@ -27,6 +29,7 @@ const MAX_APP_BYTES: u64 = 1800 * 1024 * 1024;
 const MAX_RELEASE_JSON: usize = 2_000_000;
 const MAX_SIGNATURE_BYTES: usize = 32_768;
 pub const WINDOWS_INSTALLER: &str = "KINO-Windows.exe";
+pub const LINUX_APPIMAGE: &str = "KINO-Linux-x86_64.AppImage";
 /// The automatic check for a new version (Settings → Updates), unless turned off.
 pub const AUTO_CHECK_EVERY: std::time::Duration = std::time::Duration::from_secs(6 * 3600);
 const KEEP_DATA_SNAPSHOTS: usize = 3;
@@ -157,11 +160,53 @@ fn schema(payload: &Value) -> Option<i64> {
         .filter(|_| payload["data_schema"].is_i64() || payload["data_schema"].is_u64())
 }
 
+/// What a signed description (.sig) is for: the Windows installer or the
+/// Linux AppImage, with the words its errors use.
+pub struct SignedArtifact {
+    pub name: &'static str,
+    pub platform: &'static str,
+    pub architecture: &'static str,
+    kind: &'static str,
+    wrong_target: &'static str,
+    not_newer: &'static str,
+    wrong_name: &'static str,
+}
+
+pub const WINDOWS_ARTIFACT: SignedArtifact = SignedArtifact {
+    name: WINDOWS_INSTALLER,
+    platform: "win32",
+    architecture: "x64",
+    kind: "installateur",
+    wrong_target: "Cet installateur ne cible pas KINO sur Windows.",
+    not_newer: "Cet installateur n'est pas plus récent que KINO.",
+    wrong_name: "Nom d'installateur incohérent.",
+};
+
+pub const LINUX_ARTIFACT: SignedArtifact = SignedArtifact {
+    name: LINUX_APPIMAGE,
+    platform: "linux",
+    architecture: "x86_64",
+    kind: "AppImage",
+    wrong_target: "Cet AppImage ne cible pas KINO sur Linux.",
+    not_newer: "Cet AppImage n'est pas plus récent que KINO.",
+    wrong_name: "Nom d'AppImage incohérent.",
+};
+
 /// The signed description of the Windows installer (KINO-Windows.exe.sig).
 pub fn verify_installer_signature(
     raw: &[u8],
     public_key_hex: &str,
     current: &str,
+) -> Result<Value> {
+    verify_artifact_signature(raw, public_key_hex, current, &WINDOWS_ARTIFACT)
+}
+
+/// The signed description of an installer or AppImage (its .sig).
+pub fn verify_artifact_signature(
+    raw: &[u8],
+    public_key_hex: &str,
+    current: &str,
+    target: &SignedArtifact,
 ) -> Result<Value> {
     let p = signed_payload(raw, public_key_hex)?;
     if !keys_are(
@@ -180,14 +225,14 @@ pub fn verify_installer_signature(
         return Err("Champs de la signature invalides.".into());
     }
     if p["format"] != json!(UPDATE_FORMAT)
-        || p["platform"] != "win32"
-        || p["architecture"] != "x64"
+        || p["platform"] != target.platform
+        || p["architecture"] != target.architecture
         || p["bundle_id"] != BUNDLE_ID
     {
-        return Err("Cet installateur ne cible pas KINO sur Windows.".into());
+        return Err(target.wrong_target.into());
     }
     if version_tuple(p["version"].as_str().unwrap_or(""))? <= version_tuple(current)? {
-        return Err("Cet installateur n'est pas plus récent que KINO.".into());
+        return Err(target.not_newer.into());
     }
     if schema(&p).is_none_or(|s| s < DATA_SCHEMA) {
         return Err("La base de données de cette version est plus ancienne.".into());
@@ -198,10 +243,10 @@ pub fn verify_installer_signature(
     if !keys_are(&p["artifact"], &["name", "sha256", "size"]) {
         return Err("Artefact invalide.".into());
     }
-    if p["artifact"]["name"] != WINDOWS_INSTALLER {
-        return Err("Nom d'installateur incohérent.".into());
+    if p["artifact"]["name"] != target.name {
+        return Err(target.wrong_name.into());
     }
-    check_artifact(&p["artifact"], "installateur")?;
+    check_artifact(&p["artifact"], target.kind)?;
     Ok(p)
 }
 
@@ -439,8 +484,14 @@ pub fn default_state_dir() -> PathBuf {
     }
 }
 
-/// KINO.app on macOS, the installation folder (holding KINO.exe) on Windows.
+/// KINO.app on macOS, the installation folder (holding KINO.exe) on Windows,
+/// the AppImage file on Linux (named by its runtime in APPIMAGE).
 pub fn default_app_path() -> PathBuf {
+    if cfg!(target_os = "linux")
+        && let Some(image) = std::env::var_os("APPIMAGE")
+    {
+        return PathBuf::from(image);
+    }
     let exe = std::env::current_exe()
         .and_then(|e| e.canonicalize())
         .unwrap_or_default();
@@ -922,7 +973,10 @@ impl Updater {
             // Installed by packaging/kino.iss, which leaves its uninstaller next to KINO.exe.
             return self.app_path.join("unins000.exe").is_file();
         }
-        false
+        // Started from its AppImage, which the runtime names in APPIMAGE.
+        cfg!(target_os = "linux")
+            && std::env::var_os("APPIMAGE").is_some_and(|i| Path::new(&i) == self.app_path)
+            && self.app_path.is_file()
     }
 
     fn require_installed(&self) -> Result<()> {
@@ -936,6 +990,18 @@ impl Updater {
                     "Installez KINO avec son installateur pour recevoir les mises à jour.".into(),
                 );
             }
+        } else if cfg!(target_os = "linux") {
+            if !self.is_installed() {
+                return Err(
+                    "Ouvrez KINO depuis son AppImage pour recevoir les mises à jour.".into(),
+                );
+            }
+            let folder = self.app_path.parent().unwrap_or(Path::new("."));
+            let probe = folder.join(format!(".kino-write-{}", &token()[..16]));
+            if std::fs::File::create(&probe).is_err() {
+                return Err("Le dossier de l'AppImage n'est pas modifiable.".into());
+            }
+            let _ = std::fs::remove_file(probe);
         } else {
             return Err(
                 "Les mises à jour automatiques ne sont pas disponibles sur ce système.".into(),
@@ -1060,8 +1126,8 @@ impl Updater {
         let is_newer = release
             .as_ref()
             .is_some_and(|r| newer(r["version"].as_str().unwrap_or(""), app_version()));
-        if cfg!(windows) {
-            return self.check_windows(release, is_newer).await;
+        if let Some(target) = signed_target() {
+            return self.check_signed(release, is_newer, target).await;
         }
         let mut note = String::new();
         if let Some(release) = release
@@ -1135,14 +1201,20 @@ impl Updater {
             .map(drop)
     }
 
-    async fn check_windows(&self, release: Option<Value>, is_newer: bool) -> Value {
+    /// Windows and Linux: the release's installer or AppImage, downloaded and checked.
+    async fn check_signed(
+        &self,
+        release: Option<Value>,
+        is_newer: bool,
+        target: &SignedArtifact,
+    ) -> Value {
         let message = match &release {
             None => "Impossible de joindre GitHub. Vérifiez la connexion Internet.".to_string(),
             Some(_) if !is_newer => format!("KINO est à jour (version {}).", app_version()),
             Some(r) => {
                 let version = crate::play::text(&r["version"]);
                 let prepared = match self.require_installed() {
-                    Ok(()) => self.prepare_windows(r).await,
+                    Ok(()) => self.prepare_signed(r, target).await,
                     Err(e) => Err(e),
                 };
                 match prepared {
@@ -1172,10 +1244,10 @@ impl Updater {
         )
     }
 
-    async fn prepare_windows(&self, release: &Value) -> Result<()> {
-        let signature_name = format!("{WINDOWS_INSTALLER}.sig");
+    async fn prepare_signed(&self, release: &Value, target: &SignedArtifact) -> Result<()> {
+        let signature_name = format!("{}.sig", target.name);
         let (Some(asset), Some(signature)) = (
-            release["assets"].get(WINDOWS_INSTALLER).cloned(),
+            release["assets"].get(target.name).cloned(),
             release["assets"].get(&signature_name).cloned(),
         ) else {
             return Err(
@@ -1192,9 +1264,9 @@ impl Updater {
             let signature_path =
                 download_asset(&signature, &stage.join(&signature_name), &|_| {}).await?;
             let raw = std::fs::read(&signature_path).map_err(|e| e.to_string())?;
-            let payload = verify_installer_signature(&raw, &self.key()?, app_version())?;
+            let payload = verify_artifact_signature(&raw, &self.key()?, app_version(), target)?;
             if payload["version"] != release["version"]
-                || payload["artifact"]["name"] != WINDOWS_INSTALLER
+                || payload["artifact"]["name"] != target.name
                 || payload["artifact"]["size"] != asset["size"]
             {
                 return Err("La signature ne correspond pas à cette version.".to_string());
@@ -1205,12 +1277,16 @@ impl Updater {
             );
             let installer = download_asset(
                 &asset,
-                &stage.join(WINDOWS_INSTALLER),
+                &stage.join(target.name),
                 &self.progress_setter("Téléchargement"),
             )
             .await?;
             if sha256_file(&installer)? != payload["artifact"]["sha256"].as_str().unwrap_or("") {
-                return Err("L'installateur téléchargé est modifié ou incomplet.".to_string());
+                return Err(if target.kind == "installateur" {
+                    "L'installateur téléchargé est modifié ou incomplet.".to_string()
+                } else {
+                    "L'AppImage téléchargé est modifié ou incomplet.".to_string()
+                });
             }
             Ok((payload, installer))
         };
@@ -1264,6 +1340,70 @@ impl Updater {
         );
         command.spawn().map_err(|e| e.to_string())?;
         inner.message = "KINO va fermer, s'installer puis redémarrer automatiquement.".into();
+        Ok(json!({"scheduled": true, "message": inner.message}))
+    }
+
+    /// Linux: the checked AppImage takes the running one's place (a rename in
+    /// its folder, so a crash leaves one or the other whole), then a shell
+    /// waits for this KINO to quit and starts the new one.
+    fn install_appimage(&self) -> Result<Value> {
+        let mut inner = self.inner();
+        let candidate = inner
+            .candidate
+            .clone()
+            .filter(|c| c.get("installer").is_some())
+            .ok_or("Recherchez d'abord une mise à jour.")?;
+        let downloaded = PathBuf::from(crate::play::text(&candidate["installer"]));
+        let expected = crate::play::text(&candidate["payload"]["artifact"]["sha256"]);
+        let image = self.app_path.clone();
+        let folder = image.parent().ok_or("Dossier de l'AppImage introuvable.")?;
+        let next = folder.join(format!(".{LINUX_APPIMAGE}.{}", &token()[..16]));
+        let placed = (|| {
+            std::fs::copy(&downloaded, &next).map_err(|e| e.to_string())?;
+            if sha256_file(&next)? != expected {
+                return Err("L'AppImage a changé depuis sa vérification.".to_string());
+            }
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&next, std::fs::Permissions::from_mode(0o755))
+                    .map_err(|e| e.to_string())?;
+            }
+            std::fs::rename(&next, &image).map_err(|e| e.to_string())
+        })();
+        if let Err(e) = placed {
+            let _ = std::fs::remove_file(&next);
+            return Err(e);
+        }
+        if let Some(stage) = downloaded.parent() {
+            let _ = std::fs::remove_dir_all(stage);
+        }
+        self.discard_candidate(&mut inner);
+        let mut command = std::process::Command::new("/bin/sh");
+        command
+            .args([
+                "-c",
+                "while kill -0 \"$1\" 2>/dev/null; do sleep 0.3; done; exec \"$2\"",
+                "kino-restart",
+            ])
+            .arg(std::process::id().to_string())
+            .arg(&image)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+        // The new AppImage sets its own paths: none of this one's mount.
+        if let Some(mount) = std::env::var_os("APPDIR") {
+            for (name, value) in without_mount(std::env::vars_os(), &mount) {
+                match value {
+                    Some(v) => command.env(name, v),
+                    None => command.env_remove(name),
+                };
+            }
+        }
+        #[cfg(unix)]
+        std::os::unix::process::CommandExt::process_group(&mut command, 0);
+        command.spawn().map_err(|e| e.to_string())?;
+        inner.message = "KINO va redémarrer avec la nouvelle version.".into();
         Ok(json!({"scheduled": true, "message": inner.message}))
     }
 
@@ -1420,6 +1560,9 @@ impl Updater {
         if cfg!(windows) {
             return self.install_windows();
         }
+        if cfg!(target_os = "linux") {
+            return self.install_appimage();
+        }
         self.handoff("install")
     }
 
@@ -1429,6 +1572,42 @@ impl Updater {
         }
         self.handoff("rollback")
     }
+}
+
+/// Where updates come as a signed installer or AppImage (Windows, Linux).
+fn signed_target() -> Option<&'static SignedArtifact> {
+    if cfg!(windows) {
+        Some(&WINDOWS_ARTIFACT)
+    } else if cfg!(target_os = "linux") {
+        Some(&LINUX_ARTIFACT)
+    } else {
+        None
+    }
+}
+
+/// The environment variables that point into an AppImage's mount: each
+/// changed to its other parts (a list such as XDG_DATA_DIRS), or removed (None).
+pub fn without_mount(
+    vars: impl Iterator<Item = (std::ffi::OsString, std::ffi::OsString)>,
+    mount: &std::ffi::OsStr,
+) -> Vec<(std::ffi::OsString, Option<String>)> {
+    let mount = mount.to_string_lossy().to_string();
+    if mount.is_empty() {
+        return Vec::new();
+    }
+    vars.filter_map(|(name, value)| {
+        let value = value.to_string_lossy().to_string();
+        if !value.contains(&mount) {
+            return None;
+        }
+        let kept: Vec<&str> = value
+            .split(':')
+            .filter(|part| !part.is_empty() && !part.contains(&mount))
+            .collect();
+        let keep = value.contains(':') && !kept.is_empty();
+        Some((name, keep.then(|| kept.join(":"))))
+    })
+    .collect()
 }
 
 fn with(mut base: Value, extra: Value) -> Value {
