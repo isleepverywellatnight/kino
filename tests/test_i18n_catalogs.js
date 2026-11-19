@@ -121,22 +121,27 @@ test('t(key) gives the text in the language, else in English, else in French, wi
   assert.throws(() => page('en').I18N.t('page.no_such_text'), /unknown text key « page\.no_such_text »/);
 });
 
-test('data-i18n gives an element its text and attributes', () => {
-  const key = Object.keys(source).find(k => !source[k].includes('{}'));
-  const el = (dataset) => ({ nodeType: 1, dataset, textContent: 'avant', attributes: {}, setAttribute(n, v) { this.attributes[n] = v; } });
-  const button = el({ i18n: key, i18nTitle: key });
-  const field = el({ i18nPlaceholder: key, i18nAriaLabel: key });
-  const root = { nodeType: 9, querySelectorAll: () => [button, field] };
-  const fr = page('fr');
-  fr.I18N.apply(root);
-  assert.equal(button.textContent, source[key]);
-  assert.deepEqual(button.attributes, { title: source[key] });
-  assert.deepEqual(field.attributes, { placeholder: source[key], 'aria-label': source[key] });
+test('data-i18n gives an element its text and attributes, while they hold its French', () => {
+  const en = i18n.readLanguage('en');
+  const key = Object.keys(en).find(k => !source[k].includes('{}') && en[k] !== source[k]);
+  const el = (dataset, text, attributes) => ({
+    nodeType: 1, dataset, textContent: text, attributes: { ...attributes },
+    getAttribute(n) { return Object.hasOwn(this.attributes, n) ? this.attributes[n] : null; },
+    setAttribute(n, v) { this.attributes[n] = v; },
+  });
+  const french = source[key];
+  const button = el({ i18n: key, i18nTitle: key }, french, { title: french });
+  const field = el({ i18nPlaceholder: key, i18nAriaLabel: key }, 'avant', { placeholder: french, 'aria-label': french });
+  const written = el({ i18n: key }, 'Un texte écrit par le code', {});
+  const root = { nodeType: 9, querySelectorAll: () => [button, field, written] };
+  page('en').I18N.apply(root);
+  assert.equal(button.textContent, en[key]);
+  assert.deepEqual(button.attributes, { title: en[key] });
+  assert.deepEqual(field.attributes, { placeholder: en[key], 'aria-label': en[key] });
   assert.equal(field.textContent, 'avant', 'no data-i18n: its text is left');
-  const en = page('en');
-  const english = i18n.readLanguage('en')[key];
-  en.I18N.apply(root);
-  assert.equal(button.textContent, english ?? source[key]);
+  assert.equal(written.textContent, 'Un texte écrit par le code', 'what the code wrote is left to the observer');
+  page('en').I18N.apply(root);
+  assert.equal(button.textContent, en[key], 'applied twice: still the translation');
 });
 
 test('the observer counts the French texts it still translates', () => {

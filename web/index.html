@@ -53,17 +53,17 @@
         </svg>
       </button>
     </div>
-    <div class="logo no-drag" data-on-click="switchTab" data-click-args='["movies"]' aria-label="Accueil KINO">
+    <div class="logo no-drag" data-on-click="switchTab" data-click-args='["movies"]' aria-label="Accueil KINO" data-i18n-aria-label="page.accueil_kino">
       <svg class="logo-mark" viewBox="130 130 764 764" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="176" y="176" width="672" height="672" rx="150" fill="none" stroke="#fafafa" stroke-width="76"/><clipPath id="kinoLogoClip"><rect x="0" y="342.4" width="1024" height="339.2"/></clipPath><path d="M398.4 310.4L398.4 713.6M398.4 590.4L683.2 264M497.6 481.6L692.8 758.4" clip-path="url(#kinoLogoClip)" fill="none" stroke="#fafafa" stroke-width="83.2"/></svg>
       <span class="logo-wordmark">KINO</span>
       <span class="logo-divider"></span>
-      <span class="logo-sub" id="logoProviderSub">Real-Debrid</span>
+      <span class="logo-sub" id="logoProviderSub" data-i18n="page.real_debrid">Real-Debrid</span>
     </div>
   </div>
   <!-- Recherche : un champ dans la barre du haut ; ⌘K ouvre ses suggestions. -->
   <div class="header-center">
     <div class="search-box no-drag" role="search">
-      <button type="button" id="navBackBtn" class="nav-back-btn" data-on-click="goBack" hidden aria-label="Retour">
+      <button type="button" id="navBackBtn" class="nav-back-btn" data-on-click="goBack" hidden aria-label="Retour" data-i18n-aria-label="page.retour">
         <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#chevron-left"></use></svg>
         <span data-i18n="page.retour">Retour</span>
       </button>
@@ -71,12 +71,12 @@
         <span class="search-icon-svg">
           <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#search"></use></svg>
         </span>
-        <input type="text" id="searchInput" placeholder="Rechercher un film, une série…" data-on-input="onSearchInput" data-on-keydown="onSearchKeyDown" data-keydown-args='[{"$":"event"}]' data-on-focus="openSearchPanel" data-on-click="openSearchPanel" autocomplete="off" spellcheck="false" aria-label="Rechercher" aria-controls="searchDropdown" aria-autocomplete="list">
+        <input type="text" id="searchInput" placeholder="Rechercher un film, une série…" data-on-input="onSearchInput" data-on-keydown="onSearchKeyDown" data-keydown-args='[{"$":"event"}]' data-on-focus="openSearchPanel" data-on-click="openSearchPanel" autocomplete="off" spellcheck="false" aria-label="Rechercher" aria-controls="searchDropdown" aria-autocomplete="list" data-i18n-placeholder="page.rechercher_un_film_une_serie" data-i18n-aria-label="page.rechercher">
         <div class="search-right-controls">
-          <button id="searchClearBtn" class="search-clear-btn" style="display:none;" data-on-click="clearSearchInput" title="Effacer la recherche">
+          <button id="searchClearBtn" class="search-clear-btn" style="display:none;" data-on-click="clearSearchInput" title="Effacer la recherche" data-i18n-title="page.effacer_la_recherche">
             <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#close"></use></svg>
           </button>
-          <select id="searchType" class="search-type-select" data-on-change="toggleSearchMode" aria-label="Chercher dans">
+          <select id="searchType" class="search-type-select" data-on-change="toggleSearchMode" aria-label="Chercher dans" data-i18n-aria-label="page.chercher_dans">
             <option value="all" data-i18n="page.tout">Tout</option>
             <option value="movie" data-i18n="page.films">Films</option>
             <option value="series" data-i18n="page.series">Séries</option>
@@ -84,15 +84,15 @@
             <option value="raw" data-i18n="page.mots_cles">Mots-clés</option>
             <option value="magnet" data-i18n="page.magnet">Magnet</option>
           </select>
-          <kbd id="searchKbdBadge" class="search-kbd-badge">Ctrl+K</kbd>
+          <kbd id="searchKbdBadge" class="search-kbd-badge" data-i18n="page.ctrl_k">Ctrl+K</kbd>
         </div>
-        <div id="searchDropdown" class="search-dropdown" role="listbox" aria-label="Suggestions" style="display:none;"></div>
+        <div id="searchDropdown" class="search-dropdown" role="listbox" aria-label="Suggestions" style="display:none;" data-i18n-aria-label="page.suggestions"></div>
       </div>
     </div>
   </div>
   <div class="header-right no-drag">
     <!-- Badge Utilisateur interactif / statut -->
-    <div id="userBadge" class="header-user-pill" data-on-click="openConfig" title="Gérer le compte et la configuration">
+    <div id="userBadge" class="header-user-pill" data-on-click="openConfig" title="Gérer le compte et la configuration" data-i18n-title="page.gerer_le_compte_et_la_configuration">
       <span class="user-status-dot"></span>
       <span style="color:var(--muted); font-size:0.75rem;" data-i18n="page.chargement">Chargement...</span>
     </div>
@@ -101,7 +101,7 @@
 
     <!-- Les outils secondaires restent accessibles sans encombrer la navigation principale. -->
     <div class="header-menu-wrap">
-      <button id="headerSettingsBtn" class="header-tool-btn header-btn-settings" data-on-click="toggleHeaderMenu" data-click-args='[{"$":"event"}]' title="Plus d’outils" aria-label="Plus d’outils" aria-expanded="false">
+      <button id="headerSettingsBtn" class="header-tool-btn header-btn-settings" data-on-click="toggleHeaderMenu" data-click-args='[{"$":"event"}]' title="Plus d’outils" aria-label="Plus d’outils" aria-expanded="false" data-i18n-title="page.plus_d_outils" data-i18n-aria-label="page.plus_d_outils">
         <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#grid"></use></svg>
         <span class="btn-text" data-i18n="page.outils">Outils</span>
         <svg class="ui-icon ui-icon-xs chevron-icon" aria-hidden="true"><use href="/icons.svg#chevron-down"></use></svg>
@@ -169,7 +169,7 @@
         </div>
       </div>
     </div>
-    <div class="win-controls no-drag" role="group" aria-label="Fenêtre">
+    <div class="win-controls no-drag" role="group" aria-label="Fenêtre" data-i18n-aria-label="page.fenetre">
       <button type="button" class="win-btn" data-on-click="windowAction" data-click-args='["minimize"]' title="Réduire" aria-label="Réduire" data-i18n-title="page.reduire" data-i18n-aria-label="page.reduire"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
       <button type="button" class="win-btn win-max" data-on-click="windowAction" data-click-args='["maximize"]' title="Agrandir" aria-label="Agrandir" data-i18n-title="page.agrandir" data-i18n-aria-label="page.agrandir"><svg class="win-icon-max" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg><svg class="win-icon-restore" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="2.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><path d="M2.5 2.5V1.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
       <button type="button" class="win-btn win-close" data-on-click="windowAction" data-click-args='["close"]' title="Fermer" aria-label="Fermer" data-i18n-title="page.fermer" data-i18n-aria-label="page.fermer"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
@@ -177,7 +177,7 @@
   </div>
 </header>
 
-<nav class="nav-tabs" aria-label="Navigation principale">
+<nav class="nav-tabs" aria-label="Navigation principale" data-i18n-aria-label="page.navigation_principale">
   <div class="nav-tabs-primary">
     <span class="nav-section-label" data-i18n="page.decouvrir">Découvrir</span>
     <button class="nav-tab active" id="tab-movies" data-on-click="switchTab" data-click-args='["movies"]'><span class="nav-icon" aria-hidden="true"><svg class="ui-icon icon-off" aria-hidden="true"><use href="/icons.svg#film"></use></svg><svg class="ui-icon icon-on" aria-hidden="true"><use href="/icons.svg#film-fill"></use></svg></span>Films</button>
@@ -198,26 +198,26 @@
   <!-- Sans internet : ce qui marche encore, ce qui attend la connexion -->
   <div id="networkBanner" class="network-banner" role="status" hidden>
     <div>
-      <strong id="networkBannerTitle">Sans internet</strong>
+      <strong id="networkBannerTitle" data-i18n="page.sans_internet">Sans internet</strong>
       <span id="networkBannerText"></span>
     </div>
     <div class="network-banner-actions">
       <button type="button" class="btn btn-secondary" data-on-click="switchTab" data-click-args='["offline"]' data-i18n="page.mes_fichiers_hors_ligne">Mes fichiers hors ligne</button>
-      <button type="button" class="btn btn-secondary" id="networkRetryButton" data-on-click="retryNetwork">Réessayer</button>
+      <button type="button" class="btn btn-secondary" id="networkRetryButton" data-on-click="retryNetwork" data-i18n="page.reessayer">Réessayer</button>
     </div>
   </div>
 
   <!-- Bibliothèque : une ligne d'onglets, tous visibles ; l'onglet est le titre de la page. -->
-  <nav id="librarySubNav" class="library-subnav" aria-label="Bibliothèque" style="display:none;">
+  <nav id="librarySubNav" class="library-subnav" aria-label="Bibliothèque" style="display:none;" data-i18n-aria-label="page.bibliotheque">
     <button class="lib-subtab active" id="subtab-watchlist" data-on-click="switchTab" data-click-args='["watchlist"]'>Ma Liste <span id="wlCount" class="lib-count"></span></button>
     <button class="lib-subtab" id="subtab-history" data-on-click="switchTab" data-click-args='["history"]'>En cours <span id="histCount" class="lib-count"></span></button>
-    <button class="lib-subtab" id="subtab-myseries" data-on-click="switchTab" data-click-args='["myseries"]'>Mes séries</button>
-    <button class="lib-subtab" id="subtab-calendar" data-on-click="switchTab" data-click-args='["calendar"]'>Calendrier</button>
+    <button class="lib-subtab" id="subtab-myseries" data-on-click="switchTab" data-click-args='["myseries"]' data-i18n="page.mes_series">Mes séries</button>
+    <button class="lib-subtab" id="subtab-calendar" data-on-click="switchTab" data-click-args='["calendar"]' data-i18n="page.calendrier">Calendrier</button>
     <button class="lib-subtab" id="subtab-watched" data-on-click="switchTab" data-click-args='["watched"]'>Déjà vus <span id="watchedCount" class="lib-count"></span></button>
     <button class="lib-subtab" id="subtab-offline" data-on-click="switchTab" data-click-args='["offline"]'>Hors ligne <span id="offlineCount" class="lib-count"></span></button>
     <button class="lib-subtab" id="subtab-customlists" data-on-click="switchTab" data-click-args='["customlists"]'>Listes <span id="customListsCount" class="lib-count"></span></button>
-    <button class="lib-subtab" id="subtab-rdcloud" data-on-click="switchTab" data-click-args='["rdcloud"]'>Cloud</button>
-    <button class="lib-subtab" id="subtab-stats" data-on-click="switchTab" data-click-args='["stats"]'>Statistiques</button>
+    <button class="lib-subtab" id="subtab-rdcloud" data-on-click="switchTab" data-click-args='["rdcloud"]' data-i18n="page.cloud">Cloud</button>
+    <button class="lib-subtab" id="subtab-stats" data-on-click="switchTab" data-click-args='["stats"]' data-i18n="page.statistiques">Statistiques</button>
   </nav>
 
   <!-- Téléchargements PC actifs -->
@@ -239,13 +239,13 @@
   <div id="torrentsPanel" class="panel" style="display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
       <div>
-        <h3 id="torrentsHeading">Sources</h3>
+        <h3 id="torrentsHeading" data-i18n="page.sources">Sources</h3>
         <p id="torrentsSub" style="color:var(--dim); font-size:0.8rem; margin-top:3px;"></p>
       </div>
       <div id="seriesControls" style="display:none; gap:8px; align-items:center; flex-wrap:wrap;">
         <label style="font-size:0.8rem; color:var(--muted);" data-i18n="page.saison">Saison</label>
         <select id="seasonSelect" data-on-change="onSeasonChange" style="min-width:95px;"></select>
-        <button class="btn btn-secondary" id="markSeasonWatchedBtn" data-on-click="toggleWatchedWholeSeason" title="Marquer ou démarquer tous les épisodes de cette saison comme vus" style="padding:6px 10px; font-size:0.76rem;">✓ Saison vue</button>
+        <button class="btn btn-secondary" id="markSeasonWatchedBtn" data-on-click="toggleWatchedWholeSeason" title="Marquer ou démarquer tous les épisodes de cette saison comme vus" style="padding:6px 10px; font-size:0.76rem;" data-i18n-title="page.marquer_ou_demarquer_tous_les_episodes" data-i18n="page.saison_vue">✓ Saison vue</button>
         <label style="font-size:0.8rem; color:var(--muted);" data-i18n="page.episode">Épisode</label>
         <select id="episodeSelect" data-on-change="reloadSeriesEpisode" style="min-width:190px;"></select>
         <button class="btn btn-secondary" data-on-click="reloadSeriesEpisode" data-i18n="page.sources">Sources</button>
@@ -254,9 +254,9 @@
     </div>
 
     <div class="filters" id="sourcesFilters" style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
-      <span class="chip active" data-on-click="setFilter" data-click-args='["",{"$":"this"}]'>Tous</span>
-      <span class="chip" data-on-click="setFilter" data-click-args='["fr",{"$":"this"}]'>VF / MULTI / VOSTFR</span>
-      <span class="chip" data-on-click="setFilter" data-click-args='["sdr",{"$":"this"}]' title="Afficher uniquement les sources SDR">SDR</span>
+      <span class="chip active" data-on-click="setFilter" data-click-args='["",{"$":"this"}]' data-i18n="page.tous">Tous</span>
+      <span class="chip" data-on-click="setFilter" data-click-args='["fr",{"$":"this"}]' data-i18n="page.vf_multi_vostfr">VF / MULTI / VOSTFR</span>
+      <span class="chip" data-on-click="setFilter" data-click-args='["sdr",{"$":"this"}]' title="Afficher uniquement les sources SDR" data-i18n-title="page.afficher_uniquement_les_sources_sdr">SDR</span>
       <span class="chip" data-on-click="setFilter" data-click-args='["4k",{"$":"this"}]'>4K</span>
       <span class="chip" data-on-click="setFilter" data-click-args='["1080p",{"$":"this"}]'>1080p</span>
       <div style="margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -266,7 +266,7 @@
           <option value="size_desc" data-i18n="page.tri_taille_plus_grand">Tri : Taille (Plus grand)</option>
           <option value="size_asc" data-i18n="page.tri_taille_plus_leger">Tri : Taille (Plus léger)</option>
         </select>
-        <input type="text" id="customFilter" placeholder="Filtrer (ex: multi, hevc...)" data-on-input="renderTorrents" style="padding:5px 10px; font-size:0.78rem; min-width:180px;">
+        <input type="text" id="customFilter" placeholder="Filtrer (ex: multi, hevc...)" data-on-input="renderTorrents" style="padding:5px 10px; font-size:0.78rem; min-width:180px;" data-i18n-placeholder="page.filtrer_ex_multi_hevc">
       </div>
     </div>
 
@@ -288,14 +288,14 @@
     </button>
   </div>
 
-  <div id="tvBar" class="tv-bar" role="region" aria-label="Lecture sur la TV" hidden>
+  <div id="tvBar" class="tv-bar" role="region" aria-label="Lecture sur la TV" hidden data-i18n-aria-label="page.lecture_sur_la_tv">
     <svg class="ui-icon tv-bar-icon" aria-hidden="true"><use href="/icons.svg#cast"></use></svg>
     <div class="tv-bar-text"><strong id="tvBarTitle"></strong><span id="tvBarSub"></span></div>
     <div class="tv-bar-actions">
       <button type="button" class="btn btn-secondary btn-small tv-seek" data-on-click="tvControl" data-click-args='["seek_rel",-10]' aria-label="Reculer de 10 secondes" data-i18n-aria-label="page.reculer_de_10_secondes" data-i18n="page.10_s_2">−10 s</button>
-      <button type="button" class="btn btn-icon" id="tvBarToggle" data-on-click="tvControl" data-click-args='["toggle_play"]' aria-label="Mettre en pause sur la TV"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#pause"></use></svg></button>
+      <button type="button" class="btn btn-icon" id="tvBarToggle" data-on-click="tvControl" data-click-args='["toggle_play"]' aria-label="Mettre en pause sur la TV" data-i18n-aria-label="page.mettre_en_pause_sur_la_tv"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#pause"></use></svg></button>
       <button type="button" class="btn btn-secondary btn-small tv-seek" data-on-click="tvControl" data-click-args='["seek_rel",10]' aria-label="Avancer de 10 secondes" data-i18n-aria-label="page.avancer_de_10_secondes" data-i18n="page.10_s">+10 s</button>
-      <button type="button" class="btn btn-secondary btn-small" id="tvBarStop" data-on-click="tvControl" data-click-args='["stop"]'>Arrêter</button>
+      <button type="button" class="btn btn-secondary btn-small" id="tvBarStop" data-on-click="tvControl" data-click-args='["stop"]' data-i18n="page.arreter">Arrêter</button>
     </div>
   </div>
 
@@ -304,18 +304,18 @@
 
   <!-- Accueil : d'abord ce qui se regarde maintenant, puis la découverte. -->
   <!-- Anime : trois pages sur une ligne d'onglets ; l'onglet est le titre. -->
-  <nav id="animeSubNav" class="library-subnav" aria-label="Anime" style="display:none;">
-    <button class="lib-subtab active" id="animeSubTabHome" data-on-click="switchAnimeSubTab" data-click-args='["home"]'>À la une</button>
-    <button class="lib-subtab" id="animeSubTabSchedule" data-on-click="switchAnimeSubTab" data-click-args='["schedule"]'>Planning</button>
-    <button class="lib-subtab" id="animeSubTabCatalog" data-on-click="switchAnimeSubTab" data-click-args='["catalog"]'>Catalogue</button>
+  <nav id="animeSubNav" class="library-subnav" aria-label="Anime" style="display:none;" data-i18n-aria-label="page.anime">
+    <button class="lib-subtab active" id="animeSubTabHome" data-on-click="switchAnimeSubTab" data-click-args='["home"]' data-i18n="page.a_la_une">À la une</button>
+    <button class="lib-subtab" id="animeSubTabSchedule" data-on-click="switchAnimeSubTab" data-click-args='["schedule"]' data-i18n="page.planning">Planning</button>
+    <button class="lib-subtab" id="animeSubTabCatalog" data-on-click="switchAnimeSubTab" data-click-args='["catalog"]' data-i18n="page.catalogue">Catalogue</button>
   </nav>
 
   <div id="homeResumeSection" style="display:none;">
     <div class="section-header">
-      <span class="section-title" id="resumeSectionTitle">À continuer</span>
+      <span class="section-title" id="resumeSectionTitle" data-i18n="page.a_continuer">À continuer</span>
       <div class="resume-section-actions">
-        <button id="homeResumeAll" class="btn btn-secondary" style="display:none;" data-on-click="switchTab" data-click-args='["history"]'>Toutes mes lectures</button>
-        <button id="homeResumeClear" class="btn btn-secondary" style="display:none;" data-on-click="clearAllHistory">Effacer l’historique</button>
+        <button id="homeResumeAll" class="btn btn-secondary" style="display:none;" data-on-click="switchTab" data-click-args='["history"]' data-i18n="page.toutes_mes_lectures">Toutes mes lectures</button>
+        <button id="homeResumeClear" class="btn btn-secondary" style="display:none;" data-on-click="clearAllHistory" data-i18n="page.effacer_l_historique">Effacer l’historique</button>
       </div>
     </div>
     <div id="homeResumeGrid" class="resume-grid"></div>
@@ -326,7 +326,7 @@
     <div class="section-header">
       <span class="section-title" data-i18n="page.nouveaux_episodes">Nouveaux épisodes</span>
     </div>
-    <div id="homeNewGrid" class="resume-grid resume-row" role="list" aria-label="Nouveaux épisodes"></div>
+    <div id="homeNewGrid" class="resume-grid resume-row" role="list" aria-label="Nouveaux épisodes" data-i18n-aria-label="page.nouveaux_episodes"></div>
   </div>
 
   <!-- Titres de Ma Liste pas encore vus, du type de l'onglet. -->
@@ -355,8 +355,8 @@
         <p class="explore-sub" data-i18n="page.tout_le_catalogue_les_sorties_en_cours">Tout le catalogue, les sorties en cours, des volumes en haute qualité et vos propres fichiers.</p>
       </div>
       <form class="manga-search" data-on-submit="kinoSubmit" data-submit-args='[{"$":"event"},"searchManga"]'>
-        <input type="search" id="mangaSearchInput" placeholder="Rechercher un manga" aria-label="Rechercher un manga" autocomplete="off" spellcheck="false">
-        <select id="mangaLang" aria-label="Langue des chapitres" data-on-change="setMangaLang" data-change-args='[{"$":"value"}]'>
+        <input type="search" id="mangaSearchInput" placeholder="Rechercher un manga" aria-label="Rechercher un manga" autocomplete="off" spellcheck="false" data-i18n-placeholder="page.rechercher_un_manga" data-i18n-aria-label="page.rechercher_un_manga">
+        <select id="mangaLang" aria-label="Langue des chapitres" data-on-change="setMangaLang" data-change-args='[{"$":"value"}]' data-i18n-aria-label="page.langue_des_chapitres">
           <option value="fr" data-i18n="page.francais">Français</option>
           <option value="en" data-i18n="page.english">English</option>
           <option value="es" data-i18n="page.espanol">Español</option>
@@ -394,7 +394,7 @@
   <!-- Titres proches du dernier titre vu. -->
   <section id="homeBecauseSection" class="home-shelf" aria-labelledby="homeBecauseTitle" hidden>
     <div class="section-header">
-      <span class="section-title" id="homeBecauseTitle">Si vous avez aimé</span>
+      <span class="section-title" id="homeBecauseTitle" data-i18n="page.si_vous_avez_aime">Si vous avez aimé</span>
     </div>
     <div id="homeBecauseRow" class="list-shelf-row"></div>
   </section>
@@ -403,7 +403,7 @@
   <div id="catalogHeader" class="section-header" style="flex-direction:column; align-items:stretch; gap:10px;">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <span id="catalogTitle" class="section-title">Films populaires du moment</span>
+        <span id="catalogTitle" class="section-title" data-i18n="page.films_populaires_du_moment">Films populaires du moment</span>
         <span id="listStatsBadge" class="lib-summary" style="display:none;"></span>
       </div>
       <div id="catalogSortWrap" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -411,8 +411,8 @@
           <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#dice"></use></svg>
           <span data-i18n="page.surprends_moi">Surprends-moi</span>
         </button>
-        <button id="hideWatchedChip" type="button" class="chip" data-on-click="toggleHideWatchedCatalog" title="Masquer du catalogue les films que vous avez déjà vus">Masquer déjà vus</button>
-        <select id="catalogSortSelect" class="catalog-sort" aria-label="Trier le catalogue" data-on-change="onChangeCatalogSort" data-change-args='[{"$":"value"}]'>
+        <button id="hideWatchedChip" type="button" class="chip" data-on-click="toggleHideWatchedCatalog" title="Masquer du catalogue les films que vous avez déjà vus" data-i18n-title="page.masquer_du_catalogue_les_films_que_vous" data-i18n="page.masquer_deja_vus">Masquer déjà vus</button>
+        <select id="catalogSortSelect" class="catalog-sort" aria-label="Trier le catalogue" data-on-change="onChangeCatalogSort" data-change-args='[{"$":"value"}]' data-i18n-aria-label="page.trier_le_catalogue">
           <option value="top" data-i18n="page.tendances">Tendances</option>
           <option value="imdbRating" data-i18n="page.mieux_notes">Mieux notés</option>
           <option value="recent" data-i18n="page.plus_recents">Plus récents</option>
@@ -420,8 +420,8 @@
         </select>
       </div>
       <div id="watchlistActionsWrap" class="lib-tools" style="display:none;">
-        <input type="search" id="listFilterInput" placeholder="Filtrer par titre ou année…" aria-label="Filtrer la liste par titre ou année" data-on-input="renderActiveListTab">
-        <select id="listSortSelect" class="catalog-sort" aria-label="Trier la liste" data-on-change="onChangeListSort" data-change-args='[{"$":"value"}]'>
+        <input type="search" id="listFilterInput" placeholder="Filtrer par titre ou année…" aria-label="Filtrer la liste par titre ou année" data-on-input="renderActiveListTab" data-i18n-placeholder="page.filtrer_par_titre_ou_annee" data-i18n-aria-label="page.filtrer_la_liste_par_titre_ou_annee">
+        <select id="listSortSelect" class="catalog-sort" aria-label="Trier la liste" data-on-change="onChangeListSort" data-change-args='[{"$":"value"}]' data-i18n-aria-label="page.trier_la_liste">
           <option value="added" data-i18n="page.ajout_recent">Ajout récent</option>
           <option value="user_rating_desc" data-i18n="page.ma_note">Ma note</option>
           <option value="rating" data-i18n="page.note_imdb">Note IMDb</option>
@@ -431,7 +431,7 @@
         </select>
         <button id="listSurpriseBtn" class="btn-surprise" data-on-click="surpriseMeFromCurrentList" title="Lancer la roulette parmi les films de cette liste" data-i18n-title="page.lancer_la_roulette_parmi_les_films_de">
           <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#dice"></use></svg>
-          <span id="listSurpriseBtnLabel">Tirage sur Ma Liste</span>
+          <span id="listSurpriseBtnLabel" data-i18n="page.tirage_sur_ma_liste">Tirage sur Ma Liste</span>
         </button>
         <button class="btn-surprise" data-on-click="openLetterboxdModal" title="Importer vos films vus, vos notes ou une liste depuis Letterboxd" data-i18n-title="page.importer_vos_films_vus_vos_notes_ou_une">
           <svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#upload"></use></svg>
@@ -441,40 +441,40 @@
     </div>
     <div id="listFilters" class="list-filters" hidden></div>
     <div class="genre-strip" id="genreStrip">
-      <button type="button" class="genre-scroll genre-scroll-prev" aria-label="Genres précédents" data-on-click="scrollGenres" data-click-args='[-1]' hidden>‹</button>
-      <div id="genreFilters" class="genre-row" role="group" aria-label="Genres">
-      <span class="chip active" data-genre="" data-on-click="selectGenre" data-click-args='["",{"$":"this"}]'>Tous</span>
-      <span class="chip" data-genre="Action" data-on-click="selectGenre" data-click-args='["Action",{"$":"this"}]'>Action</span>
-      <span class="chip" data-genre="Sci-Fi" data-on-click="selectGenre" data-click-args='["Sci-Fi",{"$":"this"}]'>Sci-Fi</span>
-      <span class="chip" data-genre="Thriller" data-on-click="selectGenre" data-click-args='["Thriller",{"$":"this"}]'>Thriller</span>
-      <span class="chip" data-genre="Crime" data-on-click="selectGenre" data-click-args='["Crime",{"$":"this"}]'>Policier</span>
-      <span class="chip" data-genre="Adventure" data-on-click="selectGenre" data-click-args='["Adventure",{"$":"this"}]'>Aventure</span>
-      <span class="chip" data-genre="Animation" data-on-click="selectGenre" data-click-args='["Animation",{"$":"this"}]'>Animation</span>
-      <span class="chip" data-genre="Comedy" data-on-click="selectGenre" data-click-args='["Comedy",{"$":"this"}]'>Comédie</span>
-      <span class="chip" data-genre="Drama" data-on-click="selectGenre" data-click-args='["Drama",{"$":"this"}]'>Drame</span>
-      <span class="chip" data-genre="Fantasy" data-on-click="selectGenre" data-click-args='["Fantasy",{"$":"this"}]'>Fantastique</span>
-      <span class="chip" data-genre="Horror" data-on-click="selectGenre" data-click-args='["Horror",{"$":"this"}]'>Horreur</span>
-      <span class="chip" data-genre="War" data-on-click="selectGenre" data-click-args='["War",{"$":"this"}]'>Guerre</span>
-      <span class="chip" data-genre="Western" data-on-click="selectGenre" data-click-args='["Western",{"$":"this"}]'>Western</span>
-      <span class="chip" data-genre="Documentary" data-on-click="selectGenre" data-click-args='["Documentary",{"$":"this"}]'>Documentaire</span>
+      <button type="button" class="genre-scroll genre-scroll-prev" aria-label="Genres précédents" data-on-click="scrollGenres" data-click-args='[-1]' hidden data-i18n-aria-label="page.genres_precedents">‹</button>
+      <div id="genreFilters" class="genre-row" role="group" aria-label="Genres" data-i18n-aria-label="page.genres">
+      <span class="chip active" data-genre="" data-on-click="selectGenre" data-click-args='["",{"$":"this"}]' data-i18n="page.tous">Tous</span>
+      <span class="chip" data-genre="Action" data-on-click="selectGenre" data-click-args='["Action",{"$":"this"}]' data-i18n="page.action">Action</span>
+      <span class="chip" data-genre="Sci-Fi" data-on-click="selectGenre" data-click-args='["Sci-Fi",{"$":"this"}]' data-i18n="page.sci_fi">Sci-Fi</span>
+      <span class="chip" data-genre="Thriller" data-on-click="selectGenre" data-click-args='["Thriller",{"$":"this"}]' data-i18n="page.thriller">Thriller</span>
+      <span class="chip" data-genre="Crime" data-on-click="selectGenre" data-click-args='["Crime",{"$":"this"}]' data-i18n="page.policier">Policier</span>
+      <span class="chip" data-genre="Adventure" data-on-click="selectGenre" data-click-args='["Adventure",{"$":"this"}]' data-i18n="page.aventure">Aventure</span>
+      <span class="chip" data-genre="Animation" data-on-click="selectGenre" data-click-args='["Animation",{"$":"this"}]' data-i18n="page.animation">Animation</span>
+      <span class="chip" data-genre="Comedy" data-on-click="selectGenre" data-click-args='["Comedy",{"$":"this"}]' data-i18n="page.comedie">Comédie</span>
+      <span class="chip" data-genre="Drama" data-on-click="selectGenre" data-click-args='["Drama",{"$":"this"}]' data-i18n="page.drame">Drame</span>
+      <span class="chip" data-genre="Fantasy" data-on-click="selectGenre" data-click-args='["Fantasy",{"$":"this"}]' data-i18n="page.fantastique">Fantastique</span>
+      <span class="chip" data-genre="Horror" data-on-click="selectGenre" data-click-args='["Horror",{"$":"this"}]' data-i18n="page.horreur">Horreur</span>
+      <span class="chip" data-genre="War" data-on-click="selectGenre" data-click-args='["War",{"$":"this"}]' data-i18n="page.guerre">Guerre</span>
+      <span class="chip" data-genre="Western" data-on-click="selectGenre" data-click-args='["Western",{"$":"this"}]' data-i18n="page.western">Western</span>
+      <span class="chip" data-genre="Documentary" data-on-click="selectGenre" data-click-args='["Documentary",{"$":"this"}]' data-i18n="page.documentaire">Documentaire</span>
     </div>
-      <button type="button" class="genre-scroll genre-scroll-next" aria-label="Genres suivants" data-on-click="scrollGenres" data-click-args='[1]' hidden>›</button>
+      <button type="button" class="genre-scroll genre-scroll-next" aria-label="Genres suivants" data-on-click="scrollGenres" data-click-args='[1]' hidden data-i18n-aria-label="page.genres_suivants">›</button>
     </div>
   </div>
   <div id="postersGrid" class="posters-grid"></div>
   <div id="loadMoreWrap" style="display:none; justify-content:center; margin-top:22px;">
-    <button id="loadMoreBtn" class="btn btn-secondary" style="padding:9px 24px;" data-on-click="loadMoreCatalog">Voir plus de titres</button>
+    <button id="loadMoreBtn" class="btn btn-secondary" style="padding:9px 24px;" data-on-click="loadMoreCatalog" data-i18n="page.voir_plus_de_titres">Voir plus de titres</button>
   </div>
 
   <!-- Section Cloud Multi-Debrid -->
   <div id="rdCloudPanel" class="panel lib-panel" style="display:none;">
     <div class="lib-panel-head">
       <div>
-        <h3 id="rdCloudHeading">Derniers fichiers débridés sur le Cloud</h3>
-        <div id="rdCloudStatusNote">Gérez ou nettoyez automatiquement les fichiers et torrents stockés sur votre débrideur.</div>
+        <h3 id="rdCloudHeading" data-i18n="page.derniers_fichiers_debrides_sur_le_cloud">Derniers fichiers débridés sur le Cloud</h3>
+        <div id="rdCloudStatusNote" data-i18n="page.gerez_ou_nettoyez_automatiquement_les">Gérez ou nettoyez automatiquement les fichiers et torrents stockés sur votre débrideur.</div>
       </div>
       <div class="lib-tools">
-        <select id="rdCloudRetentionSelect" class="catalog-sort" data-on-change="onChangeRdRetention" data-change-args='[{"$":"value"}]' title="Suppression automatique des fichiers et torrents anciens">
+        <select id="rdCloudRetentionSelect" class="catalog-sort" data-on-change="onChangeRdRetention" data-change-args='[{"$":"value"}]' title="Suppression automatique des fichiers et torrents anciens" data-i18n-title="page.suppression_automatique_des_fichiers_et">
           <option value="0" data-i18n="page.auto_suppression_jamais">Auto-suppression : Jamais</option>
           <option value="1" data-i18n="page.auto_suppression_24h">Auto-suppression : &gt; 24h</option>
           <option value="3" data-i18n="page.auto_suppression_3_jours">Auto-suppression : &gt; 3 jours</option>
@@ -507,7 +507,7 @@
         <p class="explore-sub" data-i18n="page.collections_cultes_palmares_letterboxd">Collections cultes, palmarès Letterboxd et pépites choisies par des cinéphiles.</p>
       </div>
       <form class="explore-import" data-on-submit="kinoSubmit" data-submit-args='[{"$":"event"},"importCustomLetterboxdFromInput"]'>
-        <input type="text" inputmode="url" id="communityLetterboxdInput" placeholder="Adresse d'une liste Letterboxd (letterboxd.com ou boxd.it)" aria-label="Adresse d'une liste Letterboxd à importer" autocomplete="off" spellcheck="false">
+        <input type="text" inputmode="url" id="communityLetterboxdInput" placeholder="Adresse d'une liste Letterboxd (letterboxd.com ou boxd.it)" aria-label="Adresse d'une liste Letterboxd à importer" autocomplete="off" spellcheck="false" data-i18n-placeholder="page.adresse_d_une_liste_letterboxd" data-i18n-aria-label="page.adresse_d_une_liste_letterboxd_a">
         <button type="submit" class="btn" data-i18n="page.importer">Importer</button>
       </form>
     </div>
@@ -528,7 +528,7 @@
         </div>
         <button type="button" class="btn-surprise" data-on-click="surpriseMeFromOpenCommunityList" title="Tirer un titre non vu de cette sélection" data-i18n-title="page.tirer_un_titre_non_vu_de_cette_selection" data-i18n="page.roulette">Roulette</button>
       </div>
-      <div id="communityActiveListFilters" class="cloud-chips" role="group" aria-label="État des titres"></div>
+      <div id="communityActiveListFilters" class="cloud-chips" role="group" aria-label="État des titres" data-i18n-aria-label="page.etat_des_titres"></div>
       <div id="communityActiveListGrid" class="posters-grid"></div>
     </section>
   </div>
@@ -542,7 +542,7 @@
         <p class="week-note" data-i18n="page.heures_de_diffusion_au_japon_a_l_heure">Heures de diffusion au Japon, à l’heure de ce Mac.</p>
       </div>
       <div class="lib-tools">
-        <select id="animeScheduleFilter" class="catalog-sort" aria-label="Épisodes affichés" data-on-change="setAnimeWeekFilter" data-change-args='[{"$":"value"}]'>
+        <select id="animeScheduleFilter" class="catalog-sort" aria-label="Épisodes affichés" data-on-change="setAnimeWeekFilter" data-change-args='[{"$":"value"}]' data-i18n-aria-label="page.episodes_affiches">
           <option value="popular" data-i18n="page.populaires">Populaires</option>
           <option value="mine" data-i18n="page.mes_animes">Mes animes</option>
           <option value="all" data-i18n="page.tout">Tout</option>
@@ -550,7 +550,7 @@
         <button type="button" class="btn-surprise" data-on-click="loadAnimeWeek" data-click-args='[true]' data-i18n="page.actualiser">Actualiser</button>
       </div>
     </div>
-    <div id="animeScheduleDays" class="week-days" role="group" aria-label="Jours"></div>
+    <div id="animeScheduleDays" class="week-days" role="group" aria-label="Jours" data-i18n-aria-label="page.jours"></div>
     <div id="animeScheduleGrid" class="week-list"></div>
   </div>
 
@@ -695,10 +695,10 @@
         <p class="settings-group-desc" data-i18n="page.le_service_debrid_qui_fournit_les_films">Le service Debrid qui fournit les films et les séries, ou vos propres sources.</p>
         <div id="cfgAccountInfo" class="set-status">
           <div>
-            <strong id="cfgAccountTitle">Statut du compte</strong>
-            <span id="cfgAccountSub">Vérification de la clé…</span>
+            <strong id="cfgAccountTitle" data-i18n="page.statut_du_compte">Statut du compte</strong>
+            <span id="cfgAccountSub" data-i18n="page.verification_de_la_cle">Vérification de la clé…</span>
           </div>
-          <span id="cfgAccountBadge" class="settings-card-badge">En attente</span>
+          <span id="cfgAccountBadge" class="settings-card-badge" data-i18n="page.en_attente">En attente</span>
         </div>
         <div class="set-list">
           <div class="set-row">
@@ -717,17 +717,17 @@
           </div>
           <div class="set-row set-row-wide">
             <div class="set-text">
-              <label class="settings-label" for="cfgToken" id="cfgTokenLabel">Clé API</label>
+              <label class="settings-label" for="cfgToken" id="cfgTokenLabel" data-i18n="page.cle_api">Clé API</label>
               <p class="settings-desc" data-i18n="page.elle_reste_sur_ce_mac_dans_un_fichier">Elle reste sur ce Mac, dans un fichier réservé à votre session, sans chiffrement.</p>
             </div>
             <div class="set-key">
               <div class="set-key-field">
-                <input type="password" id="cfgToken" placeholder="Laisser vide pour garder la clé actuelle" autocomplete="off" spellcheck="false">
+                <input type="password" id="cfgToken" placeholder="Laisser vide pour garder la clé actuelle" autocomplete="off" spellcheck="false" data-i18n-placeholder="page.laisser_vide_pour_garder_la_cle_actuelle">
                 <button type="button" class="set-key-eye" data-on-click="togglePasswordVisibility" data-click-args='["cfgToken",{"$":"this"}]' title="Afficher ou masquer la clé" aria-label="Afficher ou masquer la clé" data-i18n-title="page.afficher_ou_masquer_la_cle" data-i18n-aria-label="page.afficher_ou_masquer_la_cle">
                   <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#eye"></use></svg>
                 </button>
               </div>
-              <button type="button" class="btn" id="cfgTokenVerifyBtn" data-on-click="verifyDebridKey" data-click-args='[{"$":"this"}]'>Vérifier</button>
+              <button type="button" class="btn" id="cfgTokenVerifyBtn" data-on-click="verifyDebridKey" data-click-args='[{"$":"this"}]' data-i18n="page.verifier">Vérifier</button>
             </div>
           </div>
           <div class="set-row">
@@ -758,14 +758,14 @@
             </div>
             <form class="set-key" data-on-submit="addStremioAddon" data-submit-args='[{"$":"event"}]'>
               <div class="set-key-field"><input type="url" id="stremioAddonUrl" placeholder="https://…/manifest.json" autocomplete="off" spellcheck="false"></div>
-              <button type="submit" class="btn" id="stremioAddonAdd">Ajouter</button>
+              <button type="submit" class="btn" id="stremioAddonAdd" data-i18n="page.ajouter">Ajouter</button>
             </form>
           </div>
-          <ul id="stremioAddonList" class="addon-list" aria-label="Addons installés"></ul>
+          <ul id="stremioAddonList" class="addon-list" aria-label="Addons installés" data-i18n-aria-label="page.addons_installes"></ul>
           <div class="set-row">
             <div class="set-text">
               <label class="settings-label" for="cfgP2P" data-i18n="page.lecture_p2p">Lecture P2P</label>
-              <p class="settings-desc" id="cfgP2PStatus">Sans service de débridage, KINO peut lire les torrents lui-même.</p>
+              <p class="settings-desc" id="cfgP2PStatus" data-i18n="page.sans_service_de_debridage_kino_peut_lire">Sans service de débridage, KINO peut lire les torrents lui-même.</p>
             </div>
             <label class="k-switch"><input type="checkbox" id="cfgP2P" role="switch" data-on-change="setP2PEnabled" data-change-args='[{"$":"this"}]'><span aria-hidden="true"></span></label>
           </div>
@@ -810,9 +810,9 @@
           <div class="set-row">
             <div class="set-text">
               <span class="settings-label" data-i18n="page.fichiers_temporaires">Fichiers temporaires</span>
-              <p class="settings-desc" id="cfgP2PCache">Aucun fichier pour l’instant.</p>
+              <p class="settings-desc" id="cfgP2PCache" data-i18n="page.aucun_fichier_pour_l_instant">Aucun fichier pour l’instant.</p>
             </div>
-            <button type="button" class="btn btn-secondary" id="cfgP2PClear" data-on-click="clearP2PCache">Vider</button>
+            <button type="button" class="btn btn-secondary" id="cfgP2PClear" data-on-click="clearP2PCache" data-i18n="page.vider">Vider</button>
           </div>
         </div>
       </section>
@@ -829,7 +829,7 @@
               <div class="set-text">
                 <span class="settings-label" data-i18n="page.google_drive">Google Drive</span>
                 <p class="settings-desc" data-i18n="page.votre_historique_et_ma_liste_entre_ce">Votre historique et Ma Liste, entre ce Mac et votre PC.</p>
-                <p id="gdriveSyncStatus" class="settings-desc set-live">Se synchronise à chaque ouverture de KINO.</p>
+                <p id="gdriveSyncStatus" class="settings-desc set-live" data-i18n="page.se_synchronise_a_chaque_ouverture_de">Se synchronise à chaque ouverture de KINO.</p>
               </div>
               <button type="button" class="btn btn-secondary btn-small" data-on-click="triggerGdriveSync" data-click-args='[{"$":"this"}]' data-i18n="page.synchroniser">Synchroniser</button>
             </div>
@@ -837,17 +837,17 @@
               <div class="set-text">
                 <span class="settings-label" data-i18n="page.trakt">Trakt</span>
                 <p class="settings-desc" data-i18n="page.marque_vos_episodes_vus_et_synchronise">Marque vos épisodes vus et synchronise votre liste Trakt.</p>
-                <p id="traktSyncStatus" class="settings-desc set-live">Non connecté</p>
+                <p id="traktSyncStatus" class="settings-desc set-live" data-i18n="page.non_connecte">Non connecté</p>
               </div>
               <div class="set-control-pair">
-                <button type="button" id="traktConnectBtn" class="btn btn-secondary btn-small" data-on-click="toggleTraktAuth" data-click-args='[{"$":"this"}]'>Connecter</button>
-                <button type="button" id="traktSyncBtn" class="btn btn-secondary btn-small" style="display:none;" data-on-click="triggerTraktSync" data-click-args='[{"$":"this"}]'>Synchroniser</button>
+                <button type="button" id="traktConnectBtn" class="btn btn-secondary btn-small" data-on-click="toggleTraktAuth" data-click-args='[{"$":"this"}]' data-i18n="page.connecter">Connecter</button>
+                <button type="button" id="traktSyncBtn" class="btn btn-secondary btn-small" style="display:none;" data-on-click="triggerTraktSync" data-click-args='[{"$":"this"}]' data-i18n="page.synchroniser">Synchroniser</button>
               </div>
             </div>
             <div id="traktAuthBox" class="set-steps" style="display:none;">
               <p>1. Ouvrez <a id="traktAuthUrl" href="https://trakt.tv/activate" target="_blank" rel="noopener">trakt.tv/activate</a></p>
               <p>2. Entrez ce code : <b id="traktUserCode" class="set-code">------</b></p>
-              <p id="traktAuthCountdown" class="settings-desc">En attente de votre validation sur Trakt…</p>
+              <p id="traktAuthCountdown" class="settings-desc" data-i18n="page.en_attente_de_votre_validation_sur_trakt">En attente de votre validation sur Trakt…</p>
             </div>
           </div>
         </div>
@@ -858,7 +858,7 @@
             <div class="set-row">
               <div class="set-text">
                 <label class="settings-label" for="cfgTvDevice" data-i18n="page.tv_pour_sur_la_tv">TV pour « Sur la TV »</label>
-                <p id="cfgTvStatus" class="settings-desc">Une TV du même réseau que ce Mac (DLNA). Le Mac lui envoie la vidéo : il doit rester allumé.</p>
+                <p id="cfgTvStatus" class="settings-desc" data-i18n="page.une_tv_du_meme_reseau_que_ce_mac_dlna_le">Une TV du même réseau que ce Mac (DLNA). Le Mac lui envoie la vidéo : il doit rester allumé.</p>
               </div>
               <div class="set-control-pair">
                 <select id="cfgTvDevice" data-on-change="chooseTvDevice" data-change-args='[{"$":"value"}]'><option value="" data-i18n="page.aucune_tv_trouvee">Aucune TV trouvée</option></select>
@@ -875,11 +875,11 @@
               <div class="set-text">
                 <label class="settings-label" for="cfgTmdbKey" data-i18n="page.cle_tmdb">Clé TMDB</label>
                 <p class="settings-desc">Pour « Si vous avez aimé » et « Vous aimerez aussi ». Gratuite : <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener" data-i18n="page.themoviedb_org_parametres_api">themoviedb.org → Paramètres → API</a>.</p>
-                <p id="cfgTmdbStatus" class="settings-desc set-live">Pas de clé : KINO propose des titres du même genre.</p>
+                <p id="cfgTmdbStatus" class="settings-desc set-live" data-i18n="page.pas_de_cle_kino_propose_des_titres_du">Pas de clé : KINO propose des titres du même genre.</p>
               </div>
               <div class="set-key">
                 <div class="set-key-field">
-                  <input type="password" id="cfgTmdbKey" placeholder="Collez votre clé d’API TMDB" autocomplete="off" spellcheck="false">
+                  <input type="password" id="cfgTmdbKey" placeholder="Collez votre clé d’API TMDB" autocomplete="off" spellcheck="false" data-i18n-placeholder="page.collez_votre_cle_d_api_tmdb">
                   <button type="button" class="set-key-eye" data-on-click="togglePasswordVisibility" data-click-args='["cfgTmdbKey",{"$":"this"}]' title="Afficher ou masquer la clé" aria-label="Afficher ou masquer la clé" data-i18n-title="page.afficher_ou_masquer_la_cle" data-i18n-aria-label="page.afficher_ou_masquer_la_cle">
                     <svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#eye"></use></svg>
                   </button>
@@ -919,7 +919,7 @@
                   <label class="settings-label" for="cfgDiscordClientId" data-i18n="page.identifiant_de_l_application">Identifiant de l’application</label>
                   <p class="settings-desc" data-i18n="page.seulement_pour_afficher_une_autre">Seulement pour afficher une autre application que KINO.</p>
                 </div>
-                <input type="text" id="cfgDiscordClientId" placeholder="Ex. 123456789012345678" inputmode="numeric" spellcheck="false">
+                <input type="text" id="cfgDiscordClientId" placeholder="Ex. 123456789012345678" inputmode="numeric" spellcheck="false" data-i18n-placeholder="page.ex_123456789012345678">
               </div>
             </div>
           </details>
@@ -953,7 +953,7 @@
                 <p class="settings-desc" data-i18n="page.les_films_gardes_hors_ligne_y_sont">Les films gardés hors ligne y sont enregistrés.</p>
               </div>
               <div class="set-key">
-                <input type="text" id="cfgDir" placeholder="Ex. /Users/vous/Movies/kino" spellcheck="false">
+                <input type="text" id="cfgDir" placeholder="Ex. /Users/vous/Movies/kino" spellcheck="false" data-i18n-placeholder="page.ex_users_vous_movies_kino">
                 <button type="button" class="btn btn-secondary" data-on-click="openFolder" data-i18n="page.ouvrir">Ouvrir</button>
               </div>
             </div>
@@ -984,8 +984,8 @@
               </div>
               <div class="set-control-pair kino-update-actions">
                 <button type="button" class="btn btn-secondary btn-small" data-on-click="checkKinoUpdates" data-i18n="page.rechercher_une_mise_a_jour">Rechercher une mise à jour</button>
-                <button type="button" class="btn btn-secondary btn-small" id="kinoUpdateChooseBtn" data-on-click="chooseKinoUpdate" hidden>Choisir un paquet</button>
-                <button type="button" class="btn btn-secondary btn-small" id="kinoUpdatePageBtn" data-on-click="openKinoReleasePage" hidden>Page des versions</button>
+                <button type="button" class="btn btn-secondary btn-small" id="kinoUpdateChooseBtn" data-on-click="chooseKinoUpdate" hidden data-i18n="page.choisir_un_paquet">Choisir un paquet</button>
+                <button type="button" class="btn btn-secondary btn-small" id="kinoUpdatePageBtn" data-on-click="openKinoReleasePage" hidden data-i18n="page.page_des_versions">Page des versions</button>
               </div>
             </div>
             <div class="set-row">
@@ -997,7 +997,7 @@
             </div>
             <div class="kino-update-progress" id="kinoUpdateProgressBox" hidden>
               <div class="kino-update-progress-track"><span id="kinoUpdateProgressBar"></span></div>
-              <span id="kinoUpdateProgressLabel">Vérification…</span>
+              <span id="kinoUpdateProgressLabel" data-i18n="page.verification">Vérification…</span>
             </div>
             <div id="kinoUpdateCandidate" class="kino-update-candidate" hidden>
               <strong id="kinoUpdateCandidateTitle"></strong>
@@ -1007,9 +1007,9 @@
             <div class="set-row kino-update-rollback" id="kinoUpdateRollbackRow" hidden>
               <div class="set-text">
                 <span class="settings-label" data-i18n="page.version_precedente">Version précédente</span>
-                <p class="settings-desc" id="kinoUpdateRollbackDescription">Aucune sauvegarde disponible.</p>
+                <p class="settings-desc" id="kinoUpdateRollbackDescription" data-i18n="page.aucune_sauvegarde_disponible">Aucune sauvegarde disponible.</p>
               </div>
-              <button type="button" class="btn btn-secondary btn-small" id="kinoUpdateRollbackBtn" data-on-click="rollbackKinoUpdate" disabled>Revenir à cette version</button>
+              <button type="button" class="btn btn-secondary btn-small" id="kinoUpdateRollbackBtn" data-on-click="rollbackKinoUpdate" disabled data-i18n="page.revenir_a_cette_version">Revenir à cette version</button>
             </div>
             <p id="kinoUpdateMessage" class="settings-desc" role="status" aria-live="polite"></p>
           </div>
@@ -1039,14 +1039,14 @@
                 <p class="settings-desc" data-i18n="page.la_connexion_le_compte_la">La connexion, le compte, la synchronisation, le lecteur, l’espace disque et vos données. Rien n’est modifié.</p>
               </div>
               <div class="set-control-pair diagnostic-actions">
-                <button type="button" class="btn btn-secondary btn-small" id="diagnosticRunBtn" data-on-click="runDiagnostic">Lancer le diagnostic</button>
-                <button type="button" class="btn btn-secondary btn-small" id="diagnosticCopyBtn" data-on-click="copyDiagnosticReport" disabled>Copier le rapport</button>
+                <button type="button" class="btn btn-secondary btn-small" id="diagnosticRunBtn" data-on-click="runDiagnostic" data-i18n="page.lancer_le_diagnostic">Lancer le diagnostic</button>
+                <button type="button" class="btn btn-secondary btn-small" id="diagnosticCopyBtn" data-on-click="copyDiagnosticReport" disabled data-i18n="page.copier_le_rapport">Copier le rapport</button>
               </div>
             </div>
             <span id="diagnosticCopyStatus" class="settings-desc" role="status" aria-live="polite"></span>
             <p id="diagnosticSummary" class="diagnostic-summary" role="status" aria-live="polite"></p>
             <ul id="diagnosticList" class="diagnostic-list" hidden></ul>
-            <textarea id="diagnosticReport" class="diagnostic-report" rows="10" readonly aria-label="Rapport du diagnostic" hidden></textarea>
+            <textarea id="diagnosticReport" class="diagnostic-report" rows="10" readonly aria-label="Rapport du diagnostic" hidden data-i18n-aria-label="page.rapport_du_diagnostic"></textarea>
           </div>
         </div>
 
@@ -1103,18 +1103,18 @@
   <div id="inAppStatusToast" class="inapp-toast" role="status" aria-live="polite"></div>
   <!-- Bouton Skip Intro Intelligent -->
   <div id="inAppSkipIntroCard" class="inapp-floating-card">
-    <button class="btn" id="inAppSkipIntroBtn" style="padding:7px 14px; font-size:0.82rem;" data-on-click="skipInAppIntro">Passer l'intro</button>
+    <button class="btn" id="inAppSkipIntroBtn" style="padding:7px 14px; font-size:0.82rem;" data-on-click="skipInAppIntro" data-i18n="page.passer_l_intro">Passer l'intro</button>
     <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" data-on-click="dismissSkipIntro" title="Masquer" data-i18n-title="page.masquer">✕</button>
   </div>
   <!-- Bouton Annuler le saut (Undo) -->
   <div id="inAppUndoSkipCard" class="inapp-floating-card" style="display:none; bottom:86px;">
-    <button class="btn btn-secondary" id="inAppUndoSkipBtn" style="padding:6px 12px; font-size:0.80rem;" data-on-click="undoInAppSkip">Annuler le saut</button>
+    <button class="btn btn-secondary" id="inAppUndoSkipBtn" style="padding:6px 12px; font-size:0.80rem;" data-on-click="undoInAppSkip" data-i18n="page.annuler_le_saut">Annuler le saut</button>
   </div>
   <!-- Carte Prochain épisode dans 10s -->
   <div id="inAppNextEpCard" class="inapp-floating-card">
     <div>
       <div style="font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">À suivre dans <span id="inAppNextEpCountdown">10</span>s</div>
-      <div id="inAppNextEpTitle" style="font-size:0.86rem; font-weight:600; margin-top:2px; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Épisode suivant</div>
+      <div id="inAppNextEpTitle" style="font-size:0.86rem; font-weight:600; margin-top:2px; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" data-i18n="page.episode_suivant">Épisode suivant</div>
     </div>
     <button class="btn" style="padding:6px 12px; font-size:0.78rem;" data-on-click="inAppNextTrack" data-i18n="page.lancer">Lancer</button>
     <button class="btn btn-secondary" style="padding:6px 9px; font-size:0.76rem;" data-on-click="cancelNextEpAuto" data-i18n="page.annuler">Annuler</button>
@@ -1143,22 +1143,22 @@
     </div>
     <div id="inAppTitle" class="kp-title"></div>
     <div class="kp-top-actions no-drag">
-      <button class="inapp-btn kp-pill kp-accent" id="inAppMpvSuggestBtn" data-on-click="switchToExternalPlayer" style="display:none;" title="Optimisé pour 4K HDR & DTS sans saccades"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Basculer MPV</button>
-      <button class="inapp-btn kp-pill kp-accent" id="inAppAudioFixBtn" data-on-click="fixInAppAudio" style="display:none;" title="Convertir l'audio multi-canal (DTS/TrueHD/E-AC3) en flux stéréo AAC compatible avec le navigateur"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>Réparer le son</button>
-      <select class="inapp-btn kp-pill kp-select" id="inAppAudioTrack" aria-label="Piste audio" title="Choisir la piste audio" data-on-change="changeInAppAudioTrack" data-change-args='[{"$":"value"}]' style="display:none;"></select>
-      <button class="inapp-btn kp-pill" id="inAppSubsBtn" data-on-click="cycleInAppSubtitles" title="Sous-titres OpenSubtitles FR / EN (Touche C)">CC : Off</button>
+      <button class="inapp-btn kp-pill kp-accent" id="inAppMpvSuggestBtn" data-on-click="switchToExternalPlayer" style="display:none;" title="Optimisé pour 4K HDR & DTS sans saccades" data-i18n-title="page.optimise_pour_4k_hdr_dts_sans_saccades"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Basculer MPV</button>
+      <button class="inapp-btn kp-pill kp-accent" id="inAppAudioFixBtn" data-on-click="fixInAppAudio" style="display:none;" title="Convertir l'audio multi-canal (DTS/TrueHD/E-AC3) en flux stéréo AAC compatible avec le navigateur" data-i18n-title="page.convertir_l_audio_multi_canal_dts_truehd"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>Réparer le son</button>
+      <select class="inapp-btn kp-pill kp-select" id="inAppAudioTrack" aria-label="Piste audio" title="Choisir la piste audio" data-on-change="changeInAppAudioTrack" data-change-args='[{"$":"value"}]' style="display:none;" data-i18n-title="page.choisir_la_piste_audio" data-i18n-aria-label="page.piste_audio"></select>
+      <button class="inapp-btn kp-pill" id="inAppSubsBtn" data-on-click="cycleInAppSubtitles" title="Sous-titres OpenSubtitles FR / EN (Touche C)" data-i18n-title="page.sous_titres_opensubtitles_fr_en_touche_c" data-i18n="page.cc_off">CC : Off</button>
       <div class="kp-more">
-        <button class="inapp-btn kp-pill" id="inAppMoreBtn" data-on-click="toggleInAppMoreMenu" data-click-args='[{"$":"event"}]' aria-expanded="false" aria-controls="inAppMoreMenu" title="Réglages de l'image et du son, partage, aide"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>Options</button>
-        <div id="inAppMoreMenu" class="kp-menu" role="group" aria-label="Options de lecture" hidden>
+        <button class="inapp-btn kp-pill" id="inAppMoreBtn" data-on-click="toggleInAppMoreMenu" data-click-args='[{"$":"event"}]' aria-expanded="false" aria-controls="inAppMoreMenu" title="Réglages de l'image et du son, partage, aide" data-i18n-title="page.reglages_de_l_image_et_du_son_partage"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>Options</button>
+        <div id="inAppMoreMenu" class="kp-menu" role="group" aria-label="Options de lecture" hidden data-i18n-aria-label="page.options_de_lecture">
           <div class="kp-menu-heading" data-i18n="page.image_et_son">Image et son</div>
-          <button class="inapp-btn kp-menu-item" id="inAppSubSizeBtn" data-name="Taille des sous-titres" data-on-click="cycleInAppSubSize" title="Taille des sous-titres (S / M / L / XL)">A</button>
-          <button class="inapp-btn kp-menu-item" id="inAppAudioBtn" data-name="Voix" data-on-click="cycleInAppAudioBoost" title="Boost des dialogues / Mode Audio Nuit (Touche V)">Normal</button>
-          <button class="inapp-btn kp-menu-item" id="inAppClarityBtn" data-name="Clarté" data-on-click="cycleInAppClarity" title="Déboucher les noirs / Éclaircir les scènes sombres (Touche B)">Normal</button>
-          <button class="inapp-btn kp-menu-item" id="inAppSpeedBtn" data-name="Vitesse" data-on-click="cycleInAppSpeed" title="Vitesse de lecture (Touches [ et ])">1.0x</button>
-          <button class="inapp-btn kp-menu-item" id="inAppSeriesPreferenceBtn" data-on-click="openInAppSeriesPreference" style="display:none;" title="Mémoriser les langues pour les prochains épisodes">Langues de la série</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSubSizeBtn" data-name="Taille des sous-titres" data-on-click="cycleInAppSubSize" title="Taille des sous-titres (S / M / L / XL)" data-i18n-title="page.taille_des_sous_titres_s_m_l_xl">A</button>
+          <button class="inapp-btn kp-menu-item" id="inAppAudioBtn" data-name="Voix" data-on-click="cycleInAppAudioBoost" title="Boost des dialogues / Mode Audio Nuit (Touche V)" data-i18n-title="page.boost_des_dialogues_mode_audio_nuit" data-i18n="page.normal">Normal</button>
+          <button class="inapp-btn kp-menu-item" id="inAppClarityBtn" data-name="Clarté" data-on-click="cycleInAppClarity" title="Déboucher les noirs / Éclaircir les scènes sombres (Touche B)" data-i18n-title="page.deboucher_les_noirs_eclaircir_les_scenes" data-i18n="page.normal">Normal</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSpeedBtn" data-name="Vitesse" data-on-click="cycleInAppSpeed" title="Vitesse de lecture (Touches [ et ])" data-i18n-title="page.vitesse_de_lecture_touches_et">1.0x</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSeriesPreferenceBtn" data-on-click="openInAppSeriesPreference" style="display:none;" title="Mémoriser les langues pour les prochains épisodes" data-i18n-title="page.memoriser_les_langues_pour_les_prochains" data-i18n="page.langues_de_la_serie">Langues de la série</button>
           <div class="kp-menu-heading" data-i18n="page.partager_et_garder">Partager et garder</div>
           <button class="inapp-btn kp-menu-item" id="inAppTvBtn" data-on-click="sendInAppPlaybackToTv" title="Continuer sur la TV, au même moment" data-i18n-title="page.continuer_sur_la_tv_au_meme_moment" data-i18n="page.sur_la_tv">Sur la TV</button>
-          <button class="inapp-btn kp-menu-item" id="inAppSaveOfflineBtn" data-on-click="saveCurrentPlaybackOffline" title="Garder ce fichier et la piste de sous-titres choisie pour une lecture sans connexion">Garder hors ligne</button>
+          <button class="inapp-btn kp-menu-item" id="inAppSaveOfflineBtn" data-on-click="saveCurrentPlaybackOffline" title="Garder ce fichier et la piste de sous-titres choisie pour une lecture sans connexion" data-i18n-title="page.garder_ce_fichier_et_la_piste_de_sous" data-i18n="page.garder_hors_ligne">Garder hors ligne</button>
           <button class="inapp-btn kp-menu-item" id="inAppShotBtn" data-on-click="captureInAppScreenshot" title="Capturer une image du film dans Téléchargements" data-i18n-title="page.capturer_une_image_du_film_dans" data-i18n="page.capturer_l_image">Capturer l'image</button>
           <button class="inapp-btn kp-menu-item" id="inAppRemoteBtn" data-on-click="openRemoteModal" title="Télécommande smartphone tactile via QR Code" data-i18n-title="page.telecommande_smartphone_tactile_via_qr" data-i18n="page.telecommande">Télécommande</button>
           <button class="inapp-btn kp-menu-item" id="inAppWpBtn" data-on-click="openWatchPartyModal" title="Watch Party synchronisée P2P (Code à 6 lettres)" data-i18n-title="page.watch_party_synchronisee_p2p_code_a_6" data-i18n="page.watch_party">Watch Party</button>
@@ -1167,7 +1167,7 @@
           <button class="inapp-btn kp-menu-item" id="inAppExternalBtn" data-on-click="switchToExternalPlayer" data-i18n="page.lecteur_externe">Lecteur externe</button>
         </div>
       </div>
-      <div class="win-controls no-drag" id="inAppWindowButtons" role="group" aria-label="Fenêtre">
+      <div class="win-controls no-drag" id="inAppWindowButtons" role="group" aria-label="Fenêtre" data-i18n-aria-label="page.fenetre">
         <button type="button" class="win-btn" data-on-click="windowAction" data-click-args='["minimize"]' title="Réduire" aria-label="Réduire" data-i18n-title="page.reduire" data-i18n-aria-label="page.reduire"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
         <button type="button" class="win-btn win-max" data-on-click="windowAction" data-click-args='["maximize"]' title="Agrandir" aria-label="Agrandir" data-i18n-title="page.agrandir" data-i18n-aria-label="page.agrandir"><svg class="win-icon-max" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg><svg class="win-icon-restore" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><rect x="0.5" y="2.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><path d="M2.5 2.5V1.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
         <button type="button" class="win-btn win-close" data-on-click="windowAction" data-click-args='["close"]' title="Fermer" aria-label="Fermer" data-i18n-title="page.fermer" data-i18n-aria-label="page.fermer"><svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
@@ -1182,7 +1182,7 @@
     </div>
     <div id="inAppWpMessages" style="flex:1; overflow-y:auto; padding:10px; font-size:0.78rem; display:flex; flex-direction:column; gap:6px; max-height:160px;"></div>
     <div style="padding:8px 10px; border-top:1px solid var(--border); display:flex; gap:6px;">
-      <input type="text" id="inAppWpInput" placeholder="Message..." data-on-keydown="kinoOnEnter" data-keydown-args='[{"$":"event"},"sendWpMessage"]' style="flex:1; padding:4px 8px; font-size:0.78rem; border-radius:6px; background:var(--surface-2); border:1px solid var(--border); color:#fafafa;">
+      <input type="text" id="inAppWpInput" placeholder="Message..." data-on-keydown="kinoOnEnter" data-keydown-args='[{"$":"event"},"sendWpMessage"]' style="flex:1; padding:4px 8px; font-size:0.78rem; border-radius:6px; background:var(--surface-2); border:1px solid var(--border); color:#fafafa;" data-i18n-placeholder="page.message">
       <button class="btn" style="padding:4px 9px; font-size:0.75rem;" data-on-click="sendWpMessage" data-i18n="page.envoyer">Envoyer</button>
     </div>
   </div>
@@ -1203,7 +1203,7 @@
             <text x="12" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">10</text>
           </svg>
         </button>
-        <button class="inapp-btn inapp-btn-icon" id="inAppPlayPauseBtn" data-on-click="toggleInAppPlay" title="Lecture / Pause (Espace)" style="min-width:36px;">
+        <button class="inapp-btn inapp-btn-icon" id="inAppPlayPauseBtn" data-on-click="toggleInAppPlay" title="Lecture / Pause (Espace)" style="min-width:36px;" data-i18n-title="page.lecture_pause_espace">
           <svg class="svg-icon" viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
         </button>
         <button class="inapp-btn inapp-btn-icon" data-on-click="inAppSeekRel" data-click-args='[10]' title="Avancer 10s (Flèche Droite)" data-i18n-title="page.avancer_10s_fleche_droite">
@@ -1235,12 +1235,12 @@
           </div>
           <span id="inAppVolText" class="inapp-vol-text">100%</span>
         </div>
-        <button class="inapp-btn inapp-btn-icon" id="inAppPipBtn" data-on-click="toggleInAppPiP" title="Image dans l'image (I)" aria-label="Image dans l'image">
+        <button class="inapp-btn inapp-btn-icon" id="inAppPipBtn" data-on-click="toggleInAppPiP" title="Image dans l'image (I)" aria-label="Image dans l'image" data-i18n-title="page.image_dans_l_image_i" data-i18n-aria-label="page.image_dans_l_image">
           <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><rect x="12" y="9" width="8" height="6" rx="1" fill="currentColor"/>
           </svg>
         </button>
-        <button class="inapp-btn inapp-btn-icon" id="inAppFsBtn" data-on-click="toggleInAppFullscreen" title="Plein écran (F)">
+        <button class="inapp-btn inapp-btn-icon" id="inAppFsBtn" data-on-click="toggleInAppFullscreen" title="Plein écran (F)" data-i18n-title="page.plein_ecran_f">
           <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
           </svg>
@@ -1255,19 +1255,19 @@
   <div class="modal tonight-modal" role="dialog" aria-modal="true" aria-labelledby="tonightTitle" aria-describedby="tonightDescription">
     <div class="tonight-header">
       <div><span class="settings-eyebrow" data-i18n="page.ma_liste">MA LISTE</span><h2 id="tonightTitle" data-i18n="page.ce_soir">Ce soir</h2><p id="tonightDescription" data-i18n="page.jusqu_a_trois_idees_selon_votre_temps">Jusqu’à trois idées selon votre temps, votre envie et vos choix précédents.</p></div>
-      <button type="button" class="modal-close" data-on-click="closeTonightModal" aria-label="Fermer Ce soir" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
+      <button type="button" class="modal-close" data-on-click="closeTonightModal" aria-label="Fermer Ce soir" title="Fermer (Échap)" data-i18n-title="page.fermer_echap" data-i18n-aria-label="page.fermer_ce_soir"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
     <div class="tonight-form">
       <label>Temps disponible<select id="tonightMinutes" data-on-change="findTonightChoices"><option value="45">45 min</option><option value="90">1 h 30</option><option value="120" selected>2 h</option><option value="150">2 h 30</option><option value="180">3 h</option></select></label>
       <label>Envie<select id="tonightMood" data-on-change="findTonightChoices"><option value="discovery" data-i18n="page.decouverte">Découverte</option><option value="light" data-i18n="page.leger">Léger</option><option value="intense" data-i18n="page.intense">Intense</option></select></label>
       <label class="tonight-offline-toggle"><input type="checkbox" id="tonightOfflineOnly" data-on-change="findTonightChoices"><span>Sans connexion <small data-i18n="page.fichiers_prets_sur_ce_mac">Fichiers prêts sur ce Mac</small></span></label>
-      <button type="button" class="btn" id="tonightSearchButton" data-on-click="findTonightChoices">D’autres idées</button>
+      <button type="button" class="btn" id="tonightSearchButton" data-on-click="findTonightChoices" data-i18n="page.d_autres_idees">D’autres idées</button>
     </div>
-    <p id="tonightStatus" class="tonight-status" role="status" aria-live="polite">Les suggestions viennent de Ma Liste.</p>
+    <p id="tonightStatus" class="tonight-status" role="status" aria-live="polite" data-i18n="page.les_suggestions_viennent_de_ma_liste">Les suggestions viennent de Ma Liste.</p>
     <div id="tonightUndo" class="tonight-undo" role="status" aria-live="polite" style="display:none"></div>
     <div id="tonightChoices" class="tonight-choices"></div>
     <details class="tonight-preferences" id="tonightPreferences">
-      <summary id="tonightReviewSummary">Mes choix</summary>
+      <summary id="tonightReviewSummary" data-i18n="page.mes_choix">Mes choix</summary>
       <p class="tonight-preferences-note" data-i18n="page.les_reports_durent_24_h_les_exclusions">Les reports durent 24 h. Les exclusions restent jusqu’à leur réintégration. Vos choix restent sur ce Mac.</p>
       <div id="tonightReview"></div>
       <button type="button" class="btn btn-secondary tonight-reset" data-on-click="resetTonightPreferences" data-i18n="page.reinitialiser_les_choix_de_ce_soir">Réinitialiser les choix de Ce soir</button>
@@ -1280,18 +1280,18 @@
   <div class="case-modal-box" role="dialog" aria-modal="true" aria-labelledby="caseModalTitle">
     <div class="case-header">
       <div class="case-title-wrap">
-        <span class="case-kicker" id="caseModalKicker">ROULETTE KINO</span>
-        <h3 id="caseModalTitle" style="font-size:1.0rem; font-weight:700; color:#fafafa;">Tirage en cours...</h3>
+        <span class="case-kicker" id="caseModalKicker" data-i18n="page.roulette_kino">ROULETTE KINO</span>
+        <h3 id="caseModalTitle" style="font-size:1.0rem; font-weight:700; color:#fafafa;" data-i18n="page.tirage_en_cours">Tirage en cours...</h3>
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <div id="casePoolChips" style="display:flex; gap:5px; align-items:center; margin-right:6px;">
-          <button type="button" class="chip active" data-pool="catalog" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["catalog"]'>Catalogue</button>
-          <button type="button" class="chip" data-pool="classics" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["classics"]'>Classiques</button>
-          <button type="button" class="chip" data-pool="watchlist" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["watchlist"]'>Ma Liste</button>
-          <button type="button" class="chip" data-pool="watched" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["watched"]'>Rewatch (Déjà vus)</button>
+          <button type="button" class="chip active" data-pool="catalog" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["catalog"]' data-i18n="page.catalogue">Catalogue</button>
+          <button type="button" class="chip" data-pool="classics" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["classics"]' data-i18n="page.classiques">Classiques</button>
+          <button type="button" class="chip" data-pool="watchlist" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["watchlist"]' data-i18n="page.ma_liste_2">Ma Liste</button>
+          <button type="button" class="chip" data-pool="watched" style="padding:3px 9px; font-size:0.72rem;" data-on-click="surpriseMeMedia" data-click-args='["watched"]' data-i18n="page.rewatch_deja_vus">Rewatch (Déjà vus)</button>
         </div>
-        <button id="caseSoundBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" data-on-click="toggleCaseSound">Son : Activé</button>
-        <button id="caseSkipBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" data-on-click="skipCaseSpin">Passer l'animation</button>
+        <button id="caseSoundBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" data-on-click="toggleCaseSound" data-i18n="page.son_active">Son : Activé</button>
+        <button id="caseSkipBtn" class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" data-on-click="skipCaseSpin" data-i18n="page.passer_l_animation">Passer l'animation</button>
         <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.74rem;" data-on-click="closeCaseModal" data-i18n="page.fermer_echap">Fermer (Échap)</button>
       </div>
     </div>
@@ -1317,13 +1317,13 @@
         </svg>
         <span data-i18n="page.letterboxd">Letterboxd</span>
       </h3>
-      <button type="button" class="modal-close" data-on-click="closeLetterboxdModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
+      <button type="button" class="modal-close" data-on-click="closeLetterboxdModal" aria-label="Fermer" title="Fermer (Échap)" data-i18n-title="page.fermer_echap" data-i18n-aria-label="page.fermer"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
 
     <!-- Onglets du modal -->
     <div style="display:flex; gap:6px; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:14px;">
-      <button type="button" id="lbxTabBtnProfile" class="chip active" data-on-click="switchLbxModalTab" data-click-args='["profile"]' style="padding:4px 11px; font-size:0.76rem;">Profil &amp; Watchlist</button>
-      <button type="button" id="lbxTabBtnList" class="chip" data-on-click="switchLbxModalTab" data-click-args='["list"]' style="padding:4px 11px; font-size:0.76rem;">Importer une Liste publique</button>
+      <button type="button" id="lbxTabBtnProfile" class="chip active" data-on-click="switchLbxModalTab" data-click-args='["profile"]' style="padding:4px 11px; font-size:0.76rem;" data-i18n="page.profil_watchlist">Profil &amp; Watchlist</button>
+      <button type="button" id="lbxTabBtnList" class="chip" data-on-click="switchLbxModalTab" data-click-args='["list"]' style="padding:4px 11px; font-size:0.76rem;" data-i18n="page.importer_une_liste_publique">Importer une Liste publique</button>
     </div>
 
     <!-- Section 1 : Profil & Watchlist -->
@@ -1334,7 +1334,7 @@
       <div style="display:flex; flex-direction:column; gap:11px;">
         <div>
           <label for="lbxUrlInput" style="font-size:0.75rem; color:var(--text); font-weight:500; display:block; margin-bottom:5px;" data-i18n="page.pseudo_letterboxd">Pseudo Letterboxd</label>
-          <input type="text" id="lbxUrlInput" placeholder="Ex: passionia ou lien public" style="width:100%; box-sizing:border-box;" data-on-keydown="kinoOnEnter" data-keydown-args='[{"$":"event"},"submitLetterboxdImport"]'>
+          <input type="text" id="lbxUrlInput" placeholder="Ex: passionia ou lien public" style="width:100%; box-sizing:border-box;" data-on-keydown="kinoOnEnter" data-keydown-args='[{"$":"event"},"submitLetterboxdImport"]' data-i18n-placeholder="page.ex_passionia_ou_lien_public">
         </div>
         <div style="display:flex; flex-direction:column; gap:4px; padding-top:2px;">
           <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.74rem;">
@@ -1345,7 +1345,7 @@
             </button>
             <div style="display:inline-flex; align-items:center; gap:4px; max-width:210px; overflow:hidden;">
               <span id="lbxCsvFileName" style="font-size:0.74rem; color:#00e054; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"></span>
-              <button type="button" id="lbxCsvClearBtn" data-on-click="clearLetterboxdCsv" data-click-args='[{"$":"event"}]' style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:0.75rem;" title="Retirer">✕</button>
+              <button type="button" id="lbxCsvClearBtn" data-on-click="clearLetterboxdCsv" data-click-args='[{"$":"event"}]' style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:0 3px; font-size:0.75rem;" title="Retirer" data-i18n-title="page.retirer">✕</button>
             </div>
           </div>
           <div style="font-size:0.69rem; color:var(--dim); line-height:1.3;" data-i18n="page.vos_notes_letterboxd_ex_4_5_5_s">
@@ -1353,10 +1353,10 @@
           </div>
         </div>
         <div id="lbxImportStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
-        <button type="button" id="lbxRestoreRemovedBtn" class="btn btn-secondary btn-small" hidden data-on-click="submitLetterboxdImport" data-click-args='[{"restoreRemoved":true}]'>Les réimporter aussi</button>
+        <button type="button" id="lbxRestoreRemovedBtn" class="btn btn-secondary btn-small" hidden data-on-click="submitLetterboxdImport" data-click-args='[{"restoreRemoved":true}]' data-i18n="page.les_reimporter_aussi">Les réimporter aussi</button>
         <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
           <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" data-on-click="closeLetterboxdModal" data-i18n="page.annuler">Annuler</button>
-          <button id="lbxSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" data-on-click="submitLetterboxdImport">Synchroniser</button>
+          <button id="lbxSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" data-on-click="submitLetterboxdImport" data-i18n="page.synchroniser">Synchroniser</button>
         </div>
       </div>
     </div>
@@ -1374,7 +1374,7 @@
         <div id="lbxCustomListStatus" style="font-size:0.78rem; line-height:1.35; display:none; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);"></div>
         <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
           <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.8rem;" data-on-click="closeLetterboxdModal" data-i18n="page.fermer">Fermer</button>
-          <button id="lbxCustomListSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" data-on-click="submitLetterboxdCustomListImport">Importer cette liste</button>
+          <button id="lbxCustomListSubmitBtn" class="btn" style="padding:6px 16px; font-size:0.8rem;" data-on-click="submitLetterboxdCustomListImport" data-i18n="page.importer_cette_liste">Importer cette liste</button>
         </div>
 
         <div id="lbxSavedListsWrap" style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px; display:none;">
@@ -1390,16 +1390,16 @@
 <div id="trailerModal" class="modal-bg" data-on-click="kinoOnBackdrop" data-click-args='[{"$":"event"},{"$":"this"},"closeTrailerModal"]'>
   <div class="modal modal-video" role="dialog" aria-modal="true" aria-labelledby="trailerModalTitle">
     <div class="modal-head">
-      <h3 class="modal-title" id="trailerModalTitle">Bande-annonce</h3>
+      <h3 class="modal-title" id="trailerModalTitle" data-i18n="page.bande_annonce">Bande-annonce</h3>
       <div class="modal-tools">
         <button id="trailerBtnVf" class="chip active" data-on-click="switchTrailerLang" data-click-args='["vf"]'>VF</button>
         <button id="trailerBtnVo" class="chip" data-on-click="switchTrailerLang" data-click-args='["vo"]'>VO</button>
-        <a id="trailerExternalLink" href="#" target="_blank" class="btn btn-secondary">YouTube ↗</a>
-        <button type="button" class="modal-close" data-on-click="closeTrailerModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
+        <a id="trailerExternalLink" href="#" target="_blank" class="btn btn-secondary" data-i18n="page.youtube">YouTube ↗</a>
+        <button type="button" class="modal-close" data-on-click="closeTrailerModal" aria-label="Fermer" title="Fermer (Échap)" data-i18n-title="page.fermer_echap" data-i18n-aria-label="page.fermer"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
       </div>
     </div>
     <div style="position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:6px; overflow:hidden; border:1px solid var(--border);">
-      <div id="trailerLoading" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; color:var(--muted); font-size:0.85rem; background:#09090b; z-index:2;">Chargement de la bande-annonce...</div>
+      <div id="trailerLoading" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; color:var(--muted); font-size:0.85rem; background:#09090b; z-index:2;" data-i18n="page.chargement_de_la_bande_annonce">Chargement de la bande-annonce...</div>
       <video id="trailerVideo" controls playsinline style="width:100%; height:100%; display:none; background:#000;"></video>
       <iframe id="trailerIframe" src="" style="width:100%; height:100%; border:none; display:none;" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
     </div>
@@ -1414,7 +1414,7 @@
   <div class="shortcuts-content" role="dialog" aria-modal="true" aria-labelledby="shortcutsModalTitle">
     <div class="modal-head">
       <h3 class="modal-title" id="shortcutsModalTitle" data-i18n="page.raccourcis_clavier_kino">Raccourcis Clavier KINO</h3>
-      <button type="button" class="modal-close" data-on-click="toggleShortcutsModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
+      <button type="button" class="modal-close" data-on-click="toggleShortcutsModal" aria-label="Fermer" title="Fermer (Échap)" data-i18n-title="page.fermer_echap" data-i18n-aria-label="page.fermer"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
     <div class="shortcuts-grid">
       <div class="shortcut-row"><span data-i18n="page.lecture_pause">Lecture / Pause</span><kbd data-i18n="page.espace">Espace</kbd></div>
@@ -1443,7 +1443,7 @@
         <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#remote"></use></svg>
         <span data-i18n="page.telecommande_kino">Télécommande KINO</span>
       </h3>
-      <button type="button" class="modal-close" data-on-click="closeRemoteModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
+      <button type="button" class="modal-close" data-on-click="closeRemoteModal" aria-label="Fermer" title="Fermer (Échap)" data-i18n-title="page.fermer_echap" data-i18n-aria-label="page.fermer"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
     <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;" data-i18n="page.scannez_ce_qr_code_avec_votre_smartphone">
       Scannez ce QR Code avec votre smartphone connecté au même Wi-Fi pour contrôler la lecture, le volume et naviguer depuis votre canapé.
@@ -1466,7 +1466,7 @@
         <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#users"></use></svg>
         <span data-i18n="page.mode_watch_party_p2p">Mode Watch Party P2P</span>
       </h3>
-      <button type="button" class="modal-close" data-on-click="closeWatchPartyModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
+      <button type="button" class="modal-close" data-on-click="closeWatchPartyModal" aria-label="Fermer" title="Fermer (Échap)" data-i18n-title="page.fermer_echap" data-i18n-aria-label="page.fermer"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
     <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 16px;" data-i18n="page.regardez_vos_films_et_series_en_parfaite">
       Regardez vos films et séries en parfaite synchronisation avec vos amis. Play, pause et temps de lecture calés à la seconde près sans serveur tiers (P2P direct).
@@ -1485,7 +1485,7 @@
       <div id="wpJoinBox" style="display:none; padding:12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
         <label style="font-size:0.76rem; color:var(--muted); display:block; margin-bottom:6px;" data-i18n="page.entrez_le_code_de_salle">Entrez le code de salle :</label>
         <div style="display:flex; gap:8px;">
-          <input type="text" id="wpJoinCodeInput" placeholder="Ex: KINO9X" maxlength="12" style="text-transform:uppercase; font-weight:bold; letter-spacing:2px; font-size:0.95rem; text-align:center;">
+          <input type="text" id="wpJoinCodeInput" placeholder="Ex: KINO9X" maxlength="12" style="text-transform:uppercase; font-weight:bold; letter-spacing:2px; font-size:0.95rem; text-align:center;" data-i18n-placeholder="page.ex_kino9x">
           <button class="btn" style="padding:6px 14px; font-size:0.8rem;" data-on-click="joinWatchPartyRoom" data-i18n="page.rejoindre">Rejoindre</button>
         </div>
       </div>
@@ -1522,7 +1522,7 @@
         <svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#puzzle"></use></svg>
         <span data-i18n="page.add_ons_scrapers_communautaires">Add-ons &amp; Scrapers Communautaires</span>
       </h3>
-      <button type="button" class="modal-close" data-on-click="closeAddonsModal" aria-label="Fermer" title="Fermer (Échap)"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
+      <button type="button" class="modal-close" data-on-click="closeAddonsModal" aria-label="Fermer" title="Fermer (Échap)" data-i18n-title="page.fermer_echap" data-i18n-aria-label="page.fermer"><svg class="ui-icon" aria-hidden="true"><use href="/icons.svg#close"></use></svg></button>
     </div>
     <p style="color:var(--muted); font-size:0.8rem; line-height:1.4; margin:0 0 14px;" data-i18n="page.activez_ou_ajoutez_des_indexeurs_et">
       Activez ou ajoutez des indexeurs et scrapers communautaires pour démultiplier les sources de recherche (Nyaa Anime VOSTFR, YggTorrent, Sharewood, etc.).
@@ -1554,8 +1554,8 @@
     <button type="button" class="inapp-btn" data-on-click="closeMangaReader" aria-label="Fermer le lecteur" data-i18n-aria-label="page.fermer_le_lecteur" data-i18n="page.fermer">Fermer</button>
     <div class="manga-reader-title"><strong id="mangaReaderTitle"></strong><span id="mangaReaderChapter"></span></div>
     <span id="mangaReaderCount" class="manga-reader-count"></span>
-    <button type="button" class="inapp-btn" id="mangaReaderMode" data-on-click="toggleMangaMode">Défilement</button>
-    <button type="button" class="inapp-btn" id="mangaReaderDirection" data-on-click="toggleMangaDirection" title="Sens de lecture">Sens japonais</button>
+    <button type="button" class="inapp-btn" id="mangaReaderMode" data-on-click="toggleMangaMode" data-i18n="page.defilement">Défilement</button>
+    <button type="button" class="inapp-btn" id="mangaReaderDirection" data-on-click="toggleMangaDirection" title="Sens de lecture" data-i18n-title="page.sens_de_lecture" data-i18n="page.sens_japonais">Sens japonais</button>
   </div>
   <div id="mangaReaderPages" class="manga-reader-pages" data-on-click="mangaReaderClick" data-click-args='[{"$":"event"}]'></div>
 </div>
@@ -1591,9 +1591,9 @@
     <button class="inapp-btn" data-help-kind="stalled" data-on-click="showPlaybackHelp" data-click-args='["stalled"]' data-i18n="page.lecture_bloquee">Lecture bloquée</button>
     <button class="inapp-btn" data-help-kind="subtitles" data-on-click="showPlaybackHelp" data-click-args='["subtitles"]' data-i18n="page.sous_titres_decales">Sous-titres décalés</button>
   </div>
-  <section id="playbackHelpActions" aria-label="Actions disponibles"></section>
+  <section id="playbackHelpActions" aria-label="Actions disponibles" data-i18n-aria-label="page.actions_disponibles"></section>
   <p id="playbackHelpStatus" role="status" aria-live="polite"></p>
-  <footer><button class="inapp-btn" id="playbackHelpRetry" data-on-click="retryPlaybackSources">Réessayer les sources écartées</button>
+  <footer><button class="inapp-btn" id="playbackHelpRetry" data-on-click="retryPlaybackSources" data-i18n="page.reessayer_les_sources_ecartees">Réessayer les sources écartées</button>
   <button class="inapp-btn" data-on-click="exportPlaybackDiagnostic" data-i18n="page.exporter_le_diagnostic">Exporter le diagnostic</button></footer>
   <small data-i18n="page.diagnostic_local_etat_du_lecteur">Diagnostic local : état du lecteur uniquement, sans titre, lien de lecture ni identifiants de compte.</small>
 </dialog>
@@ -1603,7 +1603,7 @@
   <p id="inAppSeriesPreferenceSummary"></p>
   <p id="inAppSeriesPreferenceStatus" role="status" aria-live="polite"></p>
   <footer><button class="inapp-btn" data-on-click="saveInAppSeriesPreference" data-i18n="page.memoriser_pour_cette_serie">Mémoriser pour cette série</button>
-  <button class="inapp-btn" id="inAppSeriesPreferenceReset" data-on-click="resetInAppSeriesPreference">Utiliser les réglages généraux</button></footer>
+  <button class="inapp-btn" id="inAppSeriesPreferenceReset" data-on-click="resetInAppSeriesPreference" data-i18n="page.utiliser_les_reglages_generaux">Utiliser les réglages généraux</button></footer>
   <small data-i18n="page.la_langue_et_le_role_de_l_audio_sont">La langue et le rôle de l’audio sont mémorisés, pas le numéro de piste. Si une langue manque, KINO utilise le réglage général et vous avertit.</small>
 </dialog>
 </body>
