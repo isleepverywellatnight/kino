@@ -99,16 +99,27 @@ pub fn click(parent: isize, x: i32, y: i32) {
         };
         let send = |flags| {
             // SAFETY: one mouse input.
-            unsafe { SendInput(&[button(flags)], std::mem::size_of::<INPUT>() as i32) };
+            let sent = unsafe { SendInput(&[button(flags)], std::mem::size_of::<INPUT>() as i32) };
+            (sent, windows::core::Error::from_win32().code().0)
         };
-        // SAFETY: moves the cursor.
-        if unsafe { SetCursorPos(point.x, point.y) }.is_err() {
-            return;
-        }
+        // SAFETY: moves the cursor, then reads where it is.
+        let moved = unsafe { SetCursorPos(point.x, point.y) };
+        let mut at = POINT::default();
+        let _ = unsafe { GetCursorPos(&mut at) };
         std::thread::sleep(std::time::Duration::from_millis(150));
-        send(MOUSEEVENTF_LEFTDOWN);
+        let down = send(MOUSEEVENTF_LEFTDOWN);
         std::thread::sleep(std::time::Duration::from_millis(60));
-        send(MOUSEEVENTF_LEFTUP);
+        let up = send(MOUSEEVENTF_LEFTUP);
+        // `--bench` reads this in the CI log.
+        eprintln!(
+            "KINO-UI CLICK screen=({},{}) moved={moved:?} cursor=({},{}) down={down:?} up={up:?} foreground={}",
+            point.x,
+            point.y,
+            at.x,
+            at.y,
+            // SAFETY: a plain query.
+            unsafe { GetForegroundWindow() }.0 as isize == parent,
+        );
     });
 }
 

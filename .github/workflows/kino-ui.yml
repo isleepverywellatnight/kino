@@ -111,6 +111,7 @@ jobs:
             $p.Save("video-native.png")'
           wait || true
           cat native.log
+          grep "KINO-UI CLICK" video.log native.log || true
           out=$(grep "KINO-UI VIDEO {" native.log || true)
           [ -n "$out" ] || { echo "::error::The native player printed nothing"; exit 1; }
           echo "::notice title=native video ${{ matrix.os }}::${out#KINO-UI VIDEO }"
