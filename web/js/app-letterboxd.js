@@ -3,7 +3,7 @@
  * ============================================================================ */
 
 import { registerActions } from './actions.js';
-import { act, escapeHtml, html, render, safeUrl } from './html.js';
+import { act, escapeHtml, html, render, safeUrl, tHtml } from './html.js';
 import {
   activeTab, api, catalogItems, getInProgressHistory, getWatchedHistory, linkedAccounts,
   setUserHistory, setUserWatchlist, userWatchlist,
@@ -94,7 +94,7 @@ export function updateListBadges() {
   const libTotalEl = document.getElementById('libraryTotalBadge');
   if (libTotalEl) {
     libTotalEl.textContent = inProg.length ? String(inProg.length) : '';
-    libTotalEl.title = inProg.length ? `${inProg.length} lecture${inProg.length > 1 ? 's' : ''} en cours` : '';
+    libTotalEl.title = inProg.length ? `${KINO_I18N.t('home.x_lecture_x_en_cours', inProg.length, inProg.length > 1 ? 's' : '')}` : '';
   }
 }
 
@@ -137,7 +137,7 @@ function letterboxdRemovedText(res) {
   if (!count) return '';
   return count === 1
     ? '1 film que vous aviez retiré de KINO n’a pas été réimporté.'
-    : `${count} films que vous aviez retirés de KINO n’ont pas été réimportés.`;
+    : `${KINO_I18N.t('letterboxd.x_films_que_vous_aviez_retires_de_kino_n', count)}`;
 }
 
 // What else the import did: wrong films of an earlier import taken back, titles not found.
@@ -147,10 +147,10 @@ function letterboxdNotesText(res) {
   const unmatched = Number(res.unmatched_count || 0);
   if (corrected) notes.push(corrected === 1
     ? '1 film mal reconnu par un import précédent a été retiré.'
-    : `${corrected} films mal reconnus par un import précédent ont été retirés.`);
+    : `${KINO_I18N.t('letterboxd.x_films_mal_reconnus_par_un_import', corrected)}`);
   if (unmatched) notes.push(unmatched === 1
     ? '1 titre n’a pas été trouvé dans le catalogue.'
-    : `${unmatched} titres n’ont pas été trouvés dans le catalogue.`);
+    : `${KINO_I18N.t('letterboxd.x_titres_n_ont_pas_ete_trouves_dans_le', unmatched)}`);
   return notes.join(' ');
 }
 
@@ -211,10 +211,10 @@ async function submitLetterboxdImport(options = {}) {
       st.style.color = '#00e054';
       const parts = [];
       if (res.added_wl_count > 0 || res.found_wl_count > 0) {
-        parts.push(`${res.added_wl_count} dans Ma Liste`);
+        parts.push(`${KINO_I18N.t('settings.x_dans_ma_liste', res.added_wl_count)}`);
       }
       if (res.added_watched_count > 0 || res.found_watched_count > 0) {
-        parts.push(`${res.added_watched_count} dans Déjà vus`);
+        parts.push(`${KINO_I18N.t('letterboxd.x_dans_deja_vus', res.added_watched_count)}`);
       }
       const removedText = letterboxdRemovedText(res);
       const notesText = letterboxdNotesText(res);
@@ -286,7 +286,7 @@ function renderSavedListsInModal() {
     <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--border); padding:6px 10px; border-radius:6px;">
       <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:320px;">
         <span style="font-size:0.78rem; font-weight:600; color:#fafafa;">${l.title}</span>
-        <span style="font-size:0.72rem; color:var(--muted); margin-left:6px;">(${l.count} films)</span>
+        <span style="font-size:0.72rem; color:var(--muted); margin-left:6px;">${tHtml('letterboxd.x_films', l.count)}</span>
       </div>
       <button type="button" class="btn btn-secondary" style="padding:2px 7px; font-size:0.7rem; color:#f87171;" ${act('deleteLetterboxdCustomList', l.id)}>✕</button>
     </div>
@@ -330,7 +330,7 @@ export async function submitLetterboxdCustomListImport() {
 
     if (st) {
       st.style.color = '#00e054';
-      st.textContent = `✓ Liste "${res.list.title}" importée avec succès (${res.total_resolved} films résolus) !`;
+      st.textContent = `${KINO_I18N.t('letterboxd.liste_x_importee_avec_succes_x_films', res.list.title, res.total_resolved)}`;
       st.style.display = 'block';
     }
     renderSavedListsInModal();
@@ -448,7 +448,7 @@ function customListShelfHtml(list) {
       <div class="list-shelf-head">
         <div class="list-shelf-info">
           <h3 class="list-shelf-title">${label}</h3>
-          <div class="list-shelf-meta">${progress.total} titre${progress.total > 1 ? 's' : ''} · ${progress.watched} vu${progress.watched > 1 ? 's' : ''}</div>
+          <div class="list-shelf-meta">${tHtml('letterboxd.x_titre_x_x_vu_x', progress.total, progress.total > 1 ? 's' : '', progress.watched, progress.watched > 1 ? 's' : '')}</div>
           <div class="list-shelf-progress" role="progressbar" aria-label="${KINO_I18N.t('letterboxd.titres_vus')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.pct}"><span style="width:${progress.pct}%"></span></div>
           ${list.description ? html`<p class="list-shelf-desc">${list.description}</p>` : ''}
         </div>
@@ -456,10 +456,10 @@ function customListShelfHtml(list) {
           <button type="button" class="btn" ${act('openCustomList', list.id)}>${KINO_I18N.t('letterboxd.tout_voir')}</button>
           <button type="button" class="btn-surprise" ${act('surpriseMeFromCustomList', list.id)} title="${KINO_I18N.t('letterboxd.tirer_un_titre_non_vu_de_cette_liste')}">${KINO_I18N.t('page.roulette')}</button>
           ${/^https:\/\/letterboxd\.com\//.test(String(list.url || '')) ? html`<a href="${safeUrl(list.url)}" target="_blank" rel="noopener" class="btn btn-secondary">${KINO_I18N.t('fiche.letterboxd')}</a>` : ''}
-          <button type="button" class="btn btn-secondary" ${act('deleteLetterboxdCustomList', list.id)} aria-label="Retirer la liste ${label}">${KINO_I18N.t('page.retirer')}</button>
+          <button type="button" class="btn btn-secondary" ${act('deleteLetterboxdCustomList', list.id)} aria-label="${tHtml('letterboxd.retirer_la_liste_x', label)}">${KINO_I18N.t('page.retirer')}</button>
         </div>
       </div>
-      ${items.length ? html`<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie'))}${items.length > LIST_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${act('openCustomList', list.id)}>Voir les ${items.length} titres</button>` : ''}</div>` : html`<p class="list-shelf-empty">${KINO_I18N.t('letterboxd.cette_liste_est_vide')}</p>`}
+      ${items.length ? html`<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie'))}${items.length > LIST_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${act('openCustomList', list.id)}>${tHtml('home.voir_les_x_titres', items.length)}</button>` : ''}</div>` : html`<p class="list-shelf-empty">${KINO_I18N.t('letterboxd.cette_liste_est_vide')}</p>`}
     </section>`;
 }
 

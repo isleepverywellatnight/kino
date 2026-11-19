@@ -4,7 +4,7 @@
 // agreed to what it means.
 
 import { registerActions } from './actions.js';
-import { CHECKED, act, actOn, attrJson, html, render } from './html.js';
+import { CHECKED, act, actOn, attrJson, html, render, tHtml } from './html.js';
 import { api } from './app-core.js';
 import { LIST_SHELF_SIZE } from './app-letterboxd.js';
 import { posterCardHtml } from './app-tabs.js';
@@ -42,7 +42,7 @@ async function answerP2PConsent(accepted) {
     p2pState = await api('/api/p2p/consent', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accept: true, upload }) });
   } catch (error) {
-    alert(`La lecture P2P n'a pas pu être activée : ${error.message}`);
+    alert(`${KINO_I18N.t('p2p.la_lecture_p2p_n_a_pas_pu_etre_activee_x', error.message)}`);
     if (resolve) resolve(false);
     return;
   }
@@ -91,7 +91,7 @@ function renderP2PSettings() {
   const clear = /** @type {HTMLButtonElement} */ (document.getElementById('cfgP2PClear'));
   const bytes = Number(p2pState.cache_bytes) || 0;
   if (cache) {
-    cache.textContent = bytes > 0 ? `${offlineSize(bytes)} sur cet ordinateur. KINO garde les deux derniers torrents lus et efface le reste au démarrage.`
+    cache.textContent = bytes > 0 ? `${KINO_I18N.t('p2p.x_sur_cet_ordinateur_kino_garde_les_deux', offlineSize(bytes))}`
       : 'Aucun fichier pour l’instant.';
   }
   if (clear) clear.disabled = bytes <= 0;
@@ -128,7 +128,7 @@ async function setP2PSetting(name, value) {
     p2pState = await api('/api/p2p/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [name]: value }) });
   } catch (error) {
-    alert(`Réglage non enregistré : ${error.message}`);
+    alert(`${KINO_I18N.t('p2p.reglage_non_enregistre_x', error.message)}`);
   }
   renderP2PSettings();
 }
@@ -144,7 +144,7 @@ async function clearP2PCache() {
 }
 
 function stremioAddonHtml(addon) {
-  const offers = [addon.streams ? 'Sources' : '', addon.catalogs?.length ? `${addon.catalogs.length} catalogue${addon.catalogs.length > 1 ? 's' : ''}` : '']
+  const offers = [addon.streams ? 'Sources' : '', addon.catalogs?.length ? `${KINO_I18N.t('p2p.x_catalogue_x', addon.catalogs.length, addon.catalogs.length > 1 ? 's' : '')}` : '']
     .filter(Boolean).join(' · ');
   const id = attrJson(addon.id);
   return html`<li class="addon-row${addon.enabled ? '' : ' is-off'}">
@@ -152,8 +152,8 @@ function stremioAddonHtml(addon) {
         <strong>${addon.name}</strong>
         <span>${[offers, addon.version ? `v${addon.version}` : ''].filter(Boolean).join(' · ')}</span>
       </div>
-      <label class="k-switch" title="${addon.enabled ? 'Désactiver cet addon' : 'Activer cet addon'}"><input type="checkbox" role="switch" aria-label="${addon.name} actif"${addon.enabled ? ' checked' : ''} ${actOn('change', 'toggleStremioAddon', addon.id, CHECKED)}><span aria-hidden="true"></span></label>
-      <button type="button" class="btn btn-secondary btn-small" ${act('removeStremioAddon', addon.id)} aria-label="Retirer ${addon.name}">${KINO_I18N.t('page.retirer')}</button>
+      <label class="k-switch" title="${addon.enabled ? 'Désactiver cet addon' : 'Activer cet addon'}"><input type="checkbox" role="switch" aria-label="${tHtml('p2p.x_actif', addon.name)}"${addon.enabled ? ' checked' : ''} ${actOn('change', 'toggleStremioAddon', addon.id, CHECKED)}><span aria-hidden="true"></span></label>
+      <button type="button" class="btn btn-secondary btn-small" ${act('removeStremioAddon', addon.id)} aria-label="${tHtml('p2p.retirer_x', addon.name)}">${KINO_I18N.t('page.retirer')}</button>
     </li>`;
 }
 
@@ -195,7 +195,7 @@ async function toggleStremioAddon(id, enabled) {
 
 async function removeStremioAddon(id) {
   const addon = stremioAddons.find(a => a.id === id);
-  if (!confirm(`Retirer l’addon « ${addon?.name || id} » ?`)) return;
+  if (!confirm(`${KINO_I18N.t('p2p.retirer_l_addon_x', addon?.name || id)}`)) return;
   try { await changeStremioAddons({ action: 'remove', id }); } catch (error) { alert(error.message); }
 }
 

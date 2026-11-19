@@ -2,7 +2,7 @@
 // Mes statistiques (Bibliothèque → Plus). Loaded after the app parts (app-*.js), whose helpers
 // it uses: api, escapeHtml, titleAttrs, displayTitle, GENRE_FR, CLOUD_MONTHS.
 
-import { act, html, render } from './html.js';
+import { act, html, render, tHtml } from './html.js';
 import { activeTab, api } from './app-core.js';
 import { CLOUD_MONTHS } from './app-cloud-settings.js';
 import { GENRE_FR, displayTitle, titleAttrs } from './app-fiche.js';
@@ -16,7 +16,7 @@ function statsDuration(seconds) {
   if (minutes < 60) return { value: String(minutes), unit: 'min' };
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  return { value: hours >= 10 || !rest ? `${hours} h` : `${hours} h ${String(rest).padStart(2, '0')}`, unit: '' };
+  return { value: hours >= 10 || !rest ? `${KINO_I18N.t('anime.x_h', hours)}` : `${KINO_I18N.t('anime.x_h_x', hours, String(rest).padStart(2, '0'))}`, unit: '' };
 }
 
 function statsPlural(count, word, plural = `${word}s`) {
@@ -74,23 +74,23 @@ function statsHtml(stats) {
     return html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>${KINO_I18N.t('stats.rien_a_compter_pour_l_instant')}</h3><p>${KINO_I18N.t('stats.vos_statistiques_apparaitront_apres_vos')}</p><button class="btn" ${act('switchTab', 'movies')}>${KINO_I18N.t('home.decouvrir_les_films')}</button></div>`;
   }
   const time = statsDuration(stats.watch_seconds);
-  const filmDetail = [films.imported ? `dont ${films.imported} importé${films.imported > 1 ? 's' : ''}` : '', films.started ? `${films.started} en cours` : ''].filter(Boolean).join(' · ');
-  const seriesDetail = series.total ? `${series.started} en cours · ${statsPlural(series.finished, 'terminée')}` : '';
+  const filmDetail = [films.imported ? `${KINO_I18N.t('stats.dont_x_importe_x', films.imported, films.imported > 1 ? 's' : '')}` : '', films.started ? `${KINO_I18N.t('stats.x_en_cours', films.started)}` : ''].filter(Boolean).join(' · ');
+  const seriesDetail = series.total ? `${KINO_I18N.t('stats.x_en_cours_x', series.started, statsPlural(series.finished, 'terminée'))}` : '';
   const tiles = [
     statsTile(String(films.seen || 0), '', films.seen > 1 ? 'Films vus' : 'Film vu', filmDetail),
-    statsTile(String(stats.episodes?.seen || 0), '', (stats.episodes?.seen || 0) > 1 ? 'Épisodes vus' : 'Épisode vu', series.total ? `dans ${statsPlural(series.total, 'série')}` : ''),
+    statsTile(String(stats.episodes?.seen || 0), '', (stats.episodes?.seen || 0) > 1 ? 'Épisodes vus' : 'Épisode vu', series.total ? `${KINO_I18N.t('stats.dans_x', statsPlural(series.total, 'série'))}` : ''),
     statsTile(String(series.total || 0), '', (series.total || 0) > 1 ? 'Séries' : 'Série', seriesDetail),
     statsTile(time.value, time.unit, 'De lecture dans KINO', 'positions enregistrées'),
   ];
   const genres = (stats.genres || []).map(genre => ({ name: GENRE_FR[genre.name] || genre.name, count: genre.count }));
-  const decades = (stats.decades || []).map(decade => ({ name: `Années ${decade.decade}`, count: decade.count }));
+  const decades = (stats.decades || []).map(decade => ({ name: `${KINO_I18N.t('stats.annees_x', decade.decade)}`, count: decade.count }));
   const oldest = stats.oldest ? html`<p class="stats-fact">Le plus ancien film vu : <strong${titleAttrs({ id: stats.oldest.id, name: stats.oldest.name, year: String(stats.oldest.year) }, 'movie')}>${displayTitle(stats.oldest)}</strong> (${stats.oldest.year}).</p>` : '';
   return html`
     <div class="stats-tiles">${tiles}</div>
     <div class="stats-grid">
       <section class="stats-card" aria-labelledby="statsGenresTitle">
         <h3 id="statsGenresTitle">${KINO_I18N.t('stats.genres_preferes')}</h3>
-        <p class="stats-sub">${seen ? `Sur ${statsPlural(stats.genres_known || 0, 'titre')} vu${(stats.genres_known || 0) > 1 ? 's' : ''} dont le genre est connu, sur ${seen}.` : ''}</p>
+        <p class="stats-sub">${seen ? `${KINO_I18N.t('stats.sur_x_vu_x_dont_le_genre_est_connu_sur_x', statsPlural(stats.genres_known || 0, 'titre'), (stats.genres_known || 0) > 1 ? 's' : '', seen)}` : ''}</p>
         ${genres.length ? statsMeterList(genres, 'Genres préférés') : html`<p class="stats-empty">${KINO_I18N.t('stats.pas_encore_de_genre_connu')}</p>`}
       </section>
       <section class="stats-card" aria-labelledby="statsMonthsTitle">
@@ -116,7 +116,7 @@ export async function loadStats() {
     const stats = await api('/api/stats');
     if (activeTab === 'stats') render(body, statsHtml(stats));
   } catch (error) {
-    render(body, html`<p class="stats-empty">Statistiques indisponibles : ${error.message}</p>`);
+    render(body, html`<p class="stats-empty">${tHtml('stats.statistiques_indisponibles_x', error.message)}</p>`);
   }
 }
 

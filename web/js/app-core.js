@@ -2,7 +2,7 @@
 // its setter (setCurrentMedia…): a file cannot assign a variable it imports.
 
 import { registerActions } from './actions.js';
-import { EVENT, act, html, render } from './html.js';
+import { EVENT, act, html, render, tHtml } from './html.js';
 import { Spoilers } from './spoilers.js';
 import { AnimeJourneyView } from './anime-journey.js';
 import { renderHomeResume } from './app-home.js';
@@ -288,7 +288,7 @@ function refreshLatestAiredSpoiler() {
   if (!label || !latest) return;
   const hidden = spoilerConcealed(spoilerSeriesId(), latest.season, latest.episode);
   const watched = Spoilers.watched(userHistory, spoilerSeriesId(), latest.season, latest.episode);
-  label.textContent = `${watched ? '✓' : '●'} Dernier épisode diffusé${watched ? '' : ' (non vu)'} : ${latest.code} — ${hidden ? Spoilers.neutralTitle(latest.episode) : latest.title} (${latest.released})`;
+  label.textContent = `${KINO_I18N.t('core.x_dernier_episode_diffuse_x_x_x_x', watched ? '✓' : '●', watched ? '' : ' (non vu)', latest.code, hidden ? Spoilers.neutralTitle(latest.episode) : latest.title, latest.released)}`;
 }
 
 export function refreshPlayerSpoilerTitles() {
@@ -334,8 +334,8 @@ export function onConfigProviderChange() {
   }
   if (inpEl) {
     inpEl.placeholder = hasSaved
-      ? `Laisser vide pour conserver votre clé ${meta.name}`
-      : `Collez votre ${meta.hint.toLowerCase()}...`;
+      ? `${KINO_I18N.t('core.laisser_vide_pour_conserver_votre_cle_x', meta.name)}`
+      : `${KINO_I18N.t('core.collez_votre_x', meta.hint.toLowerCase())}`;
   }
 }
 
@@ -401,11 +401,11 @@ export async function checkConfig() {
     }
     const cloudTab = document.getElementById('subtab-rdcloud');
     if (cloudTab) {
-      cloudTab.textContent = `Cloud ${pmeta.short}`;
-      cloudTab.setAttribute('aria-label', `Cloud ${pmeta.name}`);
+      cloudTab.textContent = `${KINO_I18N.t('core.cloud_x', pmeta.short)}`;
+      cloudTab.setAttribute('aria-label', `${KINO_I18N.t('core.cloud_x', pmeta.name)}`);
     }
     if (document.getElementById('rdCloudHeading')) {
-      document.getElementById('rdCloudHeading').textContent = `Derniers fichiers débridés sur ${pmeta.name}`;
+      document.getElementById('rdCloudHeading').textContent = `${KINO_I18N.t('core.derniers_fichiers_debrides_sur_x', pmeta.name)}`;
     }
 
     /** @type {HTMLInputElement} */ (document.getElementById('cfgDir')).value = cfg.download_dir || '';
@@ -484,28 +484,28 @@ export async function checkConfig() {
     if (cfgAccTitle && cfgAccBadge) {
       if (cfg.user) {
         const exp = cfg.user.premium > 0 ? Math.ceil(cfg.user.premium / 86400) + ' jours' : 'Gratuit';
-        cfgAccTitle.textContent = `${pmeta.name} · Connecté (${cfg.user.username})`;
-        cfgAccSub.textContent = cfg.user.premium > 0 ? `Abonnement valide encore ${exp}.` : 'Compte gratuit, sans abonnement.';
+        cfgAccTitle.textContent = `${KINO_I18N.t('core.x_connecte_x', pmeta.name, cfg.user.username)}`;
+        cfgAccSub.textContent = cfg.user.premium > 0 ? `${KINO_I18N.t('core.abonnement_valide_encore_x', exp)}` : 'Compte gratuit, sans abonnement.';
         cfgAccBadge.textContent = KINO_I18N.t('core.actif');
         cfgAccBadge.style.color = '#4ade80';
         cfgAccBadge.style.borderColor = 'rgba(74,222,128,0.4)';
         cfgAccBadge.style.background = 'rgba(74,222,128,0.1)';
       } else if (cfg.has_token && cfg.user_status === 'invalid') {
-        cfgAccTitle.textContent = `${pmeta.name} · Clé refusée`;
+        cfgAccTitle.textContent = `${KINO_I18N.t('core.x_cle_refusee', pmeta.name)}`;
         cfgAccSub.textContent = KINO_I18N.t('core.la_cle_est_invalide_ou_expiree_collez_en');
         cfgAccBadge.textContent = KINO_I18N.t('core.cle_refusee');
         cfgAccBadge.style.color = '#ef4444';
         cfgAccBadge.style.borderColor = 'rgba(239,68,68,0.4)';
         cfgAccBadge.style.background = 'rgba(239,68,68,0.1)';
       } else if (cfg.has_token) {
-        cfgAccTitle.textContent = `${pmeta.name} · Vérification impossible`;
+        cfgAccTitle.textContent = `${KINO_I18N.t('core.x_verification_impossible', pmeta.name)}`;
         cfgAccSub.textContent = KINO_I18N.t('core.le_service_ne_repond_pas_pour_le_moment');
         cfgAccBadge.textContent = KINO_I18N.t('core.indisponible');
         cfgAccBadge.style.color = '#eab308';
         cfgAccBadge.style.borderColor = 'rgba(234,179,8,0.4)';
         cfgAccBadge.style.background = 'rgba(234,179,8,0.1)';
       } else {
-        cfgAccTitle.textContent = `${pmeta.name} · Pas de clé`;
+        cfgAccTitle.textContent = `${KINO_I18N.t('core.x_pas_de_cle', pmeta.name)}`;
         cfgAccSub.textContent = KINO_I18N.t('core.collez_votre_cle_ci_dessous_puis');
         cfgAccBadge.textContent = KINO_I18N.t('page.non_connecte');
         cfgAccBadge.style.color = '#eab308';
@@ -525,17 +525,17 @@ export async function checkConfig() {
           <span style="color:var(--text);">${cfg.user.username}</span>
           <span class="user-badge-exp">${exp}</span>
         `);
-        badge.title = `Connecté à ${pmeta.name} — Compte actif (${exp} restants). Cliquer pour ouvrir la configuration.`;
+        badge.title = `${KINO_I18N.t('core.connecte_a_x_compte_actif_x_restants', pmeta.name, exp)}`;
       } else if (cfg.has_token && cfg.user_status === 'invalid') {
         render(badge, html`
           <span class="user-status-dot" style="background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.6);"></span>
-          <span style="color:#ef4444; font-weight:600;">${pmeta.short} • Clé invalide</span>
+          <span style="color:#ef4444; font-weight:600;">${tHtml('core.x_cle_invalide', pmeta.short)}</span>
         `);
         badge.title = KINO_I18N.t('core.cle_api_invalide_ou_expiree_cliquer_pour');
       } else if (cfg.has_token) {
         render(badge, html`
           <span class="user-status-dot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.6);"></span>
-          <span style="color:#eab308; font-weight:600;">${pmeta.short} • Vérification impossible</span>
+          <span style="color:#eab308; font-weight:600;">${tHtml('core.x_verification_impossible_2', pmeta.short)}</span>
         `);
         badge.title = KINO_I18N.t('core.le_service_debrideur_ne_repond_pas');
       } else {
@@ -629,15 +629,15 @@ function renderTonightResult(result) {
     no_match: 'Aucun titre ne correspond. Essayez une autre durée ou une autre ambiance.',
   };
   status.textContent = tonightChoices.length
-    ? result.offline_only ? `${tonightChoices.length} idée${tonightChoices.length > 1 ? 's' : ''} prête${tonightChoices.length > 1 ? 's' : ''} hors ligne.`
+    ? result.offline_only ? `${KINO_I18N.t('core.x_idee_x_prete_x_hors_ligne', tonightChoices.length, tonightChoices.length > 1 ? 's' : '', tonightChoices.length > 1 ? 's' : '')}`
       : result.coverage?.partial ? 'Certaines durées ou ambiances restent inconnues ; les titres sont classés avec les données disponibles.'
-        : `${tonightChoices.length} idée${tonightChoices.length > 1 ? 's' : ''} dans Ma Liste, selon vos choix.`
+        : `${KINO_I18N.t('core.x_idee_x_dans_ma_liste_selon_vos_choix', tonightChoices.length, tonightChoices.length > 1 ? 's' : '')}`
     : (emptyMessages[result.empty_reason] || emptyMessages.no_match);
   render(choices, tonightChoices.map((choice, index) => html`
     <article class="tonight-choice">
       <div class="tonight-choice-main">
         ${choice.item?.poster ? html`<img class="tonight-poster" src="${choice.item.poster}" alt="" loading="lazy">` : html`<div class="tonight-poster-placeholder" aria-hidden="true">▷</div>`}
-        <div><span class="tonight-choice-index">IDÉE ${String(index + 1).padStart(2, '0')}</span>
+        <div><span class="tonight-choice-index">${tHtml('core.idee_x', String(index + 1).padStart(2, '0'))}</span>
           <h3>${choice.item?.name || 'Titre inconnu'}</h3>
           <p>${(choice.reasons || []).join(' · ')}</p></div>
       </div>
@@ -809,9 +809,9 @@ function formatRemaining(pos, dur) {
   if (remMin >= 60) {
     const h = Math.floor(remMin / 60);
     const m = remMin % 60;
-    return `Il reste ${h}h${m > 0 ? String(m).padStart(2, '0') : ''}`;
+    return `${KINO_I18N.t('core.il_reste_x_h_x', h, m > 0 ? String(m).padStart(2, '0') : '')}`;
   }
-  return `Il reste ${remMin} min`;
+  return `${KINO_I18N.t('core.il_reste_x_min', remMin)}`;
 }
 
 export let catalogSort = 'top';
@@ -856,7 +856,7 @@ export function getSeriesTargetEpisode(h) {
 const FRENCH_MONTHS = KINO_I18N.months('long');
 
 export function episodeCode(season, episode) {
-  return `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+  return `${KINO_I18N.t('settings.s_x_e_x', String(season).padStart(2, '0'), String(episode).padStart(2, '0'))}`;
 }
 
 // « demain », « le 14 novembre », « le 3 janvier 2027 ».
@@ -899,12 +899,12 @@ export function resumeCardView(h, meta, todayIso) {
   const upcoming = Boolean(isNext && episode && episode.upcoming);
   const remaining = !isNext && pct > 0 ? formatRemaining(h.position, h.duration) : '';
   let status = remaining || 'Reprendre la lecture';
-  if (isNext) status = upcoming ? `Prochain épisode ${frenchReleaseDay(episode.released, todayIso)}` : 'Épisode suivant';
+  if (isNext) status = upcoming ? `${KINO_I18N.t('core.prochain_episode_x', frenchReleaseDay(episode.released, todayIso))}` : 'Épisode suivant';
   const kicker = isSeries
     ? [code, episode && episode.name].filter(Boolean).join(' · ')
     : ['Film', h.year].filter(Boolean).join(' · ');
   let action = 'Continuer';
-  if (isNext) action = upcoming ? `Voir la fiche, ${status.toLowerCase()}` : `Épisode suivant · ${code}`;
+  if (isNext) action = upcoming ? `${KINO_I18N.t('core.voir_la_fiche_x', status.toLowerCase())}` : `${KINO_I18N.t('core.episode_suivant_x', code)}`;
   // An episode not aired yet has no image: the series backdrop stands in.
   const still = episode && !upcoming ? episode.still : '';
   const backdrop = resumeBackdrop(h);

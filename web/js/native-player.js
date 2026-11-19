@@ -35,7 +35,7 @@ export const NativePlayer = (function () {
   }
 
   function trackLabel(track) {
-    const parts = [LANGUAGES[String(track.lang || '').toLowerCase()] || (track.lang ? track.lang.toUpperCase() : `Piste ${track.id}`)];
+    const parts = [LANGUAGES[String(track.lang || '').toLowerCase()] || (track.lang ? track.lang.toUpperCase() : `${KINO_I18N.t('player.piste_x', track.id)}`)];
     if (track.title) parts.push(track.title);
     if (track.type === 'audio' && CHANNELS[track.channels]) parts.push(CHANNELS[track.channels]);
     return parts.join(' · ');
@@ -378,7 +378,7 @@ export const NativePlayer = (function () {
       });
       choice.added = true;
       renderOnlineSubtitles();
-      flash(message || `Sous-titres : ${choice.label}`, message ? 3200 : 2200);
+      flash(message || `${KINO_I18N.t('native.sous_titres_x', choice.label)}`, message ? 3200 : 2200);
       renderState(result.state);
     } catch (error) {
       flash(error.message || 'Sous-titre indisponible.', 3000);
@@ -423,7 +423,7 @@ export const NativePlayer = (function () {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ title: session.title, time_str: time }),
       });
-      flash(`Capture enregistrée : ${result.filename}`, 2600);
+      flash(`${KINO_I18N.t('native.capture_enregistree_x', result.filename)}`, 2600);
     } catch (error) {
       flash('Capture impossible.', 2200);
     }
@@ -474,7 +474,7 @@ export const NativePlayer = (function () {
     const s = media.season, e = media.episode;
     return {
       playing: true, paused: Boolean(state.paused), title: session.title || media.name || 'Lecture KINO',
-      sub_title: s && e ? `S${String(s).padStart(2, '0')}E${String(e).padStart(2, '0')}` : '',
+      sub_title: s && e ? `${KINO_I18N.t('settings.s_x_e_x', String(s).padStart(2, '0'), String(e).padStart(2, '0'))}` : '',
       media_type: media.type || 'movie', poster: media.poster || '', current_time: state.time || 0, duration: state.duration || 0,
       volume: state.muted ? 0 : Math.min(100, typeof state.volume === 'number' ? state.volume : 100) / 100,
     };
@@ -597,7 +597,7 @@ export const NativePlayer = (function () {
     const info = [];
     if (state.width && state.height) info.push(`${state.width}×${state.height}`);
     info.push(state.hwdec && state.hwdec !== 'no' ? 'décodage matériel' : 'décodage logiciel');
-    element('nativeInfo').textContent = `Lecteur natif · ${info.join(' · ')}`;
+    element('nativeInfo').textContent = `${KINO_I18N.t('native.lecteur_natif_x', info.join(' · '))}`;
     fillTracks(element('nativeAudio'), state.tracks || [], 'audio', false);
     fillTracks(element('nativeSubs'), state.tracks || [], 'sub', true);
     renderSettings(state);
@@ -869,14 +869,14 @@ export const NativePlayer = (function () {
     const time = state.time || 0;
     if (intro.op) {
       return time >= Math.max(0, intro.op.start - 2) && time < intro.op.end
-        ? { label: `Passer l'intro (→ ${formatTime(intro.op.end)})`, goto: intro.op.end + 0.5 } : null;
+        ? { label: `${KINO_I18N.t('player.passer_l_intro_x', formatTime(intro.op.end))}`, goto: intro.op.end + 0.5 } : null;
     }
     if (intro.recap && time >= Math.max(0, intro.recap.start - 2) && time < intro.recap.end) {
-      return { label: `Passer le récap (→ ${formatTime(intro.recap.end)})`, goto: intro.recap.end + 0.5 };
+      return { label: `${KINO_I18N.t('player.passer_le_recap_x', formatTime(intro.recap.end))}`, goto: intro.recap.end + 0.5 };
     }
     if (time >= 10 && time <= 160) {
       const seconds = intro.default_skip || (session.media?.type === 'anime' ? 90 : 60);
-      return { label: `Passer l'intro (+${seconds} s)`, seek: seconds };
+      return { label: `${KINO_I18N.t('native.passer_l_intro_x_s', seconds)}`, seek: seconds };
     }
     return null;
   }
@@ -894,7 +894,7 @@ export const NativePlayer = (function () {
     if (!skip) return;
     const from = Math.max(0, Math.floor(session.last?.time || 0));
     session.undo = { time: from, until: Date.now() + UNDO_SKIP_MS };
-    element('nativeUndoGo').textContent = `↩ Revenir à ${formatTime(from)}`;
+    element('nativeUndoGo').textContent = `${KINO_I18N.t('player.revenir_a_x', formatTime(from))}`;
     if (skip.goto !== undefined) command('goto', skip.goto);
     else command('seek', skip.seek);
     flash('Intro passée', 1600);
@@ -913,7 +913,7 @@ export const NativePlayer = (function () {
     element('nativeUndoCard').style.display = 'none';
     if (!undo) return;
     command('goto', undo.time);
-    flash(`Retour à ${formatTime(undo.time)}`, 1400);
+    flash(`${KINO_I18N.t('native.retour_a_x', formatTime(undo.time))}`, 1400);
   }
 
   // --- « Garder hors ligne » for a Debrid source ---
@@ -928,7 +928,7 @@ export const NativePlayer = (function () {
     if (!choice) return null;
     const data = await api(`/api/subtitle-cues?url=${encodeURIComponent(choice.url)}`);
     if (!data?.cues?.length) return null;
-    return { label: `CC : ${choice.label}`, lang: choice.lang, kind: 'opensubtitles', variant: choice.variant, cues: data.cues };
+    return { label: `${KINO_I18N.t('native.cc_x', choice.label)}`, lang: choice.lang, kind: 'opensubtitles', variant: choice.variant, cues: data.cues };
   }
 
   async function keepOffline() {
