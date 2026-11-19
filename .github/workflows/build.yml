@@ -1,7 +1,7 @@
-# Builds KINO for macOS (Apple Silicon), Windows (x64) and Linux (x86_64) on every
+# Builds KINO for macOS (Apple Silicon), Windows (x64 and ARM64) and Linux (x86_64) on every
 # push and pull request to main. When main carries a version (Cargo.toml,
 # [workspace.package]) that has no release yet, it publishes release vX.Y.Z (and its
-# tag) with the .dmg, the Windows installer, the Linux AppImage and, when the KINO_UPDATE_SIGNING_KEY secret is set, the
+# tag) with the .dmg, the Windows installers, the Linux AppImage and, when the KINO_UPDATE_SIGNING_KEY secret is set, the
 # signed files the in-app updater uses. Pushing a tag vX.Y.Z does the same.
 name: Build
 
@@ -122,18 +122,42 @@ jobs:
 
   windows:
     needs: checks
-    runs-on: windows-latest
+    # x64, and ARM64 built on an ARM64 runner (KINO-Windows-arm64.exe).
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+            installer: KINO-Windows.exe
+          - arch: arm64
+            runner: windows-11-arm
+            installer: KINO-Windows-arm64.exe
+    runs-on: ${{ matrix.runner }}
     env:
       VERSION: ${{ needs.checks.outputs.version }}
+      INSTALLER: ${{ matrix.installer }}
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v7
+      # The ARM64 runner may come without Rust: rustup then installs the
+      # toolchain named in rust-toolchain.toml.
+      - name: Rust
+        run: |
+          if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
+            $init = Join-Path $env:RUNNER_TEMP "rustup-init.exe"
+            $machine = if ("${{ matrix.arch }}" -eq "arm64") { "aarch64" } else { "x86_64" }
+            Invoke-WebRequest -Uri "https://static.rust-lang.org/rustup/dist/$machine-pc-windows-msvc/rustup-init.exe" -OutFile $init
+            & $init -y --default-toolchain none --profile minimal
+            if ($LASTEXITCODE -ne 0) { throw "rustup-init failed" }
+            Add-Content $env:GITHUB_PATH (Join-Path $env:USERPROFILE ".cargo\bin")
+          }
       - name: FFmpeg to ship
-        run: ./tools/fetch_ffmpeg.ps1
+        run: ./tools/fetch_ffmpeg.ps1 -Arch ${{ matrix.arch }}
       - name: mpv
-        run: ./tools/fetch_mpv_windows.ps1
+        run: ./tools/fetch_mpv_windows.ps1 -Arch ${{ matrix.arch }}
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Build KINO.exe
         run: |
@@ -141,6 +165,13 @@ jobs:
           ./packaging/build_windows_app.ps1
       - name: Self-check
         run: |
+          # Built for this job's architecture: the PE header's machine (0x8664 x64, 0xAA64 ARM64).
+          $want = if ("${{ matrix.arch }}" -eq "arm64") { 0xAA64 } else { 0x8664 }
+          foreach ($file in "dist\KINO\KINO.exe", "dist\KINO\libmpv-2.dll", "dist\KINO\mpv\mpv.exe", "dist\KINO\ffmpeg.exe") {
+            $bytes = [IO.File]::ReadAllBytes($file)
+            $machine = [BitConverter]::ToUInt16($bytes, [BitConverter]::ToInt32($bytes, 0x3c) + 4)
+            if ($machine -ne $want) { throw ("{0} : machine 0x{1:X4} au lieu de 0x{2:X4}" -f $file, $machine, $want) }
+          }
           $report = Join-Path $env:RUNNER_TEMP "self-check.json"
           $p = Start-Process -FilePath dist\KINO\KINO.exe -ArgumentList "--self-check", "--self-check-report", $report -Wait -PassThru
           if (Test-Path $report) { Get-Content $report }
@@ -189,11 +220,11 @@ jobs:
             choco install innosetup -y --no-progress
             $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           }
-          & $iscc "/DAppVersion=$env:VERSION" packaging\kino.iss
+          & $iscc "/DAppVersion=$env:VERSION" "/DArch=${{ matrix.arch }}" packaging\kino.iss
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
       - name: Install test
         run: |
-          $setup = "dist\KINO-Windows.exe"
+          $setup = "dist\$env:INSTALLER"
           $p = Start-Process -FilePath $setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Installation failed ($($p.ExitCode))" }
           $app = Join-Path $env:LOCALAPPDATA "Programs\KINO"
@@ -217,21 +248,21 @@ jobs:
           $key = Join-Path $env:RUNNER_TEMP "kino-update-key.pem"
           Set-Content -Path $key -Value $env:KINO_UPDATE_SIGNING_KEY -NoNewline -Encoding ascii
           cargo build --release --locked -p kino --bin kino-release
-          target\release\kino-release.exe --installer "dist\KINO-Windows.exe" --key $key --notes "KINO $env:VERSION"
+          target\release\kino-release.exe --installer "dist\$env:INSTALLER" --key $key --notes "KINO $env:VERSION"
           $code = $LASTEXITCODE
           Remove-Item $key
           if ($code -ne 0) { throw "Signing failed" }
       - uses: actions/upload-artifact@v7
         with:
-          name: kino-windows
+          name: kino-windows-${{ matrix.arch }}
           path: |
-            dist/KINO-Windows.exe
-            dist/KINO-Windows.exe.sig
+            dist/${{ matrix.installer }}
+            dist/${{ matrix.installer }}.sig
           if-no-files-found: error
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: windows-startup-screenshot
+          name: windows-startup-screenshot-${{ matrix.arch }}
           path: dist/startup-windows.png
           if-no-files-found: ignore
 
@@ -331,7 +362,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-latest, ubuntu-latest]
+        os: [macos-15, windows-latest, windows-11-arm, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7

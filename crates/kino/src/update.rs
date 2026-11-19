@@ -29,6 +29,7 @@ const MAX_APP_BYTES: u64 = 1800 * 1024 * 1024;
 const MAX_RELEASE_JSON: usize = 2_000_000;
 const MAX_SIGNATURE_BYTES: usize = 32_768;
 pub const WINDOWS_INSTALLER: &str = "KINO-Windows.exe";
+pub const WINDOWS_ARM64_INSTALLER: &str = "KINO-Windows-arm64.exe";
 pub const LINUX_APPIMAGE: &str = "KINO-Linux-x86_64.AppImage";
 /// The automatic check for a new version (Settings → Updates), unless turned off.
 pub const AUTO_CHECK_EVERY: std::time::Duration = std::time::Duration::from_secs(6 * 3600);
@@ -180,6 +181,14 @@ pub const WINDOWS_ARTIFACT: SignedArtifact = SignedArtifact {
     wrong_target: "Cet installateur ne cible pas KINO sur Windows.",
     not_newer: "Cet installateur n'est pas plus récent que KINO.",
     wrong_name: "Nom d'installateur incohérent.",
+};
+
+/// Windows on ARM: KINO built for ARM64 updates from the ARM64 installer.
+pub const WINDOWS_ARM64_ARTIFACT: SignedArtifact = SignedArtifact {
+    name: WINDOWS_ARM64_INSTALLER,
+    platform: "win32",
+    architecture: "arm64",
+    ..WINDOWS_ARTIFACT
 };
 
 pub const LINUX_ARTIFACT: SignedArtifact = SignedArtifact {
@@ -1576,7 +1585,9 @@ impl Updater {
 
 /// Where updates come as a signed installer or AppImage (Windows, Linux).
 fn signed_target() -> Option<&'static SignedArtifact> {
-    if cfg!(windows) {
+    if cfg!(all(windows, target_arch = "aarch64")) {
+        Some(&WINDOWS_ARM64_ARTIFACT)
+    } else if cfg!(windows) {
         Some(&WINDOWS_ARTIFACT)
     } else if cfg!(target_os = "linux") {
         Some(&LINUX_ARTIFACT)

@@ -37,6 +37,7 @@ KINO n'héberge, ne fournit et ne distribue aucun contenu. Il interroge des sour
 |---|---|
 | **macOS** — Mac Apple Silicon (M1 ou plus récent), macOS 14 ou plus récent | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
 | **Windows** — Windows 10 ou 11, 64 bits | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
+| **Windows sur ARM** — Windows 11 sur un PC ARM (Snapdragon…) | [**KINO-Windows-arm64.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows-arm64.exe) |
 | **Linux** — x86_64 : Ubuntu 22.04, Debian 12, Fedora 36 ou plus récent | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
 
 KINO contient tout ce qu'il lui faut : lecteur vidéo, FFmpeg, interface. Il n'y a rien d'autre à installer. Il suffit ensuite de coller la clé de votre service de débridage dans Paramètres.
