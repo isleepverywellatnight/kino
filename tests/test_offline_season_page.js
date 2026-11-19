@@ -49,7 +49,7 @@ test('a clear confirmation, then the episodes are queued', async () => {
   await context.go(button);
   const asked = calls.find(call => call[0] === 'confirm')[1];
   assert.match(asked, /^Télécharger les 2 épisodes sortis de la saison 1 de « The Bear » pour les regarder hors ligne \?/);
-  assert.match(asked, /l’un après l’autre, même si KINO est fermé puis rouvert\. Un épisode pèse souvent 1 à 4 Go\. Il reste 50 Go sur ce Mac\./);
+  assert.match(asked, /l’un après l’autre, même si KINO est fermé puis rouvert\. Un épisode pèse souvent 1 à 4 Go\. Il reste 50 Go sur cet ordinateur\./);
   assert.deepEqual(calls.find(call => call[0] === '/api/download-season')[1],
     { imdb_id: 'tt1', season: 1, episodes: [1, 2], name: 'The Bear', year: '2022', poster: 'p' });
   assert.equal(button.textContent, '✓ 2 en file d’attente');

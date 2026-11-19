@@ -6,7 +6,7 @@
 
 ## バージョンの公開
 
-`Cargo.toml` ([workspace.package]) の `version` を変更して `main` に push するだけです。`main` のバージョンにまだリリースがなければ、GitHub Actions（`.github/workflows/build.yml`）が両方のアプリをビルドしてテストし、`vX.Y.Z` タグ付きでリリース（`KINO-macOS.dmg`、`KINO-Windows.exe`、`SHA256SUMS.txt`）を公開したあと、README のコマンドでクリーンな Mac と Windows に再インストールして確認します。
+`Cargo.toml` ([workspace.package]) の `version` を変更して `main` に push するだけです。`main` のバージョンにまだリリースがなければ、GitHub Actions（`.github/workflows/build.yml`）が3 つのアプリをビルドしてテストし、`vX.Y.Z` タグ付きでリリース（`KINO-macOS.dmg`、`KINO-Windows.exe`、`KINO-Linux-x86_64.AppImage`、`SHA256SUMS.txt`）を公開したあと、README のコマンドでクリーンな Mac と Windows に再インストールして確認します。
 
 KINO が新しいバージョンを自動でインストールできるよう、CI はシークレット `KINO_UPDATE_SIGNING_KEY`（Settings → Secrets and variables → Actions）でアップデートに署名します。中身は `cargo run -p kino --bin kino-release -- --init-key` で作成した秘密鍵で、公開鍵は `assets/update_public_key.hex` です。このシークレットがない場合、KINO は新しいバージョンを通知してダウンロードを案内します。
 
@@ -40,6 +40,21 @@ cargo run -p kino-desktop                           # run from the sources
 cargo build --release --locked -p kino-desktop
 pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
+```
+
+### Linux (x86_64)
+
+AppImage は対応する最も古いシステムである Ubuntu 22.04 でビルドします。同じかより新しい glibc を持つシステムで動作します。WebKitGTK と、ページが動画を再生する GStreamer プラグインを同梱し、FFmpeg はビルド環境のものを使います。
+
+```bash
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev patchelf ffmpeg \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav \
+  xvfb imagemagick
+tools/fetch_linuxdeploy.sh                            # linuxdeploy とプラグイン（固定・検証済み）を vendor/ へ
+cargo run -p kino-desktop                             # ソースから起動
+cargo build --release --locked -p kino-desktop
+packaging/build_linux_appimage.sh                     # dist/KINO-Linux-x86_64.AppImage
+tools/linux_appimage_test.sh                          # 仮想画面でセルフチェック・起動・動画を確認
 ```
 
 ビルドしたアプリは `--self-check` で中身を確認できます。

@@ -54,6 +54,6 @@ test('fewer than four suggestions hide the row; the settings say it is computed 
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(page.el('homeForYouSection').hidden, true);
   assert.match(html, /<section id="homeForYouSection" class="home-shelf" aria-labelledby="homeForYouTitle" hidden>/);
-  assert.match(html, /Rien de vous ne quitte ce Mac\./);
+  assert.match(html, /Rien de vous ne quitte cet ordinateur\./);
   assert.match(withCalls(html), /onclick="resetNotForMe\(this\)">Oublier mes « Pas pour moi »<\/button>/);
 });

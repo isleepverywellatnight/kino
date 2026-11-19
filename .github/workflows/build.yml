@@ -1,7 +1,7 @@
-# Builds KINO for macOS (Apple Silicon) and Windows (x64) on every push and pull
-# request to main. When main carries a version (Cargo.toml, [workspace.package]) that
-# has no release yet, it publishes release vX.Y.Z (and its tag) with the .dmg,
-# the Windows installer and, when the KINO_UPDATE_SIGNING_KEY secret is set, the
+# Builds KINO for macOS (Apple Silicon), Windows (x64) and Linux (x86_64) on every
+# push and pull request to main. When main carries a version (Cargo.toml,
+# [workspace.package]) that has no release yet, it publishes release vX.Y.Z (and its
+# tag) with the .dmg, the Windows installer, the Linux AppImage and, when the KINO_UPDATE_SIGNING_KEY secret is set, the
 # signed files the in-app updater uses. Pushing a tag vX.Y.Z does the same.
 name: Build
 
@@ -68,7 +68,11 @@ jobs:
       - name: Types (interface)
         run: npx --yes -p typescript@5.9.3 tsc -p jsconfig.json
       - name: Install scripts
-        run: bash -n packaging/install.sh
+        run: |
+          bash -n packaging/install.sh
+          for script in packaging/build_linux_appimage.sh tools/fetch_linuxdeploy.sh tools/linux_appimage_test.sh; do
+            bash -n "$script"
+          done
 
   macos:
     needs: checks
@@ -231,9 +235,44 @@ jobs:
           path: dist/startup-windows.png
           if-no-files-found: ignore
 
+  linux:
+    needs: checks
+    # The oldest supported Ubuntu: the AppImage runs on systems with its glibc
+    # (2.35) or a newer one.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev patchelf ffmpeg \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav \
+            xvfb imagemagick
+      - name: linuxdeploy
+        run: tools/fetch_linuxdeploy.sh
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Build the AppImage
+        run: |
+          cargo build --release --locked -p kino-desktop
+          packaging/build_linux_appimage.sh
+      # Self-check, start-up on a virtual screen, video in the page.
+      - name: AppImage test
+        run: tools/linux_appimage_test.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kino-linux
+          path: dist/KINO-Linux-x86_64.AppImage
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: linux-screenshots
+          path: dist/*-linux.png
+          if-no-files-found: ignore
+
   release:
     if: needs.checks.outputs.publish == 'true'
-    needs: [checks, macos, windows]
+    needs: [checks, macos, windows, linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -276,7 +315,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-latest]
+        os: [macos-15, windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -298,3 +337,13 @@ jobs:
           $p = Start-Process -FilePath $exe -ArgumentList "--self-check", "--self-check-report", $report -Wait -PassThru
           Get-Content $report
           if ($p.ExitCode -ne 0) { throw "Self-check failed" }
+      - name: Download (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          url=https://github.com/$RELEASES_REPO/releases/latest/download/KINO-Linux-x86_64.AppImage
+          if ! curl -fsSL --retry 3 -o KINO.AppImage "$url"; then
+            echo "::notice::The latest release has no AppImage yet."
+            exit 0
+          fi
+          chmod 755 KINO.AppImage
+          APPIMAGE_EXTRACT_AND_RUN=1 ./KINO.AppImage --self-check

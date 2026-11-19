@@ -380,7 +380,7 @@ async function downloadSeasonOffline(button) {
   let free = '';
   try {
     const data = await api('/api/downloads');
-    if (Number(data.free_bytes) > 0) free = ` Il reste ${offlineSize(data.free_bytes)} sur ce Mac.`;
+    if (Number(data.free_bytes) > 0) free = ` Il reste ${offlineSize(data.free_bytes)} sur cet ordinateur.`;
   } catch (error) {}
   const count = `${KINO_I18N.t('home.x_episode_x', episodes.length, episodes.length > 1 ? 's' : '')}`;
   if (!window.confirm(`Télécharger ${episodes.length > 1 ? 'les ' : 'l’'}${count} sorti${episodes.length > 1 ? 's' : ''} de la saison ${season} de « ${name} » pour les regarder hors ligne ?\n\nIls se téléchargent l’un après l’autre, même si KINO est fermé puis rouvert. Un épisode pèse souvent 1 à 4 Go.${free}`)) return;

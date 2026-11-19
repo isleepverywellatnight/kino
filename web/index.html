@@ -145,7 +145,7 @@
           </span>
           <div class="hdi-content">
             <span class="hdi-title" data-i18n="page.dossier_des_telechargements">Dossier des téléchargements</span>
-            <span class="hdi-desc" data-i18n="page.les_videos_gardees_sur_ce_mac">Les vidéos gardées sur ce Mac</span>
+            <span class="hdi-desc" data-i18n="page.les_videos_gardees_sur_ce_mac">Les vidéos gardées sur cet ordinateur</span>
           </div>
         </div>
         <div class="header-dropdown-item" data-on-click="kinoMenuAction" data-click-args='["triggerGdriveSync"]'>
@@ -382,11 +382,11 @@
     <div id="homeRateRow" class="list-shelf-row foryou-row rate-row"></div>
   </section>
 
-  <!-- « Pour vous » : calculé sur ce Mac à partir de ce que vous avez vu et noté (recommender.py). -->
+  <!-- « Pour vous » : calculé sur cet ordinateur à partir de ce que vous avez vu et noté (recommender.py). -->
   <section id="homeForYouSection" class="home-shelf" aria-labelledby="homeForYouTitle" hidden>
     <div class="section-header">
       <span class="section-title" id="homeForYouTitle" data-i18n="page.pour_vous">Pour vous</span>
-      <span class="section-note" data-i18n="page.calcule_sur_ce_mac_d_apres_ce_que_vous">Calculé sur ce Mac, d’après ce que vous avez vu et noté</span>
+      <span class="section-note" data-i18n="page.calcule_sur_ce_mac_d_apres_ce_que_vous">Calculé sur cet ordinateur, d’après ce que vous avez vu et noté</span>
     </div>
     <div id="homeForYouRow" class="list-shelf-row foryou-row"></div>
   </section>
@@ -539,7 +539,7 @@
     <div class="lib-panel-head">
       <div>
         <p id="animeScheduleSummary" class="lib-summary"></p>
-        <p class="week-note" data-i18n="page.heures_de_diffusion_au_japon_a_l_heure">Heures de diffusion au Japon, à l’heure de ce Mac.</p>
+        <p class="week-note" data-i18n="page.heures_de_diffusion_au_japon_a_l_heure">Heures de diffusion au Japon, à l’heure de cet ordinateur.</p>
       </div>
       <div class="lib-tools">
         <select id="animeScheduleFilter" class="catalog-sort" aria-label="Épisodes affichés" data-on-change="setAnimeWeekFilter" data-change-args='[{"$":"value"}]' data-i18n-aria-label="page.episodes_affiches">
@@ -718,7 +718,7 @@
           <div class="set-row set-row-wide">
             <div class="set-text">
               <label class="settings-label" for="cfgToken" id="cfgTokenLabel" data-i18n="page.cle_api">Clé API</label>
-              <p class="settings-desc" data-i18n="page.elle_reste_sur_ce_mac_dans_un_fichier">Elle reste sur ce Mac, dans un fichier réservé à votre session, sans chiffrement.</p>
+              <p class="settings-desc" data-i18n="page.elle_reste_sur_ce_mac_dans_un_fichier">Elle reste sur cet ordinateur, dans un fichier réservé à votre session, sans chiffrement.</p>
             </div>
             <div class="set-key">
               <div class="set-key-field">
@@ -754,7 +754,7 @@
           <div class="set-row set-row-wide">
             <div class="set-text">
               <label class="settings-label" for="stremioAddonUrl" data-i18n="page.addons">Addons</label>
-              <p class="settings-desc" data-i18n="page.des_sources_et_des_catalogues_de_plus">Des sources et des catalogues de plus. KINO lit seulement leurs réponses : rien de l’addon ne s’exécute sur ce Mac.</p>
+              <p class="settings-desc" data-i18n="page.des_sources_et_des_catalogues_de_plus">Des sources et des catalogues de plus. KINO lit seulement leurs réponses : rien de l’addon ne s’exécute sur cet ordinateur.</p>
             </div>
             <form class="set-key" data-on-submit="addStremioAddon" data-submit-args='[{"$":"event"}]'>
               <div class="set-key-field"><input type="url" id="stremioAddonUrl" placeholder="https://…/manifest.json" autocomplete="off" spellcheck="false"></div>
@@ -828,7 +828,7 @@
             <div class="set-row">
               <div class="set-text">
                 <span class="settings-label" data-i18n="page.google_drive">Google Drive</span>
-                <p class="settings-desc" data-i18n="page.votre_historique_et_ma_liste_entre_ce">Votre historique et Ma Liste, entre ce Mac et votre PC.</p>
+                <p class="settings-desc" data-i18n="page.votre_historique_et_ma_liste_entre_ce">Votre historique et Ma Liste, entre vos ordinateurs.</p>
                 <p id="gdriveSyncStatus" class="settings-desc set-live" data-i18n="page.se_synchronise_a_chaque_ouverture_de">Se synchronise à chaque ouverture de KINO.</p>
               </div>
               <button type="button" class="btn btn-secondary btn-small" data-on-click="triggerGdriveSync" data-click-args='[{"$":"this"}]' data-i18n="page.synchroniser">Synchroniser</button>
@@ -858,7 +858,7 @@
             <div class="set-row">
               <div class="set-text">
                 <label class="settings-label" for="cfgTvDevice" data-i18n="page.tv_pour_sur_la_tv">TV pour « Sur la TV »</label>
-                <p id="cfgTvStatus" class="settings-desc" data-i18n="page.une_tv_du_meme_reseau_que_ce_mac_dlna_le">Une TV du même réseau que ce Mac (DLNA). Le Mac lui envoie la vidéo : il doit rester allumé.</p>
+                <p id="cfgTvStatus" class="settings-desc" data-i18n="page.une_tv_du_meme_reseau_que_ce_mac_dlna_le">Une TV du même réseau que cet ordinateur (DLNA). L’ordinateur lui envoie la vidéo : il doit rester allumé.</p>
               </div>
               <div class="set-control-pair">
                 <select id="cfgTvDevice" data-on-change="chooseTvDevice" data-change-args='[{"$":"value"}]'><option value="" data-i18n="page.aucune_tv_trouvee">Aucune TV trouvée</option></select>
@@ -965,8 +965,8 @@
           <div class="set-list">
             <div class="set-row">
               <div class="set-text">
-                <span class="settings-label" data-i18n="page.calculees_sur_ce_mac">Calculées sur ce Mac</span>
-                <p class="settings-desc" data-i18n="page.pour_vous_et_les_titres_proches_viennent">« Pour vous » et les titres proches viennent de ce que vous avez vu, noté et mis de côté. Rien de vous ne quitte ce Mac.</p>
+                <span class="settings-label" data-i18n="page.calculees_sur_ce_mac">Calculées sur cet ordinateur</span>
+                <p class="settings-desc" data-i18n="page.pour_vous_et_les_titres_proches_viennent">« Pour vous » et les titres proches viennent de ce que vous avez vu, noté et mis de côté. Rien de vous ne quitte cet ordinateur.</p>
                 <p id="suggestionsStatus" class="settings-desc set-live">…</p>
               </div>
               <button type="button" class="btn btn-secondary btn-small" id="suggestionsResetBtn" data-on-click="resetNotForMe" data-click-args='[{"$":"this"}]' data-i18n="page.oublier_mes_pas_pour_moi">Oublier mes « Pas pour moi »</button>
@@ -1021,7 +1021,7 @@
             <div class="set-row">
               <div class="set-text">
                 <span class="settings-label" data-i18n="page.une_copie_par_jour">Une copie par jour</span>
-                <p class="settings-desc" data-i18n="page.ma_liste_l_historique_vos_notes_et_vos">Ma Liste, l’historique, vos notes et vos réglages, gardés 7 jours sur ce Mac. Vos clés n’y sont pas.</p>
+                <p class="settings-desc" data-i18n="page.ma_liste_l_historique_vos_notes_et_vos">Ma Liste, l’historique, vos notes et vos réglages, gardés 7 jours sur cet ordinateur. Vos clés n’y sont pas.</p>
                 <p id="backupsStatus" class="settings-desc set-live" role="status" aria-live="polite"></p>
               </div>
               <button type="button" class="btn btn-secondary btn-small" id="backupNowBtn" data-on-click="backupNow" data-click-args='[{"$":"this"}]' data-i18n="page.sauvegarder_maintenant">Sauvegarder maintenant</button>
@@ -1260,7 +1260,7 @@
     <div class="tonight-form">
       <label>Temps disponible<select id="tonightMinutes" data-on-change="findTonightChoices"><option value="45">45 min</option><option value="90">1 h 30</option><option value="120" selected>2 h</option><option value="150">2 h 30</option><option value="180">3 h</option></select></label>
       <label>Envie<select id="tonightMood" data-on-change="findTonightChoices"><option value="discovery" data-i18n="page.decouverte">Découverte</option><option value="light" data-i18n="page.leger">Léger</option><option value="intense" data-i18n="page.intense">Intense</option></select></label>
-      <label class="tonight-offline-toggle"><input type="checkbox" id="tonightOfflineOnly" data-on-change="findTonightChoices"><span>Sans connexion <small data-i18n="page.fichiers_prets_sur_ce_mac">Fichiers prêts sur ce Mac</small></span></label>
+      <label class="tonight-offline-toggle"><input type="checkbox" id="tonightOfflineOnly" data-on-change="findTonightChoices"><span>Sans connexion <small data-i18n="page.fichiers_prets_sur_ce_mac">Fichiers prêts sur cet ordinateur</small></span></label>
       <button type="button" class="btn" id="tonightSearchButton" data-on-click="findTonightChoices" data-i18n="page.d_autres_idees">D’autres idées</button>
     </div>
     <p id="tonightStatus" class="tonight-status" role="status" aria-live="polite" data-i18n="page.les_suggestions_viennent_de_ma_liste">Les suggestions viennent de Ma Liste.</p>
@@ -1268,7 +1268,7 @@
     <div id="tonightChoices" class="tonight-choices"></div>
     <details class="tonight-preferences" id="tonightPreferences">
       <summary id="tonightReviewSummary" data-i18n="page.mes_choix">Mes choix</summary>
-      <p class="tonight-preferences-note" data-i18n="page.les_reports_durent_24_h_les_exclusions">Les reports durent 24 h. Les exclusions restent jusqu’à leur réintégration. Vos choix restent sur ce Mac.</p>
+      <p class="tonight-preferences-note" data-i18n="page.les_reports_durent_24_h_les_exclusions">Les reports durent 24 h. Les exclusions restent jusqu’à leur réintégration. Vos choix restent sur cet ordinateur.</p>
       <div id="tonightReview"></div>
       <button type="button" class="btn btn-secondary tonight-reset" data-on-click="resetTonightPreferences" data-i18n="page.reinitialiser_les_choix_de_ce_soir">Réinitialiser les choix de Ce soir</button>
     </details>
