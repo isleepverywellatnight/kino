@@ -4,6 +4,9 @@
 // Set by web/js/i18n.js on window.
 declare const KINO_I18N: {
   lang: string;
+  /** web/js/i18n/fr.js: the French text of each key. */
+  source(table: Record<string, string>): void;
+  /** web/js/i18n/<lang>.js: the translation of each key. */
   load(table: Record<string, string>): void;
   t(text: string): string;
   months(style: 'long' | 'short' | 'narrow'): string[];

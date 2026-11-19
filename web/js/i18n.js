@@ -5,7 +5,8 @@
 // (web/js/i18n/<lang>.js) and translates the page while it is displayed: text,
 // placeholders, tooltips and alert()/confirm() messages, including everything
 // the other scripts add later. A text missing from the dictionary stays in
-// French. Dictionaries map French to the translation; "{}" is a variable part.
+// French. Each French text has a key: web/js/i18n/fr.js gives the French text of
+// each key, a dictionary its translation; "{}" is a variable part.
 // See tools/i18n.js.
 (function () {
   'use strict';
@@ -41,6 +42,8 @@
   }
 
   const lang = pickLanguage();
+  /** @type {Record<string, string>} The French text of each key (web/js/i18n/fr.js). */
+  let french = {};
   const exact = new Map();
   const patternsBySource = new Map();
   let patterns = [];
@@ -166,11 +169,16 @@
   window.KINO_LANGUAGES = LANGUAGES;
   window.KINO_I18N = {
     lang,
-    // Called by web/js/i18n/<lang>.js with its dictionary.
+    // Called by web/js/i18n/fr.js with the French text of each key, before any dictionary.
+    source(table) {
+      french = table;
+    },
+    // Called by web/js/i18n/<lang>.js with its dictionary: key -> translation.
     // English is loaded first for every other language: what a dictionary lacks shows in English.
     load(table) {
-      for (const [source, target] of Object.entries(table)) {
-        if (!target) continue;
+      for (const [key, target] of Object.entries(table)) {
+        const source = french[key];
+        if (!target || !source) continue;
         if (source.includes('{}')) patternsBySource.set(source, compile(source, target));
         else exact.set(source, target);
       }
@@ -198,9 +206,8 @@
   };
 
   document.documentElement.lang = lang;
-  if (lang !== 'fr') {
-    // Synchronous on purpose: the dictionaries are ready before the page is drawn.
-    const files = lang === 'en' ? ['en'] : ['en', lang];
-    for (const file of files) document.write('<script src="/js/i18n/' + file + '.js"><\/script>');
-  }
+  // Synchronous on purpose: the dictionaries are ready before the page is drawn.
+  // The French texts first: the dictionaries give their keys' translations.
+  const files = lang === 'fr' ? ['fr'] : lang === 'en' ? ['fr', 'en'] : ['fr', 'en', lang];
+  for (const file of files) document.write('<script src="/js/i18n/' + file + '.js"><\/script>');
 })();
