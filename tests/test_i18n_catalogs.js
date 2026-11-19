@@ -63,6 +63,7 @@ test('a key gives its area and its words; a second text with the same words gets
 // i18n.js with fr.js and a dictionary, as the page loads them.
 function page(lang) {
   const written = [];
+  const listeners = {};
   const context = {
     localStorage: { getItem: () => lang, setItem() {} },
     navigator: { languages: [lang] },
@@ -76,13 +77,14 @@ function page(lang) {
       querySelector: () => null,
       createTreeWalker: () => ({ nextNode: () => null }),
       write: html => written.push(/src="\/js\/i18n\/(\w+)\.js"/.exec(html)[1]),
+      addEventListener: (type, fn) => { listeners[type] = fn; },
     },
   };
   context.window = context;
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'web/js/i18n.js'), 'utf8'), context);
   for (const file of written) vm.runInContext(fs.readFileSync(path.join(ROOT, `web/js/i18n/${file}.js`), 'utf8'), context);
-  return { I18N: context.KINO_I18N, written };
+  return { I18N: context.KINO_I18N, written, listeners };
 }
 
 test('the page loads the French texts first, then English, then its language', () => {
@@ -94,9 +96,63 @@ test('the page loads the French texts first, then English, then its language', (
 test('a French text shows in the language through its key, variable parts included', () => {
   const en = i18n.readLanguage('en');
   const plain = Object.keys(en).find(key => !source[key].includes('{}'));
-  assert.equal(page('en').I18N.t(source[plain]), en[plain]);
+  assert.equal(page('en').I18N.translate(source[plain]), en[plain]);
   const key = Object.keys(en).find(k => /^\{\} \p{L}+$/u.test(source[k]) && /^\{\} /.test(en[k]));
   assert.ok(key, 'a text with a variable part');
-  assert.equal(page('en').I18N.t(source[key].replace('{}', '12')), en[key].replace('{}', '12'));
-  assert.equal(page('fr').I18N.t(source[plain]), source[plain], 'French stays French');
+  assert.equal(page('en').I18N.translate(source[key].replace('{}', '12')), en[key].replace('{}', '12'));
+  assert.equal(page('fr').I18N.translate(source[plain]), source[plain], 'French stays French');
+});
+
+test('t(key) gives the text in the language, else in English, else in French, with its values', () => {
+  const en = i18n.readLanguage('en');
+  const ja = i18n.readLanguage('ja');
+  const both = Object.keys(ja).find(key => en[key] && ja[key] !== en[key] && !source[key].includes('{}'));
+  assert.equal(page('ja').I18N.t(both), ja[both]);
+  assert.equal(page('fr').I18N.t(both), source[both]);
+  const neither = Object.keys(source).find(key => !Object.hasOwn(en, key) && !Object.hasOwn(ja, key) && !source[key].includes('{}'));
+  assert.equal(page('ja').I18N.t(neither), source[neither], 'what no dictionary has shows in French');
+  // English stands in for what the language lacks.
+  const de = i18n.readLanguage('de');
+  const englishOnly = Object.keys(en).find(key => !Object.hasOwn(de, key) && !source[key].includes('{}'));
+  assert.ok(englishOnly, 'German lacks a text English has');
+  assert.equal(page('de').I18N.t(englishOnly), en[englishOnly], 'what German lacks shows in English');
+  const counted = Object.keys(en).find(key => /^\{\} \p{L}+$/u.test(source[key]) && /^\{\} /.test(en[key]));
+  assert.equal(page('en').I18N.t(counted, 12), en[counted].replace('{}', '12'));
+  assert.throws(() => page('en').I18N.t('page.no_such_text'), /unknown text key « page\.no_such_text »/);
+});
+
+test('data-i18n gives an element its text and attributes, in French too', () => {
+  const key = Object.keys(source).find(k => !source[k].includes('{}'));
+  const el = (dataset) => ({ nodeType: 1, dataset, textContent: 'avant', attributes: {}, setAttribute(n, v) { this.attributes[n] = v; } });
+  const button = el({ i18n: key, i18nTitle: key });
+  const field = el({ i18nPlaceholder: key, i18nAriaLabel: key });
+  const root = { nodeType: 9, querySelectorAll: () => [button, field] };
+  const fr = page('fr');
+  fr.I18N.apply(root);
+  assert.equal(button.textContent, source[key]);
+  assert.deepEqual(button.attributes, { title: source[key] });
+  assert.deepEqual(field.attributes, { placeholder: source[key], 'aria-label': source[key] });
+  assert.equal(field.textContent, 'avant', 'no data-i18n: its text is left');
+  assert.equal(typeof fr.listeners.DOMContentLoaded, 'function', 'French applies the keys once the page is read');
+  const en = page('en');
+  const english = i18n.readLanguage('en')[key];
+  en.I18N.apply(root);
+  assert.equal(button.textContent, english ?? source[key]);
+});
+
+test('the observer counts the French texts it still translates', () => {
+  const en = page('en');
+  assert.equal(en.I18N.remaining().length, 0, 'nothing shown yet');
+});
+
+test('every key the code names exists', () => {
+  const dir = path.join(ROOT, 'web/js');
+  const texts = [fs.readFileSync(path.join(ROOT, 'web/index.html'), 'utf8'),
+    ...fs.readdirSync(dir).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(dir, f), 'utf8'))];
+  const named = new Set();
+  for (const text of texts) {
+    for (const m of text.matchAll(/KINO_I18N\.t\(\s*'([^']+)'/g)) named.add(m[1]);
+    for (const m of text.matchAll(/\bdata-i18n(?:-title|-placeholder|-aria-label)?="([^"$]+)"/g)) named.add(m[1]);
+  }
+  assert.deepEqual([...named].filter(key => !Object.hasOwn(source, key)), []);
 });
