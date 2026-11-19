@@ -551,12 +551,14 @@ async function testEpisodeNotification(button) {
   }
 }
 
-// A notification was clicked (desktop.py): the series opens.
+// A notification was clicked: the series opens. The app dispatches
+// « kino-notification » (kino-desktop's main.rs) with the episode's id and name.
 async function openFromNotification(info) {
   if (!info || !/^tt\d{1,12}$/.test(String(info.id || ''))) return;
   if (activeTab !== 'series') await switchTab('series');
   await selectMedia({ id: info.id, name: info.name || '', type: 'series' });
 }
+window.addEventListener('kino-notification', event => openFromNotification(event.detail));
 
 // From the setup notice: straight to the key field.
 function focusDebridKey() {
