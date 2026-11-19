@@ -507,15 +507,15 @@ export function posterCardHtml(m, fallbackType) {
     const watchedPill = isMovieWatched
       ? html`<button type="button" class="poster-watched" ${act('toggleCardWatched', EVENT, mediaObj)} title="${KINO_I18N.t('tabs.cliquer_pour_retirer_des_deja_vus')}">${KINO_I18N.t('anime.vu')}</button>`
       : (watchedEpsCount > 0 ? html`<span class="poster-watched is-static">${tHtml('tabs.x_ep', watchedEpsCount)}</span>` : '');
-    let btnLabel = 'Lancer';
+    let btnLabel = KINO_I18N.t('page.lancer');
     if (histItem && mtype === 'series' && histItem.season && histItem.episode) {
       const targetEp = getSeriesTargetEpisode(histItem);
       const code = `${KINO_I18N.t('settings.s_x_e_x', String(targetEp.season).padStart(2,'0'), String(targetEp.episode).padStart(2,'0'))}`;
-      btnLabel = targetEp.finished ? 'Revoir' : (targetEp.isNext ? `${KINO_I18N.t('tabs.suivant_x', code)}` : `${KINO_I18N.t('settings.lancer_x', code)}`);
+      btnLabel = targetEp.finished ? KINO_I18N.t('tabs.revoir') : (targetEp.isNext ? `${KINO_I18N.t('tabs.suivant_x', code)}` : `${KINO_I18N.t('settings.lancer_x', code)}`);
     } else if (histItem && histItem.progress_pct > 1 && histItem.progress_pct < 85 && !isMovieWatched) {
       btnLabel = `${KINO_I18N.t('fiche.reprendre_x', Math.round(histItem.progress_pct))}`;
     } else if (isMovieWatched) {
-      btnLabel = 'Revoir';
+      btnLabel = KINO_I18N.t('tabs.revoir');
     }
     const cardProg = (histItem && histItem.progress_pct > 0 && !isMovieWatched)
       ? html`<div class="poster-progress" aria-label="${tHtml('tabs.x_vus', Math.round(histItem.progress_pct))}"><span style="width:${Math.min(100, Number(histItem.progress_pct))}%"></span></div>` : '';
@@ -529,7 +529,7 @@ export function posterCardHtml(m, fallbackType) {
         <p class="poster-preview-desc" data-preview-id="${m.id}" data-preview-type="${mtype}"></p>
         <div class="poster-preview-actions">
           <button type="button" class="poster-preview-play" ${act('oneClickCard', EVENT, THIS, mediaObj)}>▶ ${btnLabel}</button>
-          ${mtype !== 'series' ? html`<button type="button" ${act('toggleCardWatched', EVENT, mediaObj)}>${isMovieWatched ? '✓ Vu' : 'Marquer vu'}</button>` : ''}
+          ${mtype !== 'series' ? html`<button type="button" ${act('toggleCardWatched', EVENT, mediaObj)}>${isMovieWatched ? KINO_I18N.t('anime.vu') : KINO_I18N.t('tabs.marquer_vu')}</button>` : ''}
         </div>
       </div>`;
     const ratingBadges = [];
@@ -539,7 +539,8 @@ export function posterCardHtml(m, fallbackType) {
     if (ratingVal) {
       ratingBadges.push(`★ ${ratingVal}`);
     }
-    const ratingLine = ratingBadges.length ? ' • ' + ratingBadges.join(' ') : '';
+    // Markup pieces, kept apart: joined into a string they would show as text.
+    const ratingLine = ratingBadges.length ? html` • ${ratingBadges.flatMap((badge, i) => i ? [' ', badge] : [badge])}` : '';
     return html`
       <div class="poster-card" ${act('selectMedia', mediaObj)}>
         ${watchedPill}

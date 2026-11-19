@@ -7,6 +7,11 @@
   shares its library and settings with the AppImage; install the new
   .flatpak file to update.
 - The native player's line « décodage logiciel / matériel » is translated.
+- Poster cards no longer show raw markup under the title when the title has
+  your rating (« Aimé », « Adoré »…); « Marquer vu », « Revoir » and the new
+  episodes' line (« 6 nouveaux épisodes depuis… ») are translated.
+- Films and Séries no longer show anime: À continuer, Nouveaux épisodes,
+  Ma Liste, « Si vous avez aimé » and Pour vous leave them to the Anime page.
 
 ## 2.2.1
 

@@ -149,7 +149,7 @@ test('« À continuer » on « À la une » keeps the anime titles the server na
   assert.equal(context.isAnimeTitle({ id: 'tt11', type: 'series', is_anime: true }), true);
   assert.equal(context.isAnimeTitle({ id: 'tt12', type: 'anime' }), true);
   assert.equal(context.isAnimeTitle(null), false);
-  assert.match(source, /function resumeBelongsToTab\(entry\) \{\n  if \(activeTab === 'history'\) return true;\n  if \(activeTab === 'anime'\) return isAnimeTitle\(entry\);\n  return listItemKind\(entry\) === homeKind\(\);\n\}/);
+  assert.match(source, /function resumeBelongsToTab\(entry\) \{\n  if \(activeTab === 'history'\) return true;\n  if \(activeTab === 'anime'\) return isAnimeTitle\(entry\);\n  \/\/ Films and Séries leave anime to the anime page\.\n  return !isAnimeTitle\(entry\) && listItemKind\(entry\) === homeKind\(\);\n\}/);
   assert.match(source, /const animeHome = activeTab === 'anime' && currentAnimeSubTab === 'home';\n\s+const inProg = getInProgressHistory\(\)\.filter\(h => \(activeTab === 'history' \|\| !shownAsNew\.has\(h\.id\)\) && resumeBelongsToTab\(h\)\);\n\s+if \(activeTab !== 'movies' && activeTab !== 'series' && activeTab !== 'history' && !animeHome\) \{/);
 });
 
