@@ -3,7 +3,7 @@
  * ============================================================================ */
 
 import { registerActions } from './actions.js';
-import { EVENT, THIS, act, actOn, escapeHtml, html, render } from './html.js';
+import { EVENT, THIS, act, actOn, escapeHtml, html, render, tHtml } from './html.js';
 import {
   activeGenre, activeTab, api, catalogItems, catalogSort, getWatchedHistory, isInWatchlist,
   setCatalogSort, setCurrentMedia, setUserHistory, toggleWatchlist, userHistory, userWatchlist,
@@ -428,17 +428,21 @@ export function renderActiveListTab() {
       const myRated = rawList.map(x => parseFloat(x.user_rating || '0')).filter(r => r > 0);
       const rated = rawList.map(x => parseFloat(x.imdbRating || '0')).filter(r => r > 0);
       const average = values => (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1).replace('.', ',');
-      let avgTxt = '';
-      if (myRated.length) {
-        avgTxt = ` · votre note ${average(myRated)}/5 en moyenne`;
-      } else if (rated.length) {
-        avgTxt = ` · IMDb ${average(rated)} en moyenne`;
-      }
+      const plural = rawList.length > 1 ? 's' : '';
+      let counts;
       if (activeTab === 'watchlist' || activeTab === 'customlists') {
         const unwatchedCount = rawList.filter(m => listItemState(m) !== 'watched').length;
-        statsEl.textContent = `${rawList.length} titre${rawList.length > 1 ? 's' : ''} · ${unwatchedCount} à voir${avgTxt}`;
+        counts = KINO_I18N.t('lists.x_titre_x_x_a_voir_x', rawList.length, plural, unwatchedCount, '');
       } else {
-        statsEl.textContent = `${rawList.length} titre${rawList.length > 1 ? 's' : ''} vu${rawList.length > 1 ? 's' : ''}${avgTxt}`;
+        counts = KINO_I18N.t('lists.x_titre_x_vu_x_x', rawList.length, plural, plural, '');
+      }
+      // The average follows the counts: « 3 titres vus · IMDb 7,9 en moyenne ».
+      if (myRated.length) {
+        statsEl.textContent = KINO_I18N.t('lists.x_votre_note_x_5_en_moyenne', counts, average(myRated));
+      } else if (rated.length) {
+        statsEl.textContent = KINO_I18N.t('lists.x_imdb_x_en_moyenne', counts, average(rated));
+      } else {
+        statsEl.textContent = counts;
       }
       statsEl.style.display = 'inline-flex';
     } else {
@@ -662,8 +666,8 @@ export async function surpriseMeMedia(poolArg = null) {
     if (poolMode === 'watchlist') kickerEl.textContent = KINO_I18N.t('lists.tirage_ma_liste');
     else if (poolMode === 'watched') kickerEl.textContent = KINO_I18N.t('lists.tirage_deja_vus');
     else if (poolMode === 'classics') kickerEl.textContent = KINO_I18N.t('lists.tirage_classiques_a_voir_dans_sa_vie');
-    else if (poolMode === 'customlist') kickerEl.textContent = `TIRAGE · ${(customListRouletteTitle || 'LISTE LETTERBOXD').toUpperCase()}`;
-    else kickerEl.textContent = activeGenre ? `TIRAGE · ${activeGenre.toUpperCase()}` : (fallbackType === 'series' ? 'TIRAGE · SÉRIES' : 'TIRAGE · FILMS');
+    else if (poolMode === 'customlist') kickerEl.textContent = `${KINO_I18N.t('lists.tirage_x', (customListRouletteTitle || 'LISTE LETTERBOXD').toUpperCase())}`;
+    else kickerEl.textContent = activeGenre ? `${KINO_I18N.t('lists.tirage_x', activeGenre.toUpperCase())}` : (fallbackType === 'series' ? 'TIRAGE · SÉRIES' : 'TIRAGE · FILMS');
   }
   if (titleEl) titleEl.textContent = KINO_I18N.t('lists.selection_en_cours');
 
@@ -790,7 +794,7 @@ function finishCaseSpin(skipped = false) {
         ${winnerRaw.poster ? html`<img src="${winnerRaw.poster}" style="width:54px; height:80px; object-fit:cover; border-radius:6px; border:1px solid rgba(255,255,255,0.12);">` : ''}
         <div>
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            ${rating ? html`<span class="badge" style="background:rgba(255,255,255,0.09); color:#fafafa; border-color:rgba(255,255,255,0.18); font-weight:600;">★ ${rating} IMDb</span>` : ''}
+            ${rating ? html`<span class="badge" style="background:rgba(255,255,255,0.09); color:#fafafa; border-color:rgba(255,255,255,0.18); font-weight:600;">${tHtml('fiche.x_imdb', rating)}</span>` : ''}
             ${year ? html`<span style="font-size:0.78rem; color:var(--muted);">${year}</span>` : ''}
             ${genres.map(g => html`<span class="badge">${frenchGenre(g)}</span>`)}
           </div>
@@ -888,25 +892,25 @@ let mySeriesData = [];
 let mySeriesRequest = 0;
 
 function seriesEpisodeLabel(season, episode) {
-  return `S${Number(season) || 1} · É${Number(episode) || 1}`;
+  return `${KINO_I18N.t('lists.s_x_e_x', Number(season) || 1, Number(episode) || 1)}`;
 }
 
 function mySeriesFacts(item) {
   const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
   const upcoming = item.upcoming
-    ? `Prochain à sortir : ${seriesEpisodeLabel(item.upcoming.season, item.upcoming.episode)} le ${episodeAirLabel(item.upcoming.released)}` : '';
+    ? `${KINO_I18N.t('lists.prochain_a_sortir_x_le_x', seriesEpisodeLabel(item.upcoming.season, item.upcoming.episode), episodeAirLabel(item.upcoming.released))}` : '';
   if (item.group === 'start') {
-    return [item.aired ? `${plural(item.aired, 'épisode')} à découvrir` : 'Pas encore d’épisode sorti', upcoming];
+    return [item.aired ? `${KINO_I18N.t('lists.x_a_decouvrir', plural(item.aired, 'épisode'))}` : 'Pas encore d’épisode sorti', upcoming];
   }
   const current = item.current || {};
   const where = item.next?.resume
-    ? `${seriesEpisodeLabel(current.season, current.episode)} en cours (${item.next.progress_pct} %)`
-    : current.progress_pct === 100 ? `Vu jusqu’à ${seriesEpisodeLabel(current.season, current.episode)}`
-      : `Arrivé à ${seriesEpisodeLabel(current.season, current.episode)}`;
+    ? `${KINO_I18N.t('lists.x_en_cours_x', seriesEpisodeLabel(current.season, current.episode), item.next.progress_pct)}`
+    : current.progress_pct === 100 ? `${KINO_I18N.t('lists.vu_jusqu_a_x', seriesEpisodeLabel(current.season, current.episode))}`
+      : `${KINO_I18N.t('lists.arrive_a_x', seriesEpisodeLabel(current.season, current.episode))}`;
   if (!item.known) return [where, 'Liste des épisodes indisponible pour le moment'];
   const left = item.group === 'uptodate'
     ? (item.finished ? 'Série terminée, tout est vu' : 'À jour')
-    : `${plural(item.remaining, 'épisode')} à voir`;
+    : `${KINO_I18N.t('lists.x_a_voir', plural(item.remaining, 'épisode'))}`;
   return [where, left, upcoming];
 }
 
@@ -923,7 +927,7 @@ function mySeriesItemHtml(item) {
       <div class="offline-info">
         <strong${titleAttrs(item, 'series')}>${displayTitle(item)}</strong>
         ${facts.map(fact => html`<span class="myseries-fact">${fact}</span>`)}
-        ${item.aired && item.group !== 'start' ? html`<div class="progress-bar" role="img" aria-label="${item.seen} épisodes vus sur ${item.aired}"><div class="progress-fill" style="width:${share}%"></div></div>` : ''}
+        ${item.aired && item.group !== 'start' ? html`<div class="progress-bar" role="img" aria-label="${tHtml('lists.x_episodes_vus_sur_x', item.seen, item.aired)}"><div class="progress-fill" style="width:${share}%"></div></div>` : ''}
       </div>
       <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" ${act('openMySeries', String(id))}>${KINO_I18N.t('anime.fiche')}</button></div>
     </article>`;
@@ -955,7 +959,7 @@ export async function loadMySeries() {
   } catch (error) {
     if (request !== mySeriesRequest || !grid || activeTab !== 'myseries') return;
     render(grid, error.code === 'offline' ? needsInternetHtml('Mes séries')
-      : html`<p class="myseries-fact">Impossible d’afficher vos séries : ${error.message}</p>`);
+      : html`<p class="myseries-fact">${tHtml('lists.impossible_d_afficher_vos_series_x', error.message)}</p>`);
   }
 }
 
@@ -975,7 +979,7 @@ async function playMySeries(id, btn) {
   const { season, episode } = item.next;
   await oneClickPlay({
     imdb_id: item.id, type: 'series', season, episode,
-    title: `${item.name} — S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`,
+    title: `${KINO_I18N.t('fiche.x_s_x_e_x', item.name, String(season).padStart(2, '0'), String(episode).padStart(2, '0'))}`,
     name: item.name, poster: item.poster || '', year: item.year || '',
   }, btn);
 }
@@ -1021,15 +1025,15 @@ function calendarRange(start) {
 function calendarEpisodes(item) {
   const label = seriesEpisodeLabel(item.season, item.episode);
   const last = Number(item.last_episode) || Number(item.episode);
-  const range = last > item.episode ? `${label} à É${last} (${last - item.episode + 1} épisodes)` : label;
+  const range = last > item.episode ? `${KINO_I18N.t('lists.x_a_e_x_x_episodes', label, last, last - item.episode + 1)}` : label;
   const tag = item.premiere === 'series' ? ' · Première' : item.premiere === 'season' ? ' · Nouvelle saison' : '';
   return range + tag;
 }
 
 function calendarState(item) {
   if (item.seen) return 'Vu';
-  if (item.resume_pct) return `En cours (${item.resume_pct} %)`;
-  const before = item.before ? `${item.before} épisode${item.before > 1 ? 's' : ''} à voir avant` : '';
+  if (item.resume_pct) return `${KINO_I18N.t('lists.en_cours_x', item.resume_pct)}`;
+  const before = item.before ? `${KINO_I18N.t('lists.x_episode_x_a_voir_avant', item.before, item.before > 1 ? 's' : '')}` : '';
   if (item.aired) return ['Disponible', before].filter(Boolean).join(' · ');
   if (before) return before;
   return item.followed ? 'Vous êtes à jour' : 'Dans Ma Liste';
@@ -1040,7 +1044,7 @@ function calendarItemHtml(item, later = false) {
   if (!id) return '';
   const season = Number(item.season) || 1;
   const episode = Number(item.episode) || 1;
-  const facts = later ? [calendarEpisodes(item), `Le ${episodeAirLabel(item.released)}`] : [calendarEpisodes(item), calendarState(item)];
+  const facts = later ? [calendarEpisodes(item), `${KINO_I18N.t('lists.le_x', episodeAirLabel(item.released))}`] : [calendarEpisodes(item), calendarState(item)];
   const play = !later && item.aired && !item.seen && !item.before
     ? html`<button type="button" class="btn" ${act('playCalendarEpisode', String(id), season, episode, THIS)}>${item.resume_pct ? 'Reprendre' : 'Lancer'} ${seriesEpisodeLabel(season, episode)}</button>` : '';
   return html`<article class="offline-item myseries-item calendar-item${item.seen ? ' is-seen' : ''}">
@@ -1076,7 +1080,7 @@ function renderReleaseCalendar() {
     return;
   }
   const missing = data.unavailable
-    ? html`<p class="myseries-fact calendar-none">${data.unavailable} série${data.unavailable > 1 ? 's' : ''} sans liste d’épisodes pour le moment : le calendrier est incomplet.</p>` : '';
+    ? html`<p class="myseries-fact calendar-none">${tHtml('lists.x_serie_x_sans_liste_d_episodes_pour_le', data.unavailable, data.unavailable > 1 ? 's' : '')}</p>` : '';
   const later = (data.later || []).length
     ? html`<h3 class="search-group-title">${KINO_I18N.t('page.plus_tard')} <span class="list-count">${data.later.length}</span></h3>${data.later.map(item => calendarItemHtml(item, true))}` : '';
   render(grid, [missing,
@@ -1097,7 +1101,7 @@ export async function loadReleaseCalendar() {
   } catch (error) {
     if (request !== releaseCalendarRequest || !grid || activeTab !== 'calendar') return;
     render(grid, error.code === 'offline' ? needsInternetHtml('Le calendrier')
-      : html`<p class="myseries-fact">Impossible d’afficher le calendrier : ${error.message}</p>`);
+      : html`<p class="myseries-fact">${tHtml('lists.impossible_d_afficher_le_calendrier_x', error.message)}</p>`);
   }
 }
 
@@ -1117,7 +1121,7 @@ async function playCalendarEpisode(id, season, episode, btn) {
   setCurrentMedia(mySeriesMedia(item));
   await oneClickPlay({
     imdb_id: item.id, type: 'series', season: Number(season), episode: Number(episode),
-    title: `${item.name} — S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`,
+    title: `${KINO_I18N.t('fiche.x_s_x_e_x', item.name, String(season).padStart(2, '0'), String(episode).padStart(2, '0'))}`,
     name: item.name, poster: item.poster || '', year: item.year || '',
   }, btn);
 }

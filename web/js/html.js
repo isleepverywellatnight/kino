@@ -51,6 +51,21 @@ export function html(strings, ...values) {
 }
 
 /**
+ * A text by key with values, in a template (web/js/i18n.js): the translation's
+ * own words are escaped, each value goes in as html`…` puts it (a string
+ * escaped, a fragment as it is), where the translation places it.
+ * tHtml('lists.x_titres', count) in html`<p>${…}</p>`.
+ * @param {string} key @param {...unknown} values
+ */
+export function tHtml(key, ...values) {
+  const marks = values.map((_, i) => `\u0000${i}\u0000`);
+  const text = escapeText(KINO_I18N.t(key, ...marks));
+  // A value that is a French text shows translated, as t() gives its values.
+  const part = (/** @type {unknown} */ value) => htmlPart(typeof value === 'string' ? KINO_I18N.translate(value) : value);
+  return new SafeHtml(text.replace(/\u0000(\d+)\u0000/g, (_, i) => part(values[Number(i)])));
+}
+
+/**
  * Writes into an element: the only way the page sets HTML. A fragment (or a
  * list of them) goes in as markup; anything else goes in as text.
  * @param {Element | null | undefined} element @param {unknown} content

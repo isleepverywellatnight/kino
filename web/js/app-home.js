@@ -2,7 +2,7 @@
 // --- « Nouveaux épisodes »: series with episodes released since the last viewing ---
 
 import { registerActions } from './actions.js';
-import { EVENT, THIS, act, actOn, escapeHtml, html, render } from './html.js';
+import { EVENT, THIS, act, actOn, escapeHtml, html, render, tHtml } from './html.js';
 import {
   META_CLIENT_CACHE, RELATED_CLIENT_CACHE, activeGenre, activeTab, api, catalogItems, catalogSort,
   episodeCode, getInProgressHistory, getWatchedHistory, refreshUserLists, requestResumeMetas,
@@ -40,8 +40,8 @@ function releasedLabel(day, today) {
   if (!Number.isFinite(days)) return '';
   if (days <= 0) return 'Sorti aujourd’hui';
   if (days === 1) return 'Sorti hier';
-  if (days < 7) return `Sorti il y a ${days} jours`;
-  return `Sorti le ${episodeAirLabel(day)}`;
+  if (days < 7) return `${KINO_I18N.t('home.sorti_il_y_a_x_jours', days)}`;
+  return `${KINO_I18N.t('home.sorti_le_x', episodeAirLabel(day))}`;
 }
 
 function newEpisodeCardHtml(item, today) {
@@ -53,22 +53,22 @@ function newEpisodeCardHtml(item, today) {
   const image = still || backdrop;
   const others = item.new_count - (item.is_new ? 1 : 0);
   const kind = item.kind || 'followed';
-  const count = `${item.new_count} épisode${item.new_count > 1 ? 's' : ''}`;
-  let status = item.in_progress ? `Reprendre · ${releasedLabel(item.released, today).toLowerCase()}` : releasedLabel(item.released, today);
+  const count = `${KINO_I18N.t('home.x_episode_x', item.new_count, item.new_count > 1 ? 's' : '')}`;
+  let status = item.in_progress ? `${KINO_I18N.t('home.reprendre_x', releasedLabel(item.released, today).toLowerCase())}` : releasedLabel(item.released, today);
   // The badge already says « Nouvelle série » / « Saison 3 »: the line gives the date and size.
   if (kind === 'premiere' || kind === 'season') status = `${releasedLabel(item.released, today)}${item.new_count > 1 ? ` · ${count}` : ''}`;
-  else if (!item.is_new) status = `${item.new_count} ${item.new_count > 1 ? 'nouveaux épisodes' : 'nouvel épisode'} depuis votre dernier visionnage`;
+  else if (!item.is_new) status = `${KINO_I18N.t('home.x_x_depuis_votre_dernier_visionnage', item.new_count, item.new_count > 1 ? 'nouveaux épisodes' : 'nouvel épisode')}`;
   else if (others > 0) status += ` · +${others} autre${others > 1 ? 's' : ''}`;
-  const badge = kind === 'premiere' ? 'Nouvelle série' : kind === 'season' ? `Saison ${item.season}` : 'Nouveau';
+  const badge = kind === 'premiere' ? 'Nouvelle série' : kind === 'season' ? `${KINO_I18N.t('settings.saison_x', item.season)}` : 'Nouveau';
   // A new season of a series never started: no episode name or still, the card opens the fiche.
-  const kicker = kind === 'season' ? `Saison ${item.season} disponible` : [code, episodeName].filter(Boolean).join(' · ');
+  const kicker = kind === 'season' ? `${KINO_I18N.t('home.saison_x_disponible', item.season)}` : [code, episodeName].filter(Boolean).join(' · ');
   const play = { imdb_id: item.id, type: 'series', season: item.season, episode: item.episode,
     title: `${item.name} — ${code}`, name: item.name, poster: item.poster || '', year: item.year || '' };
   const media = { id: item.id, name: item.name, type: 'series', poster: item.poster || '', year: item.year || '' };
   const name = displayTitle(item);
   return html`
     <article class="resume-card is-new${kind === 'season' ? ' opens-fiche' : ''}" role="listitem">
-      <button class="resume-main" ${act('openResumeCard', THIS, play, media)} aria-label="${kind === 'season' ? `Voir la fiche : ${escapeHtml(name)}, saison ${item.season} disponible` : `${item.in_progress ? 'Reprendre' : 'Lancer'} ${code} : ${escapeHtml(name)}`}">
+      <button class="resume-main" ${act('openResumeCard', THIS, play, media)} aria-label="${kind === 'season' ? `${KINO_I18N.t('home.voir_la_fiche_x_saison_x_disponible', name, item.season)}` : `${item.in_progress ? 'Reprendre' : 'Lancer'} ${code} : ${escapeHtml(name)}`}">
         <span class="resume-still">${image ? html`<img class="resume-still-img" src="${image}" data-fallback="${still && backdrop !== still ? backdrop : ''}" data-poster="${item.poster || ''}" alt="" ${actOn('error', 'resumeImageFallback', THIS)}>` : ''}</span>
         <span class="resume-new-badge">${badge}</span>
         ${kind === 'season' ? '' : html`<span class="resume-play" aria-hidden="true">▶</span>`}
@@ -126,7 +126,7 @@ function renderHomeList() {
   const count = document.getElementById('homeListCount');
   if (count) count.textContent = String(items.length);
   render(row, [items.slice(0, HOME_SHELF_SIZE).map(m => posterCardHtml(m, kind)),
-    (items.length > HOME_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${act('switchTab', 'watchlist')}>Voir les ${items.length} titres</button>` : '')]);
+    (items.length > HOME_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${act('switchTab', 'watchlist')}>${tHtml('home.voir_les_x_titres', items.length)}</button>` : '')]);
 }
 
 // The last title of the tab's type seen to the end.
@@ -249,7 +249,7 @@ export function renderHomeResume() {
   const title = document.getElementById('resumeSectionTitle');
   const allResumeBtn = document.getElementById('homeResumeAll');
   const clearResumeBtn = document.getElementById('homeResumeClear');
-  if (title) title.textContent = isHistoryPage ? `${inProg.length} lecture${inProg.length > 1 ? 's' : ''} en cours` : 'À continuer';
+  if (title) title.textContent = isHistoryPage ? `${KINO_I18N.t('home.x_lecture_x_en_cours', inProg.length, inProg.length > 1 ? 's' : '')}` : 'À continuer';
   if (allResumeBtn) allResumeBtn.style.display = !isHistoryPage && inProg.length > 4 ? 'inline-flex' : 'none';
   if (clearResumeBtn) clearResumeBtn.style.display = isHistoryPage && inProg.length ? 'inline-flex' : 'none';
   grid.classList.toggle('resume-row', !isHistoryPage);
@@ -279,7 +279,7 @@ export function renderHomeResume() {
           </span>
           ${view.progress ? html`<span class="resume-progress-bar"><span class="resume-progress-fill" style="width:${view.progress}%;"></span></span>` : ''}
         </button>
-        <button class="resume-dismiss-btn" ${act('removeHistoryItem', h.id)} title="${KINO_I18N.t('home.retirer_des_lectures_en_cours')}" aria-label="Retirer ${name} des lectures en cours">×</button>
+        <button class="resume-dismiss-btn" ${act('removeHistoryItem', h.id)} title="${KINO_I18N.t('home.retirer_des_lectures_en_cours')}" aria-label="${tHtml('home.retirer_x_des_lectures_en_cours', name)}">×</button>
       </article>
     `;
   }));
@@ -300,8 +300,8 @@ async function removeHistoryItem(id) {
 async function clearAllHistory() {
   const count = (userHistory || []).length;
   if (!count) return;
-  const what = count > 1 ? `les ${count} titres de l’historique` : 'le titre de l’historique';
-  if (!window.confirm(`Effacer ${what} ? Les films vus et les lectures en cours seront retirés, y compris sur les appareils synchronisés.`)) return;
+  const what = count > 1 ? `${KINO_I18N.t('home.les_x_titres_de_l_historique', count)}` : 'le titre de l’historique';
+  if (!window.confirm(`${KINO_I18N.t('home.effacer_x_les_films_vus_et_les_lectures', what)}`)) return;
   await removeHistoryItem('__all__');
 }
 
@@ -323,7 +323,7 @@ export function updateClassicsStatsBadge() {
   }).length;
   const pct = Math.round((seenCount / pool.length) * 100);
   const rem = pool.length - seenCount;
-  statsEl.textContent = `${seenCount} / ${pool.length} vus (${pct}%) • ${rem} à découvrir`;
+  statsEl.textContent = `${KINO_I18N.t('home.x_x_vus_x_x_a_decouvrir', seenCount, pool.length, pct, rem)}`;
   statsEl.style.display = 'inline-flex';
 }
 
@@ -388,8 +388,8 @@ function updateCatalogHeading() {
       ? ' — ★ Mieux notés IMDb'
       : (catalogSort === 'recent' ? ' — Plus récents' : (catalogSort === 'oldest' ? ' — Chronologique' : ' · Les films à voir dans sa vie'));
     document.getElementById('catalogTitle').textContent = genreLabel
-      ? `Classiques · ${genreLabel}`
-      : `Classiques${sortSuffix}`;
+      ? `${KINO_I18N.t('home.classiques_x', genreLabel)}`
+      : `${KINO_I18N.t('home.classiques_x_2', sortSuffix)}`;
     return;
   }
   if (activeTab === 'anime') {
@@ -397,8 +397,8 @@ function updateCatalogHeading() {
       ? ' · Mieux notés (★ IMDb)'
       : (catalogSort === 'recent' ? ' · Plus récents' : (catalogSort === 'oldest' ? ' · Chronologique' : ''));
     document.getElementById('catalogTitle').textContent = genreLabel
-      ? `Animation Japonaise · ${genreLabel}`
-      : `Animation Japonaise${sortSuffix}`;
+      ? `${KINO_I18N.t('home.animation_japonaise_x', genreLabel)}`
+      : `${KINO_I18N.t('home.animation_japonaise_x_2', sortSuffix)}`;
     return;
   }
   const type = activeTab === 'series' ? 'series' : 'movie';
@@ -562,7 +562,7 @@ function drawHeroSpotlightSlide() {
     imdbRating: String(rating)
   };
   const kickerTxt = activeTab === 'classics' ? 'Classique incontournable'
-    : (activeTab === 'anime' ? 'Animation japonaise · Populaire' : `À la une · ${mtype === 'series' ? 'Série' : 'Film'}`);
+    : (activeTab === 'anime' ? 'Animation japonaise · Populaire' : `${KINO_I18N.t('home.a_la_une_x', mtype === 'series' ? 'Série' : 'Film')}`);
 
   let posterUrl = item.poster;
   if (item.id === 'tt22248376' && (!posterUrl || posterUrl.includes('metahub.space'))) {
@@ -598,7 +598,7 @@ function drawHeroSpotlightSlide() {
       <div class="hero-title"${titleAttrs({...item, type: mtype})}>${displayTitle(item)}</div>
       <div class="hero-meta">
         ${year ? html`<span>${year}</span>` : ''}
-        ${rating ? html`<span class="hero-rating">★ ${rating} IMDb</span>` : ''}
+        ${rating ? html`<span class="hero-rating">${tHtml('fiche.x_imdb', rating)}</span>` : ''}
         ${genres.map(g => html`<span class="badge">${frenchGenre(g)}</span>`)}
       </div>
       ${desc ? html`<div class="hero-desc">${desc}</div>` : ''}
@@ -609,7 +609,7 @@ function drawHeroSpotlightSlide() {
       </div>
     </div>
     <div class="hero-dots">
-      ${heroSpotlightItems.map((_, i) => html`<button class="hero-dot ${i === heroSpotlightIdx ? 'active' : ''}" ${act('setHeroSpotlightIdx', i)} title="Titre ${i + 1}"></button>`)}
+      ${heroSpotlightItems.map((_, i) => html`<button class="hero-dot ${i === heroSpotlightIdx ? 'active' : ''}" ${act('setHeroSpotlightIdx', i)} title="${tHtml('home.titre_x', i + 1)}"></button>`)}
     </div>
   `);
   ensureHeroFrenchDescription(item);

@@ -3,7 +3,7 @@
 import { registerActions } from './actions.js';
 import {
   EVENT, THIS, VALUE, act, actOn, escapeHtml, html, raw, render, renderAdjacent, replaceWith,
-  safeUrl,
+  safeUrl, tHtml,
 } from './html.js';
 import { Spoilers } from './spoilers.js';
 import {
@@ -42,7 +42,7 @@ async function handleTorrentFileSelect(files) {
   if (box) {
     box.style.display = 'block';
     box.scrollIntoView({ behavior: 'smooth' });
-    render(box, html`<h3>Lecture du fichier ${file.name}...</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">${KINO_I18N.t('fiche.extraction_de_l_empreinte_bittorrent_et')}</p>`);
+    render(box, html`<h3>${tHtml('fiche.lecture_du_fichier_x', file.name)}</h3><p style="color:var(--muted); font-size:0.83rem; margin-top:4px;">${KINO_I18N.t('fiche.extraction_de_l_empreinte_bittorrent_et')}</p>`);
   }
   try {
     const buf = await file.arrayBuffer();
@@ -62,7 +62,7 @@ async function handleTorrentFileSelect(files) {
       await debridMagnet(res.magnet);
     }
   } catch (e) {
-    if (box) render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Erreur fichier .torrent : ${e.message}</p>`);
+    if (box) render(box, html`<p style="color:var(--muted); font-size:0.85rem;">${tHtml('fiche.erreur_fichier_torrent_x', e.message)}</p>`);
   }
 }
 
@@ -284,8 +284,8 @@ function searchEntryHtml(entry, idx) {
   const icon = entry.kind === 'place' ? entry.place.icon : entry.kind === 'magnet' ? 'link' : entry.kind === 'raw' ? 'grid' : 'search';
   const label = entry.kind === 'place' ? entry.place.label
     : entry.kind === 'recent' ? entry.query
-    : entry.kind === 'all' ? `Tout voir pour « ${entry.query} »`
-    : entry.kind === 'raw' ? `Chercher « ${entry.query} » dans les sources`
+    : entry.kind === 'all' ? `${KINO_I18N.t('fiche.tout_voir_pour_x', entry.query)}`
+    : entry.kind === 'raw' ? `${KINO_I18N.t('fiche.chercher_x_dans_les_sources', entry.query)}`
     : 'Ouvrir ce lien magnet';
   const hint = entry.kind === 'place' ? (entry.place.hint || '')
     : entry.kind === 'recent' ? (SEARCH_MODE_LABELS[entry.mode] || '')
@@ -502,7 +502,7 @@ export async function runSearch() {
 
   document.getElementById('postersGrid').style.display = 'grid';
   document.getElementById('catalogHeader').style.display = 'flex';
-  document.getElementById('catalogTitle').textContent = `Résultats pour « ${q} »`;
+  document.getElementById('catalogTitle').textContent = `${KINO_I18N.t('fiche.resultats_pour_x', q)}`;
   const grid = document.getElementById('postersGrid');
   render(grid, posterSkeletons());
   document.getElementById('torrentsPanel').style.display = 'none';
@@ -526,7 +526,7 @@ export async function runSearch() {
     renderPosterCards(data.metas.slice(0, 36), mode);
   } catch (e) {
     render(grid, e.code === 'offline' ? offlineSearchHtml(q)
-      : html`<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${e.message}</p>`);
+      : html`<p style="color:var(--muted); font-size:0.85rem;">${tHtml('settings.erreur_x', e.message)}</p>`);
   }
 }
 
@@ -582,7 +582,7 @@ export async function oneClickCard(ev, btn, media, options = {}) {
       type: 'series',
       season: s,
       episode: e,
-      title: `${media.name} — S${String(s).padStart(2,'0')}E${String(e).padStart(2,'0')}`,
+      title: `${KINO_I18N.t('fiche.x_s_x_e_x', media.name, String(s).padStart(2,'0'), String(e).padStart(2,'0'))}`,
       name: media.name,
       poster: media.poster || '',
       year: media.year || '',
@@ -610,7 +610,7 @@ async function oneClickSeriesEpisode(btn, customSeason = null, customEpisode = n
     type: 'series',
     season: s,
     episode: e,
-    title: `${currentMedia.name} — S${String(s).padStart(2,'0')}E${String(e).padStart(2,'0')}`,
+    title: `${KINO_I18N.t('fiche.x_s_x_e_x', currentMedia.name, String(s).padStart(2,'0'), String(e).padStart(2,'0'))}`,
     name: currentMedia.name,
     poster: currentMedia.poster || '',
     year: currentMedia.year || ''
@@ -701,7 +701,7 @@ export async function oneClickPlay(params, btn) {
       if (await askP2PConsent()) return oneClickPlay(params, btn);
       return;
     }
-    render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${e.message}</p>`);
+    render(box, html`<p style="color:var(--muted); font-size:0.85rem;">${tHtml('settings.erreur_x', e.message)}</p>`);
   } finally {
     if (btn) {
       setTimeout(() => {
@@ -735,7 +735,7 @@ export function tvMediaPayload(media, season, episode) {
 
 export function tvTitle(media, fallback = '') {
   if (!media?.name) return fallback || 'KINO';
-  if (media.season && media.episode) return `${media.name} — S${String(media.season).padStart(2, '0')}E${String(media.episode).padStart(2, '0')}`;
+  if (media.season && media.episode) return `${KINO_I18N.t('fiche.x_s_x_e_x', media.name, String(media.season).padStart(2, '0'), String(media.episode).padStart(2, '0'))}`;
   return `${media.name}${media.year ? ` (${media.year})` : ''}`;
 }
 
@@ -780,12 +780,12 @@ function renderTvBar(status) {
   bar.hidden = false;
   document.getElementById('tvBarTitle').textContent = status.title || 'KINO';
   const time = status.duration ? `${formatTvTime(status.position)} / ${formatTvTime(status.duration)}` : '';
-  const where = `Sur ${status.device || 'la TV'}`;
+  const where = `${KINO_I18N.t('fiche.sur_x', status.device || 'la TV')}`;
   // Between two episodes: a countdown, « Lancer maintenant » and « Annuler ».
   const next = status.next || null;
-  const nextText = next && (next.finding ? `Recherche de ${next.code}…` : `${next.code} dans ${next.in} s`);
+  const nextText = next && (next.finding ? `${KINO_I18N.t('fiche.recherche_de_x', next.code)}` : `${KINO_I18N.t('fiche.x_dans_x_s', next.code, next.in)}`);
   document.getElementById('tvBarSub').textContent = status.error
-    || (next ? `Épisode suivant · ${nextText}` : status.starting ? `${where} · Démarrage…`
+    || (next ? `${KINO_I18N.t('core.episode_suivant_x', nextText)}` : status.starting ? `${KINO_I18N.t('fiche.x_demarrage', where)}`
       : [where, status.paused ? 'En pause' : 'En lecture', time].filter(Boolean).join(' · '));
   bar.setAttribute('data-next', next ? 'yes' : 'no');
   const icon = document.querySelector('#tvBarToggle use');
@@ -836,12 +836,12 @@ let oneClickPreparation = null;
 function preparationHtml(prep) {
   const res = prep.last;
   const progress = Math.max(0, Math.min(100, Number(res.progress) || 0));
-  const facts = [res.status ? `Statut : ${escapeHtml(res.status)}` : '', res.speed ? `Vitesse : ${escapeHtml(res.speed)}` : '',
-    `Pairs : ${Number(res.seeders) || 0}`].filter(Boolean).join(' • ');
+  const facts = [res.status ? `${KINO_I18N.t('fiche.statut_x', res.status)}` : '', res.speed ? `${KINO_I18N.t('fiche.vitesse_x', res.speed)}` : '',
+    `${KINO_I18N.t('fiche.pairs_x', Number(res.seeders) || 0)}`].filter(Boolean).join(' • ');
   const ready = prep.readyAlternative
     ? html`<button type="button" class="btn" ${act('playReadyInstead')}>${KINO_I18N.t('fiche.lancer_une_source_prete_a_la_place')}</button>` : '';
-  return html`<h3>Préparation de la qualité choisie : ${progress} %</h3>
-    <p class="preparation-note">${prep.params.title || ''} : Debrid télécharge la source recommandée, la lecture démarre dès qu’elle est prête.</p>
+  return html`<h3>${tHtml('fiche.preparation_de_la_qualite_choisie_x', progress)}</h3>
+    <p class="preparation-note">${tHtml('fiche.x_debrid_telecharge_la_source', prep.params.title || '')}</p>
     <p class="preparation-note">${facts}</p>
     <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
     <div class="preparation-actions">${ready}<button type="button" class="btn btn-secondary" ${act('stopWaitingPreparation')}>${KINO_I18N.t('fiche.arreter_d_attendre')}</button></div>`;
@@ -886,7 +886,7 @@ async function pollPreparation(prep) {
     if (oneClickPreparation !== prep) return;
     const ready = prep.readyAlternative
       ? html`<button type="button" class="btn" ${act('playReadyInstead')}>${KINO_I18N.t('fiche.lancer_une_source_prete_a_la_place')}</button>` : '';
-    renderPreparation(prep, html`<p class="preparation-note">Préparation interrompue : ${error.message}</p><div class="preparation-actions">${ready}</div>`);
+    renderPreparation(prep, html`<p class="preparation-note">${tHtml('fiche.preparation_interrompue_x', error.message)}</p><div class="preparation-actions">${ready}</div>`);
   }
 }
 
@@ -1050,9 +1050,9 @@ export function frenchRuntime(value) {
   const match = String(value || '').match(/(\d+)\s*min/i);
   if (!match) return String(value || '');
   const minutes = Number(match[1]);
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return `${KINO_I18N.t('anime.x_min', minutes)}`;
   const rest = minutes % 60;
-  return `${Math.floor(minutes / 60)} h${rest ? ' ' + String(rest).padStart(2, '0') : ''}`;
+  return `${KINO_I18N.t('fiche.x_h_x', Math.floor(minutes / 60), rest ? ' ' + String(rest).padStart(2, '0') : '')}`;
 }
 
 // « Won 2 Oscars. 7 wins & 17 nominations total » → French; unknown sentences are left out.
@@ -1067,11 +1067,11 @@ function frenchAwards(text) {
     } else if ((m = sentence.match(/^Nominated for (\d+) (Oscar|Golden Globe|Primetime Emmy|BAFTA Film Award|BAFTA Award)s?$/i))) {
       parts.push(`Nommé à ${plural(m[1], prizes[Object.keys(prizes).find(k => k.toLowerCase() === m[2].toLowerCase())] || m[2])}`);
     } else if ((m = sentence.match(/^(\d+) wins? & (\d+) nominations? total$/i))) {
-      parts.push(`${plural(m[1], 'récompense')} et ${plural(m[2], 'nomination')} au total`);
+      parts.push(`${KINO_I18N.t('fiche.x_et_x_au_total', plural(m[1], 'récompense'), plural(m[2], 'nomination'))}`);
     } else if ((m = sentence.match(/^(\d+) wins? total$/i))) {
-      parts.push(`${plural(m[1], 'récompense')} au total`);
+      parts.push(`${KINO_I18N.t('fiche.x_au_total', plural(m[1], 'récompense'))}`);
     } else if ((m = sentence.match(/^(\d+) nominations? total$/i))) {
-      parts.push(`${plural(m[1], 'nomination')} au total`);
+      parts.push(`${KINO_I18N.t('fiche.x_au_total', plural(m[1], 'nomination'))}`);
     }
   }
   return parts.join(' · ');
@@ -1133,10 +1133,10 @@ function buildDetailHtml(media, meta, isPreview) {
       targetSeason = Number(media.open_season);
       targetEpisode = 1;
     }
-    const epCode = `S${String(targetSeason).padStart(2,'0')}E${String(targetEpisode).padStart(2,'0')}`;
-    playBtnLabel = targetEp.finished ? `Revoir (${epCode})` : (targetEp.isNext ? `Épisode suivant (${epCode})` : `Lancer ${epCode}`);
+    const epCode = `${KINO_I18N.t('settings.s_x_e_x', String(targetSeason).padStart(2,'0'), String(targetEpisode).padStart(2,'0'))}`;
+    playBtnLabel = targetEp.finished ? `${KINO_I18N.t('fiche.revoir_x', epCode)}` : (targetEp.isNext ? `${KINO_I18N.t('fiche.episode_suivant_x', epCode)}` : `${KINO_I18N.t('settings.lancer_x', epCode)}`);
   } else if (histItem && histItem.progress_pct > 1 && histItem.progress_pct < 85) {
-    playBtnLabel = `Reprendre (${Math.round(histItem.progress_pct)}%)`;
+    playBtnLabel = `${KINO_I18N.t('fiche.reprendre_x', Math.round(histItem.progress_pct))}`;
   } else if (isMovieDone) {
     playBtnLabel = 'Revoir le film';
   }
@@ -1152,7 +1152,7 @@ function buildDetailHtml(media, meta, isPreview) {
       <div class="detail-section-title">${KINO_I18N.t('fiche.distribution')}</div>
       <div class="detail-cast-row">
         ${people.map(person => {
-          return html`<button type="button" class="detail-person" data-person="${person.name}" ${act('openPerson', person.name)} title="Films et séries de ${person.name}">
+          return html`<button type="button" class="detail-person" data-person="${person.name}" ${act('openPerson', person.name)} title="${tHtml('fiche.films_et_series_de_x', person.name)}">
             <span class="detail-person-photo" aria-hidden="true">${personInitials(person.name)}</span>
             <span class="detail-person-name">${person.name}</span>
             <span class="detail-person-role">${person.role}</span>
@@ -1186,7 +1186,7 @@ function buildDetailHtml(media, meta, isPreview) {
           <div class="detail-extra-section detail-episodes">
             <div class="detail-season-bar">
               <div class="detail-season-pills" role="group" aria-label="${KINO_I18N.t('fiche.saisons')}">
-                ${seasons.map(s => html`<button class="season-pill ${s===targetSeason?'active':''}" data-season-chip="${s}" ${act('selectDetailSeason', s)}>Saison ${s}</button>`)}
+                ${seasons.map(s => html`<button class="season-pill ${s===targetSeason?'active':''}" data-season-chip="${s}" ${act('selectDetailSeason', s)}>${tHtml('settings.saison_x', s)}</button>`)}
               </div>
               <div class="detail-episodes-tools">
                 <div class="spoiler-series-setting"><label for="detailSpoilerChoice">${KINO_I18N.t('fiche.spoilers')}</label><select id="detailSpoilerChoice" aria-label="${KINO_I18N.t('fiche.protection_des_spoilers_pour_cette_serie')}" ${actOn('change', 'setSeriesSpoilerProtection', VALUE)}><option value="inherit">${KINO_I18N.t('fiche.reglage_general')}</option><option value="on">${KINO_I18N.t('fiche.masquer_les_episodes_non_vus')}</option><option value="off">${KINO_I18N.t('page.tout_afficher')}</option></select></div>
@@ -1257,13 +1257,13 @@ function buildDetailHtml(media, meta, isPreview) {
           <div class="detail-hero-original">${meta.name || media.name}</div>
           <div class="detail-meta-row">
             ${ficheRatingHtml(media.id, histItem, userRating)}
-            ${rating ? html`<span class="detail-chip detail-chip-strong">★ ${rating} IMDb</span>` : ''}
+            ${rating ? html`<span class="detail-chip detail-chip-strong">${tHtml('fiche.x_imdb', rating)}</span>` : ''}
             ${year ? html`<span class="detail-chip">${year}</span>` : ''}
             ${runtime ? html`<span class="detail-meta-text">${frenchRuntime(runtime)}${isSeries ? ' par épisode' : ''}</span>` : ''}
             ${country ? html`<span class="detail-meta-text">${frenchCountries(country)}</span>` : ''}
             ${genres.map((g, idx) => {
               const rawG = rawGenres[idx] || g;
-              return html`<span class="badge" style="cursor:pointer;" title="Filtrer par ${g}" ${act('selectGenreBadge', rawG)}>${g}</span>`;
+              return html`<span class="badge" style="cursor:pointer;" title="${tHtml('fiche.filtrer_par_x', g)}" ${act('selectGenreBadge', rawG)}>${g}</span>`;
             })}
           </div>
           ${latestAiredBanner}

@@ -1,5 +1,5 @@
 import { registerActions } from './actions.js';
-import { escapeHtml, html, render } from './html.js';
+import { escapeHtml, html, render, tHtml } from './html.js';
 import { SeriesPlayback } from './series-playback.js';
 import { Spoilers } from './spoilers.js';
 import { api, currentMedia, playerPrefs, refreshPlayerSpoilerTitles, refreshUserLists } from './app-core.js';
@@ -321,7 +321,7 @@ function updateInAppSeriesPreferenceUI() {
   const audio = inAppAudioTracks.find(track => track.index === inAppSelectedAudioIndex);
   const subtitle = inAppAvailableSubs[inAppActiveSubIdx];
   const summary = document.getElementById('inAppSeriesPreferenceSummary');
-  if (summary) summary.textContent = `Audio : ${audio ? (audio.language || 'Piste sans langue').toUpperCase() : 'indisponible'} · Sous-titres : ${subtitle?.lang === 'off' ? 'désactivés' : (subtitle?.label || 'indisponibles')}`;
+  if (summary) summary.textContent = `${KINO_I18N.t('player.audio_x_sous_titres_x', audio ? (audio.language || 'Piste sans langue').toUpperCase() : 'indisponible', subtitle?.lang === 'off' ? 'désactivés' : (subtitle?.label || 'indisponibles'))}`;
 }
 
 function openInAppSeriesPreference() {
@@ -603,7 +603,7 @@ function renderInAppAudioTracks(tracks, selectedIndex) {
   tracks.forEach((track, index) => {
     const option = document.createElement('option');
     option.value = String(track.index);
-    const language = track.language && track.language !== 'und' ? track.language.toUpperCase() : `Piste ${index + 1}`;
+    const language = track.language && track.language !== 'und' ? track.language.toUpperCase() : `${KINO_I18N.t('player.piste_x', index + 1)}`;
     option.textContent = `${language}${track.title ? ` · ${track.title}` : ''}`;
     option.selected = track.index === selectedIndex;
     select.appendChild(option);
@@ -986,7 +986,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
     frList.forEach((item, idx) => {
       const suffix = (item.variant === 'sdh' ? ' · SDH' : item.variant === 'forced' ? ' · Forcés' : '') + (item.partial ? ' · partiel' : '');
       inAppAvailableSubs.push({
-        label: (frList.length > 1 ? `CC : Français #${idx + 1}` : 'CC : Français') + suffix,
+        label: (frList.length > 1 ? `${KINO_I18N.t('player.cc_francais_x', idx + 1)}` : 'CC : Français') + suffix,
         lang: 'fr',
         kind: 'opensubtitles',
         variant: item.variant || 'standard',
@@ -996,7 +996,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
     enList.forEach((item, idx) => {
       const suffix = (item.variant === 'sdh' ? ' · SDH' : item.variant === 'forced' ? ' · Forced' : '') + (item.partial ? ' · partiel' : '');
       inAppAvailableSubs.push({
-        label: (enList.length > 1 ? `CC : English #${idx + 1}` : 'CC : English') + suffix,
+        label: (enList.length > 1 ? `${KINO_I18N.t('player.cc_english_x', idx + 1)}` : 'CC : English') + suffix,
         lang: 'en',
         kind: 'opensubtitles',
         variant: item.variant || 'standard',
@@ -1069,7 +1069,7 @@ async function activateInAppSubtitle(index, rememberForSession = true) {
     updateInAppSeriesPreferenceUI();
     return;
   }
-  if (rememberForSession) showInAppToast(`${escapeHtml(sub.label)} · Chargement des sous-titres…`, 1800);
+  if (rememberForSession) showInAppToast(`${KINO_I18N.t('player.x_chargement_des_sous_titres', sub.label)}`, 1800);
   if (inAppSubCuesCache[sub.url]) {
     inAppActiveCues = inAppSubCuesCache[sub.url];
     const v = document.getElementById('inAppVideo');
@@ -1114,14 +1114,14 @@ function cycleInAppSubSize() {
   if (subOverlay) subOverlay.style.fontSize = cfg.size;
   const btn = document.getElementById('inAppSubSizeBtn');
   if (btn) btn.textContent = cfg.label;
-  showInAppToast(html`<strong>Taille sous-titres : ${cfg.name}</strong>`, 1400);
+  showInAppToast(html`<strong>${tHtml('player.taille_sous_titres_x', cfg.name)}</strong>`, 1400);
 }
 
 export function adjustInAppSubDelay(deltaSec) {
   if (!inAppActiveCues.length) return;
   inAppSubDelaySec = Math.round((inAppSubDelaySec + deltaSec) * 100) / 100;
   const sign = inAppSubDelaySec >= 0 ? '+' : '';
-  showInAppToast(html`<strong>Décalage sous-titres : ${sign}${inAppSubDelaySec}s</strong> (Z / X)`, 1400);
+  showInAppToast(html`<strong>${tHtml('player.decalage_sous_titres_x_x_s', sign, inAppSubDelaySec)}</strong> (Z / X)`, 1400);
   const v = document.getElementById('inAppVideo');
   if (v) updateInAppSubtitleOverlay(inAppAbsoluteTime(v));
 }
@@ -1206,7 +1206,7 @@ function applyInAppSpeed(idx, showToast = false) {
     btn.style.borderColor = spd !== 1.0 ? '#fafafa' : '';
   }
   if (showToast) {
-    showInAppToast(html`<strong>Vitesse : ${spd}x</strong>`, 1300);
+    showInAppToast(html`<strong>${tHtml('player.vitesse_x_x', spd)}</strong>`, 1300);
   }
 }
 
@@ -1284,7 +1284,7 @@ function showUndoSkip(origSec) {
   const undoCard = document.getElementById('inAppUndoSkipCard');
   const undoBtn = document.getElementById('inAppUndoSkipBtn');
   if (undoCard) {
-    if (undoBtn) undoBtn.textContent = `↩ Revenir à ${formatTime(origSec)}`;
+    if (undoBtn) undoBtn.textContent = `${KINO_I18N.t('player.revenir_a_x', formatTime(origSec))}`;
     undoCard.style.display = 'flex';
   }
   inAppUndoTimer = setTimeout(() => {
@@ -1303,7 +1303,7 @@ function undoInAppSkip() {
   const video = document.getElementById('inAppVideo');
   if (video && inAppUndoTargetSec >= 0) {
     inAppSeekTo(inAppUndoTargetSec);
-    showInAppToast(html`<strong>↩ Retour à ${formatTime(inAppUndoTargetSec)}</strong>`, 1400);
+    showInAppToast(html`<strong>${tHtml('player.retour_a_x', formatTime(inAppUndoTargetSec))}</strong>`, 1400);
   }
 }
 
@@ -1323,16 +1323,16 @@ export function skipInAppIntro() {
     const targetT = inAppIntroData.op.end + 0.5;
     inAppSeekTo(targetT);
     const prov = inAppIntroData.provider ? html`<br><span style="font-size:0.75rem; color:var(--muted);">${inAppIntroData.provider}</span>` : '';
-    showInAppToast(html`<strong>Intro passée (→ ${formatTime(inAppIntroData.op.end)})</strong>${prov}`, 2000);
+    showInAppToast(html`<strong>${tHtml('player.intro_passee_x', formatTime(inAppIntroData.op.end))}</strong>${prov}`, 2000);
   } else if (inAppIntroData && inAppIntroData.recap && curT < inAppIntroData.recap.end) {
     const targetT = inAppIntroData.recap.end + 0.5;
     inAppSeekTo(targetT);
-    showInAppToast(html`<strong>Récap passé (→ ${formatTime(inAppIntroData.recap.end)})</strong>`, 1800);
+    showInAppToast(html`<strong>${tHtml('player.recap_passe_x', formatTime(inAppIntroData.recap.end))}</strong>`, 1800);
   } else {
     const isAnime = Boolean(inAppCurrentMedia && inAppCurrentMedia.type === 'anime');
     const skipAmount = (inAppIntroData && inAppIntroData.default_skip) ? inAppIntroData.default_skip : (isAnime ? 90 : 60);
     inAppSeekRel(skipAmount);
-    showInAppToast(html`<strong>Intro passée (+${skipAmount}s)</strong>`, 1600);
+    showInAppToast(html`<strong>${tHtml('player.intro_passee_x_s', skipAmount)}</strong>`, 1600);
   }
 }
 
@@ -2029,18 +2029,18 @@ if (inAppVideoEl) {
             const op = inAppIntroData.op;
             if (curT >= Math.max(0, op.start - 2) && curT < op.end) {
               shouldShow = true;
-              btnText = `Passer l'intro (→ ${formatTime(op.end)})`;
+              btnText = `${KINO_I18N.t('player.passer_l_intro_x', formatTime(op.end))}`;
             }
           } else if (inAppIntroData && inAppIntroData.recap && curT >= Math.max(0, inAppIntroData.recap.start - 2) && curT < inAppIntroData.recap.end) {
             shouldShow = true;
-            btnText = `Passer le récap (→ ${formatTime(inAppIntroData.recap.end)})`;
+            btnText = `${KINO_I18N.t('player.passer_le_recap_x', formatTime(inAppIntroData.recap.end))}`;
           } else {
             // Heuristique : entre 10s et 160s
             if (curT >= 10 && curT <= 160) {
               shouldShow = true;
               const isAnime = Boolean(inAppCurrentMedia && inAppCurrentMedia.type === 'anime');
               const skipSec = (inAppIntroData && inAppIntroData.default_skip) ? inAppIntroData.default_skip : (isAnime ? 90 : 60);
-              btnText = `Passer l'intro (+${skipSec}s)`;
+              btnText = `${KINO_I18N.t('player.passer_l_intro_x_s', skipSec)}`;
             }
           }
 

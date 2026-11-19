@@ -1,7 +1,7 @@
 // The Anime tab (rows, planning) lives in anime-home.js.
 
 import { registerActions } from './actions.js';
-import { EVENT, THIS, act, actOn, html, render } from './html.js';
+import { EVENT, THIS, act, actOn, html, render, tHtml } from './html.js';
 import {
   META_CLIENT_CACHE, activeGenre, activeTab, api, catalogHasMore, catalogItems, catalogSkip,
   catalogSort, checkConfig, getSeriesTargetEpisode, isInWatchlist, linkedAccounts,
@@ -393,7 +393,7 @@ export async function loadCatalog(type, genre = '', reset = true) {
     if (reset && (e.code === 'offline' || !networkOnline)) {
       showOfflineCatalogue();
     } else if (reset) {
-      render(grid, html`<p style="color:var(--muted); font-size:0.84rem;">Erreur : ${e.message}</p>`);
+      render(grid, html`<p style="color:var(--muted); font-size:0.84rem;">${tHtml('settings.erreur_x', e.message)}</p>`);
     }
   }
 }
@@ -506,19 +506,19 @@ export function posterCardHtml(m, fallbackType) {
     const watchedEpsCount = (histItem && mtype === 'series' && Array.isArray(histItem.watched_episodes)) ? histItem.watched_episodes.length : 0;
     const watchedPill = isMovieWatched
       ? html`<button type="button" class="poster-watched" ${act('toggleCardWatched', EVENT, mediaObj)} title="${KINO_I18N.t('tabs.cliquer_pour_retirer_des_deja_vus')}">${KINO_I18N.t('anime.vu')}</button>`
-      : (watchedEpsCount > 0 ? html`<span class="poster-watched is-static">✓ ${watchedEpsCount} ép.</span>` : '');
+      : (watchedEpsCount > 0 ? html`<span class="poster-watched is-static">${tHtml('tabs.x_ep', watchedEpsCount)}</span>` : '');
     let btnLabel = 'Lancer';
     if (histItem && mtype === 'series' && histItem.season && histItem.episode) {
       const targetEp = getSeriesTargetEpisode(histItem);
-      const code = `S${String(targetEp.season).padStart(2,'0')}E${String(targetEp.episode).padStart(2,'0')}`;
-      btnLabel = targetEp.finished ? 'Revoir' : (targetEp.isNext ? `Suivant ${code}` : `Lancer ${code}`);
+      const code = `${KINO_I18N.t('settings.s_x_e_x', String(targetEp.season).padStart(2,'0'), String(targetEp.episode).padStart(2,'0'))}`;
+      btnLabel = targetEp.finished ? 'Revoir' : (targetEp.isNext ? `${KINO_I18N.t('tabs.suivant_x', code)}` : `${KINO_I18N.t('settings.lancer_x', code)}`);
     } else if (histItem && histItem.progress_pct > 1 && histItem.progress_pct < 85 && !isMovieWatched) {
-      btnLabel = `Reprendre (${Math.round(histItem.progress_pct)}%)`;
+      btnLabel = `${KINO_I18N.t('fiche.reprendre_x', Math.round(histItem.progress_pct))}`;
     } else if (isMovieWatched) {
       btnLabel = 'Revoir';
     }
     const cardProg = (histItem && histItem.progress_pct > 0 && !isMovieWatched)
-      ? html`<div class="poster-progress" aria-label="${Math.round(histItem.progress_pct)} % vus"><span style="width:${Math.min(100, Number(histItem.progress_pct))}%"></span></div>` : '';
+      ? html`<div class="poster-progress" aria-label="${tHtml('tabs.x_vus', Math.round(histItem.progress_pct))}"><span style="width:${Math.min(100, Number(histItem.progress_pct))}%"></span></div>` : '';
     // Hover preview: genres, length and rating now; the French synopsis on demand.
     const previewGenres = (Array.isArray(m.genres) ? m.genres : []).slice(0, 2).map(frenchGenre);
     const previewMeta = [...previewGenres, m.runtime ? frenchRuntime(m.runtime) : '', ratingVal ? `★ ${ratingVal}` : '']
@@ -582,19 +582,19 @@ export function renderPosterCards(metas, fallbackType) {
 export async function loadRdCloud() {
   const list = document.getElementById('rdCloudList');
   const pName = linkedAccounts.debridName || 'votre débrideur';
-  if (!cloudGroups.length) render(list, html`<p class="cloud-empty">Récupération de votre Cloud ${pName}…</p>`);
+  if (!cloudGroups.length) render(list, html`<p class="cloud-empty">${tHtml('tabs.recuperation_de_votre_cloud_x', pName)}</p>`);
   try {
     const data = await api('/api/rd-history');
     setCloudGroups(Array.isArray(data.groups) ? data.groups : []);
     cloudAsked.clear();
     const noteEl = document.getElementById('rdCloudStatusNote');
     if (noteEl && data.cleaned && (data.cleaned.deleted_downloads > 0 || data.cleaned.deleted_torrents > 0)) {
-      noteEl.textContent = `Nettoyage auto effectué : ${data.cleaned.deleted_downloads} fichier(s) et ${data.cleaned.deleted_torrents} torrent(s) expirés supprimés de ${pName}.`;
+      noteEl.textContent = `${KINO_I18N.t('tabs.nettoyage_auto_effectue_x_fichier_s_et_x', data.cleaned.deleted_downloads, data.cleaned.deleted_torrents, pName)}`;
     }
     renderCloud();
     requestCloudMatches();
   } catch (e) {
-    render(list, html`<p class="cloud-empty">Erreur : ${e.message}</p>`);
+    render(list, html`<p class="cloud-empty">${tHtml('settings.erreur_x', e.message)}</p>`);
   }
 }
 

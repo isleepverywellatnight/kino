@@ -2,7 +2,7 @@
 // the player: closing the whole player there interrupted the Playback Session.
 
 import { registerActions } from './actions.js';
-import { THIS, act, actOn, escapeHtml, html, render } from './html.js';
+import { THIS, act, actOn, escapeHtml, html, render, tHtml } from './html.js';
 import {
   activeTab, api, checkConfig, closeTonightModal, currentMedia, loadSpoilerState, seriesMetaVideos,
   userHistory,
@@ -307,8 +307,8 @@ function offlineDisplay(item) {
   const media = item.media || {};
   const hasTitle = Boolean(media.id && media.name);
   const title = hasTitle && typeof displayTitle === 'function' ? displayTitle(media) : (item.title || item.filename || '');
-  const code = media.season && media.episode ? `S${String(media.season).padStart(2, '0')}E${String(media.episode).padStart(2, '0')}` : '';
-  const kind = code ? `Série · ${code}` : (media.type === 'series' ? 'Série' : `Film${media.year ? ` · ${media.year}` : ''}`);
+  const code = media.season && media.episode ? `${KINO_I18N.t('settings.s_x_e_x', String(media.season).padStart(2, '0'), String(media.episode).padStart(2, '0'))}` : '';
+  const kind = code ? `${KINO_I18N.t('start.serie_x', code)}` : (media.type === 'series' ? 'Série' : `Film${media.year ? ` · ${media.year}` : ''}`);
   const filename = String(item.filename || '').replace(new RegExp(`^${String(item.id || '').replace(/[^0-9a-f]/gi, '')}_`), '');
   let watch = '';
   const history = typeof userHistory !== 'undefined' && media.id ? (userHistory || []).find(entry => entry.id === media.id) : null;
@@ -316,7 +316,7 @@ function offlineDisplay(item) {
     const position = code ? (history.ep_positions?.[code] || history.ep_positions?.[`s${media.season}e${media.episode}`]) : null;
     const pct = Number(code ? (position?.pct || 0) : (history.progress_pct || 0));
     const done = code ? pct >= 85 || (history.watched_episodes || []).includes(`s${media.season}e${media.episode}`) : Boolean(history.completed || pct >= 85);
-    watch = done ? '✓ Vu' : pct > 1 ? `${Math.round(pct)} % vu` : '';
+    watch = done ? '✓ Vu' : pct > 1 ? `${KINO_I18N.t('sources.x_vu', Math.round(pct))}` : '';
   }
   return {
     title, kind, filename, watch,
@@ -332,7 +332,7 @@ function renderOfflineLibraryData(data) {
   const available = items.filter(item => item.available).length;
   const badge = document.getElementById('offlineCount');
   if (badge) badge.textContent = available ? String(available) : '';
-  render(grid, [html`<div class="offline-summary"><strong>${available} fichier${available > 1 ? 's' : ''} prêt${available > 1 ? 's' : ''}</strong><span>Utilisé sur ce Mac : ${offlineSize(data.used_bytes)}${offlineFreeText(data.free_bytes)}</span></div>`,
+  render(grid, [html`<div class="offline-summary"><strong>${tHtml('start.x_fichier_x_pret_x', available, available > 1 ? 's' : '', available > 1 ? 's' : '')}</strong><span>${tHtml('start.utilise_sur_ce_mac_x_x', offlineSize(data.used_bytes), offlineFreeText(data.free_bytes))}</span></div>`,
     (items.length ? items.map(item => {
       const id = item.id;
       const status = escapeHtml(offlineStatus(item));
@@ -374,7 +374,7 @@ async function downloadSeasonOffline(button) {
   const episodes = seasonEpisodesOut(season);
   const name = displayTitle(currentMedia) || currentMedia.name || 'cette série';
   if (!episodes.length) {
-    window.alert(`Aucun épisode de la saison ${season} n’est encore sorti.`);
+    window.alert(`${KINO_I18N.t('start.aucun_episode_de_la_saison_x_n_est', season)}`);
     return;
   }
   let free = '';
@@ -382,7 +382,7 @@ async function downloadSeasonOffline(button) {
     const data = await api('/api/downloads');
     if (Number(data.free_bytes) > 0) free = ` Il reste ${offlineSize(data.free_bytes)} sur ce Mac.`;
   } catch (error) {}
-  const count = `${episodes.length} épisode${episodes.length > 1 ? 's' : ''}`;
+  const count = `${KINO_I18N.t('home.x_episode_x', episodes.length, episodes.length > 1 ? 's' : '')}`;
   if (!window.confirm(`Télécharger ${episodes.length > 1 ? 'les ' : 'l’'}${count} sorti${episodes.length > 1 ? 's' : ''} de la saison ${season} de « ${name} » pour les regarder hors ligne ?\n\nIls se téléchargent l’un après l’autre, même si KINO est fermé puis rouvert. Un épisode pèse souvent 1 à 4 Go.${free}`)) return;
   const label = button ? button.textContent : '';
   if (button) { button.disabled = true; button.textContent = KINO_I18N.t('start.ajout'); }
@@ -393,12 +393,12 @@ async function downloadSeasonOffline(button) {
         year: currentMedia.year || '', poster: currentMedia.poster || '' }),
     });
     const parts = [];
-    if (result.queued) parts.push(`${result.queued} en file d’attente`);
-    if (result.duplicates) parts.push(`${result.duplicates} déjà hors ligne ou en cours`);
+    if (result.queued) parts.push(`${KINO_I18N.t('start.x_en_file_d_attente', result.queued)}`);
+    if (result.duplicates) parts.push(`${KINO_I18N.t('start.x_deja_hors_ligne_ou_en_cours', result.duplicates)}`);
     if (button) button.textContent = `✓ ${parts.join(' · ') || 'Rien à ajouter'}`;
     if (typeof pollDownloads === 'function') pollDownloads();
   } catch (error) {
-    window.alert(`Saison hors ligne impossible : ${error.message}`);
+    window.alert(`${KINO_I18N.t('start.saison_hors_ligne_impossible_x', error.message)}`);
     if (button) button.textContent = label;
   } finally {
     if (button) {
@@ -443,7 +443,7 @@ async function removeOfflineDownload(id) {
   const item = offlineDownloads[id];
   if (!item) return;
   const description = item.available ? 'le fichier vidéo, son affiche et les sous-titres sauvegardés' : 'le fichier partiel et ses données hors ligne';
-  if (!window.confirm(`Retirer « ${item.title || item.filename} » ? KINO supprimera ${description}. La fiche, les favoris et la progression resteront.`)) return;
+  if (!window.confirm(`${KINO_I18N.t('start.retirer_x_kino_supprimera_x_la_fiche_les', item.title || item.filename, description)}`)) return;
   try {
     await api('/api/download-remove', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({dl_id: id})});
   } catch (error) {
@@ -538,7 +538,7 @@ function renderKinoUpdate(state) {
   const candidate = document.getElementById('kinoUpdateCandidate');
   candidate.hidden = !state.candidate;
   if (state.candidate) {
-    document.getElementById('kinoUpdateCandidateTitle').textContent = `KINO ${state.candidate.version} prêt à installer`;
+    document.getElementById('kinoUpdateCandidateTitle').textContent = `${KINO_I18N.t('start.kino_x_pret_a_installer', state.candidate.version)}`;
     document.getElementById('kinoUpdateNotes').textContent = state.candidate.notes || 'Aucune note de version.';
   }
   document.getElementById('kinoUpdateChooseBtn').hidden = !state.local_packages;
@@ -547,14 +547,14 @@ function renderKinoUpdate(state) {
   const rollback = /** @type {HTMLButtonElement} */ (document.getElementById('kinoUpdateRollbackBtn'));
   rollback.disabled = !state.rollback_available;
   document.getElementById('kinoUpdateRollbackDescription').textContent = state.rollback_available
-    ? `KINO ${state.rollback_version || 'précédent'} est conservé sur ce Mac.`
+    ? `${KINO_I18N.t('start.kino_x_est_conserve_sur_ce_mac', state.rollback_version || 'précédent')}`
     : 'Aucune sauvegarde disponible.';
   const progress = Math.max(0, Math.min(100, Number(state.progress) || 0));
   document.getElementById('kinoUpdateProgressBox').hidden = progress === 0 || progress === 100;
   document.getElementById('kinoUpdateProgressBar').style.width = `${progress}%`;
   document.getElementById('kinoUpdateProgressLabel').textContent = `${state.progress_label || 'Vérification du paquet'} : ${progress}%`;
   kinoUpdateMessage(state.message || (state.latest && !state.candidate
-    ? `KINO ${state.latest.version} est disponible : cliquez sur « Rechercher une mise à jour ».` : ''));
+    ? `${KINO_I18N.t('start.kino_x_est_disponible_cliquez_sur', state.latest.version)}` : ''));
 }
 
 async function refreshKinoUpdate() {
@@ -875,7 +875,7 @@ export function noteFiche(media) {
 function navLabel(screen) {
   if (!screen) return '';
   if (screen.fiche) return displayTitle(screen.fiche);
-  if (screen.kind === 'search') return `Résultats pour « ${screen.query} »`;
+  if (screen.kind === 'search') return `${KINO_I18N.t('fiche.resultats_pour_x', screen.query)}`;
   if (screen.kind === 'person') return screen.name;
   return NAV_TAB_LABELS[screen.tab] || 'l’écran précédent';
 }
@@ -890,8 +890,8 @@ function renderNavBack() {
   const previous = navStack[navStack.length - 2];
   button.hidden = !previous;
   if (!previous) return;
-  const label = `Retour : ${navLabel(previous)}`;
-  button.title = `${label} (Échap)`;
+  const label = `${KINO_I18N.t('start.retour_x', navLabel(previous))}`;
+  button.title = `${KINO_I18N.t('start.x_echap', label)}`;
   button.setAttribute('aria-label', label);
 }
 
@@ -1022,7 +1022,7 @@ function networkCameBack() {
 }
 
 export function needsInternetHtml(what) {
-  return html`<div class="library-empty"><h3>${what} a besoin d’internet</h3><p>${KINO_I18N.t('start.vos_fichiers_hors_ligne_restent')}</p><button type="button" class="btn" ${act('switchTab', 'offline')}>${KINO_I18N.t('start.voir_mes_fichiers_hors_ligne')}</button></div>`;
+  return html`<div class="library-empty"><h3>${tHtml('start.x_a_besoin_d_internet', what)}</h3><p>${KINO_I18N.t('start.vos_fichiers_hors_ligne_restent')}</p><button type="button" class="btn" ${act('switchTab', 'offline')}>${KINO_I18N.t('start.voir_mes_fichiers_hors_ligne')}</button></div>`;
 }
 
 export function showOfflineCatalogue() {
