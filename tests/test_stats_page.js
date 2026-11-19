@@ -9,7 +9,7 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const statsCode = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/stats.js'), 'utf8'));
+const statsCode = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('stats.js'));
 const source = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
@@ -95,7 +95,8 @@ test('nothing seen yet, or no answer', async () => {
 test('reached from its Bibliothèque tab, alone on it, in one grey', () => {
   assert.match(withCalls(html), /<button class="lib-subtab" id="subtab-stats" onclick="switchTab\('stats'\)">Statistiques<\/button>/);
   assert.match(html, /<div id="viewingStatsPanel" class="panel lib-panel stats-panel" style="display:none;">[\s\S]*?<div id="viewingStatsBody"><\/div>/);
-  assert.ok(html.indexOf('src="/js/app-start.js"') > 0 && html.indexOf('src="/js/app-start.js"') < html.indexOf('src="/js/stats.js"'), 'stats.js uses the helpers of the app parts');
+  const scripts = require('../tools/interface_source.js').interfaceScripts();
+  assert.ok(scripts.indexOf('app-start.js') > 0 && scripts.indexOf('app-start.js') < scripts.indexOf('stats.js'), 'stats.js uses the helpers of the app parts');
   assert.match(source, /\['watchlist', 'history', 'myseries', 'calendar', 'watched', 'offline', 'customlists', 'rdcloud', 'stats', 'library'\]\.includes\(tab\)/);
   assert.match(source, /\} else if \(tab === 'stats'\) \{[\s\S]*?document\.getElementById\('viewingStatsPanel'\)\.style\.display = 'block';\n\s+await loadStats\(\);/);
   const search = source.slice(source.indexOf('async function runSearch() {'), source.indexOf('async function oneClickCard('));

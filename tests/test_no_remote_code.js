@@ -25,7 +25,16 @@ const PEERJS = {
 
 test('every script and style of the page comes from KINO itself', () => {
   const scripts = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map(match => match[1]);
-  assert.ok(scripts.length > 15);
+  assert.ok(scripts.includes('/js/main.js') && scripts.includes('/js/i18n.js'));
+  // The modules load one another only by a file next to them, never by an address.
+  const dir = path.join(path.join(__dirname, '..'), 'web/js');
+  for (const name of fs.readdirSync(dir).filter(file => file.endsWith('.js'))) {
+    const text = fs.readFileSync(path.join(dir, name), 'utf8');
+    for (const m of text.matchAll(/^(?:import|export)\s(?:[^;'"]*?\sfrom\s)?['"]([^'"]+)['"];$/gm)) {
+      assert.match(m[1], /^\.\/[\w-]+\.js$/, `${name} imports ${m[1]}`);
+    }
+    assert.doesNotMatch(text, /\bimport\s*\(/, `${name} imports nothing at run time`);
+  }
   assert.deepEqual(scripts.filter(src => !/^\/[\w./-]+\.js$/.test(src) || src.startsWith('//')), [], 'no script from another origin');
   assert.ok(scripts.includes('/js/vendor/peerjs.min.js'));
   assert.deepEqual([...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g)].map(match => match[1]).filter(href => !href.startsWith('/')), []);

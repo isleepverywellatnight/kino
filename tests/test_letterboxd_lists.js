@@ -118,7 +118,7 @@ test('no list: an invitation to import one', () => {
 
 test('the page is monochrome and the overview opens first', () => {
   assert.doesNotMatch(listsCode, /#00e054|#f87171|rgba\(0,\s*224,\s*84/);
-  assert.match(source, /if \(tab === 'customlists'\) openCustomListId = null;/);
+  assert.match(source, /if \(tab === 'customlists'\) setOpenCustomListId\(null\);/);
   assert.match(css, /\.list-shelf-row \{[^}]*grid-auto-flow: column;[^}]*overflow-x: auto;/);
   assert.match(css, /\.list-shelf-progress > span \{ display: block; height: 100%; background: #fafafa; \}/);
 });

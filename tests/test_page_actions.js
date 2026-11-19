@@ -10,8 +10,9 @@ const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const ROOT = path.join(__dirname, '..');
-const actions = fs.readFileSync(path.join(ROOT, 'web/js/actions.js'), 'utf8');
+const actions = require('../tools/interface_source.js').scriptText('actions.js');
 const { convert, formerCall } = require('../tools/inline_handlers.js');
+const { registeredActions } = require('../tools/frontend_check.js');
 
 function element(attributes = {}, parent = null) {
   return {
@@ -46,8 +47,10 @@ function page() {
 
 test('a click runs the actions from the target up, with their arguments', () => {
   const p = page();
-  p.context.switchTab = (...args) => p.calls.push(['switchTab', ...args]);
-  p.context.openRow = (...args) => p.calls.push(['openRow', ...args]);
+  p.context.registerActions({
+    switchTab: (...args) => p.calls.push(['switchTab', ...args]),
+    openRow: (...args) => p.calls.push(['openRow', ...args]),
+  });
   const row = element({ 'data-on-click': 'openRow', 'data-click-args': '[3]' });
   const button = element({ 'data-on-click': 'switchTab', 'data-click-args': '["movies", {"$": "this"}, {"$": "event"}, {"$": "value"}]' }, row);
   const event = p.fire('click', button);
@@ -60,8 +63,7 @@ test('a click runs the actions from the target up, with their arguments', () => 
 
 test('a stop keeps the event from the rows around', () => {
   const p = page();
-  p.context.copyLink = () => p.calls.push('copy');
-  p.context.openRow = () => p.calls.push('row');
+  p.context.registerActions({ copyLink: () => p.calls.push('copy'), openRow: () => p.calls.push('row') });
   const row = element({ 'data-on-click': 'openRow' });
   const button = element({ 'data-on-click': 'copyLink', 'data-click-stop': '' }, row);
   p.fire('click', button);
@@ -77,23 +79,37 @@ test('loads, errors and closes are caught on their way down', () => {
   assert.equal(image.hidden, true);
 });
 
-test('only page functions run, and broken arguments run nothing', () => {
+test('only registered actions run, and broken arguments run nothing', () => {
   const p = page();
-  p.context.notAFunction = 5;
-  for (const name of ['alert("x")', 'notAFunction', 'missing', 'constructor.constructor']) {
+  // Functions the page holds are not actions until a file registers them.
+  p.context.missing = () => p.calls.push('missing');
+  for (const name of ['alert("x")', 'missing', 'constructor.constructor', 'toString']) {
     p.fire('click', element({ 'data-on-click': name }));
   }
-  p.context.ok = () => p.calls.push('ran');
+  p.context.registerActions({ ok: () => p.calls.push('ran') });
   p.fire('click', element({ 'data-on-click': 'ok', 'data-click-args': '[broken' }));
   assert.deepEqual(p.calls, []);
-  assert.equal(p.warnings.length, 4, p.warnings.join('\n'));
+  assert.equal(p.warnings.filter(w => w.startsWith('KINO: no action')).length, 4, p.warnings.join('\n'));
+  assert.equal(p.warnings.filter(w => w.startsWith('KINO: unreadable arguments')).length, 1, p.warnings.join('\n'));
+});
+
+test('an action is registered once, and only as a function', () => {
+  const p = page();
+  p.context.registerActions({ once: () => {} });
+  assert.throws(() => p.context.registerActions({ once: () => {} }), /registered twice/);
+  assert.throws(() => p.context.registerActions({ notAFunction: 5 }), /not a function/);
 });
 
 test('the menu, the backdrop, Enter, a form and a file field', () => {
   const p = page();
-  for (const name of ['openConfig', 'closeHeaderMenu', 'closeTrailerModal', 'sendWpMessage', 'searchManga']) {
-    p.context[name] = () => p.calls.push(name);
+  for (const name of ['openConfig', 'closeTrailerModal', 'sendWpMessage', 'searchManga']) {
+    p.context.registerActions({ [name]: () => p.calls.push(name) });
   }
+  // The header menu's wrapper is the menu's own (app-cloud-settings.js).
+  const menu = require('../tools/interface_source.js').scriptText('app-cloud-settings.js');
+  const start = menu.indexOf('function kinoMenuAction(name) {');
+  p.context.closeHeaderMenu = () => p.calls.push('closeHeaderMenu');
+  vm.runInContext(`${menu.slice(start, menu.indexOf('\n}\n', start) + 3)} registerActions({ kinoMenuAction });`, p.context);
   p.fire('click', element({ 'data-on-click': 'kinoMenuAction', 'data-click-args': '["openConfig"]' }));
   const backdrop = element({ 'data-on-click': 'kinoOnBackdrop', 'data-click-args': '[{"$": "event"}, {"$": "this"}, "closeTrailerModal"]' });
   p.fire('click', element({}, backdrop));
@@ -110,18 +126,20 @@ test('the menu, the backdrop, Enter, a form and a file field', () => {
   assert.ok(prevented, 'the page does not reload');
 });
 
-test('index.html has no inline code left, and each action is a function of the page', () => {
+test('index.html has no inline code left, and each action is registered', () => {
   const html = fs.readFileSync(path.join(ROOT, 'web/index.html'), 'utf8');
   assert.doesNotMatch(html, /\son[a-z]+=["']/i);
-  assert.match(html, /<script src="\/js\/i18n\.js"><\/script>\s*<script src="\/js\/actions\.js"><\/script>/);
+  // i18n.js translates the page as it is drawn; KINO itself is one module.
+  assert.match(html, /<script src="\/js\/i18n\.js"><\/script>/);
+  assert.equal((html.match(/<script type="module"/g) || []).length, 1);
+  assert.match(html, /<script type="module" src="\/js\/main\.js"><\/script>/);
+  assert.equal(require('../tools/interface_source.js').interfaceScripts()[1], 'actions.js', 'the actions first');
   const scripts = fs.readdirSync(path.join(ROOT, 'web/js')).filter(f => f.endsWith('.js'))
     .map(f => fs.readFileSync(path.join(ROOT, 'web/js', f), 'utf8')).join('\n');
   const names = new Set([...html.matchAll(/data-on-[a-z]+="([^"]+)"/g)].map(m => m[1]));
   assert.ok(names.size > 100);
-  for (const name of names) {
-    const head = name.split('.')[0];
-    assert.match(scripts, new RegExp(`(^|\\n)\\s*(async\\s+)?function\\s+${head}\\s*\\(|window\\.${head}\\s*=`), name);
-  }
+  const registered = registeredActions([scripts]);
+  for (const name of names) assert.ok(registered.has(name), name);
   for (const [, args] of html.matchAll(/data-[a-z]+-args='([^']*)'/g)) JSON.parse(args);
 });
 
@@ -139,7 +157,7 @@ test('the conversion keeps the call: its function, its arguments, its stop', () 
   assert.deepEqual(convert("openConfig(); closeHeaderMenu();"), ['kinoMenuAction', ['openConfig'], false]);
 });
 
-test('each action a template declares is a function of the page', () => {
+test('each action a template declares is registered', () => {
   const dir = path.join(ROOT, 'web/js');
   const scripts = fs.readdirSync(dir).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
   const names = new Set([
@@ -147,9 +165,8 @@ test('each action a template declares is a function of the page', () => {
     ...[...scripts.matchAll(/\bactOn\('[a-z]+', '([\w$.]+)'/g)].map(m => m[1]),
   ]);
   assert.ok(names.size >= 10, [...names].join(', '));
-  for (const name of names) {
-    assert.match(scripts, new RegExp(`(^|\\n)\\s*(async\\s+)?function\\s+${name.split('.')[0]}\\s*\\(|window\\.${name.split('.')[0]}\\s*=`), name);
-  }
+  const registered = registeredActions([scripts]);
+  for (const name of names) assert.ok(registered.has(name), name);
 });
 
 test('a template action carries its arguments as values', () => {
@@ -164,5 +181,7 @@ test('the phone remote has no inline code either, and loads its code as files', 
   const remote = fs.readFileSync(path.join(ROOT, 'web/remote.html'), 'utf8');
   assert.doesNotMatch(remote, /\son[a-z]+=["']/i);
   assert.doesNotMatch(remote, /<script(?![^>]*\bsrc=)[^>]*>/, 'no inline script');
-  assert.match(remote, /<script src="\/js\/actions\.js"><\/script>\s*<script src="\/js\/html\.js"><\/script>\s*<script src="\/js\/remote\.js"><\/script>/);
+  assert.deepEqual([...remote.matchAll(/<script\b[^>]*>/g)].map(m => m[0]), ['<script type="module" src="/js/remote.js">']);
+  const imports = [...fs.readFileSync(path.join(ROOT, 'web/js/remote.js'), 'utf8').matchAll(/^import .* from '(\.\/[\w-]+\.js)';$/gm)].map(m => m[1]);
+  assert.deepEqual(imports, ['./actions.js', './html.js']);
 });

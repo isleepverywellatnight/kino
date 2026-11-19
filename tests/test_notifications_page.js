@@ -17,7 +17,7 @@ function load(answer) {
   const status = { textContent: '' };
   const calls = [];
   const context = {
-    activeTab: 'movies',
+    activeTab: 'movies', window: { addEventListener() {} },
     document: { getElementById: id => (id === 'cfgNotificationStatus' ? status : null) },
     api: async (url, options) => { calls.push([url, options?.method]); if (answer instanceof Error) throw answer; return answer; },
     switchTab: async tab => { calls.push(['tab', tab]); context.activeTab = tab; },
@@ -56,4 +56,18 @@ test('the setting: shown only where notifications exist, saved', () => {
   assert.match(withCalls(html), /<div class="set-row" id="cfgEpisodeNotificationsField" style="display:none;">[\s\S]*?Notifications des nouveaux épisodes[\s\S]*?onclick="testEpisodeNotification\(this\)">Envoyer un essai<\/button>[\s\S]*?<input type="checkbox" id="cfgEpisodeNotifications" role="switch" checked>/);
   assert.match(source, /notifyField\.style\.display = cfg\.notifications_available === true \? 'flex' : 'none';/);
   assert.match(source, /episode_notifications: checked\('cfgEpisodeNotifications', true\),/);
+});
+
+// The page is ES modules: its functions are not on window. The app hands the
+// click over as an event the page listens for, not as a call by name.
+test('a click on a notification reaches the page as an event', async () => {
+  const main = fs.readFileSync(path.join(__dirname, '..', 'crates/kino-desktop/src/main.rs'), 'utf8');
+  assert.match(main, /evaluate_script\(&format!\(\s*"window\.dispatchEvent\(new CustomEvent\('kino-notification', \{\{ detail: \{info\} \}\}\)\)"\s*\)\)/);
+  assert.doesNotMatch(main, /evaluate_script\(&format!\("openFromNotification/, 'no call by name');
+  const listeners = {};
+  const page = load({});
+  page.context.window = { addEventListener: (type, fn) => { listeners[type] = fn; } };
+  vm.runInContext(code.slice(code.indexOf("window.addEventListener('kino-notification'"), code.indexOf('\n', code.indexOf("window.addEventListener('kino-notification'"))), page.context);
+  await listeners['kino-notification']({ detail: { id: 'tt0903747', name: 'Breaking Bad' } });
+  assert.deepEqual(page.calls, [['tab', 'series'], ['fiche', { id: 'tt0903747', name: 'Breaking Bad', type: 'series' }]]);
 });

@@ -45,7 +45,7 @@ test('the other sources wait, folded, under the recommended one', () => {
   view.renderTorrents();
   assert.match(withCalls(view.list.innerHTML), /<details class="sources-more" open ontoggle=/, 'a filter or a sort keeps it open');
   assert.match(out, /title="Copier le lien Magnet" aria-label="Copier le lien Magnet"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="\/icons\.svg#link"><\/use><\/svg><\/button>/);
-  assert.match(source, /lastReadyDebrid = null;\n  sourcesMoreOpen = false;/, 'a new title or episode starts folded');
+  assert.match(source, /setLastReadyDebrid\(null\);\n  sourcesMoreOpen = false;/, 'a new title or episode starts folded');
 });
 
 test('without a recommended source, every group shows', () => {

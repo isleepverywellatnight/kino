@@ -1,8 +1,40 @@
 // The Anime tab (rows, planning) lives in anime-home.js.
 
+import { registerActions } from './actions.js';
+import { EVENT, THIS, act, actOn, html, render } from './html.js';
+import {
+  META_CLIENT_CACHE, activeGenre, activeTab, api, catalogHasMore, catalogItems, catalogSkip,
+  catalogSort, checkConfig, getSeriesTargetEpisode, isInWatchlist, linkedAccounts,
+  refreshUserLists, setActiveGenre, setActiveTab, setCatalogHasMore, setCatalogItems,
+  setCatalogSkip, userHistory,
+} from './app-core.js';
+import {
+  hideHomeRows, renderGenreChipsForTab, renderHeroSpotlight, renderHomeResume, selectGenre,
+  setClassicsCatalogCache, updateClassicsStatsBadge,
+} from './app-home.js';
+import { hideWatchedInCatalog, loadMySeries, loadReleaseCalendar, renderActiveListTab } from './app-lists.js';
+import { renderCustomListsTab, setOpenCustomListId } from './app-letterboxd.js';
+import {
+  cloudAsked, cloudGroups, loadBackups, loadSuggestionStatus, loadTvDevices, renderCloud,
+  requestCloudMatches, setCloudGroups, triggerGdriveSync,
+} from './app-cloud-settings.js';
+import { checkTraktStatus, loadCommunityTab } from './app-social.js';
+import {
+  displayTitle, frenchGenre, frenchRuntime, hideDetailMore, personView, titleAttrs,
+} from './app-fiche.js';
+import { inAppAbsoluteTime, inAppCurrentMedia, inAppCurrentTitle, inAppDuration } from './app-player.js';
+import { ratingBadgeHtml } from './ratings.js';
+import {
+  animeWeekTimer, applyAnimeSubTab, currentAnimeSubTab, setAnimeWeekTimer, switchAnimeSubTab,
+} from './anime-home.js';
+import { loadSourcesSettings } from './p2p-addons.js';
+import { renderMangaTab } from './manga.js';
+import { networkOnline, noteTab, pollDownloads, showOfflineCatalogue } from './app-start.js';
+import { loadStats } from './stats.js';
+
 // --- Discord Rich Presence (RPC) ---
 let lastDiscordRpcSync = 0;
-function updateDiscordRpc(isPaused = false) {
+export function updateDiscordRpc(isPaused = false) {
   const video = document.getElementById('inAppVideo');
   if (!video || !inAppCurrentMedia) return;
   const now = Date.now();
@@ -32,18 +64,21 @@ function updateDiscordRpc(isPaused = false) {
   }).catch(() => {});
 }
 
-function clearDiscordRpc() {
+export function clearDiscordRpc() {
   api('/api/discord-rpc/clear', { method: 'POST' }).catch(() => {});
 }
 
 let lastActiveLibraryTab = 'watchlist';
-let previousTab = 'movies';
-let refreshSettingsSectionNavigation = () => {};
+export let previousTab = 'movies';
+export function setPreviousTab(value) { previousTab = value; return value; }
+export let refreshSettingsSectionNavigation = () => {};
+export function setRefreshSettingsSectionNavigation(value) { refreshSettingsSectionNavigation = value; return value; }
 
 // True while search results replace the tab's own content.
-let searchResultsShown = false;
+export let searchResultsShown = false;
+export function setSearchResultsShown(value) { searchResultsShown = value; return value; }
 
-async function switchTab(tab) {
+export async function switchTab(tab) {
   searchResultsShown = false;
   if (activeTab && activeTab !== 'settings') {
     previousTab = activeTab;
@@ -59,7 +94,7 @@ async function switchTab(tab) {
 
   noteTab(tab);
   const tabChanged = activeTab !== tab;
-  activeTab = tab;
+  setActiveTab(tab);
   document.body.dataset.activeTab = tab;
   if (tabChanged) window.scrollTo({ top: 0, behavior: 'auto' });
 
@@ -117,7 +152,7 @@ async function switchTab(tab) {
     const animePage = document.getElementById(id);
     if (animePage) animePage.style.display = 'none';
   }
-  if (tab !== 'anime') { clearInterval(animeWeekTimer); animeWeekTimer = null; }
+  if (tab !== 'anime') { clearInterval(animeWeekTimer); setAnimeWeekTimer(null); }
   const asNav = document.getElementById('animeSubNav');
   if (asNav) asNav.style.display = (tab === 'anime') ? 'flex' : 'none';
   const setP = document.getElementById('settingsPanel');
@@ -162,7 +197,7 @@ async function switchTab(tab) {
   await refreshUserLists();
   const listFiltersBox = document.getElementById('listFilters');
   if (listFiltersBox) listFiltersBox.hidden = !(tab === 'watchlist' || tab === 'watched');
-  if (tab === 'customlists') openCustomListId = null;
+  if (tab === 'customlists') setOpenCustomListId(null);
 
   if (tab === 'movies') {
     if (gf) gf.style.display = 'flex';
@@ -191,7 +226,7 @@ async function switchTab(tab) {
     // The catalogue loads behind every page of the tab: its first titles are
     // the banner of « À la une ».
     renderGenreChipsForTab('anime');
-    activeGenre = '';
+    setActiveGenre('');
     selectGenre('', document.querySelector('#genreFilters .chip'));
     await switchAnimeSubTab(currentAnimeSubTab);
   } else if (tab === 'watchlist') {
@@ -316,13 +351,13 @@ async function switchTab(tab) {
   }
 }
 
-async function loadCatalog(type, genre = '', reset = true) {
+export async function loadCatalog(type, genre = '', reset = true) {
   const grid = document.getElementById('postersGrid');
   const lm = document.getElementById('loadMoreWrap');
   if (reset) {
-    catalogSkip = 0;
-    catalogItems = [];
-    catalogHasMore = false;
+    setCatalogSkip(0);
+    setCatalogItems([]);
+    setCatalogHasMore(false);
     if (!networkOnline) {
       showOfflineCatalogue();
       return;
@@ -341,7 +376,7 @@ async function loadCatalog(type, genre = '', reset = true) {
       }
     }
     if (type === 'classics' && !genre) {
-      classicsCatalogCache = [...catalogItems];
+      setClassicsCatalogCache([...catalogItems]);
     }
     if (reset) {
       renderHeroSpotlight(catalogItems, type === 'classics' ? 'movie' : type);
@@ -350,7 +385,7 @@ async function loadCatalog(type, genre = '', reset = true) {
       updateClassicsStatsBadge();
     }
     renderPosterCards(catalogItems, type === 'classics' ? 'movie' : type);
-    catalogHasMore = type !== 'classics' && incoming.length >= 20;
+    setCatalogHasMore(type !== 'classics' && incoming.length >= 20);
     if (lm) lm.style.display = catalogHasMore ? 'flex' : 'none';
     // The banner and « Voir plus » belong to one page of the Anime tab each.
     if (activeTab === 'anime' && !searchResultsShown && !personView) applyAnimeSubTab();
@@ -367,7 +402,7 @@ async function loadMoreCatalog() {
   const btn = document.getElementById('loadMoreBtn');
   const orig = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Chargement...'; }
-  catalogSkip += 50;
+  setCatalogSkip(catalogSkip + (50));
   const type = activeTab === 'series' ? 'series' : (activeTab === 'classics' ? 'classics' : (activeTab === 'anime' ? 'anime' : 'movie'));
   try {
     await loadCatalog(type, activeGenre, false);
@@ -392,7 +427,7 @@ function handlePosterCardError(img, id) {
 }
 
 // Grey cards while a grid loads: the page keeps its shape instead of jumping.
-function posterSkeletons(count = 12) {
+export function posterSkeletons(count = 12) {
   return [html`<div class="poster-skeleton-status" role="status">Chargement…</div>`, Array.from({length: count}, () => html`
     <div class="poster-card is-skeleton" aria-hidden="true">
       <div class="poster-art"></div>
@@ -433,7 +468,7 @@ async function loadPosterPreview(desc) {
   });
 }
 
-function initPosterPreviews() {
+export function initPosterPreviews() {
   const grid = document.getElementById('postersGrid');
   if (!grid) return;
   const cardOf = event => event.target?.closest?.('.poster-card');
@@ -448,7 +483,7 @@ function initPosterPreviews() {
 // One catalogue card: the poster, then its title and year. On hover or keyboard
 // focus the preview brings the synopsis and the actions (play, Vu); there is no
 // play button repeated under every poster.
-function posterCardHtml(m, fallbackType) {
+export function posterCardHtml(m, fallbackType) {
     const isAnime = Boolean(activeTab === 'anime' || m.is_anime);
     const mtype = (m.type === 'movie' || (!m.type && isAnime && m.is_movie)) ? 'movie' : (isAnime ? 'series' : (m.type || fallbackType || 'movie'));
     const year = m.releaseInfo || m.year || '';
@@ -522,7 +557,7 @@ function posterCardHtml(m, fallbackType) {
     `;
 }
 
-function renderPosterCards(metas, fallbackType) {
+export function renderPosterCards(metas, fallbackType) {
   const grid = document.getElementById('postersGrid');
   let displayList = metas || [];
   if (hideWatchedInCatalog && (activeTab === 'movies' || activeTab === 'series' || activeTab === 'classics' || activeTab === 'anime')) {
@@ -544,13 +579,13 @@ function renderPosterCards(metas, fallbackType) {
   render(grid, displayList.map(m => posterCardHtml(m, fallbackType)));
 }
 
-async function loadRdCloud() {
+export async function loadRdCloud() {
   const list = document.getElementById('rdCloudList');
-  const pName = window.activeDebridName || 'votre débrideur';
+  const pName = linkedAccounts.debridName || 'votre débrideur';
   if (!cloudGroups.length) render(list, html`<p class="cloud-empty">Récupération de votre Cloud ${pName}…</p>`);
   try {
     const data = await api('/api/rd-history');
-    cloudGroups = Array.isArray(data.groups) ? data.groups : [];
+    setCloudGroups(Array.isArray(data.groups) ? data.groups : []);
     cloudAsked.clear();
     const noteEl = document.getElementById('rdCloudStatusNote');
     if (noteEl && data.cleaned && (data.cleaned.deleted_downloads > 0 || data.cleaned.deleted_torrents > 0)) {
@@ -563,3 +598,13 @@ async function loadRdCloud() {
   }
 }
 
+// A poster that does not load: the card shows the title instead.
+function kinoPosterFailed(element, id) {
+  element.classList.add('is-loaded');
+  handlePosterCardError(element, id);
+}
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  kinoPosterFailed, loadMoreCatalog, loadRdCloud, switchTab,
+});

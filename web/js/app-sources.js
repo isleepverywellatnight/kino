@@ -1,6 +1,31 @@
 // --- Episode row helpers (kept with renderDetailEpisodes) ---
+
+import { registerActions } from './actions.js';
+import { EVENT, THIS, act, actOn, escapeHtml, html, raw, render } from './html.js';
+import { Spoilers } from './spoilers.js';
+import {
+  activeFilter, allTorrents, api, currentMedia, getSeriesTargetEpisode, lastReadyDebrid,
+  playerPrefs, refreshUserLists, seriesMetaVideos, setActiveFilter, setAllTorrents,
+  setLastReadyDebrid, setTorrentRequestId, spoilerConcealed, spoilerEpisodeLabel, spoilerSeriesId,
+  torrentRequestId, userHistory,
+} from './app-core.js';
+import {
+  _isGlobalPlayLaunching, castToTv, openNativeStream, setIsGlobalPlayLaunching, tvMediaPayload,
+  tvTitle,
+} from './app-fiche.js';
+import {
+  inAppActiveCues, inAppActiveSubIdx, inAppAvailableSubs, inAppCurrentFilename, inAppCurrentMedia,
+  inAppCurrentTitle, inAppCurrentUrl, inAppSubCuesCache, openInAppPlayer, showInAppToast,
+  syncWindowState,
+} from './app-player.js';
+import { askP2PConsent } from './p2p-addons.js';
+import { pollDownloads, syncChipPressed } from './app-start.js';
+
 let detailEpisodeSeason = 0;
-const EPISODE_OVERVIEWS_FR = new Map();
+export function setDetailEpisodeSeason(value) { detailEpisodeSeason = value; return value; }
+export const EPISODE_OVERVIEWS_FR = new Map();
+// The files of the last ready debrid result, by the index the page shows them at.
+let lastDebridFiles = [];
 const EPISODE_MONTHS = KINO_I18N.months('short');
 
 function episodeAirDate(video) {
@@ -8,13 +33,13 @@ function episodeAirDate(video) {
   return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : '';
 }
 
-function episodeIsUpcoming(video, today) {
+export function episodeIsUpcoming(video, today) {
   const day = episodeAirDate(video);
   return Boolean(day && day > today);
 }
 
 // « 12 déc. 2024 ».
-function episodeAirLabel(day) {
+export function episodeAirLabel(day) {
   const [year, month, date] = String(day || '').split('-').map(Number);
   if (!year || !month || !date) return '';
   return `${date === 1 ? '1er' : date} ${EPISODE_MONTHS[month - 1]} ${year}`;
@@ -23,7 +48,7 @@ function episodeAirLabel(day) {
 // Where the row opens: {next} is the episode to watch (in progress, or after
 // the last one watched), {focus} the episode to show first. When the next
 // episode has not aired yet there is nothing « À suivre »: the row shows it.
-function episodeToWatch(seasonNum, eps, histItem, today, seriesId) {
+export function episodeToWatch(seasonNum, eps, histItem, today, seriesId) {
   const aired = eps.filter(v => !episodeIsUpcoming(v, today)).map(v => v.episode || v.number || 1);
   const numbers = eps.map(v => v.episode || v.number || 1);
   if (histItem && typeof getSeriesTargetEpisode === 'function') {
@@ -43,7 +68,7 @@ function episodeName(video, epNum) {
   return !name || /^(tba|tbd|to be announced|episode \d+|épisode \d+)$/i.test(name) ? Spoilers.neutralTitle(epNum) : name;
 }
 
-function episodeTileHtml(v, ctx) {
+export function episodeTileHtml(v, ctx) {
   const { seriesId, epPosMap, today, fr } = ctx;
   // Numbers only: they go into handlers and attributes as they are.
   const seasonNum = Number(ctx.seasonNum) || 0;
@@ -88,7 +113,7 @@ function episodeTileHtml(v, ctx) {
 }
 
 // Bring the episode to watch to the start of the row (no animation).
-function revealEpisodeToWatch(container) {
+export function revealEpisodeToWatch(container) {
   const tile = container.querySelector?.('.ep-tile[data-focus]');
   if (!tile || typeof container.getBoundingClientRect !== 'function') return;
   const offset = tile.getBoundingClientRect().left - container.getBoundingClientRect().left;
@@ -96,7 +121,7 @@ function revealEpisodeToWatch(container) {
   container.scrollTo?.({ left: Math.max(0, container.scrollLeft + offset - 8), behavior: 'instant' });
 }
 
-function updateEpisodeArrows() {
+export function updateEpisodeArrows() {
   const row = document.getElementById('detailEpisodesList');
   const strip = document.getElementById('detailEpisodesStrip');
   if (!row || !strip || typeof strip.querySelector !== 'function') return;
@@ -113,7 +138,7 @@ function scrollEpisodes(direction) {
 }
 
 // French summaries arrive once per season; shown episodes are updated in place.
-function requestEpisodeOverviews(seriesId, seasonNum) {
+export function requestEpisodeOverviews(seriesId, seasonNum) {
   const key = `${seriesId}:${seasonNum}`;
   if (!/^tt\d+$/.test(String(seriesId || '')) || EPISODE_OVERVIEWS_FR.has(key)) return;
   EPISODE_OVERVIEWS_FR.set(key, {});
@@ -135,7 +160,7 @@ function pickSeriesEpisodeSources(s, e) {
   reloadSeriesEpisode(true);
 }
 
-function onSeasonChange(triggerReload = true) {
+export function onSeasonChange(triggerReload = true) {
   const s = parseInt(document.getElementById('seasonSelect').value || '1', 10);
   const eSel = document.getElementById('episodeSelect');
   const eps = seriesMetaVideos.filter(v => v.season === s).sort((a,b) => (a.episode || a.number) - (b.episode || b.number));
@@ -151,7 +176,7 @@ function onSeasonChange(triggerReload = true) {
   if (triggerReload) reloadSeriesEpisode(false);
 }
 
-function reloadSeriesEpisode(scrollToTorrents = false) {
+export function reloadSeriesEpisode(scrollToTorrents = false) {
   if (!currentMedia) return;
   const s = document.getElementById('seasonSelect').value || 1;
   const e = document.getElementById('episodeSelect').value || 1;
@@ -186,9 +211,9 @@ function extractTorrentSeeders(t) {
   return 0;
 }
 
-async function loadTorrents(params, scroll = true) {
-  const requestId = ++torrentRequestId;
-  lastReadyDebrid = null;
+export async function loadTorrents(params, scroll = true) {
+  const requestId = setTorrentRequestId(torrentRequestId + 1);
+  setLastReadyDebrid(null);
   sourcesMoreOpen = false;
   const panel = document.getElementById('torrentsPanel');
   const list = document.getElementById('torrentsList');
@@ -212,7 +237,7 @@ async function loadTorrents(params, scroll = true) {
   try {
     const data = await api('/api/torrents?' + qs);
     if (requestId !== torrentRequestId) return;
-    allTorrents = data.torrents || [];
+    setAllTorrents(data.torrents || []);
     expandedSourceGroups.clear();
     renderTorrents();
   } catch (e) {
@@ -222,7 +247,7 @@ async function loadTorrents(params, scroll = true) {
 }
 
 function setFilter(flt, el) {
-  activeFilter = flt;
+  setActiveFilter(flt);
   const filterChips = [...document.querySelectorAll('.filters .chip')];
   filterChips.forEach(c => c.classList.remove('active'));
   el.classList.add('active');
@@ -485,7 +510,7 @@ function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
       </div>`;
 }
 
-function renderTorrents() {
+export function renderTorrents() {
   const list = document.getElementById('torrentsList');
   const filtered = getFilteredTorrents();
   const sourceSeason = Number(document.getElementById('seasonSelect')?.value || 0);
@@ -566,7 +591,7 @@ async function debridFromIndex(startIdx) {
   await debridCandidates(candidates);
 }
 
-async function debridMagnet(magnet) {
+export async function debridMagnet(magnet) {
   await debridCandidates([{title: 'Magnet direct', magnet}]);
 }
 
@@ -606,7 +631,7 @@ async function debridCandidates(candidates) {
   }
 }
 
-function renderDebridState(res, season, episode, chosenTorrentTitle = '', playlistCount = 1) {
+export function renderDebridState(res, season, episode, chosenTorrentTitle = '', playlistCount = 1) {
   const box = document.getElementById('debridResultPanel');
   if (!res.ready) {
     // The service's words are shown as text; its progress, as a number.
@@ -631,8 +656,8 @@ function renderDebridState(res, season, episode, chosenTorrentTitle = '', playli
     return;
   }
 
-  window.lastDebridFiles = res.files || [];
-  lastReadyDebrid = [res, season, episode, chosenTorrentTitle, playlistCount];
+  lastDebridFiles = res.files || [];
+  setLastReadyDebrid([res, season, episode, chosenTorrentTitle, playlistCount]);
   const selectedHidden = currentMedia?.type === 'series' && spoilerConcealed(spoilerSeriesId(), Number(season), Number(episode));
 
   const subBanner = chosenTorrentTitle
@@ -685,7 +710,7 @@ function savedPosition(media, season, episode) {
 
 // « Sur la TV » for one file of the chosen source.
 async function sendDebridFileToTv(button, index) {
-  const file = window.lastDebridFiles?.[index];
+  const file = lastDebridFiles?.[index];
   if (!file?.download) return;
   const [, chosenSeason, chosenEpisode] = lastReadyDebrid || [];
   const isSeries = currentMedia?.type === 'series' || currentMedia?.type === 'anime';
@@ -710,21 +735,21 @@ async function sendDebridFileToTv(button, index) {
 }
 
 function openDebridFile(button, index) {
-  const file = window.lastDebridFiles?.[index];
+  const file = lastDebridFiles?.[index];
   if (file) openMpv(button, file.download, file.filename);
 }
 
 function downloadDebridFile(index) {
-  const file = window.lastDebridFiles?.[index];
+  const file = lastDebridFiles?.[index];
   if (file) startPcDownload(file.download, file.filename, downloadMediaContext());
 }
 
 function openDebridLink(index) {
-  const file = window.lastDebridFiles?.[index];
+  const file = lastDebridFiles?.[index];
   if (file?.download) window.open(file.download, '_blank', 'noopener');
 }
 
-function downloadMediaContext(media = currentMedia) {
+export function downloadMediaContext(media = currentMedia) {
   if (!media) return {};
   const context = {
     id: media.id || '', name: media.name || '', type: media.type || 'movie',
@@ -793,10 +818,10 @@ async function saveCurrentPlaybackOffline() {
 
 // From a fiche, the title and episode come from it; the Cloud passes its own
 // (options: {media, season, episode, files: [{filename, download}]}).
-async function openMpv(btn, url, filename, options = null) {
+export async function openMpv(btn, url, filename, options = null) {
   if (_isGlobalPlayLaunching) return;
-  _isGlobalPlayLaunching = true;
-  setTimeout(() => { _isGlobalPlayLaunching = false; }, 3000);
+  setIsGlobalPlayLaunching(true);
+  setTimeout(() => { setIsGlobalPlayLaunching(false); }, 3000);
 
   if (btn && btn.disabled) return;
   const origText = btn ? raw(btn.innerHTML) : '';
@@ -809,14 +834,14 @@ async function openMpv(btn, url, filename, options = null) {
   const s = options ? (options.season ?? null) : (fromFiche ? document.getElementById('seasonSelect')?.value : null);
   const e = options ? (options.episode ?? null) : (fromFiche ? document.getElementById('episodeSelect')?.value : null);
   let packFiles = options?.files?.length > 1 ? options.files : null;
-  if (!options && window.lastDebridFiles && window.lastDebridFiles.length > 1 && window.lastDebridFiles.some(f => f.download === url)) {
-    const sorted = [...window.lastDebridFiles].sort((a, b) => (a.filename || '').localeCompare(b.filename || ''));
+  if (!options && lastDebridFiles && lastDebridFiles.length > 1 && lastDebridFiles.some(f => f.download === url)) {
+    const sorted = [...lastDebridFiles].sort((a, b) => (a.filename || '').localeCompare(b.filename || ''));
     const idx = sorted.findIndex(f => f.download === url);
     if (idx >= 0) packFiles = sorted.slice(idx);
   }
 
   const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
-  const isIntegrated = window.kinoPlayerMode === 'integrated' || (window.kinoPlayerMode !== 'external' && isMacPlatform);
+  const isIntegrated = playerPrefs.playerMode === 'integrated' || (playerPrefs.playerMode !== 'external' && isMacPlatform);
   if (isIntegrated) {
     const pl = (packFiles && packFiles.length > 1)
       ? packFiles.map(p => ({ title: p.filename, url: p.download }))
@@ -949,3 +974,11 @@ async function openMpv(btn, url, filename, options = null) {
     }
   }, true);
 })();
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  copyTorrentMagnet, debridFromIndex, downloadDebridFile, onSeasonChange, openDebridFile,
+  openDebridLink, pickSeriesEpisodeSources, reloadSeriesEpisode, rememberSourcesMore,
+  renderTorrents, saveCurrentPlaybackOffline, scrollEpisodes, sendDebridFileToTv, setFilter,
+  startPcDownload, toggleSourceGroup, updateEpisodeArrows,
+});

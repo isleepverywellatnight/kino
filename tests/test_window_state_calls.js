@@ -9,7 +9,7 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'web/js/app-player.js'), 'utf8');
+const source = require('../tools/interface_source.js').scriptText('app-player.js');
 const code = source.slice(source.indexOf('let windowStateBusy'), source.indexOf("window.addEventListener('resize', syncWindowStateSoon);"));
 
 function load() {

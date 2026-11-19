@@ -8,8 +8,8 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const seriesSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/series-playback.js'), 'utf8'));
-const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+const seriesSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('series-playback.js'));
+const nativeSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
 const app = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
 
@@ -49,7 +49,7 @@ test('built-in player: French subtitles for an original-language release', () =>
   assert.equal(SP.automaticSubtitles('vf', 'Film.2024.TRUEFRENCH.1080p').enabled, false);
   assert.equal(SP.automaticSubtitles('vf', 'Film.2024.1080p.WEB', false).enabled, false, 'the setting turns it off');
   assert.equal(SP.automaticSubtitles('vf', '').enabled, false, 'no name, no guess');
-  assert.equal((app.match(/SeriesPlayback\.automaticSubtitles\(window\.kinoPrefLang \|\| 'vf', inAppCurrentFilename \|\| inAppCurrentTitle, window\.kinoAutoFrSubs !== false\)/g) || []).length, 3);
+  assert.equal((app.match(/SeriesPlayback\.automaticSubtitles\(playerPrefs\.prefLang \|\| 'vf', inAppCurrentFilename \|\| inAppCurrentTitle, playerPrefs\.autoFrSubs !== false\)/g) || []).length, 3);
   assert.match(app, /'Version originale : sous-titres français activés\. Le bouton CC permet de les retirer\.'/);
 });
 
@@ -67,7 +67,7 @@ function loadNative({ tracks, subtitles = [], autoSetting = true, online = true 
     querySelectorAll: () => [], contains: () => false, focus() {},
   });
   const context = {
-    window: { addEventListener() {}, kinoAutoFrSubs: autoSetting },
+    window: { addEventListener() {} }, playerPrefs: { autoFrSubs: autoSetting },
     document: {
       getElementById: id => (id === 'nativePlayer' && !appended ? null : make(id)),
       createElement: () => make('nativePlayer'),
@@ -86,7 +86,7 @@ function loadNative({ tracks, subtitles = [], autoSetting = true, online = true 
     URLSearchParams, networkOnline: online,
   };
   vm.runInNewContext(`${seriesSource}\n${nativeSource}`, context);
-  return { NativePlayer: context.window.NativePlayer, elements, calls, state };
+  return { NativePlayer: vm.runInContext('NativePlayer', context), elements, calls, state };
 }
 
 const flush = async () => { for (let i = 0; i < 6; i++) await new Promise(resolve => setImmediate(resolve)); };
@@ -152,6 +152,6 @@ test('native player: French audio, the setting off, or « Aucun » chosen leave 
 
 test('the setting: on by default, saved, sent to both players', () => {
   assert.match(html, /<label class="settings-label" for="cfgAutoFrSubs">Sous-titres français automatiques<\/label>[\s\S]*?<input type="checkbox" id="cfgAutoFrSubs" role="switch" checked>/);
-  assert.match(app, /window\.kinoAutoFrSubs = cfg\.auto_fr_subs !== false;/);
+  assert.match(app, /playerPrefs\.autoFrSubs = cfg\.auto_fr_subs !== false;/);
   assert.match(app, /auto_fr_subs: checked\('cfgAutoFrSubs', true\),/);
 });

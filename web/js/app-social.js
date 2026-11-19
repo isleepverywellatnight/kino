@@ -2,6 +2,31 @@
 // --- KINO SOCIAL, REMOTE, TRAKT & ADDONS ---
 // ==========================================
 
+import { registerActions } from './actions.js';
+import { CHECKED, act, actOn, attrJson, escapeHtml, html, render, safeUrl } from './html.js';
+import {
+  activeTab, api, catalogItems, currentMedia, getSeriesTargetEpisode, refreshSpoilerSurfaces,
+  refreshUserLists, seriesMetaVideos, setUserHistory, userHistory,
+} from './app-core.js';
+import { renderHomeResume } from './app-home.js';
+import { listItemState, renderActiveListTab, surpriseMeMedia } from './app-lists.js';
+import {
+  LIST_SHELF_SIZE, customListProgress, openCustomList, openLetterboxdModal,
+  submitLetterboxdCustomListImport, switchLbxModalTab, updateListBadges,
+} from './app-letterboxd.js';
+import { posterCardHtml, renderPosterCards, searchResultsShown, switchTab } from './app-tabs.js';
+import {
+  personView, renderDetailEpisodes, renderPersonPage, runSearch, selectMedia, toggleSearchMode,
+} from './app-fiche.js';
+import {
+  cycleInAppSubtitles, inAppAbsoluteTime, inAppCurrentMedia, inAppCurrentTitle, inAppDuration,
+  inAppNextTrack, inAppPrevTrack, inAppSeekRel, inAppSeekTo, setInAppVolume, showInAppToast,
+  toggleInAppFullscreen, toggleInAppMute, toggleInAppPlay,
+} from './app-player.js';
+import { renderAddonCatalogs } from './p2p-addons.js';
+import { networkOnline } from './app-start.js';
+import { NativePlayer } from './native-player.js';
+
 // escapeHtml, attrJson, act, actOn and html`…` are in web/js/html.js.
 
 function listMediaArg(m) {
@@ -21,10 +46,12 @@ function escapeJsString(s) {
 
 // --- Trakt.tv Integration ---
 let traktAuthPollTimer = null;
-let traktScrobbledStarted = false;
-let traktScrobbledStop = false;
+export let traktScrobbledStarted = false;
+export function setTraktScrobbledStarted(value) { traktScrobbledStarted = value; return value; }
+export let traktScrobbledStop = false;
+export function setTraktScrobbledStop(value) { traktScrobbledStop = value; return value; }
 
-async function checkTraktStatus() {
+export async function checkTraktStatus() {
   try {
     const res = await api('/api/trakt/status');
     const statusEl = document.getElementById('traktSyncStatus');
@@ -121,7 +148,7 @@ async function triggerTraktSync(btn) {
   }
 }
 
-async function scrobbleTrakt(action, media, progressPct) {
+export async function scrobbleTrakt(action, media, progressPct) {
   try {
     if (!/^tt\d+$/.test(String(media?.id || ''))) return false;
     const name = media.name || media.title || '';
@@ -145,7 +172,7 @@ async function scrobbleTrakt(action, media, progressPct) {
 // --- KINO Remote Smartphone ---
 let remotePollingInterval = null;
 
-async function openRemoteModal() {
+export async function openRemoteModal() {
   const modal = document.getElementById('remoteModal');
   const qrBox = document.getElementById('remoteQrContainer');
   const urlBox = document.getElementById('remoteDirectUrl');
@@ -195,7 +222,7 @@ async function openRemoteModal() {
   }
 }
 
-function closeRemoteModal() {
+export function closeRemoteModal() {
   const modal = document.getElementById('remoteModal');
   if (modal) modal.style.display = 'none';
 }
@@ -217,20 +244,20 @@ function copyRemoteUrl() {
   }
 }
 
-function startRemotePolling() {
+export function startRemotePolling() {
   if (remotePollingInterval) return;
   remotePollingInterval = setInterval(async () => {
     // The native player reports its own state and takes the same commands.
-    if (window.NativePlayer && typeof window.NativePlayer.isOpen === 'function' && window.NativePlayer.isOpen()) {
+    if (NativePlayer && typeof NativePlayer.isOpen === 'function' && NativePlayer.isOpen()) {
       try {
         await fetch('/api/player/state', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(window.NativePlayer.remoteState())
+          body: JSON.stringify(NativePlayer.remoteState())
         });
         const res = await fetch('/api/player/commands');
         const data = await res.json();
-        for (const cmd of (data && data.commands) || []) window.NativePlayer.handleRemoteCommand(cmd);
+        for (const cmd of (data && data.commands) || []) NativePlayer.handleRemoteCommand(cmd);
       } catch(e) {}
       return;
     }
@@ -335,13 +362,13 @@ let wpConnections = [];
 let wpRoomCode = null;
 let wpIsSyncing = false;
 
-function openWatchPartyModal() {
+export function openWatchPartyModal() {
   const modal = document.getElementById('watchPartyModal');
   if (modal) modal.style.display = 'flex';
   updateWpModalUI();
 }
 
-function closeWatchPartyModal() {
+export function closeWatchPartyModal() {
   const modal = document.getElementById('watchPartyModal');
   if (modal) modal.style.display = 'none';
 }
@@ -508,7 +535,7 @@ function setupWpConnection(conn) {
 
 // What a friend joining the party receives: the playing player's position.
 function wpPlayerSnapshot() {
-  const native = window.NativePlayer?.isOpen?.() ? window.NativePlayer.remoteState?.() : null;
+  const native = NativePlayer?.isOpen?.() ? NativePlayer.remoteState?.() : null;
   if (native) return { time: native.current_time || 0, paused: Boolean(native.paused), title: native.title || '' };
   const v = document.getElementById('inAppVideo');
   return v ? { time: v.currentTime, paused: v.paused, title: inAppCurrentTitle || '' } : null;
@@ -520,8 +547,8 @@ function handleWpIncomingData(data, fromConn) {
     appendWpChatMessage(String(data.user || 'Ami').slice(0, 40), String(data.text || '').slice(0, 500));
     return;
   }
-  if ((data.type === 'sync' || data.type === 'event') && window.NativePlayer?.isOpen?.()) {
-    window.NativePlayer.applySync(data);
+  if ((data.type === 'sync' || data.type === 'event') && NativePlayer?.isOpen?.()) {
+    NativePlayer.applySync(data);
     if (data.event === 'play' || (data.type === 'sync' && data.paused === false)) showInAppToast('Reprise synchronisée');
     else if (data.event === 'pause' || (data.type === 'sync' && data.paused === true)) showInAppToast('Pause synchronisée');
     return;
@@ -547,7 +574,7 @@ function handleWpIncomingData(data, fromConn) {
   }
 }
 
-function broadcastWpEvent(event, time) {
+export function broadcastWpEvent(event, time) {
   if (!wpRoomCode || wpConnections.length === 0 || wpIsSyncing) return;
   const payload = {
     type: 'event',
@@ -604,7 +631,7 @@ async function openAddonsModal() {
   await loadAddonsList();
 }
 
-function closeAddonsModal() {
+export function closeAddonsModal() {
   const modal = document.getElementById('addonsModal');
   if (modal) modal.style.display = 'none';
 }
@@ -697,7 +724,7 @@ let currentCommunityLists = [];
 let openCommunityListId = null;
 let communityStateFilter = 'all';
 
-async function loadCommunityTab() {
+export async function loadCommunityTab() {
   const grid = document.getElementById('communityListsGrid');
   if (!grid) return;
   openCommunityListId = null;
@@ -877,7 +904,7 @@ async function toggleWatchedItem(mediaObj) {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(mediaObj)
   });
-  userHistory = res.history || [];
+  setUserHistory(res.history || []);
   updateListBadges();
   renderHomeResume();
   if (searchResultsShown) {
@@ -908,7 +935,7 @@ async function toggleWatchedSeriesEp(seasonNum, epNum) {
       episode: epNum
     })
   });
-  userHistory = res.history || [];
+  setUserHistory(res.history || []);
   updateListBadges();
   renderHomeResume();
   renderDetailEpisodes(seasonNum);
@@ -940,7 +967,7 @@ async function toggleWatchedWholeSeason(customSeason = null) {
       episodes: eps
     })
   });
-  userHistory = res.history || [];
+  setUserHistory(res.history || []);
   updateListBadges();
   renderHomeResume();
   renderDetailEpisodes(s);
@@ -954,3 +981,13 @@ async function toggleWatchedWholeSeason(customSeason = null) {
   }
 }
 
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  closeAddonsModal, closeCommunityActiveList, closeRemoteModal, closeWatchPartyModal,
+  copyRemoteUrl, copyWpRoomCode, createWatchPartyRoom, importCustomLetterboxdFromInput,
+  joinWatchPartyRoom, leaveWatchPartyRoom, openAddonsModal, openCommunityList, openImportedList,
+  openRemoteModal, openWatchPartyModal, sendWpMessage, setCommunityStateFilter, showJoinWatchParty,
+  surpriseMeFromCommunityList, surpriseMeFromOpenCommunityList, toggleAddonSwitch, toggleTraktAuth,
+  toggleWatchedItem, toggleWatchedSeriesEp, toggleWatchedWholeSeason, toggleWpChat,
+  triggerTraktSync, uploadAddonFile,
+});

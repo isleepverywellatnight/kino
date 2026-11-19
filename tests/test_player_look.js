@@ -12,7 +12,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const app = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
-const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+const nativeSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
 
 function extract(name) {
   const start = app.search(new RegExp(`(?:async )?function ${name}\\(`));
@@ -165,7 +165,7 @@ test('Escape, closing the player and the idle timer respect the menu', () => {
   assert.match(app, /if \(isInput\) return;\n  if \(handleInAppMenuKey\(e\)\) return;/);
   assert.match(extract('resetInAppIdleTimer'), /!inAppIsDraggingVol && !isInAppMoreMenuOpen\(\)/);
   assert.match(app, /overlay\.classList\.remove\('active', 'idle'\);\n  \}\n  closeInAppMoreMenu\(false\);/);
-  assert.match(app, /initGenreStrip\(\);\ninitInAppMoreMenu\(\);/);
+  assert.match(app, /initGenreStrip\(\);\n\s+initInAppMoreMenu\(\);/);
 });
 
 // A tiny DOM, enough for the native overlay to build and render.
@@ -188,12 +188,12 @@ function loadNative(state) {
     activeElement: null,
   };
   const context = {
-    window: { addEventListener() {} }, document, localStorage: { getItem: () => '0.8', setItem() {} },
+    window: { addEventListener() {} }, playerPrefs: {}, document, localStorage: { getItem: () => '0.8', setItem() {} },
     api: async () => ({ state }),     SVG_ICONS: { play: raw('<svg data-icon="play"/>'), pause: raw('<svg data-icon="pause"/>'), volHigh: raw('<svg data-icon="volHigh"/>'), volLow: raw('<svg data-icon="volLow"/>'), volMute: raw('<svg data-icon="volMute"/>') },
     setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {}, Date,
   };
   vm.runInNewContext(nativeSource, context);
-  return { NativePlayer: context.window.NativePlayer, elements };
+  return { NativePlayer: vm.runInContext('NativePlayer', context), elements };
 }
 
 test('the native player uses the built-in player classes and icons', async () => {

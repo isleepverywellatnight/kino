@@ -8,7 +8,7 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+const nativeSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
 const app = require('../tools/interface_source.js').appSource();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
@@ -41,7 +41,7 @@ function loadNative(state, globals = {}) {
   };
   const FakeDate = class extends Date { static now() { return clock.now; } };
   const context = {
-    window: { addEventListener() {} }, document, localStorage: { getItem: () => null, setItem() {} },
+    window: { addEventListener() {} }, playerPrefs: {}, document, localStorage: { getItem: () => null, setItem() {} },
     api: async (url, options) => {
       const body = options?.body ? JSON.parse(options.body) : null;
       calls.push([url, body]);
@@ -57,7 +57,7 @@ function loadNative(state, globals = {}) {
     ...globals,
   };
   vm.runInNewContext(nativeSource, context);
-  return { NativePlayer: context.window.NativePlayer, elements, calls, broadcasts, clock, chat, inAppOverlay };
+  return { NativePlayer: vm.runInContext('NativePlayer', context), elements, calls, broadcasts, clock, chat, inAppOverlay };
 }
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -154,7 +154,7 @@ test('incoming party events go to the native player when it plays', () => {
   const toasts = [];
   const msgs = { appended: [], scrollTop: 0, scrollHeight: 10, appendChild(div) { this.appended.push(div); } };
   const context = {
-    window: { NativePlayer: { isOpen: () => true, applySync: data => applied.push(data), remoteState: () => ({ current_time: 812.4, paused: false, title: 'Film' }) } },
+    NativePlayer: { isOpen: () => true, applySync: data => applied.push(data), remoteState: () => ({ current_time: 812.4, paused: false, title: 'Film' }) },
     document: {
       getElementById: id => ({ inAppWpChatBox: { style: {} }, inAppWpMessages: msgs, inAppVideo: { currentTime: 1, paused: true } })[id] || null,
       createElement: () => ({ style: {}, innerHTML: '' }),
@@ -166,7 +166,7 @@ test('incoming party events go to the native player when it plays', () => {
   assert.equal(applied.length, 1);
   assert.deepEqual(toasts, ['Pause synchronisée']);
   assert.deepEqual({ ...context.api_.wpPlayerSnapshot() }, { time: 812.4, paused: false, title: 'Film' });
-  context.window.NativePlayer.isOpen = () => false;
+  context.NativePlayer.isOpen = () => false;
   assert.deepEqual({ ...context.api_.wpPlayerSnapshot() }, { time: 1, paused: true, title: 'Web' }, 'the web player otherwise');
 
   context.api_.handleWpIncomingData({ type: 'chat', user: '<img src=x onerror=alert(1)>', text: '<b>salut</b> & bienvenue dans la soirée cinéma' });
@@ -179,7 +179,7 @@ test('incoming party events go to the native player when it plays', () => {
 });
 
 test('toasts, party window and menu reach the native player', () => {
-  assert.match(app, /function showInAppToast\(msg, duration = 3000\) \{\n  \/\/ The native player shows its own messages \(Watch Party, remote…\)\.\n  if \(window\.NativePlayer\?\.isOpen\?\.\(\) && typeof window\.NativePlayer\.notify === 'function'\) \{/);
+  assert.match(app, /function showInAppToast\(msg, duration = 3000\) \{\n  \/\/ The native player shows its own messages \(Watch Party, remote…\)\.\n  if \(NativePlayer\?\.isOpen\?\.\(\) && typeof NativePlayer\.notify === 'function'\) \{/);
   assert.match(nativeSource, /id="nativeParty">Watch Party<\/button>/);
   assert.match(css, /#remoteModal, #watchPartyModal \{ z-index: 10050; \}/);
   const chatCode = app.slice(app.indexOf('function appendWpChatMessage(user, text) {'), app.indexOf('// --- Gestionnaire d\'Add-ons ---'));

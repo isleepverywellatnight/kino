@@ -10,7 +10,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 
 const ROOT = path.join(__dirname, '..');
 const html = require('../tools/interface_source.js').indexHtml();
-const source = fs.readFileSync(path.join(ROOT, 'web/js/app-start.js'), 'utf8');
+const source = require('../tools/interface_source.js').scriptText('app-start.js');
 const start = source.indexOf('let kinoUpdatePendingAction');
 const end = source.indexOf('async function checkKinoUpdates()');
 const code = source.slice(start, end);

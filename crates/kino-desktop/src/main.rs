@@ -546,6 +546,7 @@ fn self_check() -> Result<Value, String> {
     for file in [
         "index.html",
         "remote.html",
+        "js/main.js",
         "js/vendor/qrcode.min.js",
         "js/playback-help.js",
         "js/vendor/peerjs.min.js",
@@ -1031,7 +1032,10 @@ fn main() -> Result<()> {
                 window.set_visible(true);
                 window.set_focus();
                 if info["id"].is_string() {
-                    let _ = webview.evaluate_script(&format!("openFromNotification({info})"));
+                    // The page's functions are module-scoped: it listens for this event.
+                    let _ = webview.evaluate_script(&format!(
+                        "window.dispatchEvent(new CustomEvent('kino-notification', {{ detail: {info} }}))"
+                    ));
                 }
             }
             #[cfg(target_os = "macos")]

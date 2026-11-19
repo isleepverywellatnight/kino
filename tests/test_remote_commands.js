@@ -10,7 +10,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const source = require('../tools/interface_source.js').appSource();
 // The phone page's controls (declared actions, read as calls) and its code.
 const remotePage = withCalls(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/remote.html'), 'utf8'))
-  + fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/remote.js'), 'utf8');
+  + require('../tools/interface_source.js').scriptText('remote.js');
 const handler = 'function handleRemoteCommand(cmd)' + source
   .split('function handleRemoteCommand(cmd)', 2)[1]
   .split('// --- Watch Party P2P (PeerJS) ---', 1)[0];
@@ -83,7 +83,7 @@ test('the in-app player reports the fields the remote and the update guard read'
   for (const key of ['playing', 'paused', 'current_time', 'duration']) assert.ok(sent.has(key), `${key} is not reported`);
   for (const key of sent) assert.ok(known.has(key), `${key} is not part of the remote state`);
   assert.match(source, /function closeInAppPlayer\(\) \{\n(?:  const finishedId = [^\n]*\n)?  reportInAppPlaybackClosed\(\);/);
-  const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+  const nativeSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
   const nativeBody = nativeSource.split('function remoteState()', 2)[1].split('return {', 2)[1].split('};', 1)[0];
   const nativeSent = new Set([...nativeBody.matchAll(/(?:^|[\s,])([a-z_]+):/g)].map(([, key]) => key));
   for (const key of ['playing', 'paused', 'current_time', 'duration']) assert.ok(nativeSent.has(key), `native ${key} is not reported`);

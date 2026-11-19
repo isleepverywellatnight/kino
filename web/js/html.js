@@ -12,7 +12,7 @@ class SafeHtml {
 }
 
 /** Text made safe for HTML; a fragment, so html`…` does not escape it twice. @param {unknown} s */
-function escapeHtml(s) {
+export function escapeHtml(s) {
   return new SafeHtml(escapeText(s));
 }
 
@@ -28,7 +28,7 @@ function escapeText(s) {
 }
 
 /** Text the page wrote itself (markup, an icon): taken as it is. @param {unknown} text */
-function raw(text) {
+export function raw(text) {
   return text instanceof SafeHtml ? text : new SafeHtml(text === null || text === undefined ? '' : String(text));
 }
 
@@ -44,7 +44,7 @@ function htmlPart(value) {
  * A fragment: the template's own markup as written, each value escaped.
  * @param {TemplateStringsArray} strings @param {...unknown} values
  */
-function html(strings, ...values) {
+export function html(strings, ...values) {
   let out = strings[0];
   values.forEach((value, i) => { out += htmlPart(value) + strings[i + 1]; });
   return new SafeHtml(out);
@@ -55,25 +55,25 @@ function html(strings, ...values) {
  * list of them) goes in as markup; anything else goes in as text.
  * @param {Element | null | undefined} element @param {unknown} content
  */
-function render(element, content) {
+export function render(element, content) {
   if (!element) return;
   element.innerHTML = htmlPart(content);
 }
 
 /** Replaces an element with a fragment (outerHTML). @param {Element | null | undefined} element @param {unknown} fragment */
-function replaceWith(element, fragment) {
+export function replaceWith(element, fragment) {
   if (!element) return;
   element.outerHTML = htmlPart(fragment);
 }
 
 /** Inserts a fragment next to or inside an element (insertAdjacentHTML). @param {Element | null | undefined} element @param {InsertPosition} position @param {unknown} fragment */
-function renderAdjacent(element, position, fragment) {
+export function renderAdjacent(element, position, fragment) {
   if (!element) return;
   element.insertAdjacentHTML(position, htmlPart(fragment));
 }
 
 /** A link or image address that cannot run code: web, page-relative or an inline image. @param {unknown} url */
-function safeUrl(url) {
+export function safeUrl(url) {
   const text = String(url ?? '').trim();
   if (/^(https?:)?\/\//i.test(text) || text.startsWith('/') || /^data:image\//i.test(text) || text.startsWith('blob:')) return text;
   if (!/^[a-z][a-z0-9+.-]*:/i.test(text)) return text;
@@ -81,7 +81,7 @@ function safeUrl(url) {
 }
 
 /** JSON for a value inside a double-quoted HTML attribute. @param {unknown} value */
-function attrJson(value) {
+export function attrJson(value) {
   return raw(escapeText(JSON.stringify(value === undefined ? null : value)));
 }
 
@@ -89,18 +89,18 @@ function attrJson(value) {
 // `<button ${act('debridFromIndex', idx)}>` gives data-on-click="debridFromIndex"
 // and data-click-args="[3]". The arguments are values, not code; THIS and EVENT
 // stand for the element and the event, VALUE and CHECKED for its value and state.
-const THIS = { $: 'this' };
-const EVENT = { $: 'event' };
-const VALUE = { $: 'value' };
-const CHECKED = { $: 'checked' };
+export const THIS = { $: 'this' };
+export const EVENT = { $: 'event' };
+export const VALUE = { $: 'value' };
+export const CHECKED = { $: 'checked' };
 
 /** @param {string} type @param {string} name @param {...unknown} args */
-function actOn(type, name, ...args) {
+export function actOn(type, name, ...args) {
   return raw(`data-on-${type}="${escapeText(name)}"${args.length ? ` data-${type}-args="${attrJson(args)}"` : ''}`);
 }
 
 /** @param {string} name @param {...unknown} args */
-function act(name, ...args) {
+export function act(name, ...args) {
   return actOn('click', name, ...args);
 }
 
