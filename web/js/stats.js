@@ -1,6 +1,12 @@
 // @ts-check
 // Mes statistiques (Bibliothèque → Plus). Loaded after the app parts (app-*.js), whose helpers
 // it uses: api, escapeHtml, titleAttrs, displayTitle, GENRE_FR, CLOUD_MONTHS.
+
+import { act, html, render } from './html.js';
+import { activeTab, api } from './app-core.js';
+import { CLOUD_MONTHS } from './app-cloud-settings.js';
+import { GENRE_FR, displayTitle, titleAttrs } from './app-fiche.js';
+
 'use strict';
 
 // --- Mes statistiques: what the history says, computed on this Mac (watch_stats.py) ---
@@ -102,7 +108,7 @@ function statsHtml(stats) {
     <p class="stats-note">Calculées sur ce Mac à partir de votre historique, sans rien envoyer. Les films importés comme vus comptent parmi les films vus, pas dans le temps de lecture ni dans les mois.</p>`;
 }
 
-async function loadStats() {
+export async function loadStats() {
   const body = document.getElementById('viewingStatsBody');
   if (!body) return;
   render(body, html`<p class="stats-empty">Calcul de vos statistiques…</p>`);

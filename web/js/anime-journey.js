@@ -1,5 +1,8 @@
 // @ts-check
-const AnimeJourneyView = (() => {
+
+import { THIS, act, html } from './html.js';
+
+export const AnimeJourneyView = (() => {
   const escape = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
   const formatLabel = format => ({TV: 'Série', TV_SHORT: 'Série courte', ONA: 'Série web',
@@ -65,4 +68,3 @@ const AnimeJourneyView = (() => {
   return {render, progress};
 })();
 
-if (typeof module !== 'undefined') module.exports = AnimeJourneyView;

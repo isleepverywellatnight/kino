@@ -1,11 +1,35 @@
 /* ============================================================================
  * ROULETTE HORIZONTALE KINO (SÉLECTION ALÉATOIRE)
  * ============================================================================ */
+
+import { registerActions } from './actions.js';
+import { EVENT, THIS, act, actOn, escapeHtml, html, render } from './html.js';
+import {
+  activeGenre, activeTab, api, catalogItems, catalogSort, getWatchedHistory, isInWatchlist,
+  setCatalogSort, setCurrentMedia, setUserHistory, toggleWatchlist, userHistory, userWatchlist,
+} from './app-core.js';
+import {
+  classicsCatalogCache, renderHomeResume, setClassicsCatalogCache, updateClassicsStatsBadge,
+} from './app-home.js';
+import {
+  openCustomListId, surpriseMeFromCustomList, updateListBadges, userCustomLists,
+} from './app-letterboxd.js';
+import { renderPosterCards } from './app-tabs.js';
+import { openTrailerModal } from './app-cloud-settings.js';
+import {
+  displayTitle, frenchGenre, oneClickCard, oneClickPlay, selectMedia, titleAttrs,
+} from './app-fiche.js';
+import { episodeAirLabel } from './app-sources.js';
+import { needsInternetHtml } from './app-start.js';
+
 let caseAudioCtx = null;
 let caseSoundEnabled = true;
 let caseSpinRaf = null;
-let caseSpinState = null;
+export let caseSpinState = null;
 let caseNoiseBuffer = null;
+// The custom list being drawn from, and the last title the draw chose.
+let customListRouletteTitle = '';
+let lastCaseWinnerMedia = null;
 
 function ensureCaseAudio() {
   if (!caseSoundEnabled) return null;
@@ -211,7 +235,7 @@ function toggleCaseSound() {
   }
 }
 
-function closeCaseModal() {
+export function closeCaseModal() {
   if (caseSpinRaf) {
     cancelAnimationFrame(caseSpinRaf);
     caseSpinRaf = null;
@@ -224,25 +248,25 @@ function closeCaseModal() {
   }
 }
 
-let activeCasePoolMode = 'catalog';
-let hideWatchedInCatalog = false;
+export let activeCasePoolMode = 'catalog';
+export let hideWatchedInCatalog = false;
 
 // « Masquer déjà vus » and the catalog sort are remembered for this viewer (convenience only).
 const CATALOG_VIEW_KEY = 'kino_catalog_view';
-const CATALOG_SORTS = ['top', 'imdbRating', 'recent', 'oldest'];
+export const CATALOG_SORTS = ['top', 'imdbRating', 'recent', 'oldest'];
 
-function restoreCatalogView() {
+export function restoreCatalogView() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(CATALOG_VIEW_KEY) || '{}') || {}; } catch (e) { saved = {}; }
   hideWatchedInCatalog = saved.hideWatched === true;
-  if (CATALOG_SORTS.includes(saved.sort)) catalogSort = saved.sort;
+  if (CATALOG_SORTS.includes(saved.sort)) setCatalogSort(saved.sort);
   const chip = document.getElementById('hideWatchedChip');
   if (chip) chip.classList.toggle('active', hideWatchedInCatalog);
   const select = document.getElementById('catalogSortSelect');
   if (select) select.value = catalogSort;
 }
 
-function saveCatalogView() {
+export function saveCatalogView() {
   try {
     localStorage.setItem(CATALOG_VIEW_KEY, JSON.stringify({ hideWatched: hideWatchedInCatalog, sort: catalogSort }));
   } catch (e) {}
@@ -296,13 +320,13 @@ function saveListView() {
   try { localStorage.setItem(LIST_VIEW_KEY, JSON.stringify(listView)); } catch (e) {}
 }
 
-function listItemKind(m) {
+export function listItemKind(m) {
   return ['series', 'anime', 'tv'].includes(m?.type) || (m?.is_anime && m?.type !== 'movie') ? 'series' : 'movie';
 }
 
 // 'watched', 'started' or 'todo', from the history. A series counts as watched
 // once its last known episode was seen.
-function listItemState(m) {
+export function listItemState(m) {
   const h = (userHistory || []).find(x => x.id === m?.id);
   if (!h) return 'todo';
   const pct = Number(h.progress_pct || 0);
@@ -312,7 +336,7 @@ function listItemState(m) {
   return pct > 1 ? 'started' : 'todo';
 }
 
-function foldSearchText(value) {
+export function foldSearchText(value) {
   return String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
@@ -384,7 +408,7 @@ function activeListItems() {
   return null;
 }
 
-function renderActiveListTab() {
+export function renderActiveListTab() {
   const rawList = activeListItems();
   if (!rawList) return;
   const view = listView[activeTab];
@@ -453,20 +477,20 @@ function renderActiveListTab() {
   renderPosterCards(filtered, 'movie');
 }
 
-async function surpriseMeMedia(poolArg = null) {
+export async function surpriseMeMedia(poolArg = null) {
   let poolMode = 'catalog';
   let customListItems = null;
 
   if (typeof poolArg === 'object' && poolArg && poolArg.items) {
     poolMode = 'customlist';
     customListItems = poolArg.items;
-    window._customListRouletteTitle = poolArg.title || 'Liste Letterboxd';
+    customListRouletteTitle = poolArg.title || 'Liste Letterboxd';
   } else if (typeof poolArg === 'string' && poolArg.startsWith('customlist:')) {
     poolMode = 'customlist';
     const lid = poolArg.split(':')[1];
     const l = userCustomLists.find(x => x.id === lid);
     customListItems = l?.items || [];
-    window._customListRouletteTitle = l?.title || 'Liste Letterboxd';
+    customListRouletteTitle = l?.title || 'Liste Letterboxd';
   } else if (poolArg === true || poolArg === 'watchlist') {
     poolMode = 'watchlist';
   } else if (poolArg === 'watched' || poolArg === 'classics' || poolArg === 'prestige' || poolArg === 'catalog') {
@@ -499,7 +523,7 @@ async function surpriseMeMedia(poolArg = null) {
       if (!classicsCatalogCache || !classicsCatalogCache.length) {
         try {
           const data = await api('/api/catalog?type=classics&sort=top');
-          classicsCatalogCache = data.metas || [];
+          setClassicsCatalogCache(data.metas || []);
         } catch (e) {}
       }
       sourceItems = (classicsCatalogCache && classicsCatalogCache.length) ? classicsCatalogCache : catalogItems;
@@ -638,7 +662,7 @@ async function surpriseMeMedia(poolArg = null) {
     if (poolMode === 'watchlist') kickerEl.textContent = 'TIRAGE · MA LISTE';
     else if (poolMode === 'watched') kickerEl.textContent = 'TIRAGE · DÉJÀ VUS';
     else if (poolMode === 'classics') kickerEl.textContent = 'TIRAGE · CLASSIQUES À VOIR DANS SA VIE';
-    else if (poolMode === 'customlist') kickerEl.textContent = `TIRAGE · ${(window._customListRouletteTitle || 'LISTE LETTERBOXD').toUpperCase()}`;
+    else if (poolMode === 'customlist') kickerEl.textContent = `TIRAGE · ${(customListRouletteTitle || 'LISTE LETTERBOXD').toUpperCase()}`;
     else kickerEl.textContent = activeGenre ? `TIRAGE · ${activeGenre.toUpperCase()}` : (fallbackType === 'series' ? 'TIRAGE · SÉRIES' : 'TIRAGE · FILMS');
   }
   if (titleEl) titleEl.textContent = 'Sélection en cours...';
@@ -704,7 +728,7 @@ async function surpriseMeMedia(poolArg = null) {
   caseSpinRaf = requestAnimationFrame(stepSpin);
 }
 
-function skipCaseSpin() {
+export function skipCaseSpin() {
   if (!caseSpinState || caseSpinState.finished) return;
   if (caseSpinRaf) {
     cancelAnimationFrame(caseSpinRaf);
@@ -756,7 +780,7 @@ function finishCaseSpin(skipped = false) {
     imdbRating: rating,
     poolMode: poolMode || 'catalog'
   };
-  window._lastCaseWinnerMedia = mediaObj;
+  lastCaseWinnerMedia = mediaObj;
 
   if (winPanel) {
     winPanel.style.borderColor = '';
@@ -788,7 +812,7 @@ function finishCaseSpin(skipped = false) {
 }
 
 async function caseToggleWatchlist(btnEl) {
-  const m = window._lastCaseWinnerMedia;
+  const m = lastCaseWinnerMedia;
   if (!m || !m.id) return;
   await toggleWatchlist(null, m);
   if (btnEl) {
@@ -798,7 +822,7 @@ async function caseToggleWatchlist(btnEl) {
 }
 
 async function caseMarkWatchedAndRespin(btnEl) {
-  const m = window._lastCaseWinnerMedia;
+  const m = lastCaseWinnerMedia;
   if (!m || !m.id) return;
   if (btnEl) {
     btnEl.disabled = true;
@@ -817,7 +841,7 @@ async function caseMarkWatchedAndRespin(btnEl) {
         force_watched: true
       })
     });
-    userHistory = res.history || [];
+    setUserHistory(res.history || []);
     updateListBadges();
     renderHomeResume();
     if (activeTab === 'watchlist' || activeTab === 'watched') {
@@ -837,21 +861,21 @@ async function caseMarkWatchedAndRespin(btnEl) {
 }
 
 function casePlayOneClick(ev, btnEl) {
-  const m = window._lastCaseWinnerMedia;
+  const m = lastCaseWinnerMedia;
   if (!m) return;
   closeCaseModal();
   oneClickCard(ev, btnEl, m);
 }
 
 function caseOpenDetails() {
-  const m = window._lastCaseWinnerMedia;
+  const m = lastCaseWinnerMedia;
   if (!m) return;
   closeCaseModal();
   selectMedia(m);
 }
 
 function caseOpenTrailer() {
-  const m = window._lastCaseWinnerMedia;
+  const m = lastCaseWinnerMedia;
   if (!m) return;
   closeCaseModal();
   openTrailerModal('', m.name || 'KINO', m.year || '', 'vf');
@@ -919,7 +943,7 @@ function renderMySeries() {
   }));
 }
 
-async function loadMySeries() {
+export async function loadMySeries() {
   const grid = document.getElementById('postersGrid');
   const request = ++mySeriesRequest;
   if (grid) render(grid, html`<p class="myseries-fact">Chargement de vos séries…</p>`);
@@ -947,7 +971,7 @@ function openMySeries(id) {
 async function playMySeries(id, btn) {
   const item = mySeriesData.find(entry => entry.id === id);
   if (!item?.next) return;
-  currentMedia = mySeriesMedia(item);
+  setCurrentMedia(mySeriesMedia(item));
   const { season, episode } = item.next;
   await oneClickPlay({
     imdb_id: item.id, type: 'series', season, episode,
@@ -1061,7 +1085,7 @@ function renderReleaseCalendar() {
     later]);
 }
 
-async function loadReleaseCalendar() {
+export async function loadReleaseCalendar() {
   const grid = document.getElementById('postersGrid');
   const request = ++releaseCalendarRequest;
   if (grid) render(grid, html`<p class="myseries-fact">Chargement du calendrier…</p>`);
@@ -1090,10 +1114,24 @@ function openCalendarSeries(id) {
 async function playCalendarEpisode(id, season, episode, btn) {
   const item = calendarEntry(id);
   if (!item || !Number(season) || !Number(episode)) return;
-  currentMedia = mySeriesMedia(item);
+  setCurrentMedia(mySeriesMedia(item));
   await oneClickPlay({
     imdb_id: item.id, type: 'series', season: Number(season), episode: Number(episode),
     title: `${item.name} — S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`,
     name: item.name, poster: item.poster || '', year: item.year || '',
   }, btn);
 }
+
+// « Surprise »: from the classics when on that tab, else from the catalogue.
+function kinoSurprise() {
+  surpriseMeMedia(activeTab === 'classics' ? 'classics' : 'catalog');
+}
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  caseMarkWatchedAndRespin, caseOpenDetails, caseOpenTrailer, casePlayOneClick,
+  caseToggleWatchlist, closeCaseModal, kinoSurprise, onChangeListSort, openCalendarSeries,
+  openMySeries, playCalendarEpisode, playMySeries, renderActiveListTab, resetListFilters,
+  setListFilter, skipCaseSpin, surpriseMeFromCurrentList, surpriseMeMedia, toggleCaseSound,
+  toggleHideWatchedCatalog,
+});

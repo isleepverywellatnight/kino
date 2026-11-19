@@ -1,3 +1,22 @@
+import { registerActions } from './actions.js';
+import { escapeHtml, html, render } from './html.js';
+import { SeriesPlayback } from './series-playback.js';
+import { Spoilers } from './spoilers.js';
+import { api, currentMedia, playerPrefs, refreshPlayerSpoilerTitles, refreshUserLists } from './app-core.js';
+import { clearDiscordRpc, updateDiscordRpc } from './app-tabs.js';
+import {
+  broadcastWpEvent, scrobbleTrakt, setTraktScrobbledStarted, setTraktScrobbledStop,
+  startRemotePolling, traktScrobbledStarted, traktScrobbledStop,
+} from './app-social.js';
+import { castToTv, tvMediaPayload, tvTitle } from './app-fiche.js';
+import { renderDebridState } from './app-sources.js';
+import { askRatingAfterPlayback } from './ratings.js';
+import {
+  installKinoUpdate, kinoUpdatePendingAction, rollbackKinoUpdate, setKinoUpdatePendingAction,
+} from './app-start.js';
+import { closePlaybackHelp } from './playback-help.js';
+import { NativePlayer } from './native-player.js';
+
 async function windowAction(action) {
   if (action === 'maximize' && document.body.classList.contains('is-mac-native') && window.event && window.event.type === 'dblclick') {
     return;
@@ -34,7 +53,7 @@ async function windowAction(action) {
   }).catch(() => {});
 }
 
-function initResizeHandles() {
+export function initResizeHandles() {
   const handles = document.querySelectorAll('.win-resize-handle');
   const isWin = /Win/i.test(navigator.platform || navigator.userAgent);
   handles.forEach(h => {
@@ -154,7 +173,7 @@ let windowStateBusy = false;
 let windowStateAgain = false;
 let windowStateTimer = null;
 
-async function syncWindowState() {
+export async function syncWindowState() {
   if (windowStateBusy) {
     windowStateAgain = true;
     return;
@@ -213,7 +232,7 @@ document.addEventListener('webkitfullscreenchange', syncWindowState);
 setInterval(() => { if (!document.hidden) syncWindowState(); }, 1500);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncWindowState(); });
 
-const SVG_ICONS = {
+export const SVG_ICONS = {
   play: html`<svg class="svg-icon" viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>`,
   pause: html`<svg class="svg-icon" viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`,
   volHigh: html`<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`,
@@ -221,12 +240,12 @@ const SVG_ICONS = {
   volMute: html`<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`
 };
 
-let inAppPlaylist = [];
-let inAppPlaylistIndex = 0;
-let inAppCurrentMedia = null;
-let inAppCurrentUrl = '';
-let inAppCurrentTitle = '';
-let inAppCurrentFilename = '';
+export let inAppPlaylist = [];
+export let inAppPlaylistIndex = 0;
+export let inAppCurrentMedia = null;
+export let inAppCurrentUrl = '';
+export let inAppCurrentTitle = '';
+export let inAppCurrentFilename = '';
 let inAppVideoFps = null;
 let inAppVideoCodec = null; // codec of the first video track, from the probe
 let inAppDownscaleVideo = false; // set by the freeze guard: 1080p for the rest of this playback
@@ -237,18 +256,18 @@ let inAppStreamOffset = 0;
 let inAppTotalDuration = 0;
 let inAppNeedsVideoConversion = false;
 let inAppNeedsAudioConversion = true;
-let inAppSelectedAudioIndex = null;
-let inAppAudioTracks = [];
+export let inAppSelectedAudioIndex = null;
+export let inAppAudioTracks = [];
 let inAppGlobalAudioTrack = null;
-let inAppSeriesId = '';
+export let inAppSeriesId = '';
 let inAppSeriesPreference = null;
 let inAppSessionScope = '';
 let inAppSessionAudioChoice = null;
 let inAppSessionSubtitleChoice = null;
-let inAppPlaybackGeneration = 0;
-let inAppRecovery = null;
+export let inAppPlaybackGeneration = 0;
+export let inAppRecovery = null;
 let inAppRemuxStream = null;
-let inAppIsRemux = false;
+export let inAppIsRemux = false;
 let inAppStreamErrorHandler = null;
 let inAppIdleTimeout = null;
 let inAppFallbackTimer = null;
@@ -258,11 +277,11 @@ let inAppIntroData = null;
 let inAppUndoTimer = null;
 let inAppUndoTargetSec = 0;
 
-function inAppAbsoluteTime(video) {
+export function inAppAbsoluteTime(video) {
   return inAppStreamOffset + (video?.currentTime || 0);
 }
 
-function inAppDuration(video) {
+export function inAppDuration(video) {
   if (inAppTotalDuration > 0) return inAppTotalDuration;
   const duration = video?.duration;
   if (Number.isFinite(duration) && duration > 0) {
@@ -365,7 +384,7 @@ async function resetInAppSeriesPreference() {
     if (inAppGlobalAudioTrack && inAppSelectedAudioIndex !== inAppGlobalAudioTrack.index) {
       changeInAppAudioTrack(inAppGlobalAudioTrack.index, false);
     }
-    const globalSubs = SeriesPlayback.globalSubtitles(window.kinoPrefLang || 'vf');
+    const globalSubs = SeriesPlayback.globalSubtitles(playerPrefs.prefLang || 'vf');
     const chosen = SeriesPlayback.chooseSubtitles(inAppAvailableSubs, globalSubs);
     await activateInAppSubtitle(chosen.index, false);
     updateInAppSeriesPreferenceUI();
@@ -534,7 +553,7 @@ function inAppPlaybackPlan(info, selectedAudio, videoElement) {
     audioIndex: audio ? audio.index : null, hasVideo: Boolean(videoTrack), hasAudio: Boolean(audio) };
 }
 
-async function recoverInAppSource(generation) {
+export async function recoverInAppSource(generation) {
   const recovery = inAppRecovery;
   if (!recovery || recovery.pending || generation !== inAppPlaybackGeneration || recovery.attempts >= 5) return false;
   recovery.pending = true;
@@ -591,7 +610,7 @@ function renderInAppAudioTracks(tracks, selectedIndex) {
   });
 }
 
-function changeInAppAudioTrack(value, rememberForSession = true) {
+export function changeInAppAudioTrack(value, rememberForSession = true) {
   const video = document.getElementById('inAppVideo');
   const track = inAppAudioTracks.find(item => String(item.index) === String(value));
   if (!video || !track || !inAppCurrentUrl) return;
@@ -608,7 +627,7 @@ function changeInAppAudioTrack(value, rememberForSession = true) {
   updateInAppSeriesPreferenceUI();
 }
 
-function inAppSeekTo(seconds) {
+export function inAppSeekTo(seconds) {
   const video = document.getElementById('inAppVideo');
   if (!video) return;
   const total = inAppDuration(video);
@@ -635,7 +654,7 @@ function formatTime(sec) {
   return `${String(h).padStart(2, '0')}:${String(remMin).padStart(2, '0')}:${String(remSec).padStart(2, '0')}`;
 }
 
-function resetInAppIdleTimer() {
+export function resetInAppIdleTimer() {
   const overlay = document.getElementById('inAppPlayerOverlay');
   if (!overlay || !overlay.classList.contains('active')) return;
   overlay.classList.remove('idle');
@@ -670,7 +689,7 @@ function openInAppMoreMenu(focusFirst) {
   if (focusFirst) inAppMenuItems()[0]?.focus();
 }
 
-function closeInAppMoreMenu(returnFocus) {
+export function closeInAppMoreMenu(returnFocus) {
   const menu = document.getElementById('inAppMoreMenu');
   const button = document.getElementById('inAppMoreBtn');
   if (!menu || menu.hidden) return false;
@@ -712,7 +731,7 @@ function toggleInAppMoreMenu(event) {
 
 // In the menu, arrows move between items and Space/Enter press them instead of
 // driving playback. Returns true when the key belongs to the menu.
-function handleInAppMenuKey(event) {
+export function handleInAppMenuKey(event) {
   const menu = document.getElementById('inAppMoreMenu');
   if (!menu || menu.hidden || !menu.contains(document.activeElement)) return false;
   if (event.key === ' ' || event.key === 'Enter') return true;
@@ -729,7 +748,7 @@ function handleInAppMenuKey(event) {
   return true;
 }
 
-function initInAppMoreMenu() {
+export function initInAppMoreMenu() {
   const menu = document.getElementById('inAppMoreMenu');
   if (!menu) return;
   // Settings that cycle (voix, clarté, vitesse, taille) keep the menu open;
@@ -743,10 +762,10 @@ function initInAppMoreMenu() {
   });
 }
 
-function showInAppToast(msg, duration = 3000) {
+export function showInAppToast(msg, duration = 3000) {
   // The native player shows its own messages (Watch Party, remote…).
-  if (window.NativePlayer?.isOpen?.() && typeof window.NativePlayer.notify === 'function') {
-    window.NativePlayer.notify(msg, duration > 0 ? duration : 3000);
+  if (NativePlayer?.isOpen?.() && typeof NativePlayer.notify === 'function') {
+    NativePlayer.notify(msg, duration > 0 ? duration : 3000);
     return;
   }
   const toast = document.getElementById('inAppStatusToast');
@@ -774,7 +793,7 @@ function updatePlayPauseBtn(isPlaying) {
   }
 }
 
-function setInAppVolume(vol, unmute = true) {
+export function setInAppVolume(vol, unmute = true) {
   const video = document.getElementById('inAppVideo');
   if (!video) return;
   const clamped = Math.max(0, Math.min(1, vol));
@@ -813,7 +832,7 @@ function updateInAppVolUI() {
   }
 }
 
-function toggleInAppMute() {
+export function toggleInAppMute() {
   const video = document.getElementById('inAppVideo');
   if (!video) return;
   if (video.muted) {
@@ -831,7 +850,7 @@ function toggleInAppMute() {
   updateInAppVolUI();
 }
 
-function fixInAppAudio() {
+export function fixInAppAudio() {
   const video = document.getElementById('inAppVideo');
   if (!video || !inAppCurrentUrl) return;
   const curSec = Math.floor(inAppAbsoluteTime(video));
@@ -912,17 +931,17 @@ function applyInAppClarity(idx, showToast = false) {
   }
 }
 
-function cycleInAppClarity() {
+export function cycleInAppClarity() {
   applyInAppClarity(inAppClarityIdx + 1, true);
   resetInAppIdleTimer();
 }
 
 // --- Sous-titres OpenSubtitles v3 (FR / EN) ---
-let inAppAvailableSubs = [{ label: 'CC : Off', lang: 'off', kind: '', variant: '', url: '' }];
-let inAppActiveSubIdx = 0;
-let inAppActiveCues = [];
-let inAppSubDelaySec = 0;
-const inAppSubCuesCache = {};
+export let inAppAvailableSubs = [{ label: 'CC : Off', lang: 'off', kind: '', variant: '', url: '' }];
+export let inAppActiveSubIdx = 0;
+export let inAppActiveCues = [];
+export let inAppSubDelaySec = 0;
+export const inAppSubCuesCache = {};
 
 async function loadInAppSubtitlesForCurrentMedia() {
   const generation = inAppPlaybackGeneration;
@@ -948,7 +967,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
     } catch (error) {}
     const selected = SeriesPlayback.resolveSubtitles(inAppAvailableSubs,
       inAppSessionSubtitleChoice, inAppSeriesPreference?.subtitles,
-      SeriesPlayback.automaticSubtitles(window.kinoPrefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, window.kinoAutoFrSubs !== false));
+      SeriesPlayback.automaticSubtitles(playerPrefs.prefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, playerPrefs.autoFrSubs !== false));
     await activateInAppSubtitle(selected.index, false);
     updateInAppSeriesPreferenceUI();
     return;
@@ -995,10 +1014,10 @@ async function loadInAppSubtitlesForCurrentMedia() {
   if (generation !== inAppPlaybackGeneration) return;
   const selected = SeriesPlayback.resolveSubtitles(inAppAvailableSubs,
     inAppSessionSubtitleChoice, inAppSeriesPreference?.subtitles,
-    SeriesPlayback.automaticSubtitles(window.kinoPrefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, window.kinoAutoFrSubs !== false));
+    SeriesPlayback.automaticSubtitles(playerPrefs.prefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, playerPrefs.autoFrSubs !== false));
   await activateInAppSubtitle(selected.index, false);
-  const automatic = !SeriesPlayback.globalSubtitles(window.kinoPrefLang || 'vf').enabled
-    && SeriesPlayback.automaticSubtitles(window.kinoPrefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, window.kinoAutoFrSubs !== false).enabled;
+  const automatic = !SeriesPlayback.globalSubtitles(playerPrefs.prefLang || 'vf').enabled
+    && SeriesPlayback.automaticSubtitles(playerPrefs.prefLang || 'vf', inAppCurrentFilename || inAppCurrentTitle, playerPrefs.autoFrSubs !== false).enabled;
   if (automatic && selected.source === 'global' && generation === inAppPlaybackGeneration) {
     showInAppToast(selected.missing
       ? 'Version originale : aucun sous-titre français trouvé. Le bouton CC propose les autres langues.'
@@ -1011,7 +1030,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
   updateInAppSeriesPreferenceUI();
 }
 
-async function cycleInAppSubtitles() {
+export async function cycleInAppSubtitles() {
   resetInAppIdleTimer();
   if (inAppAvailableSubs.length <= 1) {
     showInAppToast(html`<strong>Sous-titres</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucun sous-titre OpenSubtitles trouvé pour ce titre</span>`, 1800);
@@ -1098,7 +1117,7 @@ function cycleInAppSubSize() {
   showInAppToast(html`<strong>Taille sous-titres : ${cfg.name}</strong>`, 1400);
 }
 
-function adjustInAppSubDelay(deltaSec) {
+export function adjustInAppSubDelay(deltaSec) {
   if (!inAppActiveCues.length) return;
   inAppSubDelaySec = Math.round((inAppSubDelaySec + deltaSec) * 100) / 100;
   const sign = inAppSubDelaySec >= 0 ? '+' : '';
@@ -1136,15 +1155,15 @@ function updateInAppSubtitleOverlay(currentTime) {
 
 // --- Mode Boost Voix / Audio Nuit ---
 function applyInAppAudioUI(mode, showToast = false) {
-  window.kinoAudioMode = mode || 'voice_boost';
+  playerPrefs.audioMode = mode || 'voice_boost';
   const btn = document.getElementById('inAppAudioBtn');
-  const isBoost = window.kinoAudioMode === 'voice_boost';
+  const isBoost = playerPrefs.audioMode === 'voice_boost';
   if (btn) {
     btn.textContent = isBoost ? 'Boost' : 'Normal';
     btn.style.borderColor = isBoost ? '#fafafa' : '';
   }
   const sel = document.getElementById('cfgAudioMode');
-  if (sel) sel.value = window.kinoAudioMode;
+  if (sel) sel.value = playerPrefs.audioMode;
   if (showToast) {
     showInAppToast(
       isBoost
@@ -1155,9 +1174,9 @@ function applyInAppAudioUI(mode, showToast = false) {
   }
 }
 
-function cycleInAppAudioBoost() {
+export function cycleInAppAudioBoost() {
   resetInAppIdleTimer();
-  const nextMode = (window.kinoAudioMode || 'voice_boost') === 'voice_boost' ? 'normal' : 'voice_boost';
+  const nextMode = (playerPrefs.audioMode || 'voice_boost') === 'voice_boost' ? 'normal' : 'voice_boost';
   applyInAppAudioUI(nextMode, true);
   api('/api/config', {
     method: 'POST',
@@ -1191,7 +1210,7 @@ function applyInAppSpeed(idx, showToast = false) {
   }
 }
 
-function cycleInAppSpeed(step = 1) {
+export function cycleInAppSpeed(step = 1) {
   resetInAppIdleTimer();
   applyInAppSpeed(inAppSpeedIdx + step, true);
 }
@@ -1288,7 +1307,7 @@ function undoInAppSkip() {
   }
 }
 
-function skipInAppIntro() {
+export function skipInAppIntro() {
   resetInAppIdleTimer();
   inAppSkipIntroDismissed = true;
   const card = document.getElementById('inAppSkipIntroCard');
@@ -1330,7 +1349,7 @@ function cancelNextEpAuto() {
 }
 
 // --- Mode Picture-in-Picture (PiP — Fenêtre flottante macOS) ---
-async function toggleInAppPiP() {
+export async function toggleInAppPiP() {
   resetInAppIdleTimer();
   const video = document.getElementById('inAppVideo');
   const btn = document.getElementById('inAppPipBtn');
@@ -1356,7 +1375,7 @@ async function toggleInAppPiP() {
   }
 }
 
-async function openInAppPlayer(streamUrl, title, playlist = null, media = null, resumeSec = 0, releaseName = '', recovery = null) {
+export async function openInAppPlayer(streamUrl, title, playlist = null, media = null, resumeSec = 0, releaseName = '', recovery = null) {
   const overlay = document.getElementById('inAppPlayerOverlay');
   const video = document.getElementById('inAppVideo');
   const titleEl = document.getElementById('inAppTitle');
@@ -1402,8 +1421,8 @@ async function openInAppPlayer(streamUrl, title, playlist = null, media = null, 
   if (runtimeMinutes > 0 && runtimeMinutes < 1000) inAppTotalDuration = runtimeMinutes * 60;
   inAppSkipIntroDismissed = false;
   inAppNextEpCancelled = false;
-  traktScrobbledStarted = false;
-  traktScrobbledStop = false;
+  setTraktScrobbledStarted(false);
+  setTraktScrobbledStop(false);
   startRemotePolling();
   dismissUndoSkip();
   if (!inAppCurrentMedia?.offline_id) loadInAppIntroData(streamUrl, inAppCurrentMedia);
@@ -1431,9 +1450,9 @@ async function openInAppPlayer(streamUrl, title, playlist = null, media = null, 
   resetInAppIdleTimer();
 
   const isHdrStream = /\b(hdr|hdr10|dv|dovi|dolby[\s\.\-]*vision)\b/i.test(`${title || ''} ${streamUrl || ''}`);
-  if ((window.kinoHdrMode || 'sdr_pref') === 'hdr_boost') {
+  if ((playerPrefs.hdrMode || 'sdr_pref') === 'hdr_boost') {
     applyInAppClarity(2, false);
-  } else if (isHdrStream && (window.kinoHdrMode || 'sdr_pref') !== 'hdr_native' && inAppClarityIdx === 0) {
+  } else if (isHdrStream && (playerPrefs.hdrMode || 'sdr_pref') !== 'hdr_native' && inAppClarityIdx === 0) {
     applyInAppClarity(1, true);
   } else {
     applyInAppClarity(inAppClarityIdx, false);
@@ -1524,7 +1543,7 @@ async function openInAppPlayer(streamUrl, title, playlist = null, media = null, 
   } catch(e) {}
   video.volume = (savedVol !== null && !isNaN(savedVol) && parseFloat(savedVol) > 0) ? Math.max(0.05, parseFloat(savedVol)) : 1.0;
 
-  applyInAppAudioUI(window.kinoAudioMode || 'voice_boost', false);
+  applyInAppAudioUI(playerPrefs.audioMode || 'voice_boost', false);
   applyInAppSpeed(1, false);
   loadInAppSubtitlesForCurrentMedia();
 
@@ -1655,7 +1674,7 @@ function reportInAppPlaybackClosed() {
   }).catch(() => {});
 }
 
-function closeInAppPlayer() {
+export function closeInAppPlayer() {
   const finishedId = inAppCurrentMedia?.id || '';
   reportInAppPlaybackClosed();
   closePlaybackHelp();
@@ -1721,7 +1740,7 @@ function closeInAppPlayer() {
     setTimeout(() => {
       if (!document.getElementById('inAppPlayerOverlay')?.classList.contains('active')) {
         const action = kinoUpdatePendingAction;
-        kinoUpdatePendingAction = '';
+        setKinoUpdatePendingAction('');
         if (action === 'install') installKinoUpdate();
         else rollbackKinoUpdate();
       }
@@ -1729,7 +1748,7 @@ function closeInAppPlayer() {
   }
 }
 
-function toggleInAppPlay() {
+export function toggleInAppPlay() {
   const video = document.getElementById('inAppVideo');
   if (!video) return;
   if (video.paused) {
@@ -1740,7 +1759,7 @@ function toggleInAppPlay() {
   }
 }
 
-function inAppSeekRel(delta) {
+export function inAppSeekRel(delta) {
   const video = document.getElementById('inAppVideo');
   if (!video || !inAppDuration(video)) return;
   inAppSeekTo(inAppAbsoluteTime(video) + delta);
@@ -1759,7 +1778,7 @@ function seekInApp(event) {
   resetInAppIdleTimer();
 }
 
-function inAppPrevTrack() {
+export function inAppPrevTrack() {
   if (inAppPlaylist.length <= 1) return;
   if (inAppPlaylistIndex > 0) {
     inAppSessionScope = '';
@@ -1772,7 +1791,7 @@ function inAppPrevTrack() {
   }
 }
 
-function inAppNextTrack() {
+export function inAppNextTrack() {
   if (inAppPlaylist.length <= 1) return;
   if (inAppPlaylistIndex < inAppPlaylist.length - 1) {
     inAppSessionScope = '';
@@ -1785,7 +1804,7 @@ function inAppNextTrack() {
   }
 }
 
-async function exitInAppFullscreen() {
+export async function exitInAppFullscreen() {
   let wasFs = false;
   try {
     if (window.pywebview && window.pywebview.api) {
@@ -1831,7 +1850,7 @@ async function exitInAppFullscreen() {
   return wasFs;
 }
 
-async function toggleInAppFullscreen() {
+export async function toggleInAppFullscreen() {
   resetInAppIdleTimer();
 
   // 1. Application de bureau pywebview native (Windows & macOS)
@@ -1902,7 +1921,7 @@ async function toggleInAppFullscreen() {
 }
 
 let _isSwitchingToExternal = false;
-async function switchToExternalPlayer() {
+export async function switchToExternalPlayer() {
   if (_isSwitchingToExternal) return;
   _isSwitchingToExternal = true;
   setTimeout(() => { _isSwitchingToExternal = false; }, 3500);
@@ -1955,7 +1974,7 @@ if (inAppVideoEl) {
     updatePlayPauseBtn(true);
     updateDiscordRpc(false);
     if (!traktScrobbledStarted && inAppCurrentMedia) {
-      traktScrobbledStarted = true;
+      setTraktScrobbledStarted(true);
       const duration = inAppDuration(inAppVideoEl);
       const pct = duration > 0 ? Math.round((inAppAbsoluteTime(inAppVideoEl) / duration) * 100) : 0;
       scrobbleTrakt('start', inAppCurrentMedia, pct);
@@ -1991,7 +2010,7 @@ if (inAppVideoEl) {
 
       // Scrobble Trakt.tv automatique dès 80% de visionnage
       if (pct >= 80 && !traktScrobbledStop && inAppCurrentMedia) {
-        traktScrobbledStop = true;
+        setTraktScrobbledStop(true);
         scrobbleTrakt('stop', inAppCurrentMedia, Math.round(pct)).then(sent => {
           if (sent) showInAppToast('✓ Scrobblé sur Trakt.tv (80%)', 2200);
         });
@@ -2125,3 +2144,27 @@ if (inAppOverlayEl) {
   }, { passive: false });
 }
 
+// A double click on the bar maximizes, except on its controls.
+function kinoBarDoubleClick(event) {
+  if (!event.target.closest('.no-drag')) windowAction('maximize');
+}
+
+// A double click on the player: out of full screen if in it, else maximize.
+function kinoPlayerDoubleClick() {
+  const full = document.body.classList.contains('is-fullscreen')
+    || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  if (full) toggleInAppFullscreen();
+  else windowAction('maximize');
+}
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  cancelNextEpAuto, captureInAppScreenshot, changeInAppAudioTrack, closeInAppPlayer,
+  closeInAppSeriesPreference, cycleInAppAudioBoost, cycleInAppClarity, cycleInAppSpeed,
+  cycleInAppSubSize, cycleInAppSubtitles, dismissSkipIntro, fixInAppAudio, handleVolScrub,
+  inAppNextTrack, inAppPrevTrack, inAppSeekRel, kinoBarDoubleClick, kinoPlayerDoubleClick,
+  onVolMouseDown, openInAppSeriesPreference, resetInAppSeriesPreference, saveInAppSeriesPreference,
+  seekInApp, sendInAppPlaybackToTv, skipInAppIntro, switchToExternalPlayer, toggleInAppFullscreen,
+  toggleInAppMoreMenu, toggleInAppMute, toggleInAppPiP, toggleInAppPlay, undoInAppSkip,
+  windowAction,
+});

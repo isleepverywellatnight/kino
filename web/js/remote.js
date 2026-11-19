@@ -1,6 +1,10 @@
 // @ts-check
 // The phone remote (/remote): the player's state, polled, and its commands.
 // Loaded by remote.html; its controls are declared actions run by actions.js.
+
+import { registerActions } from './actions.js';
+import { html, render } from './html.js';
+
 const remoteToken = new URLSearchParams(location.search).get('token') || '';
 let isUserSeeking = false;
 let lastState = null;
@@ -112,3 +116,8 @@ async function pollState() {
 
 setInterval(pollState, 1000);
 pollState();
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  onSeekChange, onSeekInput, onVolumeInput, sendCommand, toggleMute, togglePlay,
+});

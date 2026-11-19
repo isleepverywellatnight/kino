@@ -72,7 +72,7 @@ test('a group opens and closes', () => {
   assert.match(view.list.innerHTML, /aria-expanded="true">Réduire<\/button>/);
   view.toggleSourceGroup('4k');
   assert.equal((view.list.innerHTML.match(/class="torrent-item /g) || []).length, 4);
-  assert.match(source, /allTorrents = data\.torrents \|\| \[\];\n\s+expandedSourceGroups\.clear\(\);/, 'new sources start closed');
+  assert.match(source, /setAllTorrents\(data\.torrents \|\| \[\]\);\n\s+expandedSourceGroups\.clear\(\);/, 'new sources start closed');
 });
 
 test('the same file found several times shows once, the best copy kept', () => {

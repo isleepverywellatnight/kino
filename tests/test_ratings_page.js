@@ -9,7 +9,7 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const read = name => fs.readFileSync(path.join(path.join(__dirname, '..'), name), 'utf8');
+const read = name => (/^web\/js\/[\w-]+\.js$/.test(name) ? require('../tools/interface_source.js').scriptText(name.slice(7)) : fs.readFileSync(path.join(path.join(__dirname, '..'), name), 'utf8'));
 const code = read('web/js/ratings.js');
 const html = require('../tools/interface_source.js').indexHtml();
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -202,7 +202,7 @@ test('the page holds the row, the card, and the players ask when they close', ()
   const rate = html.indexOf('id="homeRateSection"');
   assert.ok(rate > 0 && rate < html.indexOf('id="homeForYouSection"'), 'just before « Pour vous »');
   assert.match(html, /id="ratePrompt" class="rate-prompt" role="region"[^>]*hidden/);
-  assert.match(html, /<script src="\/js\/ratings\.js"><\/script>/);
+  assert.ok(require('../tools/interface_source.js').interfaceScripts().includes('ratings.js'));
   const player = read('web/js/app-player.js');
   const close = player.slice(player.indexOf('function closeInAppPlayer()'));
   assert.ok(close.indexOf("const finishedId = inAppCurrentMedia?.id || '';") < close.indexOf('askRatingAfterPlayback(finishedId)'));

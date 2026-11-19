@@ -4,6 +4,12 @@
 // volumes by torrent (manga_volumes.py), and a reader (page by page, or one long
 // scroll for webtoons) that remembers where the user stopped.
 
+import { registerActions } from './actions.js';
+import { THIS, act, actOn, html, render, safeUrl } from './html.js';
+import { api } from './app-core.js';
+import { askP2PConsent } from './p2p-addons.js';
+import { offlineSize } from './app-start.js';
+
 const MANGA_LANG_KEY = 'kino.mangaLang';
 const MANGA_READER_KEY = 'kino.mangaReader';
 const MANGA_FROM_UI = { fr: 'fr', en: 'en', es: 'es', de: 'de', it: 'it', pt: 'pt-br', ru: 'ru', zh: 'zh', ja: 'ja' };
@@ -66,7 +72,7 @@ function mangaRow(items, empty, extra = () => '') {
     : html`<p class="list-shelf-empty">${empty}</p>`;
 }
 
-async function renderMangaTab() {
+export async function renderMangaTab() {
   const home = document.getElementById('mangaHome');
   const page = document.getElementById('mangaSeries');
   if (!home) return;
@@ -455,3 +461,10 @@ document.addEventListener('keydown', event => {
   event.preventDefault();
   event.stopImmediatePropagation();
 }, true);
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  chooseMangaFolder, closeMangaReader, downloadMangaVolume, mangaReaderClick, openMangaReader,
+  openMangaSeries, openMangaTorrent, renderMangaTab, searchManga, setMangaLang, showMangaVolumes,
+  toggleMangaDirection, toggleMangaMode,
+});

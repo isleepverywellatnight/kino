@@ -8,7 +8,7 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+const nativeSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
 const app = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
 
@@ -35,7 +35,7 @@ function loadNative(state, { openFails = false } = {}) {
   };
   const FakeDate = class extends Date { static now() { return clock.now; } };
   const context = {
-    window: { addEventListener() {} }, document, localStorage: { getItem: () => null, setItem() {} },
+    window: { addEventListener() {} }, playerPrefs: {}, document, localStorage: { getItem: () => null, setItem() {} },
     api: async (url, options) => {
       const body = options?.body ? JSON.parse(options.body) : null;
       calls.push([url, body]);
@@ -46,7 +46,7 @@ function loadNative(state, { openFails = false } = {}) {
     Date: FakeDate, URLSearchParams,
   };
   vm.runInNewContext(nativeSource, context);
-  return { NativePlayer: context.window.NativePlayer, elements, calls, clock };
+  return { NativePlayer: vm.runInContext('NativePlayer', context), elements, calls, clock };
 }
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -210,6 +210,6 @@ test('one-click play and chosen sources try the native player first', () => {
   assert.match(oneClick, /\? openInAppPlayer\(info\.url, info\.title, pl, info\.media, info\.position \|\| 0\)/);
   const chosen = app.slice(app.indexOf('async function openMpv(btn, url, filename, options = null) {'));
   assert.match(chosen, /const native = await openNativeStream\(\{ url, title: filename, media: nativeMedia, resumeSec, filename, playlist: pl, fallback: openWeb \}\);\n    if \(!native\) openWeb\(null\);/);
-  assert.match(app, /await window\.NativePlayer\.open\(item, media, resumeSec, title,\n        info => openInAppPlayer\(item\.url, title, null, media, info\?\.position \|\| resumeSec, item\.filename\)\);/);
+  assert.match(app, /await NativePlayer\.open\(item, media, resumeSec, title,\n        info => openInAppPlayer\(item\.url, title, null, media, info\?\.position \|\| resumeSec, item\.filename\)\);/);
   assert.match(html, /Lit les films hors ligne et les sources Debrid sans conversion/);
 });

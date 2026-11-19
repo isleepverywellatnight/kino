@@ -140,7 +140,7 @@ test('settings navigation follows manual scrolling without moving the page again
       addEventListener: (event, callback) => { listeners[`link-${index}-${event}`] = callback; },
     };
   });
-  vm.runInNewContext(`let refreshSettingsSectionNavigation = () => {}; ${settingsNavigationFunction}; initSettingsSectionNavigation();`, {
+  vm.runInNewContext(`let refreshSettingsSectionNavigation = () => {}; function setRefreshSettingsSectionNavigation(value) { refreshSettingsSectionNavigation = value; return value; } ${settingsNavigationFunction}; initSettingsSectionNavigation();`, {
     document: {
       body: { dataset: { activeTab: 'settings' } },
       documentElement: { scrollHeight: 2400 },
@@ -276,7 +276,7 @@ test('a failed source requests a different candidate and retains the position', 
 });
 
 test('playback buttons and the remote are labelled in French', () => {
-  const journey = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/anime-journey.js'), 'utf8'));
+  const journey = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('anime-journey.js'));
   for (const [name, text] of [['index.html', markup], ['app.js', source], ['anime-journey.js', journey]]) {
     assert.doesNotMatch(text, />\s*Play\s*</, `${name} shows an English Play button`);
     assert.doesNotMatch(text, /'Play'|`Play /, `${name} builds an English Play label`);

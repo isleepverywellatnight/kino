@@ -1,5 +1,5 @@
 // The interface's main code is split by theme (docs/interface-files.md). Its
-// parts, in the order web/index.html loads them, join back into one text:
+// parts, in the order web/js/main.js imports them, join back into one text:
 // tests read that text, so a part can move between files without them noticing.
 'use strict';
 const fs = require('node:fs');
@@ -7,9 +7,23 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 
+// The parts are ES modules. On one page every top-level name is unique, and
+// tools/names_check.js makes sure each module imports what it uses; so tests
+// run the parts as one script, without their import and export words. Each
+// line keeps its number.
+function asScript(text) {
+  return String(text)
+    .replace(/^import (?:[^;'"]*? from )?'[^']+';\n/gm, statement => '\n'.repeat(statement.split('\n').length - 1))
+    .replace(/^export (?=(?:async )?function\b|const\b|let\b|var\b|class\b)/gm, '');
+}
+
+// One file of web/js, as a script (asScript).
+function scriptText(name, root = ROOT) {
+  return asScript(fs.readFileSync(path.join(root, 'web', 'js', name), 'utf8'));
+}
+
 function appParts(root = ROOT) {
-  const html = fs.readFileSync(path.join(root, 'web', 'index.html'), 'utf8');
-  return [...html.matchAll(/<script src="\/js\/(app-[\w-]+\.js)"><\/script>/g)].map(match => match[1]);
+  return interfaceScripts(root).filter(name => /^app-[\w-]+\.js$/.test(name));
 }
 
 // The interface is written in French; web/js/i18n.js translates it as it shows.
@@ -26,14 +40,30 @@ function inFrench(text) {
     .replace(/window\.KINO_LANG\b/g, "'fr'").replace(/window\.KINO_LOCALE\b/g, "'fr-FR'");
 }
 
-function appSource(root = ROOT) {
-  return inFrench(appParts(root).map(name => fs.readFileSync(path.join(root, 'web', 'js', name), 'utf8')).join(''));
+// Each file ends with the list of actions it gives the markup (registerActions({ … })):
+// names only, checked by tools/frontend_check.js. Tests that cut a file's text up to
+// its end leave the list out, so that it does not name functions they did not take.
+const REGISTRATION = /\n\/\/ What the markup may run from this file \(web\/js\/actions\.js\)\.\nregisterActions\(\{\n[\s\S]*?\n\}\);\n/g;
+function withoutRegistrations(text) {
+  return text.replace(REGISTRATION, '\n');
 }
 
-// Every interface script, in loading order (app parts, helpers, players).
+function appSource(root = ROOT) {
+  return inFrench(withoutRegistrations(appParts(root).map(name => scriptText(name, root)).join('')));
+}
+
+// Every interface script, in loading order: the page's own classic scripts
+// (i18n.js), then the modules web/js/main.js imports, in its order, and main.js.
 function interfaceScripts(root = ROOT) {
   const html = fs.readFileSync(path.join(root, 'web', 'index.html'), 'utf8');
-  return [...html.matchAll(/<script src="\/js\/([\w-]+\.js)"><\/script>/g)].map(match => match[1]);
+  const names = [];
+  for (const match of html.matchAll(/<script (type="module" )?src="\/js\/([\w-]+\.js)"><\/script>/g)) {
+    if (!match[1]) { names.push(match[2]); continue; }
+    const entry = fs.readFileSync(path.join(root, 'web', 'js', match[2]), 'utf8');
+    for (const im of entry.matchAll(/^import (?:[^;'"]*? from )?'\.\/([\w-]+\.js)';$/gm)) names.push(im[1]);
+    names.push(match[2]);
+  }
+  return names;
 }
 
 // index.html declares what its controls do as data attributes read by
@@ -72,17 +102,24 @@ function indexHtml(root = ROOT) {
 let helpersOnce = null;
 function templateHelpers(root = ROOT) {
   if (helpersOnce) return helpersOnce;
-  const code = fs.readFileSync(path.join(root, 'web', 'js', 'html.js'), 'utf8');
+  const code = scriptText('html.js', root);
   const context = {};
   require('node:vm').runInNewContext(`${code}; this.out = { act, actOn, THIS, EVENT, VALUE, CHECKED, escapeHtml, escapeText, attrJson, html, raw, render, replaceWith, renderAdjacent, safeUrl, SafeHtml };`, context);
   helpersOnce = context.out;
   return helpersOnce;
 }
 
-// A test's context with those helpers, unless it brings its own.
+// A test's context with those helpers, unless it brings its own. A file run alone
+// registers its actions (web/js/actions.js) into the context's own list,
+// context.actions; tools/frontend_check.js checks that every declared one is there.
 function withHelpers(context = {}) {
   for (const [name, value] of Object.entries(templateHelpers())) if (!(name in context)) context[name] = value;
+  if (!('registerActions' in context)) {
+    const actions = {};
+    Object.defineProperty(context, 'actions', { value: actions, enumerable: false, configurable: true });
+    context.registerActions = handlers => { Object.assign(actions, handlers); };
+  }
   return context;
 }
 
-module.exports = { appParts, appSource, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls, templateHelpers, withHelpers };
+module.exports = { appParts, appSource, asScript, scriptText, withoutRegistrations, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls, templateHelpers, withHelpers };

@@ -9,7 +9,7 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const read = name => fs.readFileSync(path.join(path.join(__dirname, '..'), name), 'utf8');
+const read = name => (/^web\/js\/[\w-]+\.js$/.test(name) ? require('../tools/interface_source.js').scriptText(name.slice(7)) : fs.readFileSync(path.join(path.join(__dirname, '..'), name), 'utf8'));
 const { appSource, interfaceScripts } = require('../tools/interface_source.js');
 const source = appSource();
 const html = require('../tools/interface_source.js').indexHtml();
@@ -17,7 +17,7 @@ const css = read('web/css/design.css');
 const animeHome = require('../tools/interface_source.js').inFrench(read('web/js/anime-home.js'));
 const between = (start, end) => start + source.split(start, 2)[1].split(end, 1)[0];
 // The page's render helpers (web/js/html.js), then app-social's own.
-const helpers = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'web', 'js', 'html.js'), 'utf8')
+const helpers = require('../tools/interface_source.js').scriptText('html.js')
   + between('function listMediaArg(m)', 'async function checkTraktStatus()');
 const frenchTitles = between('const ORIGINAL_TITLES = new Map();', '// --- Immersive fiche: French labels');
 const spoilerTarget = between('function scheduleSpoilerTarget(item) {', 'function refreshSpoilerSurfaces() {');
