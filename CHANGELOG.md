@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.0
+
+- Linux: KINO comes as an AppImage (x86_64; Ubuntu 22.04, Debian 12, Fedora 36
+  or later). Make it executable and open it: nothing else to install. Videos
+  play in KINO's window, or in mpv if it is installed. KINO announces new
+  versions; download the new AppImage.
+- Linux: KINO's window has its own bar, as on Windows: it moves the window,
+  a double click maximizes it, and its buttons minimize, maximize and close.
+- The interface says « this computer » instead of « this Mac » on Windows and
+  Linux: offline files and the space left, where suggestions and statistics
+  are computed, the TV on the same network, the backups.
+
 ## 2.0.1
 
 - Translations: texts that showed wrong in some languages now read right. The
