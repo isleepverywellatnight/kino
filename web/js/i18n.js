@@ -5,7 +5,8 @@
 // (web/js/i18n/<lang>.js) and translates the page while it is displayed: text,
 // placeholders, tooltips and alert()/confirm() messages, including everything
 // the other scripts add later. A text missing from the dictionary stays in
-// French. Dictionaries map French to the translation; "{}" is a variable part.
+// French. Each French text has a key: web/js/i18n/fr.js gives the French text of
+// each key, a dictionary its translation; "{}" is a variable part.
 // See tools/i18n.js.
 (function () {
   'use strict';
@@ -30,7 +31,7 @@
 
   function pickLanguage() {
     // Set by the server from the settings (a meta tag: the page runs no inline script).
-    const meta = document.querySelector('meta[name="kino-ui-language"]');
+    const meta = /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[name="kino-ui-language"]'));
     const chosen = (meta && meta.content) || window.KINO_UI_LANGUAGE || storedChoice();
     if (LANGUAGES[chosen]) return chosen;
     for (const tag of navigator.languages || [navigator.language || '']) {
@@ -41,6 +42,16 @@
   }
 
   const lang = pickLanguage();
+  /** @type {Record<string, string>} The French text of each key (web/js/i18n/fr.js). */
+  let french = {};
+  /** @type {Record<string, string>} The translation of each key, English under the language's own. */
+  const translations = {};
+  // The French texts the observer still translates (KINO_I18N.remaining()): what
+  // is not yet a key in the code. When it is empty, the observer can go.
+  const observed = new Set();
+  // The texts t() gave in the language: already translated, the observer leaves
+  // them (Italian's « Liste » is not the French « Liste » to translate again).
+  const fromKeys = new Set();
   const exact = new Map();
   const patternsBySource = new Map();
   let patterns = [];
@@ -87,7 +98,7 @@
   function translate(text) {
     if (typeof text !== 'string' || !text || text.length > 600) return null;
     const core = text.trim().replace(/\s+/g, ' ');
-    if (!core || !/[A-Za-zÀ-ÿ]/.test(core)) return null;
+    if (!core || !/[A-Za-zÀ-ÿ]/.test(core) || fromKeys.has(core)) return null;
     const out = translateCore(core, 0);
     if (out === null || out === core) return null;
     const lead = text.match(/^\s*/)[0];
@@ -100,27 +111,88 @@
     if (written.get(node) === value) return;
     const out = translate(value);
     if (out !== null) {
+      observed.add(value.trim());
       written.set(node, out);
       node.nodeValue = out;
     }
   }
 
   function translateAttributes(el) {
+    const keyed = applyKeys(el);
     for (const name of ATTRIBUTES) {
+      if (keyed.has(name)) continue;
       const value = el.getAttribute && el.getAttribute(name);
       if (!value) continue;
       const out = translate(value);
-      if (out !== null) el.setAttribute(name, out);
+      if (out !== null) {
+        observed.add(value.trim());
+        el.setAttribute(name, out);
+      }
     }
+  }
+
+  // --- Keys ---
+
+  // t('fiche.aucun_synopsis_disponible') or t('stats.x_episodes_vus', 12): the
+  // text of the key in the interface's language, else in English, else as the
+  // observer would translate its French, else in French.
+  // « {} » takes the values in order, « {1} », « {2} »… by number.
+  function t(key, ...values) {
+    const source = french[key];
+    if (source === undefined) throw new Error(`KINO: unknown text key « ${key} »`);
+    // A text no dictionary has as such may still be covered by a rule with a
+    // variable part (« {} s » -> « {} 秒 »), as the observer would show it.
+    const text = translations[key] ?? (lang === 'fr' ? source : translate(source) ?? source);
+    const out = fill(text, values.map(String));
+    if (text !== source) fromKeys.add(out.trim().replace(/\s+/g, ' '));
+    return out;
+  }
+
+  // The markup's fixed texts: <button data-i18n="page.parametres">,
+  // data-i18n-title, data-i18n-placeholder and data-i18n-aria-label for its
+  // attributes. Returns the attributes it set: the observer leaves those alone.
+  const KEYED = [['i18n', null], ['i18nTitle', 'title'], ['i18nPlaceholder', 'placeholder'], ['i18nAriaLabel', 'aria-label']];
+  function applyKeys(el) {
+    const keyed = new Set();
+    const data = el.dataset;
+    if (!data) return keyed;
+    for (const [name, attribute] of KEYED) {
+      const key = data[name];
+      if (!key) continue;
+      // Only while it still holds its key's French: what the code wrote since is
+      // translated by the observer, as any other text.
+      const now = attribute ? el.getAttribute(attribute) : el.textContent;
+      if (now !== null && same(now, french[key])) {
+        if (attribute) el.setAttribute(attribute, t(key));
+        else el.textContent = t(key);
+      } else if (now !== null && !same(now, t(key))) continue;
+      if (attribute) keyed.add(attribute);
+    }
+    return keyed;
+  }
+
+  function applyAll(root) {
+    if (root.nodeType === Node.ELEMENT_NODE) applyKeys(root);
+    for (const el of root.querySelectorAll('[data-i18n], [data-i18n-title], [data-i18n-placeholder], [data-i18n-aria-label]')) applyKeys(el);
   }
 
   function skipped(el) {
     return !el || SKIP.has(el.nodeName) || el.isContentEditable || (el.closest && el.closest('[translate="no"], .notranslate'));
   }
 
+  const same = (a, b) => String(a).trim().replace(/\s+/g, ' ') === String(b).trim().replace(/\s+/g, ' ');
+
+  // A text its element's key gave: nothing to translate. If the code has since
+  // written another text there, it is translated as any other.
+  function keyedText(node) {
+    const el = node.parentElement;
+    const key = el && el.dataset && el.dataset.i18n;
+    return Boolean(key) && node.nodeValue.trim() === t(key).trim();
+  }
+
   function walk(root) {
     if (root.nodeType === Node.TEXT_NODE) {
-      if (!skipped(root.parentElement)) translateText(root);
+      if (!skipped(root.parentElement) && !keyedText(root)) translateText(root);
       return;
     }
     if (root.nodeType !== Node.ELEMENT_NODE || skipped(root)) return;
@@ -132,7 +204,7 @@
       },
     });
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      if (node.nodeType === Node.TEXT_NODE) translateText(node);
+      if (node.nodeType === Node.TEXT_NODE) { if (!keyedText(node)) translateText(node); }
       else translateAttributes(node);
     }
   }
@@ -142,11 +214,12 @@
     new MutationObserver((records) => {
       for (const r of records) {
         if (r.type === 'childList') r.addedNodes.forEach(walk);
-        else if (r.type === 'characterData') { if (!skipped(r.target.parentElement)) translateText(r.target); }
+        else if (r.type === 'characterData') { if (!skipped(r.target.parentElement) && !keyedText(r.target)) translateText(r.target); }
         else if (r.type === 'attributes' && !skipped(r.target)) {
-          const value = r.target.getAttribute(r.attributeName);
+          const target = /** @type {Element} */ (r.target);
+          const value = target.getAttribute(r.attributeName);
           const out = translate(value);
-          if (out !== null) r.target.setAttribute(r.attributeName, out);
+          if (out !== null) target.setAttribute(r.attributeName, out);
         }
       }
     }).observe(document.documentElement, {
@@ -165,11 +238,17 @@
   window.KINO_LANGUAGES = LANGUAGES;
   window.KINO_I18N = {
     lang,
-    // Called by web/js/i18n/<lang>.js with its dictionary.
+    // Called by web/js/i18n/fr.js with the French text of each key, before any dictionary.
+    source(table) {
+      french = table;
+    },
+    // Called by web/js/i18n/<lang>.js with its dictionary: key -> translation.
     // English is loaded first for every other language: what a dictionary lacks shows in English.
     load(table) {
-      for (const [source, target] of Object.entries(table)) {
-        if (!target) continue;
+      for (const [key, target] of Object.entries(table)) {
+        const source = french[key];
+        if (!target || !source) continue;
+        translations[key] = target;
         if (source.includes('{}')) patternsBySource.set(source, compile(source, target));
         else exact.set(source, target);
       }
@@ -177,8 +256,13 @@
       patterns = [...patternsBySource.values()].sort((a, b) => b.re.source.length - a.re.source.length);
       if (!started) { started = true; start(); }
     },
-    // For scripts that build text outside the page (notifications, canvas…).
-    t(text) { return translate(text) ?? text; },
+    t,
+    // The page's elements that have a key (data-i18n…), in the interface's language.
+    apply: applyAll,
+    // A French text as the observer would show it (notifications, canvas…).
+    translate(text) { return translate(text) ?? text; },
+    // The French texts the observer translated so far, for the move to keys.
+    remaining() { return [...observed].sort(); },
     // Month names in the interface language: 'long' (janvier), 'short' (janv.) or 'narrow' (J).
     months(style) {
       if (lang === 'fr' && MONTHS_FR[style]) return MONTHS_FR[style].slice();
@@ -197,9 +281,8 @@
   };
 
   document.documentElement.lang = lang;
-  if (lang !== 'fr') {
-    // Synchronous on purpose: the dictionaries are ready before the page is drawn.
-    const files = lang === 'en' ? ['en'] : ['en', lang];
-    for (const file of files) document.write('<script src="/js/i18n/' + file + '.js"><\/script>');
-  }
+  // Synchronous on purpose: the dictionaries are ready before the page is drawn.
+  // The French texts first: the dictionaries give their keys' translations.
+  const files = lang === 'fr' ? ['fr'] : lang === 'en' ? ['fr', 'en'] : ['fr', 'en', lang];
+  for (const file of files) document.write('<script src="/js/i18n/' + file + '.js"><\/script>');
 })();

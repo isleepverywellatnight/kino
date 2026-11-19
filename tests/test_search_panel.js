@@ -158,6 +158,6 @@ test('a pasted magnet link opens as such, whatever the scope', async () => {
 });
 
 test('⌘K and / open the panel', () => {
-  assert.match(source, /e\.key\.toLowerCase\(\) === 'k'\) \{\n\s+e\.preventDefault\(\);\n\s+const si = document\.getElementById\('searchInput'\);\n\s+if \(si\) \{ si\.focus\(\); si\.select\(\); openSearchPanel\(\); \}/);
+  assert.match(source, /e\.key\.toLowerCase\(\) === 'k'\) \{\n\s+e\.preventDefault\(\);\n\s+const si = \/\*\* @type \{HTMLInputElement\} \*\/ \(document\.getElementById\('searchInput'\)\);\n\s+if \(si\) \{ si\.focus\(\); si\.select\(\); openSearchPanel\(\); \}/);
   assert.match(source, /if \(e\.key === '\/' && !isInput\) \{[\s\S]{0,200}openSearchPanel\(\);/);
 });

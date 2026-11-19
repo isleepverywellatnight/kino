@@ -161,7 +161,7 @@ function animeHomeSkeleton() {
         <div class="poster-art"></div>
         <div class="poster-info"><span class="skeleton-line" style="width:82%"></span><span class="skeleton-line" style="width:44%"></span></div>
       </div>`);
-  return [html`<div class="poster-skeleton-status" role="status">Chargement…</div>`,
+  return [html`<div class="poster-skeleton-status" role="status">${KINO_I18N.t('anime.chargement')}</div>`,
     ['Tendances', 'Cette saison'].map(title => html`
     <section class="home-shelf anime-shelf">
       <div class="section-header"><span class="section-title">${title}</span></div>
@@ -181,13 +181,13 @@ function renderAnimeHome() {
   }
   if (!(data.rows || []).length) {
     render(panel, [html`<div class="anime-home-none"><p>${data.message || 'Les rangées anime sont indisponibles pour le moment.'}</p>`,
-      html`<div class="lib-tools"><button type="button" class="btn btn-secondary" ${act('loadAnimeHome', true)}>Réessayer</button>`,
-      html`<button type="button" class="btn btn-secondary" ${act('switchAnimeSubTab', 'catalog')}>Ouvrir le catalogue</button></div></div>`]);
+      html`<div class="lib-tools"><button type="button" class="btn btn-secondary" ${act('loadAnimeHome', true)}>${KINO_I18N.t('page.reessayer')}</button>`,
+      html`<button type="button" class="btn btn-secondary" ${act('switchAnimeSubTab', 'catalog')}>${KINO_I18N.t('anime.ouvrir_le_catalogue')}</button></div></div>`]);
     return;
   }
   const now = Date.now();
   const mine = animeMineStates();
-  render(panel, [(data.stale ? html`<p class="anime-home-stale">AniList ne répond pas : voici les rangées de la dernière visite.</p>` : ''),
+  render(panel, [(data.stale ? html`<p class="anime-home-stale">${KINO_I18N.t('anime.anilist_ne_repond_pas_voici_les_rangees')}</p>` : ''),
     data.rows.map(row => html`
     <section class="home-shelf anime-shelf" aria-label="${row.title}">
       <div class="section-header">
@@ -340,8 +340,8 @@ function animeWeekRowHtml(episode, nowMs, mine) {
       </div>
       <div class="offline-actions">
         <span class="week-when">${animeAiringLabel(episode.airing_at, nowMs)}</span>
-        ${hidden ? html`<button type="button" class="btn btn-secondary spoiler-reveal-btn" ${act('revealScheduleEpisode', id, number)} aria-label="Afficher l’image de l’épisode ${number}">Afficher</button>` : ''}
-        <button type="button" class="btn btn-secondary" ${act('openAnimeWork', id)}>Fiche</button>
+        ${hidden ? html`<button type="button" class="btn btn-secondary spoiler-reveal-btn" ${act('revealScheduleEpisode', id, number)} aria-label="Afficher l’image de l’épisode ${number}">${KINO_I18N.t('anime.afficher')}</button>` : ''}
+        <button type="button" class="btn btn-secondary" ${act('openAnimeWork', id)}>${KINO_I18N.t('anime.fiche')}</button>
       </div>
     </article>`;
 }
@@ -356,7 +356,7 @@ export function renderAnimeWeek() {
   const data = animeWeekData;
   if (!data) {
     render(daysBar, '');
-    if (summary) summary.textContent = 'Chargement du planning…';
+    if (summary) summary.textContent = KINO_I18N.t('anime.chargement_du_planning');
     render(list, '');
     return;
   }

@@ -78,7 +78,7 @@ export function runAction(name, ...args) {
 
   for (const type of BUBBLING) {
     document.addEventListener(type, event => {
-      for (let element = event.target; element && element.nodeType === 1; element = element.parentElement) {
+      for (let element = /** @type {Element | null} */ (event.target); element && element.nodeType === 1; element = element.parentElement) {
         if (element.hasAttribute(`data-on-${type}`)) run(element, type, event);
         if (event.cancelBubble) break;
       }
@@ -86,7 +86,7 @@ export function runAction(name, ...args) {
   }
   for (const type of DIRECT) {
     document.addEventListener(type, event => {
-      const element = event.target;
+      const element = /** @type {Element | null} */ (event.target);
       if (element && element.nodeType === 1 && element.hasAttribute(`data-on-${type}`)) run(element, type, event);
     }, true);
   }

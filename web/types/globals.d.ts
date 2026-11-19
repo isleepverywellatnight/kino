@@ -4,8 +4,18 @@
 // Set by web/js/i18n.js on window.
 declare const KINO_I18N: {
   lang: string;
+  /** web/js/i18n/fr.js: the French text of each key. */
+  source(table: Record<string, string>): void;
+  /** web/js/i18n/<lang>.js: the translation of each key. */
   load(table: Record<string, string>): void;
-  t(text: string): string;
+  /** The text of a key (web/js/i18n/fr.js) in the interface's language; values fill « {} ». */
+  t(key: string, ...values: Array<string | number>): string;
+  /** Gives the elements with data-i18n… under root their text in the interface's language. */
+  apply(root: ParentNode & Node): void;
+  /** A French text as the page shows it in the interface's language. */
+  translate(text: string): string;
+  /** The French texts the observer translated so far (those without a key yet). */
+  remaining(): string[];
   months(style: 'long' | 'short' | 'narrow'): string[];
   choose(next: string): Promise<void>;
 };
@@ -25,6 +35,30 @@ interface Window {
 }
 
 // WebKit's prefixed fullscreen API (WKWebView on macOS).
+interface Window {
+  /** WKWebView's message handlers (the macOS window). */
+  webkit?: { messageHandlers?: Record<string, { postMessage(message: string): void }> };
+  /** WebView2 (the Windows window). */
+  chrome?: { webview?: unknown };
+  /** The interface language a launcher may set before i18n.js runs. */
+  KINO_UI_LANGUAGE?: string;
+}
+
+// KINO's own player keeps a few facts on its <video> (web/js/app-player.js),
+// and Safari's picture-in-picture API.
+interface HTMLVideoElement {
+  /** The user muted the sound themselves (not KINO's start-up mute). */
+  _userMuted?: boolean;
+  /** The listeners of the stream now playing, removed before the next. */
+  _onPlayingHandler?: EventListener;
+  _onErrorHandler?: EventListener;
+  webkitSupportsPresentationMode?(mode: string): boolean;
+  webkitSetPresentationMode?(mode: string): void;
+  webkitPresentationMode?: string;
+  /** Safari's name for preservesPitch. */
+  webkitPreservesPitch?: boolean;
+}
+
 interface Document {
   webkitFullscreenElement?: Element | null;
   webkitExitFullscreen?: () => Promise<void> | void;

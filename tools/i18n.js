@@ -1,19 +1,23 @@
 #!/usr/bin/env node
 // KINO's interface translations.
 //
-// The interface is written in French. web/js/i18n.js translates it while it is
-// displayed, with one dictionary per language: web/js/i18n/<lang>.js, which maps
-// each French text to its translation. "{}" stands for a variable part:
-// "{} épisodes" -> "{} episodes" (use {1}, {2}… to reorder them).
+// The interface is written in French. Each French text has a key:
+// web/js/i18n/fr.js maps the key to the French text ("fiche.aucun_synopsis_disponible":
+// "Aucun synopsis disponible."), and each language's dictionary,
+// web/js/i18n/<lang>.js, maps the same key to its translation. "{}" stands for a
+// variable part: "{} épisodes" -> "{} episodes" (use {1}, {2}… to reorder them).
+// web/js/i18n.js uses both while the page is displayed.
 //
 // The server (crates/, Rust) also writes French that the interface shows: its
 // error messages and notices. Its French string literals are listed too.
 //
-//   node tools/i18n.js extract      list the French texts of web/ and crates/ in web/js/i18n/strings.json
-//   node tools/i18n.js status       count, per language, the texts still untranslated
-//   node tools/i18n.js missing de   print the texts German still lacks (JSON)
+//   node tools/i18n.js extract          add the new French texts of web/ and crates/ to fr.js, each with a key
+//   node tools/i18n.js extract --prune  also remove from fr.js and every dictionary the texts no longer found
+//   node tools/i18n.js status           count, per language, the texts still untranslated
+//   node tools/i18n.js missing de       print the texts German still lacks (JSON: key -> French)
 //
-// A missing text stays in French: translations can be completed little by little.
+// A missing text stays in English (in French for English): translations can be
+// completed little by little.
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -22,9 +26,13 @@ const PROJECT = path.join(__dirname, '..');
 const WEB = path.join(PROJECT, 'web');
 const CRATES = path.join(PROJECT, 'crates');
 const I18N = path.join(WEB, 'js', 'i18n');
-const CATALOG = path.join(I18N, 'strings.json');
-const PREFIX = 'KINO_I18N.load(';
-const SUFFIX = ');\n';
+const SOURCE = path.join(I18N, 'fr.js');
+const LANGUAGE_CALL = 'KINO_I18N.load';
+const SOURCE_CALL = 'KINO_I18N.source';
+// Found in the code but never shown: console messages, names, a log line.
+const NOT_SHOWN = new Set([', html', 'KINO_I18N.choose', 'blob: {}', 'Base lente sur un thread async', 'DOMContentLoaded']);
+// KINO's messages to the developer console (« KINO: no action … »).
+const CONSOLE = /^KINO: /;
 const ATTRIBUTES = ['placeholder', 'title', 'aria-label', 'alt', 'data-tooltip', 'data-label'];
 const W = '[\\p{L}\\p{N}_]';
 // Python's \b: a change between a word character (any letter or digit, any
@@ -235,55 +243,131 @@ const byCodePoint = (a, b) => {
   return x.length - y.length;
 };
 
-function extract() {
-  const found = new Set();
+// Each French text shown by web/ and crates/, with the first file it was found in.
+function locate() {
+  const found = new Map();
+  const add = (text, file) => { if (!found.has(text)) found.set(text, path.relative(PROJECT, file)); };
   for (const page of sortedFiles(WEB, n => n.endsWith('.html'))) {
     const { texts, scripts } = parseHtml(fs.readFileSync(page, 'utf8'));
-    for (const t of texts) found.add(normalize(t));
-    for (const script of scripts) for (const literal of jsLiterals(script)) for (const s of textSegments(literal)) found.add(s);
+    for (const t of texts) add(normalize(t), page);
+    for (const script of scripts) for (const literal of jsLiterals(script)) for (const s of textSegments(literal)) add(s, page);
   }
   for (const script of sortedFiles(path.join(WEB, 'js'), n => n.endsWith('.js'))) {
-    for (const literal of jsLiterals(fs.readFileSync(script, 'utf8'))) for (const s of textSegments(literal)) found.add(s);
+    for (const literal of jsLiterals(fs.readFileSync(script, 'utf8'))) for (const s of textSegments(literal)) add(s, script);
   }
   for (const module of walk(CRATES).filter(f => f.endsWith('.rs')).sort()) {
     const parts = path.relative(CRATES, module).split(path.sep);
     if (parts.includes('tests') || parts.includes('bin')) continue;
-    for (const t of rustTexts(fs.readFileSync(module, 'utf8'))) found.add(t);
+    for (const t of rustTexts(fs.readFileSync(module, 'utf8'))) add(t, module);
   }
-  return [...found].filter(isShownText).sort(byCodePoint);
+  for (const text of [...found.keys()]) if (!isShownText(text) || NOT_SHOWN.has(text) || CONSOLE.test(text)) found.delete(text);
+  return found;
 }
 
-function readLanguage(lang) {
-  const file = path.join(I18N, `${lang}.js`);
+function extract() {
+  return [...locate().keys()].sort(byCodePoint);
+}
+
+// --- Keys ---
+
+// The part of KINO a text belongs to, from the file it is found in.
+const AREAS = {
+  'index.html': 'page', 'remote.html': 'remote', 'app-core.js': 'core', 'app-home.js': 'home', 'app-lists.js': 'lists',
+  'app-letterboxd.js': 'letterboxd', 'app-tabs.js': 'tabs', 'app-cloud-settings.js': 'settings', 'app-social.js': 'social',
+  'app-fiche.js': 'fiche', 'app-sources.js': 'sources', 'app-player.js': 'player', 'app-start.js': 'start',
+  'native-player.js': 'native', 'anime-home.js': 'anime', 'anime-journey.js': 'anime', 'p2p-addons.js': 'p2p',
+  'playback-help.js': 'help', 'ratings.js': 'ratings', 'stats.js': 'stats', 'manga.js': 'manga', 'remote.js': 'remote',
+  'series-playback.js': 'playback', 'spoilers.js': 'spoilers', 'html.js': 'core', 'actions.js': 'core',
+};
+function areaOf(file) {
+  if (!file) return 'server';
+  if (file.startsWith('crates')) return 'server';
+  return AREAS[path.basename(file)] || 'misc';
+}
+
+// « Aucun synopsis disponible. » in fiche.js -> fiche.aucun_synopsis_disponible
+function keyFor(text, area, taken) {
+  const words = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replaceAll('{}', ' x ').replace(/œ/g, 'oe').replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  let slug = '';
+  for (const word of words) {
+    if (slug && (slug + '_' + word).length > 40) break;
+    slug = slug ? `${slug}_${word}` : word;
+  }
+  const base = `${area}.${slug || 'symbol'}`;
+  let key = base;
+  for (let n = 2; taken.has(key); n += 1) key = `${base}_${n}`;
+  taken.add(key);
+  return key;
+}
+
+// --- Files ---
+
+function readTable(file, call) {
   if (!fs.existsSync(file)) return {};
   const raw = fs.readFileSync(file, 'utf8');
-  return JSON.parse(raw.slice(raw.indexOf(PREFIX) + PREFIX.length, raw.lastIndexOf(')')));
+  const start = raw.indexOf(`${call}(`);
+  if (start < 0) throw new Error(`${path.relative(PROJECT, file)}: no ${call}(…)`);
+  return JSON.parse(raw.slice(start + call.length + 1, raw.lastIndexOf(')')));
 }
+
+function writeTable(file, call, header, table) {
+  const keys = Object.keys(table).sort(byCodePoint);
+  const body = keys.map(key => `${JSON.stringify(key)}: ${JSON.stringify(table[key])}`).join(',\n');
+  fs.writeFileSync(file, `${header}\n${call}({\n${body}\n});\n`, 'utf8');
+}
+
+const readSource = () => readTable(SOURCE, SOURCE_CALL);
+const readLanguage = lang => readTable(path.join(I18N, `${lang}.js`), LANGUAGE_CALL);
+const languages = () => sortedFiles(I18N, n => /^[a-z]{2}\.js$/.test(n) && n !== 'fr.js').map(f => path.basename(f, '.js'));
+const SOURCE_HEADER = '// KINO interface: the key of each French text. See tools/i18n.js.';
+const languageHeader = lang => `// KINO interface, by key -> ${lang}. See tools/i18n.js.`;
+
+function writeSource(table) { writeTable(SOURCE, SOURCE_CALL, SOURCE_HEADER, table); }
+function writeLanguage(lang, table) { writeTable(path.join(I18N, `${lang}.js`), LANGUAGE_CALL, languageHeader(lang), table); }
 
 function main() {
   const [command = 'status', arg] = process.argv.slice(2);
   if (command === 'extract') {
-    const strings = extract();
-    fs.writeFileSync(CATALOG, `[\n${strings.map(s => JSON.stringify(s)).join(',\n')}\n]\n`, 'utf8');
-    console.log(`${strings.length} textes dans ${path.relative(PROJECT, CATALOG)}`);
+    const found = locate();
+    const source = readSource();
+    const known = new Set(Object.values(source));
+    const taken = new Set(Object.keys(source));
+    let added = 0;
+    for (const [text, file] of [...found.entries()].sort((a, b) => byCodePoint(a[0], b[0]))) {
+      if (known.has(text)) continue;
+      source[keyFor(text, areaOf(file), taken)] = text;
+      added += 1;
+    }
+    const gone = Object.keys(source).filter(key => !found.has(source[key]));
+    if (arg === '--prune') {
+      for (const key of gone) delete source[key];
+      for (const lang of languages()) {
+        const table = readLanguage(lang);
+        for (const key of gone) delete table[key];
+        writeLanguage(lang, table);
+      }
+    }
+    writeSource(source);
+    console.log(`${Object.keys(source).length} textes dans ${path.relative(PROJECT, SOURCE)} (${added} ajoutés, `
+      + `${gone.length} ${arg === '--prune' ? 'retirés' : 'introuvables dans le code : extract --prune les retire'})`);
   } else if (command === 'status') {
-    const strings = JSON.parse(fs.readFileSync(CATALOG, 'utf8'));
-    for (const file of sortedFiles(I18N, n => n.endsWith('.js'))) {
-      const lang = path.basename(file, '.js');
+    const keys = Object.keys(readSource());
+    for (const lang of languages()) {
       const table = readLanguage(lang);
-      const missing = strings.filter(s => !Object.hasOwn(table, s)).length;
-      console.log(`${lang}: ${strings.length - missing}/${strings.length} traduits`);
+      console.log(`${lang}: ${keys.filter(key => Object.hasOwn(table, key)).length}/${keys.length} traduits`);
     }
   } else if (command === 'missing') {
-    const strings = JSON.parse(fs.readFileSync(CATALOG, 'utf8'));
+    const source = readSource();
     const table = readLanguage(arg);
-    const missing = strings.filter(s => !Object.hasOwn(table, s));
-    console.log(`[\n${missing.map(s => JSON.stringify(s)).join(',\n')}\n]`);
+    const missing = Object.fromEntries(Object.entries(source).filter(([key]) => !Object.hasOwn(table, key)));
+    console.log(JSON.stringify(missing, null, 1));
   } else {
-    console.error('Usage: node tools/i18n.js extract | status | missing <lang>');
+    console.error('Usage: node tools/i18n.js extract [--prune] | status | missing <lang>');
     process.exit(1);
   }
 }
 
 if (require.main === module) main();
-module.exports = { extract, isShownText, jsLiterals, textSegments, rustTexts };
+module.exports = { extract, locate, keyFor, areaOf, readSource, readLanguage, writeSource, writeLanguage, languages,
+  isShownText, jsLiterals, textSegments, rustTexts, SOURCE, LANGUAGE_CALL, SOURCE_CALL };

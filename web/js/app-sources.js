@@ -104,8 +104,8 @@ export function episodeTileHtml(v, ctx) {
         ${meta ? html`<div class="ep-tile-meta">${meta}</div>` : ''}
         ${overview ? html`<p class="ep-tile-desc">${overview}</p>` : ''}
         <div class="ep-tile-actions">
-          ${upcoming ? '' : html`<button type="button" class="btn btn-secondary ep-mini" ${act('pickSeriesEpisodeSources', seasonNum, epNum)}>Sources</button>`}
-          ${hidden ? html`<button type="button" class="btn btn-secondary ep-mini spoiler-reveal-btn" ${act('revealSpoilerEpisode', seasonNum, epNum)} aria-label="Afficher le titre, le résumé et l'image de l'épisode ${epNum}">Afficher pour cet épisode</button>` : ''}
+          ${upcoming ? '' : html`<button type="button" class="btn btn-secondary ep-mini" ${act('pickSeriesEpisodeSources', seasonNum, epNum)}>${KINO_I18N.t('page.sources')}</button>`}
+          ${hidden ? html`<button type="button" class="btn btn-secondary ep-mini spoiler-reveal-btn" ${act('revealSpoilerEpisode', seasonNum, epNum)} aria-label="Afficher le titre, le résumé et l'image de l'épisode ${epNum}">${KINO_I18N.t('sources.afficher_pour_cet_episode')}</button>` : ''}
           ${upcoming ? '' : html`<button type="button" class="btn btn-secondary ep-mini ep-watch${isWatched ? ' is-on' : ''}" aria-pressed="${isWatched}" title="${isWatched ? 'Démarquer comme vu' : 'Marquer cet épisode comme vu'}" ${act('toggleWatchedSeriesEp', seasonNum, epNum)}>${isWatched ? '✓ Vu' : '✓ Marquer vu'}</button>`}
         </div>
       </div>
@@ -126,8 +126,8 @@ export function updateEpisodeArrows() {
   const strip = document.getElementById('detailEpisodesStrip');
   if (!row || !strip || typeof strip.querySelector !== 'function') return;
   const max = row.scrollWidth - row.clientWidth;
-  const prev = strip.querySelector('.ep-scroll-prev');
-  const next = strip.querySelector('.ep-scroll-next');
+  const prev = /** @type {HTMLElement | null} */ (strip.querySelector('.ep-scroll-prev'));
+  const next = /** @type {HTMLElement | null} */ (strip.querySelector('.ep-scroll-next'));
   if (prev) prev.hidden = !(max > 2 && row.scrollLeft > 2);
   if (next) next.hidden = !(max > 2 && row.scrollLeft < max - 2);
 }
@@ -147,21 +147,21 @@ export function requestEpisodeOverviews(seriesId, seasonNum) {
     EPISODE_OVERVIEWS_FR.set(key, overviews);
     if (spoilerSeriesId() !== seriesId || detailEpisodeSeason !== seasonNum) return;
     document.querySelectorAll('#detailEpisodesList .ep-tile:not([data-hidden]) .ep-tile-desc').forEach(desc => {
-      const text = overviews[desc.closest('.ep-tile')?.dataset.ep || ''];
+      const text = overviews[/** @type {HTMLElement | null} */ (desc.closest('.ep-tile'))?.dataset.ep || ''];
       if (text) desc.textContent = text;
     });
   }).catch(() => {});
 }
 
 function pickSeriesEpisodeSources(s, e) {
-  document.getElementById('seasonSelect').value = String(s);
+  /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value = String(s);
   onSeasonChange(false);
-  document.getElementById('episodeSelect').value = String(e);
+  /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value = String(e);
   reloadSeriesEpisode(true);
 }
 
 export function onSeasonChange(triggerReload = true) {
-  const s = parseInt(document.getElementById('seasonSelect').value || '1', 10);
+  const s = parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value || '1', 10);
   const eSel = document.getElementById('episodeSelect');
   const eps = seriesMetaVideos.filter(v => v.season === s).sort((a,b) => (a.episode || a.number) - (b.episode || b.number));
   if (eps.length) {
@@ -178,8 +178,8 @@ export function onSeasonChange(triggerReload = true) {
 
 export function reloadSeriesEpisode(scrollToTorrents = false) {
   if (!currentMedia) return;
-  const s = document.getElementById('seasonSelect').value || 1;
-  const e = document.getElementById('episodeSelect').value || 1;
+  const s = /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value || 1;
+  const e = /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value || 1;
   loadTorrents({
     imdb_id: currentMedia.id,
     type: 'series',
@@ -219,8 +219,8 @@ export async function loadTorrents(params, scroll = true) {
   const list = document.getElementById('torrentsList');
   panel.style.display = 'block';
   document.getElementById('torrentsHeading').textContent = params.title;
-  document.getElementById('torrentsSub').textContent = 'Recherche des sources...';
-  render(list, html`<p style="color:var(--dim); font-size:0.84rem;">Chargement...</p>`);
+  document.getElementById('torrentsSub').textContent = KINO_I18N.t('sources.recherche_des_sources');
+  render(list, html`<p style="color:var(--dim); font-size:0.84rem;">${KINO_I18N.t('page.chargement')}</p>`);
   if (scroll) panel.scrollIntoView({behavior: 'smooth'});
 
   if (!params.runtime && currentMedia && currentMedia.runtime) {
@@ -256,7 +256,7 @@ function setFilter(flt, el) {
 }
 
 function getFilteredTorrents() {
-  const custom = document.getElementById('customFilter')?.value.trim().toLowerCase() || '';
+  const custom = /** @type {HTMLInputElement} */ (document.getElementById('customFilter'))?.value.trim().toLowerCase() || '';
   const words = custom ? custom.split(/\s+/).filter(Boolean) : [];
   const isMovie = !currentMedia || currentMedia.type !== 'series';
   const rm = currentMedia && currentMedia.runtime ? parseInt(currentMedia.runtime, 10) : 0;
@@ -307,7 +307,7 @@ function getFilteredTorrents() {
     return true;
   });
 
-  const sortMode = document.getElementById('torrentSortSelect')?.value || 'default';
+  const sortMode = /** @type {HTMLSelectElement} */ (document.getElementById('torrentSortSelect'))?.value || 'default';
   if (sortMode === 'seeds') {
     filtered.sort((a, b) => extractTorrentSeeders(b) - extractTorrentSeeders(a));
   } else if (sortMode === 'size_desc') {
@@ -418,7 +418,7 @@ function sourceComparison(t, best) {
   const mine = t?.score_parts || {};
   const theirs = best?.score_parts || {};
   const gaps = Object.keys(SOURCE_PART_LABELS)
-    .map(part => [part, (Number(theirs[part]) || 0) - (Number(mine[part]) || 0)])
+    .map(part => /** @type {[string, number]} */ ([part, (Number(theirs[part]) || 0) - (Number(mine[part]) || 0)]))
     .filter(([, gap]) => gap !== 0);
   const labels = list => list.map(([part]) => SOURCE_PART_LABELS[part]);
   return {
@@ -430,19 +430,20 @@ function sourceComparison(t, best) {
 function sourceWhyHtml(t, best) {
   if (!sourceWhy(t).length) return '';
   const line = (label, items) => (items.length ? html`<p><strong>${label} :</strong> ${items.join(' · ')}</p>` : '');
+  /** @type {ReturnType<typeof html> | string} */
   let compared = '';
   if (best && best !== t && best.score_parts && t.score_parts) {
     const { behind, ahead } = sourceComparison(t, best);
     if (behind.length) compared = html`<p><strong>Moins bien que la recommandée :</strong> ${behind.join(', ')}${ahead.length ? ` · mieux : ${ahead.join(', ')}` : ''}</p>`;
   }
-  return html`<details class="source-why"><summary>Pourquoi ce rang ?</summary>${line('Points forts', sourceReasons(t, 'good'))}${line('À noter', [...sourceReasons(t, 'bad'), ...sourceReasons(t, 'neutral')])}${compared}</details>`;
+  return html`<details class="source-why"><summary>${KINO_I18N.t('sources.pourquoi_ce_rang')}</summary>${line('Points forts', sourceReasons(t, 'good'))}${line('À noter', [...sourceReasons(t, 'bad'), ...sourceReasons(t, 'neutral')])}${compared}</details>`;
 }
 
 function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
   const { t, idx, copies } = row;
-  const recBadge = isBest ? html`<span class="badge badge-recommended">Recommandé</span>` : '';
+  const recBadge = isBest ? html`<span class="badge badge-recommended">${KINO_I18N.t('sources.recommande')}</span>` : '';
   const isCached = typeof t.is_instant === 'boolean' ? t.is_instant : Boolean((t.source && t.source.includes('+')) || (t.qualities && t.qualities.some(q => q.endsWith('+'))));
-  const cachedBadge = isCached ? html`<span class="badge badge-cached" title="Disponibilité immédiate signalée par la source">Disponible</span>` : '';
+  const cachedBadge = isCached ? html`<span class="badge badge-cached" title="${KINO_I18N.t('sources.disponibilite_immediate_signalee_par_la')}">${KINO_I18N.t('lists.disponible')}</span>` : '';
   const recommendation = t.recommendation || {};
   const reasons = isBest && Array.isArray(recommendation.reasons) ? recommendation.reasons : [];
   const warnings = Array.isArray(recommendation.warnings) ? recommendation.warnings : [];
@@ -457,22 +458,23 @@ function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
   const qualBadges = (t.qualities || []).map(q => {
     const qClean = String(q).replace(/\+$/, '');
     let cls = 'badge';
+    /** @type {ReturnType<typeof html> | string} */
     let tip = '';
     if (qClean === '4K' || qClean === '2160p') {
       cls = 'badge badge-res-4k';
-      tip = html` title="Ultra Haute Définition 4K"`;
+      tip = html` title="${KINO_I18N.t('sources.ultra_haute_definition_4k')}"`;
     } else if (qClean === '1080p') {
       cls = 'badge badge-res-1080p';
-      tip = html` title="Haute Définition 1080p"`;
+      tip = html` title="${KINO_I18N.t('sources.haute_definition_1080p')}"`;
     } else if (qClean === 'DV' || qClean === 'Dolby Vision') {
       cls = 'badge badge-codec-dv';
-      tip = html` title="Dolby Vision (Tone-Mapping anti-noirs bouchés actif)"`;
+      tip = html` title="${KINO_I18N.t('sources.dolby_vision_tone_mapping_anti_noirs')}"`;
     } else if (qClean === 'HDR' || qClean === 'HDR10' || qClean === 'HDR10+') {
       cls = 'badge badge-codec-hdr';
-      tip = html` title="High Dynamic Range (HDR10)"`;
+      tip = html` title="${KINO_I18N.t('sources.high_dynamic_range_hdr10')}"`;
     } else if (qClean === 'REMUX') {
       cls = 'badge badge-codec-remux';
-      tip = html` title="Qualité Blu-Ray intégrale sans recompression"`;
+      tip = html` title="${KINO_I18N.t('sources.qualite_blu_ray_integrale_sans')}"`;
     } else if (['Atmos', 'DTS', 'DTS-HD', 'TrueHD', '5.1', '7.1'].includes(qClean)) {
       cls = 'badge badge-codec-audio';
       tip = html` title="Audio spatial / multicanal ${qClean}"`;
@@ -501,10 +503,10 @@ function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
           ${explanation}${warning}${why}
         </div>
         <div class="torrent-actions">
-          ${t.magnet ? html`<button class="btn btn-secondary btn-icon" ${act('copyTorrentMagnet', EVENT, THIS, idx)} title="Copier le lien Magnet" aria-label="Copier le lien Magnet"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#link"></use></svg></button>` : ''}
+          ${t.magnet ? html`<button class="btn btn-secondary btn-icon" ${act('copyTorrentMagnet', EVENT, THIS, idx)} title="${KINO_I18N.t('sources.copier_le_lien_magnet')}" aria-label="${KINO_I18N.t('sources.copier_le_lien_magnet')}"><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#link"></use></svg></button>` : ''}
           ${isBest
-            ? html`<button class="btn btn-play-hero" style="padding:7px 16px !important; font-size:0.82rem !important;" ${act('debridFromIndex', idx)}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#play-solid"></use></svg> Lancer</button>`
-            : html`<button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem;" ${act('debridFromIndex', idx)}>Sélectionner</button>`
+            ? html`<button class="btn btn-play-hero" style="padding:7px 16px !important; font-size:0.82rem !important;" ${act('debridFromIndex', idx)}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#play-solid"></use></svg> ${KINO_I18N.t('page.lancer')}</button>`
+            : html`<button class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem;" ${act('debridFromIndex', idx)}>${KINO_I18N.t('sources.selectionner')}</button>`
           }
         </div>
       </div>`;
@@ -513,10 +515,10 @@ function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
 export function renderTorrents() {
   const list = document.getElementById('torrentsList');
   const filtered = getFilteredTorrents();
-  const sourceSeason = Number(document.getElementById('seasonSelect')?.value || 0);
-  const sourceEpisode = Number(document.getElementById('episodeSelect')?.value || 0);
+  const sourceSeason = Number(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'))?.value || 0);
+  const sourceEpisode = Number(/** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect'))?.value || 0);
   const sourceHidden = currentMedia?.type === 'series' && spoilerConcealed(spoilerSeriesId(), sourceSeason, sourceEpisode);
-  const revealSource = sourceHidden ? html`<button class="btn btn-secondary spoiler-reveal-btn" style="margin-bottom:10px" ${act('revealSpoilerEpisode', sourceSeason, sourceEpisode)}>Afficher pour cet épisode</button>` : '';
+  const revealSource = sourceHidden ? html`<button class="btn btn-secondary spoiler-reveal-btn" style="margin-bottom:10px" ${act('revealSpoilerEpisode', sourceSeason, sourceEpisode)}>${KINO_I18N.t('sources.afficher_pour_cet_episode')}</button>` : '';
 
   let bestIdx = -1;
   let maxScore = -1;
@@ -538,7 +540,7 @@ export function renderTorrents() {
   }
 
   if (!filtered.length) {
-    render(list, [revealSource, html`<p style="color:var(--dim); font-size:0.84rem;">Aucun résultat pour ce filtre.</p>`]);
+    render(list, [revealSource, html`<p style="color:var(--dim); font-size:0.84rem;">${KINO_I18N.t('sources.aucun_resultat_pour_ce_filtre')}</p>`]);
     return;
   }
 
@@ -553,7 +555,7 @@ export function renderTorrents() {
       const where = group.key === 'other' ? '' : ` en ${group.label}`;
       const toggle = !open && hidden > 0
         ? html`<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="false">Voir ${hidden} autre${hidden > 1 ? 's' : ''}${where}</button>`
-        : (open && group.rows.length > SOURCE_GROUP_SIZE ? html`<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="true">Réduire</button>` : '');
+        : (open && group.rows.length > SOURCE_GROUP_SIZE ? html`<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="true">${KINO_I18N.t('page.reduire')}</button>` : '');
       return html`<section class="source-group" aria-label="${group.label}">
         <h4 class="source-group-title">${group.label} <span class="list-count">${group.rows.length}</span></h4>
         ${shown.map(row => sourceRowHtml(row, false, sourceHidden, sourceEpisode, best))}
@@ -579,7 +581,7 @@ async function copyTorrentMagnet(ev, btnEl, idx) {
     await navigator.clipboard.writeText(item.magnet);
     if (btnEl) {
       const orig = btnEl.textContent;
-      btnEl.textContent = '✓ Copié';
+      btnEl.textContent = KINO_I18N.t('sources.copie');
       setTimeout(() => { btnEl.textContent = orig; }, 1400);
     }
   } catch (e) {}
@@ -600,8 +602,8 @@ async function debridCandidates(candidates) {
   box.style.display = 'block';
   box.scrollIntoView({behavior: 'smooth'});
 
-  const season = currentMedia && currentMedia.type === 'series' ? document.getElementById('seasonSelect').value : null;
-  const episode = currentMedia && currentMedia.type === 'series' ? document.getElementById('episodeSelect').value : null;
+  const season = currentMedia && currentMedia.type === 'series' ? /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value : null;
+  const episode = currentMedia && currentMedia.type === 'series' ? /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value : null;
 
   for (let i = 0; i < candidates.length; i++) {
     const item = candidates[i];
@@ -668,7 +670,7 @@ export function renderDebridState(res, season, episode, chosenTorrentTitle = '',
     : '';
 
   render(box, html`
-    <h3 style="margin-bottom:6px;">Fichier prêt</h3>
+    <h3 style="margin-bottom:6px;">${KINO_I18N.t('sources.fichier_pret')}</h3>
     ${subBanner}
     ${playlistNote}
     <div style="display:flex; flex-direction:column; gap:8px;">
@@ -681,17 +683,17 @@ export function renderDebridState(res, season, episode, chosenTorrentTitle = '',
         <div class="torrent-item" style="${f.is_target_ep ? 'border-color: var(--border-hover);' : ''}">
           <div style="flex:1; min-width:240px;">
             <div class="torrent-title">
-              ${f.is_target_ep ? html`<span class="badge badge-hi">Épisode</span>` : ''}
+              ${f.is_target_ep ? html`<span class="badge badge-hi">${KINO_I18N.t('page.episode')}</span>` : ''}
               ${hidden ? Spoilers.neutralTitle(fileEpisode) : escapeHtml(f.filename)}
             </div>
             <div class="torrent-meta">${f.filesize || ''}</div>
           </div>
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            ${hidden && fileEpisode ? html`<button class="btn btn-secondary spoiler-reveal-btn" ${act('revealSpoilerEpisode', fileSeason, fileEpisode)}>Afficher pour cet épisode</button>` : ''}
-            <button class="btn" ${act('openDebridFile', THIS, index)}>Lancer</button>
-            <button class="btn btn-secondary" ${act('sendDebridFileToTv', THIS, index)} title="Lire ce fichier sur la TV"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#cast"></use></svg> Sur la TV</button>
-            <button class="btn btn-secondary" ${act('downloadDebridFile', index)}>Télécharger</button>
-            <button class="btn btn-secondary" ${act('openDebridLink', index)}>Lien direct</button>
+            ${hidden && fileEpisode ? html`<button class="btn btn-secondary spoiler-reveal-btn" ${act('revealSpoilerEpisode', fileSeason, fileEpisode)}>${KINO_I18N.t('sources.afficher_pour_cet_episode')}</button>` : ''}
+            <button class="btn" ${act('openDebridFile', THIS, index)}>${KINO_I18N.t('page.lancer')}</button>
+            <button class="btn btn-secondary" ${act('sendDebridFileToTv', THIS, index)} title="${KINO_I18N.t('sources.lire_ce_fichier_sur_la_tv')}"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#cast"></use></svg> ${KINO_I18N.t('page.sur_la_tv')}</button>
+            <button class="btn btn-secondary" ${act('downloadDebridFile', index)}>${KINO_I18N.t('settings.telecharger')}</button>
+            <button class="btn btn-secondary" ${act('openDebridLink', index)}>${KINO_I18N.t('settings.lien_direct')}</button>
           </div>
         </div>
       `; })}
@@ -721,7 +723,7 @@ async function sendDebridFileToTv(button, index) {
   const status = document.getElementById('debridTvStatus');
   const label = raw(button.innerHTML);
   button.disabled = true;
-  button.textContent = 'Envoi…';
+  button.textContent = KINO_I18N.t('settings.envoi');
   try {
     await castToTv({ stream_url: file.download, title: tvTitle(media, file.filename), filename: file.filename, media,
       resume_sec: savedPosition(currentMedia, season, episode) });
@@ -756,8 +758,8 @@ export function downloadMediaContext(media = currentMedia) {
     year: media.year || '', poster: media.poster || '', runtime: media.runtime || ''
   };
   if (context.type === 'series' || context.type === 'anime') {
-    context.season = media.season || Number(document.getElementById('seasonSelect')?.value) || null;
-    context.episode = media.episode || Number(document.getElementById('episodeSelect')?.value) || null;
+    context.season = media.season || Number(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'))?.value) || null;
+    context.episode = media.episode || Number(/** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect'))?.value) || null;
   }
   return context;
 }
@@ -807,7 +809,7 @@ async function saveCurrentPlaybackOffline() {
     subtitles = {label: selected.label, lang: selected.lang, kind: selected.kind,
       variant: selected.variant, cues};
   }
-  const button = document.getElementById('inAppSaveOfflineBtn');
+  const button = /** @type {HTMLButtonElement} */ (document.getElementById('inAppSaveOfflineBtn'));
   if (button) button.disabled = true;
   try {
     await startPcDownload(inAppCurrentUrl, filename, downloadMediaContext(inAppCurrentMedia), subtitles);
@@ -831,8 +833,8 @@ export async function openMpv(btn, url, filename, options = null) {
   }
   const media = options ? (options.media || null) : currentMedia;
   const fromFiche = !options && currentMedia && currentMedia.type === 'series';
-  const s = options ? (options.season ?? null) : (fromFiche ? document.getElementById('seasonSelect')?.value : null);
-  const e = options ? (options.episode ?? null) : (fromFiche ? document.getElementById('episodeSelect')?.value : null);
+  const s = options ? (options.season ?? null) : (fromFiche ? /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'))?.value : null);
+  const e = options ? (options.episode ?? null) : (fromFiche ? /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect'))?.value : null);
   let packFiles = options?.files?.length > 1 ? options.files : null;
   if (!options && lastDebridFiles && lastDebridFiles.length > 1 && lastDebridFiles.some(f => f.download === url)) {
     const sorted = [...lastDebridFiles].sort((a, b) => (a.filename || '').localeCompare(b.filename || ''));
@@ -919,9 +921,10 @@ export async function openMpv(btn, url, filename, options = null) {
   document.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     if (!document.body.classList.contains('is-mac-native')) return;
-    const dragRegion = e.target.closest('.pywebview-drag-region');
+    const target = /** @type {Element} */ (e.target);
+    const dragRegion = target.closest('.pywebview-drag-region');
     if (!dragRegion) return;
-    if (e.target.closest('.no-drag, button, input, select, textarea, a, label')) return;
+    if (target.closest('.no-drag, button, input, select, textarea, a, label')) return;
     try {
       if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.jsBridge) {
         window.webkit.messageHandlers.jsBridge.postMessage(JSON.stringify({
@@ -956,8 +959,9 @@ export async function openMpv(btn, url, filename, options = null) {
   const INTERACTIVE = '.no-drag, button, input, select, textarea, a, label, [role="button"], .win-resize-handle';
   document.addEventListener('mousedown', (e) => {
     if (e.button !== 0 || !document.body.classList.contains('is-win-native')) return;
-    const region = e.target.closest('.pywebview-drag-region');
-    if (!region || e.target.closest(INTERACTIVE)) return;
+    const target = /** @type {Element} */ (e.target);
+    const region = target.closest('.pywebview-drag-region');
+    if (!region || target.closest(INTERACTIVE)) return;
     e.preventDefault();
     const api = window.pywebview && window.pywebview.api;
     if (api && api.start_window_drag) {
@@ -969,7 +973,7 @@ export async function openMpv(btn, url, filename, options = null) {
   // The app handles the double press: a dblclick on the bar would toggle a second time.
   document.addEventListener('dblclick', (e) => {
     if (e.isTrusted && document.body.classList.contains('is-win-native')
-        && e.target.closest('.pywebview-drag-region') && !e.target.closest(INTERACTIVE)) {
+        && /** @type {Element} */ (e.target).closest('.pywebview-drag-region') && !/** @type {Element} */ (e.target).closest(INTERACTIVE)) {
       e.stopPropagation();
     }
   }, true);

@@ -92,7 +92,7 @@ async function setGlobalSpoilerProtection(enabled) {
     await changeSpoilerState({action: 'global', enabled});
     if (status) status.textContent = enabled ? 'Protection activée.' : 'Protection désactivée.';
   } catch (error) {
-    if (status) status.textContent = 'Impossible de mémoriser ce réglage.';
+    if (status) status.textContent = KINO_I18N.t('core.impossible_de_memoriser_ce_reglage');
     refreshSpoilerSurfaces();
   }
 }
@@ -154,7 +154,7 @@ export async function loadAnimeJourney(media, meta) {
   if (!panel) return;
   const requestId = ++animeJourneyRequestId;
   const originId = media.id;
-  render(panel, html`<p class="journey-empty">Chargement du parcours…</p>`);
+  render(panel, html`<p class="journey-empty">${KINO_I18N.t('core.chargement_du_parcours')}</p>`);
   try {
     const title = meta.name || media.name;
     const year = meta.releaseInfo || meta.year || media.year || '';
@@ -174,7 +174,7 @@ export async function loadAnimeJourney(media, meta) {
     }));
   } catch (error) {
     if (requestId === animeJourneyRequestId && currentMedia?.id === originId) {
-      render(panel, html`<p class="journey-empty">Parcours indisponible pour le moment.</p>`);
+      render(panel, html`<p class="journey-empty">${KINO_I18N.t('core.parcours_indisponible_pour_le_moment')}</p>`);
     }
   }
 }
@@ -227,7 +227,7 @@ async function moveJourneyWork(id, delta) {
     renderAnimeJourney();
   } catch (error) {
     const status = document.getElementById('journeyStatus');
-    if (status) status.textContent = 'Impossible de mémoriser cet ordre.';
+    if (status) status.textContent = KINO_I18N.t('core.impossible_de_memoriser_cet_ordre');
   }
 }
 
@@ -242,7 +242,7 @@ async function resetJourneyOrder() {
     renderAnimeJourney();
   } catch (error) {
     const status = document.getElementById('journeyStatus');
-    if (status) status.textContent = 'Impossible de rétablir l’ordre de sortie.';
+    if (status) status.textContent = KINO_I18N.t('core.impossible_de_retablir_l_ordre_de_sortie');
   }
 }
 
@@ -257,9 +257,9 @@ export function scheduleSpoilerTarget(item) {
 }
 
 export function refreshSpoilerSurfaces() {
-  const global = document.getElementById('cfgSpoilerProtection');
+  const global = /** @type {HTMLSelectElement} */ (document.getElementById('cfgSpoilerProtection'));
   if (global) global.value = spoilerState.enabled ? 'on' : 'off';
-  const series = document.getElementById('detailSpoilerChoice');
+  const series = /** @type {HTMLSelectElement} */ (document.getElementById('detailSpoilerChoice'));
   if (series && currentMedia?.id) {
     const choice = spoilerState.overrides?.[spoilerSeriesId()];
     series.value = choice === true ? 'on' : choice === false ? 'off' : 'inherit';
@@ -267,12 +267,12 @@ export function refreshSpoilerSurfaces() {
   const offer = document.getElementById('detailSpoilerOffer');
   if (offer) offer.hidden = spoilerState.enabled || spoilerState.overrides?.[spoilerSeriesId()] === true;
   if (animeWeekData) renderAnimeWeek();
-  const season = Number(document.getElementById('seasonSelect')?.value || 1);
-  const selected = document.getElementById('episodeSelect')?.value;
+  const season = Number(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'))?.value || 1);
+  const selected = /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect'))?.value;
   if (currentMedia && document.getElementById('detailEpisodesList')) {
     onSeasonChange(false);
     if (selected && document.querySelector(`#episodeSelect option[value="${Number(selected)}"]`))
-      document.getElementById('episodeSelect').value = selected;
+      /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value = selected;
     renderDetailEpisodes(season);
   }
   refreshLatestAiredSpoiler();
@@ -294,8 +294,8 @@ function refreshLatestAiredSpoiler() {
 export function refreshPlayerSpoilerTitles() {
   if (!inAppCurrentMedia || !inAppSeriesId) return;
   const current = Spoilers.episodeNumber(inAppCurrentTitle);
-  const season = Number(current?.season || inAppCurrentMedia.season || document.getElementById('seasonSelect')?.value || 0);
-  const episode = Number(current?.episode || inAppCurrentMedia.episode || document.getElementById('episodeSelect')?.value || 0);
+  const season = Number(current?.season || inAppCurrentMedia.season || /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'))?.value || 0);
+  const episode = Number(current?.episode || inAppCurrentMedia.episode || /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect'))?.value || 0);
   const title = document.getElementById('inAppTitle');
   if (title) title.textContent = spoilerConcealed(inAppSeriesId, season, episode)
     ? Spoilers.neutralTitle(episode) : inAppCurrentTitle || 'Lecture';
@@ -319,11 +319,11 @@ export const PROVIDER_META = {
 };
 
 export function onConfigProviderChange() {
-  const prov = document.getElementById('cfgProvider') ? document.getElementById('cfgProvider').value : 'realdebrid';
+  const prov = document.getElementById('cfgProvider') ? /** @type {HTMLSelectElement} */ (document.getElementById('cfgProvider')).value : 'realdebrid';
   const meta = PROVIDER_META[prov] || PROVIDER_META.realdebrid;
-  const linkEl = document.getElementById('cfgProviderLink');
+  const linkEl = /** @type {HTMLAnchorElement} */ (document.getElementById('cfgProviderLink'));
   const lblEl = document.getElementById('cfgTokenLabel');
-  const inpEl = document.getElementById('cfgToken');
+  const inpEl = /** @type {HTMLInputElement} */ (document.getElementById('cfgToken'));
   if (linkEl) {
     linkEl.href = meta.url;
     linkEl.textContent = meta.label;
@@ -374,7 +374,7 @@ export async function api(path, opts) {
   const res = await fetch(path, opts);
   const data = await res.json();
   if (!res.ok || data.error) {
-    const error = new Error(data.error || 'Erreur serveur');
+    const error = /** @type {Error & { code?: string }} */ (new Error(data.error || 'Erreur serveur'));
     error.code = data.code || '';
     if (error.code === 'offline') noteNetworkOffline();
     throw error;
@@ -392,7 +392,7 @@ export async function checkConfig() {
     linkedAccounts.debridName = pmeta.name;
 
     if (document.getElementById('cfgProvider')) {
-      document.getElementById('cfgProvider').value = prov;
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgProvider')).value = prov;
     }
     onConfigProviderChange();
 
@@ -408,47 +408,47 @@ export async function checkConfig() {
       document.getElementById('rdCloudHeading').textContent = `Derniers fichiers débridés sur ${pmeta.name}`;
     }
 
-    document.getElementById('cfgDir').value = cfg.download_dir || '';
+    /** @type {HTMLInputElement} */ (document.getElementById('cfgDir')).value = cfg.download_dir || '';
     const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
     const effPlayerMode = (cfg.player_mode && cfg.player_mode !== 'kino') ? cfg.player_mode : (isMacPlatform ? 'integrated' : 'kino');
     if (document.getElementById('cfgPlayerMode')) {
-      document.getElementById('cfgPlayerMode').value = (effPlayerMode === 'external') ? 'external' : 'integrated';
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgPlayerMode')).value = (effPlayerMode === 'external') ? 'external' : 'integrated';
     }
     if (document.getElementById('cfgPrefLang')) {
-      document.getElementById('cfgPrefLang').value = cfg.pref_lang || 'vf';
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgPrefLang')).value = cfg.pref_lang || 'vf';
     }
     playerPrefs.prefLang = cfg.pref_lang || 'vf';
     if (typeof showTmdbStatus === 'function') showTmdbStatus(cfg.has_tmdb_key === true);
     playerPrefs.autoFrSubs = cfg.auto_fr_subs !== false;
     const notifyField = document.getElementById('cfgEpisodeNotificationsField');
     if (notifyField) notifyField.style.display = cfg.notifications_available === true ? 'flex' : 'none';
-    const notifyBox = document.getElementById('cfgEpisodeNotifications');
+    const notifyBox = /** @type {HTMLInputElement} */ (document.getElementById('cfgEpisodeNotifications'));
     if (notifyBox) notifyBox.checked = cfg.episode_notifications !== false;
-    const autoSubs = document.getElementById('cfgAutoFrSubs');
+    const autoSubs = /** @type {HTMLInputElement} */ (document.getElementById('cfgAutoFrSubs'));
     if (autoSubs) autoSubs.checked = playerPrefs.autoFrSubs;
     if (document.getElementById('cfgPrefQuality')) {
-      document.getElementById('cfgPrefQuality').value = cfg.pref_quality || '4k';
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgPrefQuality')).value = cfg.pref_quality || '4k';
     }
-    const priority = document.getElementById('cfgSourcePriority');
+    const priority = /** @type {HTMLSelectElement} */ (document.getElementById('cfgSourcePriority'));
     if (priority) priority.value = cfg.source_priority === 'quality' ? 'quality' : 'speed';
     if (document.getElementById('cfgHdrMode')) {
       const hMode = cfg.hdr_mode || 'sdr_pref';
-      document.getElementById('cfgHdrMode').value = (hMode === 'hdr_native') ? 'hdr_native' : 'sdr_pref';
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgHdrMode')).value = (hMode === 'hdr_native') ? 'hdr_native' : 'sdr_pref';
     }
     if (document.getElementById('cfgAudioMode')) {
-      document.getElementById('cfgAudioMode').value = cfg.audio_mode || 'voice_boost';
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgAudioMode')).value = cfg.audio_mode || 'voice_boost';
     }
     playerPrefs.hdrMode = cfg.hdr_mode || 'sdr_pref';
     playerPrefs.audioMode = cfg.audio_mode || 'voice_boost';
     const retVal = String(cfg.rd_retention_days || 0);
     if (document.getElementById('cfgRdRetention')) {
-      document.getElementById('cfgRdRetention').value = retVal;
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgRdRetention')).value = retVal;
     }
     if (document.getElementById('rdCloudRetentionSelect')) {
-      document.getElementById('rdCloudRetentionSelect').value = retVal;
+      /** @type {HTMLSelectElement} */ (document.getElementById('rdCloudRetentionSelect')).value = retVal;
     }
     if (document.getElementById('cfgDiscordRpc')) {
-      document.getElementById('cfgDiscordRpc').checked = cfg.discord_rpc !== false;
+      /** @type {HTMLInputElement} */ (document.getElementById('cfgDiscordRpc')).checked = cfg.discord_rpc !== false;
     }
     if (NativePlayer) {
       NativePlayer.available = cfg.native_player_available === true;
@@ -457,12 +457,12 @@ export async function checkConfig() {
     const nativeField = document.getElementById('cfgNativePlayerField');
     if (nativeField) nativeField.style.display = cfg.native_player_available === true ? 'flex' : 'none';
     if (document.getElementById('cfgNativePlayer')) {
-      document.getElementById('cfgNativePlayer').checked = cfg.native_player === true;
+      /** @type {HTMLInputElement} */ (document.getElementById('cfgNativePlayer')).checked = cfg.native_player === true;
     }
     const sharedDiscordId = '1556492442415398973';
     const currentCid = String(cfg.discord_client_id || sharedDiscordId).trim();
-    const presetEl = document.getElementById('cfgDiscordPreset');
-    const customInp = document.getElementById('cfgDiscordClientId');
+    const presetEl = /** @type {HTMLSelectElement} */ (document.getElementById('cfgDiscordPreset'));
+    const customInp = /** @type {HTMLInputElement} */ (document.getElementById('cfgDiscordClientId'));
     const customBox = document.getElementById('cfgDiscordCustomBox');
     if (presetEl) {
       if (currentCid === sharedDiscordId) {
@@ -486,28 +486,28 @@ export async function checkConfig() {
         const exp = cfg.user.premium > 0 ? Math.ceil(cfg.user.premium / 86400) + ' jours' : 'Gratuit';
         cfgAccTitle.textContent = `${pmeta.name} · Connecté (${cfg.user.username})`;
         cfgAccSub.textContent = cfg.user.premium > 0 ? `Abonnement valide encore ${exp}.` : 'Compte gratuit, sans abonnement.';
-        cfgAccBadge.textContent = 'Actif';
+        cfgAccBadge.textContent = KINO_I18N.t('core.actif');
         cfgAccBadge.style.color = '#4ade80';
         cfgAccBadge.style.borderColor = 'rgba(74,222,128,0.4)';
         cfgAccBadge.style.background = 'rgba(74,222,128,0.1)';
       } else if (cfg.has_token && cfg.user_status === 'invalid') {
         cfgAccTitle.textContent = `${pmeta.name} · Clé refusée`;
-        cfgAccSub.textContent = 'La clé est invalide ou expirée. Collez-en une nouvelle, puis Vérifier.';
-        cfgAccBadge.textContent = 'Clé refusée';
+        cfgAccSub.textContent = KINO_I18N.t('core.la_cle_est_invalide_ou_expiree_collez_en');
+        cfgAccBadge.textContent = KINO_I18N.t('core.cle_refusee');
         cfgAccBadge.style.color = '#ef4444';
         cfgAccBadge.style.borderColor = 'rgba(239,68,68,0.4)';
         cfgAccBadge.style.background = 'rgba(239,68,68,0.1)';
       } else if (cfg.has_token) {
         cfgAccTitle.textContent = `${pmeta.name} · Vérification impossible`;
-        cfgAccSub.textContent = 'Le service ne répond pas pour le moment. Réessayez plus tard.';
-        cfgAccBadge.textContent = 'Indisponible';
+        cfgAccSub.textContent = KINO_I18N.t('core.le_service_ne_repond_pas_pour_le_moment');
+        cfgAccBadge.textContent = KINO_I18N.t('core.indisponible');
         cfgAccBadge.style.color = '#eab308';
         cfgAccBadge.style.borderColor = 'rgba(234,179,8,0.4)';
         cfgAccBadge.style.background = 'rgba(234,179,8,0.1)';
       } else {
         cfgAccTitle.textContent = `${pmeta.name} · Pas de clé`;
-        cfgAccSub.textContent = 'Collez votre clé ci-dessous, puis Vérifier.';
-        cfgAccBadge.textContent = 'Non connecté';
+        cfgAccSub.textContent = KINO_I18N.t('core.collez_votre_cle_ci_dessous_puis');
+        cfgAccBadge.textContent = KINO_I18N.t('page.non_connecte');
         cfgAccBadge.style.color = '#eab308';
         cfgAccBadge.style.borderColor = 'rgba(234,179,8,0.4)';
         cfgAccBadge.style.background = 'rgba(234,179,8,0.1)';
@@ -531,19 +531,19 @@ export async function checkConfig() {
           <span class="user-status-dot" style="background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.6);"></span>
           <span style="color:#ef4444; font-weight:600;">${pmeta.short} • Clé invalide</span>
         `);
-        badge.title = 'Clé API invalide ou expirée. Cliquer pour reconfigurer.';
+        badge.title = KINO_I18N.t('core.cle_api_invalide_ou_expiree_cliquer_pour');
       } else if (cfg.has_token) {
         render(badge, html`
           <span class="user-status-dot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.6);"></span>
           <span style="color:#eab308; font-weight:600;">${pmeta.short} • Vérification impossible</span>
         `);
-        badge.title = 'Le service débrideur ne répond pas. Réessayez plus tard.';
+        badge.title = KINO_I18N.t('core.le_service_debrideur_ne_repond_pas');
       } else {
         render(badge, html`
           <span class="user-status-dot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.6);"></span>
-          <span style="color:#eab308; font-weight:600;">Non configuré</span>
+          <span style="color:#eab308; font-weight:600;">${KINO_I18N.t('core.non_configure')}</span>
         `);
-        badge.title = 'Cliquez pour configurer votre clé débrideur';
+        badge.title = KINO_I18N.t('core.cliquez_pour_configurer_votre_cle');
       }
     }
   } catch (e) {
@@ -597,7 +597,7 @@ export function openTonightModal() {
   const modal = document.getElementById('tonightModal');
   if (!modal) return;
   modal.style.display = 'flex';
-  const offline = document.getElementById('tonightOfflineOnly');
+  const offline = /** @type {HTMLInputElement} */ (document.getElementById('tonightOfflineOnly'));
   if (offline && !tonightOfflineInitialized) {
     offline.checked = !networkOnline || navigator.onLine === false;
     tonightOfflineInitialized = true;
@@ -610,7 +610,7 @@ export function closeTonightModal() {
   tonightRequestId++;
   const modal = document.getElementById('tonightModal');
   if (modal) modal.style.display = 'none';
-  const button = document.getElementById('tonightSearchButton');
+  const button = /** @type {HTMLButtonElement} */ (document.getElementById('tonightSearchButton'));
   if (button) button.disabled = false;
   document.getElementById('tonightOpenButton')?.focus();
 }
@@ -643,26 +643,26 @@ function renderTonightResult(result) {
       </div>
       <div class="tonight-choice-actions">
         <button type="button" class="btn" ${act('playTonightChoice', index, EVENT)}>${choice.offline_id ? 'Lire hors ligne' : 'Regarder'}</button>
-        <button type="button" class="btn btn-secondary" ${act('openTonightChoice', index)}>Voir la fiche</button>
+        <button type="button" class="btn btn-secondary" ${act('openTonightChoice', index)}>${KINO_I18N.t('core.voir_la_fiche')}</button>
       </div>
-      <div class="tonight-feedback-actions" aria-label="Votre avis sur cette idée">
-        <button type="button" ${act('sendTonightFeedback', index, 'defer')}>Pas ce soir</button>
-        <button type="button" ${act('sendTonightFeedback', index, 'seen')}>Déjà vu</button>
-        <button type="button" ${act('sendTonightFeedback', index, 'exclude')}>Ça ne m’intéresse pas</button>
+      <div class="tonight-feedback-actions" aria-label="${KINO_I18N.t('core.votre_avis_sur_cette_idee')}">
+        <button type="button" ${act('sendTonightFeedback', index, 'defer')}>${KINO_I18N.t('core.pas_ce_soir')}</button>
+        <button type="button" ${act('sendTonightFeedback', index, 'seen')}>${KINO_I18N.t('core.deja_vu')}</button>
+        <button type="button" ${act('sendTonightFeedback', index, 'exclude')}>${KINO_I18N.t('core.ca_ne_m_interesse_pas')}</button>
       </div>
     </article>
   `));
   const review = document.getElementById('tonightReview');
   if (review) render(review, tonightReviewItems.length
     ? tonightReviewItems.map((item, index) => html`<div class="tonight-review-row"><span><strong>${item.name || 'Titre'}</strong><small>${item.decision === 'deferred' ? 'Reporté 24 h' : item.decision === 'seen' ? 'Marqué déjà vu' : 'Écarté de Ce soir'}</small></span><button type="button" class="btn btn-secondary" ${act('restoreTonightChoice', index)}>${item.decision === 'seen' ? 'Annuler' : 'Réintégrer'}</button></div>`)
-    : html`<p class="tonight-review-empty">Aucun titre reporté ou écarté.</p>`);
+    : html`<p class="tonight-review-empty">${KINO_I18N.t('core.aucun_titre_reporte_ou_ecarte')}</p>`);
   const reviewSummary = document.getElementById('tonightReviewSummary');
   if (reviewSummary) reviewSummary.textContent = `Mes choix${tonightReviewItems.length ? ` (${tonightReviewItems.length})` : ''}`;
   const undo = document.getElementById('tonightUndo');
   if (undo) {
     undo.style.display = tonightUndoAction ? 'flex' : 'none';
     render(undo, tonightUndoAction
-      ? html`<span>${tonightUndoAction.label}</span><button type="button" class="btn btn-secondary" ${act('undoTonightFeedback')}>Annuler</button>` : '');
+      ? html`<span>${tonightUndoAction.label}</span><button type="button" class="btn btn-secondary" ${act('undoTonightFeedback')}>${KINO_I18N.t('page.annuler')}</button>` : '');
   }
 }
 
@@ -670,22 +670,22 @@ async function findTonightChoices() {
   const request = ++tonightRequestId;
   const status = document.getElementById('tonightStatus');
   const choices = document.getElementById('tonightChoices');
-  const button = document.getElementById('tonightSearchButton');
+  const button = /** @type {HTMLButtonElement} */ (document.getElementById('tonightSearchButton'));
   if (!status || !choices || !button) return;
   button.disabled = true;
   render(choices, '');
-  status.textContent = 'Recherche dans Ma Liste…';
+  status.textContent = KINO_I18N.t('core.recherche_dans_ma_liste');
   try {
     const result = await api('/api/tonight', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({minutes: Number(document.getElementById('tonightMinutes').value),
-        mood: document.getElementById('tonightMood').value,
-        offline_only: document.getElementById('tonightOfflineOnly')?.checked === true}),
+      body: JSON.stringify({minutes: Number(/** @type {HTMLSelectElement} */ (document.getElementById('tonightMinutes')).value),
+        mood: /** @type {HTMLSelectElement} */ (document.getElementById('tonightMood')).value,
+        offline_only: /** @type {HTMLInputElement} */ (document.getElementById('tonightOfflineOnly'))?.checked === true}),
     });
     if (request !== tonightRequestId) return;
     renderTonightResult(result);
   } catch (error) {
-    if (request === tonightRequestId) status.textContent = 'Impossible de préparer les suggestions. Réessayez.';
+    if (request === tonightRequestId) status.textContent = KINO_I18N.t('core.impossible_de_preparer_les_suggestions');
   } finally {
     if (request === tonightRequestId) button.disabled = false;
   }
@@ -789,7 +789,7 @@ export async function toggleWatchlist(ev, media) {
   if (activeTab === 'watchlist') {
     renderActiveListTab();
   } else {
-    document.querySelectorAll(`[data-wl-id="${media.id}"]`).forEach(btn => {
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll(`[data-wl-id="${media.id}"]`)).forEach(btn => {
       const inList = isInWatchlist(media.id);
       btn.classList.toggle('in-list', inList);
       btn.textContent = inList ? '✓' : '+';
