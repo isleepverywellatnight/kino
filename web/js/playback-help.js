@@ -14,14 +14,14 @@ function playbackHelpStatus(message) {
 }
 
 function openPlaybackHelp() {
-  const dialog = document.getElementById('playbackHelp');
+  const dialog = /** @type {HTMLDialogElement} */ (document.getElementById('playbackHelp'));
   if (!dialog.open) dialog.showModal();
-  document.getElementById('playbackHelpRetry').disabled = !inAppRecovery;
+  /** @type {HTMLButtonElement} */ (document.getElementById('playbackHelpRetry')).disabled = !inAppRecovery;
   showPlaybackHelp('no_audio');
 }
 
 export function closePlaybackHelp() {
-  document.getElementById('playbackHelp')?.close();
+  /** @type {HTMLDialogElement} */ (document.getElementById('playbackHelp'))?.close();
   resetInAppIdleTimer();
 }
 
@@ -29,7 +29,7 @@ function showPlaybackHelp(kind) {
   const host = document.getElementById('playbackHelpActions');
   host.replaceChildren();
   playbackHelpStatus('');
-  document.querySelectorAll('[data-help-kind]').forEach(button => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-help-kind]')).forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.helpKind === kind));
   });
   const explain = text => { const p = document.createElement('p'); p.textContent = text; host.append(p); };
@@ -90,7 +90,7 @@ async function replacePlaybackSource(reason) {
     if (recovery !== inAppRecovery || generation !== inAppPlaybackGeneration) return;
     recovery.feedbackRecorded = true;
     recovery.resetPosition = reason === 'wrong_content';
-    if (recovery.resetPosition) document.getElementById('inAppVideo').pause();
+    if (recovery.resetPosition) /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo')).pause();
     closePlaybackHelp();
     await recoverInAppSource(generation);
   } catch (_) {

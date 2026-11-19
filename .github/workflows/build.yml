@@ -64,12 +64,9 @@ jobs:
         run: |
           node --test tests/test_*.js
           node tools/frontend_check.js
-      # Files that start with « // @ts-check » are type-checked (jsconfig.json).
+      # Every interface file is type-checked (jsconfig.json, checkJs), its imports included.
       - name: Types (interface)
         run: npx --yes -p typescript@5.9.3 tsc -p jsconfig.json
-      # Every module imports what it uses from the others (all files, typed or not).
-      - name: Imports (interface)
-        run: node tools/names_check.js
       - name: Install scripts
         run: bash -n packaging/install.sh
 

@@ -30,7 +30,7 @@
 
   function pickLanguage() {
     // Set by the server from the settings (a meta tag: the page runs no inline script).
-    const meta = document.querySelector('meta[name="kino-ui-language"]');
+    const meta = /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[name="kino-ui-language"]'));
     const chosen = (meta && meta.content) || window.KINO_UI_LANGUAGE || storedChoice();
     if (LANGUAGES[chosen]) return chosen;
     for (const tag of navigator.languages || [navigator.language || '']) {
@@ -144,9 +144,10 @@
         if (r.type === 'childList') r.addedNodes.forEach(walk);
         else if (r.type === 'characterData') { if (!skipped(r.target.parentElement)) translateText(r.target); }
         else if (r.type === 'attributes' && !skipped(r.target)) {
-          const value = r.target.getAttribute(r.attributeName);
+          const target = /** @type {Element} */ (r.target);
+          const value = target.getAttribute(r.attributeName);
           const out = translate(value);
-          if (out !== null) r.target.setAttribute(r.attributeName, out);
+          if (out !== null) target.setAttribute(r.attributeName, out);
         }
       }
     }).observe(document.documentElement, {

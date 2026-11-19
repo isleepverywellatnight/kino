@@ -43,8 +43,8 @@ export function updateDiscordRpc(isPaused = false) {
 
   const curT = inAppAbsoluteTime(video);
   const durT = inAppDuration(video);
-  const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : null);
-  const e = inAppCurrentMedia.episode || (document.getElementById('episodeSelect') ? parseInt(document.getElementById('episodeSelect').value) : null);
+  const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value) : null);
+  const e = inAppCurrentMedia.episode || (document.getElementById('episodeSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value) : null);
 
   api('/api/discord-rpc/update', {
     method: 'POST',
@@ -399,7 +399,7 @@ export async function loadCatalog(type, genre = '', reset = true) {
 }
 
 async function loadMoreCatalog() {
-  const btn = document.getElementById('loadMoreBtn');
+  const btn = /** @type {HTMLButtonElement} */ (document.getElementById('loadMoreBtn'));
   const orig = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Chargement...'; }
   setCatalogSkip(catalogSkip + (50));
@@ -461,7 +461,7 @@ async function loadPosterPreview(desc) {
     }
   }
   const text = meta.description_fr || meta.description || '';
-  document.querySelectorAll('.poster-preview-desc[data-preview-id]').forEach(el => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.poster-preview-desc[data-preview-id]')).forEach(el => {
     if (el.dataset.previewId !== id) return;
     el.textContent = text;
     el.dataset.loaded = 'done';

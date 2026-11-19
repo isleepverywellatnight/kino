@@ -24,6 +24,7 @@ export const NativePlayer = (function () {
   const NEXT_DELAY_MS = 10000;
   // Same steps as the built-in player.
   const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
+  /** @type {Array<[string, number]>} */
   const SUB_SIZES = [['A-', 0.8], ['A', 1], ['A+', 1.25], ['A++', 1.5]];
   const CLARITY = ['Normal', 'Ombres +', 'Nuit ++', 'HDR Max'];
 
@@ -166,7 +167,7 @@ export const NativePlayer = (function () {
       if (session.last) renderState(session.last);
     });
     element('nativeFullscreen').addEventListener('click', () => toggleFullscreen());
-    const seek = element('nativeSeek');
+    const seek = /** @type {HTMLInputElement} */ (element('nativeSeek'));
     seek.addEventListener('input', () => { session.dragging = true; paintRange(seek); });
     seek.addEventListener('change', () => {
       session.dragging = false;
@@ -174,17 +175,19 @@ export const NativePlayer = (function () {
       if (duration > 0) command('goto', (Number(seek.value) / 1000) * duration);
     });
     element('nativeVolume').addEventListener('input', event => {
-      const volume = Number(event.target.value);
-      paintRange(event.target);
+      const input = /** @type {HTMLInputElement} */ (event.target);
+      const volume = Number(input.value);
+      paintRange(input);
       element('nativeVolumeText').textContent = `${volume}%`;
       try { localStorage.setItem('kino_inapp_volume', String(volume / 100)); } catch (e) {}
       command('volume', volume);
     });
-    element('nativeAudio').addEventListener('change', event => command('audio', event.target.value));
+    element('nativeAudio').addEventListener('change', event => command('audio', /** @type {HTMLSelectElement} */ (event.target).value));
     element('nativeSubs').addEventListener('change', event => {
+      const choice = /** @type {HTMLSelectElement} */ (event.target).value;
       // « Aucun » chosen by hand: no automatic subtitles for the rest of this viewing.
-      if (event.target.value === 'no' || event.target.value === '') session.subsOff = true;
-      command('subtitles', event.target.value);
+      if (choice === 'no' || choice === '') session.subsOff = true;
+      command('subtitles', choice);
     });
     element('nativeMoreBtn').addEventListener('click', event => toggleMenu(event.detail === 0));
     element('nativeSubSize').addEventListener('click', () => cycleSetting('sub_scale'));
@@ -211,7 +214,7 @@ export const NativePlayer = (function () {
     });
     root.addEventListener('mousemove', showControls);
     root.addEventListener('pointerdown', event => {
-      if (isMenuOpen() && !event.target.closest?.('.kp-more')) closeMenu(false);
+      if (isMenuOpen() && !/** @type {Element} */ (event.target).closest?.('.kp-more')) closeMenu(false);
     });
   }
 
@@ -254,7 +257,7 @@ export const NativePlayer = (function () {
     if (!menu || menu.hidden || !menu.contains(document.activeElement)) return false;
     if (event.key === ' ' || event.key === 'Enter') return true;
     const items = menuItems();
-    const index = items.indexOf(document.activeElement);
+    const index = items.indexOf(/** @type {HTMLButtonElement} */ (document.activeElement));
     let next = -1;
     if (event.key === 'ArrowDown') next = (index + 1) % items.length;
     else if (event.key === 'ArrowUp') next = (index - 1 + items.length) % items.length;
@@ -331,7 +334,7 @@ export const NativePlayer = (function () {
       render(box, html`<p class="kp-menu-note">Aucun sous-titre trouvé en ligne.</p>`);
     } else {
       render(box, subs.map((choice, index) => html`<button type="button" class="inapp-btn kp-menu-item" data-online="${index}"${choice.added ? ' disabled' : ''}>${choice.label}${choice.added ? ' · ajouté' : ''}</button>`));
-      box.querySelectorAll('[data-online]').forEach(button => {
+      /** @type {NodeListOf<HTMLElement>} */ (box.querySelectorAll('[data-online]')).forEach(button => {
         button.addEventListener('click', () => addOnlineSubtitle(Number(button.dataset.online)));
       });
     }
@@ -564,7 +567,7 @@ export const NativePlayer = (function () {
       }
     }
     element('nativeTime').textContent = `${formatTime(state.time)} / ${formatTime(state.duration)}`;
-    const seek = element('nativeSeek');
+    const seek = /** @type {HTMLInputElement} */ (element('nativeSeek'));
     if (!session.dragging && state.duration > 0) seek.value = String(Math.round(1000 * state.time / state.duration));
     paintRange(seek);
     const play = element('nativePlay');
@@ -574,7 +577,7 @@ export const NativePlayer = (function () {
       render(play, icon(state.paused ? 'play' : 'pause'));
       play.setAttribute('aria-label', state.paused ? 'Lecture' : 'Pause');
     }
-    const volumeInput = element('nativeVolume');
+    const volumeInput = /** @type {HTMLInputElement} */ (element('nativeVolume'));
     if (typeof state.volume === 'number' && document.activeElement !== volumeInput) {
       volumeInput.value = String(Math.round(Math.min(100, state.volume)));
     }
@@ -1022,7 +1025,7 @@ export const NativePlayer = (function () {
 
   window.addEventListener('keydown', event => {
     if (!session.open) return;
-    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target?.tagName) && event.key !== 'Escape') return;
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(/** @type {Element | null} */ (event.target)?.tagName) && event.key !== 'Escape') return;
     if (menuKey(event)) {
       event.stopImmediatePropagation();
       return;
