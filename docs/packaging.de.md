@@ -6,7 +6,7 @@ Diese Schritte betreffen die Entwicklung. Um KINO zu nutzen, lade es einfach her
 
 ## Eine Version veröffentlichen
 
-Ändere `version` in `Cargo.toml` ([workspace.package]) und pushe auf `main` – das ist alles. Wenn die Version auf `main` noch keine Release hat, baut GitHub Actions (`.github/workflows/build.yml`) die drei Apps, testet sie, veröffentlicht die Release mit ihrem Tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Linux-x86_64.AppImage`, `SHA256SUMS.txt`) und installiert sie dann mit den Befehlen aus der README auf einem frischen Mac und einem frischen Windows.
+Ändere `version` in `Cargo.toml` ([workspace.package]) und pushe auf `main` – das ist alles. Wenn die Version auf `main` noch keine Release hat, baut GitHub Actions (`.github/workflows/build.yml`) die drei Apps, testet sie, veröffentlicht die Release mit ihrem Tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Windows-arm64.exe`, `KINO-Linux-x86_64.AppImage`, `SHA256SUMS.txt`) und installiert sie dann mit den Befehlen aus der README auf einem frischen Mac und einem frischen Windows.
 
 Damit KINO neue Versionen selbst installiert, signiert die CI die Updates mit dem Secret `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables → Actions): dem Inhalt des privaten Schlüssels, den `cargo run -p kino --bin kino-release -- --init-key` erzeugt und dessen öffentlicher Teil `assets/update_public_key.hex` ist. Ohne dieses Secret kündigt KINO die neue Version an und bietet den Download an.
 
@@ -41,6 +41,8 @@ cargo build --release --locked -p kino-desktop
 pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
 ```
+
+Für Windows auf ARM (`KINO-Windows-arm64.exe`) baust du auf einem ARM64-PC und übergibst `-Arch arm64` an beide Download-Skripte und `/DArch=arm64` an `iscc`.
 
 ### Linux (x86_64)
 

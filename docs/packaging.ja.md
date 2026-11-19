@@ -6,7 +6,7 @@
 
 ## バージョンの公開
 
-`Cargo.toml` ([workspace.package]) の `version` を変更して `main` に push するだけです。`main` のバージョンにまだリリースがなければ、GitHub Actions（`.github/workflows/build.yml`）が3 つのアプリをビルドしてテストし、`vX.Y.Z` タグ付きでリリース（`KINO-macOS.dmg`、`KINO-Windows.exe`、`KINO-Linux-x86_64.AppImage`、`SHA256SUMS.txt`）を公開したあと、README のコマンドでクリーンな Mac と Windows に再インストールして確認します。
+`Cargo.toml` ([workspace.package]) の `version` を変更して `main` に push するだけです。`main` のバージョンにまだリリースがなければ、GitHub Actions（`.github/workflows/build.yml`）が3 つのアプリをビルドしてテストし、`vX.Y.Z` タグ付きでリリース（`KINO-macOS.dmg`、`KINO-Windows.exe`、`KINO-Windows-arm64.exe`、`KINO-Linux-x86_64.AppImage`、`SHA256SUMS.txt`）を公開したあと、README のコマンドでクリーンな Mac と Windows に再インストールして確認します。
 
 KINO が新しいバージョンを自動でインストールできるよう、CI はシークレット `KINO_UPDATE_SIGNING_KEY`（Settings → Secrets and variables → Actions）でアップデートに署名します。中身は `cargo run -p kino --bin kino-release -- --init-key` で作成した秘密鍵で、公開鍵は `assets/update_public_key.hex` です。このシークレットがない場合、KINO は新しいバージョンを通知してダウンロードを案内します。
 
@@ -41,6 +41,8 @@ cargo build --release --locked -p kino-desktop
 pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
 ```
+
+Windows on ARM（`KINO-Windows-arm64.exe`）は ARM64 の PC でビルドし、2 つのダウンロードスクリプトに `-Arch arm64`、`iscc` に `/DArch=arm64` を渡します。
 
 ### Linux (x86_64)
 
