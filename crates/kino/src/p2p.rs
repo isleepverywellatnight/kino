@@ -532,6 +532,21 @@ impl P2p {
 
     /// Fetches these files of a torrent already added, and only them.
     pub async fn fetch(&self, hash: &str, files: &HashSet<usize>) -> Result<(), String> {
+        // A torrent just added may still be checking its files: its choice of
+        // files can only change once that is done (lock released meanwhile).
+        let starting = {
+            let guard = self.live.lock().await;
+            let live = guard.as_ref().ok_or("Le téléchargement s'est arrêté.")?;
+            live.torrents
+                .get(hash)
+                .ok_or("Le téléchargement s'est arrêté.")?
+                .0
+                .clone()
+        };
+        tokio::time::timeout(Duration::from_secs(30), starting.wait_until_initialized())
+            .await
+            .map_err(|_| "Le torrent met trop de temps à se préparer.".to_string())?
+            .map_err(|e| e.to_string())?;
         let guard = self.live.lock().await;
         let live = guard.as_ref().ok_or("Le téléchargement s'est arrêté.")?;
         let (torrent, _, _) = live
