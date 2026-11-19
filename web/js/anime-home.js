@@ -4,7 +4,7 @@
 // fiche: the server pairs it with the fiche KINO can play (anime_home.py).
 
 import { registerActions } from './actions.js';
-import { THIS, act, actOn, escapeHtml, html, render } from './html.js';
+import { THIS, act, actOn, escapeHtml, html, render, tHtml } from './html.js';
 import {
   META_CLIENT_CACHE, activeTab, api, catalogHasMore, revealSpoilerEpisode, scheduleSpoilerTarget,
   spoilerConcealed, userHistory, userWatchlist,
@@ -114,11 +114,11 @@ function animeClock(date) {
 function animeNextLabel(next, nowMs = Date.now()) {
   if (!next || !next.airing_at) return '';
   const at = new Date(next.airing_at * 1000);
-  const episode = `Ép. ${Number(next.episode) || 1}`;
+  const episode = `${KINO_I18N.t('anime.ep_x', Number(next.episode) || 1)}`;
   const days = Math.round((animeDayStart(at) - animeDayStart(new Date(nowMs))) / 86400000);
-  if (at.getTime() <= nowMs) return `${episode} · diffusé`;
+  if (at.getTime() <= nowMs) return `${KINO_I18N.t('anime.x_diffuse', episode)}`;
   if (days === 0) return `${episode} · ${animeClock(at)}`;
-  if (days === 1) return `${episode} · demain`;
+  if (days === 1) return `${KINO_I18N.t('anime.x_demain', episode)}`;
   if (days < 7) return `${episode} · ${ANIME_WEEKDAYS[at.getDay()]}`;
   return `${episode} · ${at.getDate()} ${ANIME_MONTHS[at.getMonth()]}`;
 }
@@ -126,7 +126,7 @@ function animeNextLabel(next, nowMs = Date.now()) {
 // « Série · 12 ép. · 87 % », or the month of release for a work not out yet.
 function animeWorkFacts(item) {
   const facts = [ANIME_FORMATS[item.format] || 'Anime'];
-  if (Number(item.episodes) > 1) facts.push(`${Number(item.episodes)} ép.`);
+  if (Number(item.episodes) > 1) facts.push(`${KINO_I18N.t('anime.x_ep', Number(item.episodes))}`);
   if (item.status === 'NOT_YET_RELEASED') {
     if (item.year) facts.push(item.month ? `${ANIME_MONTHS[item.month - 1]} ${item.year}` : String(item.year));
   } else if (Number(item.score) > 0) {
@@ -312,11 +312,11 @@ function animeAiringLabel(airingAt, nowMs = Date.now()) {
   const minutes = Math.round((airingAt * 1000 - nowMs) / 60000);
   const span = value => {
     const hours = Math.floor(value / 60);
-    if (hours >= 48) return `${Math.floor(hours / 24)} j`;
-    if (hours >= 1) return value % 60 && hours < 10 ? `${hours} h ${String(value % 60).padStart(2, '0')}` : `${hours} h`;
-    return `${Math.max(1, value)} min`;
+    if (hours >= 48) return `${KINO_I18N.t('anime.x_j', Math.floor(hours / 24))}`;
+    if (hours >= 1) return value % 60 && hours < 10 ? `${KINO_I18N.t('anime.x_h_x', hours, String(value % 60).padStart(2, '0'))}` : `${KINO_I18N.t('anime.x_h', hours)}`;
+    return `${KINO_I18N.t('anime.x_min', Math.max(1, value))}`;
   };
-  return minutes > 0 ? `Dans ${span(minutes)}` : `Diffusé il y a ${span(-minutes)}`;
+  return minutes > 0 ? `${KINO_I18N.t('anime.dans_x', span(minutes))}` : `${KINO_I18N.t('anime.diffuse_il_y_a_x', span(-minutes))}`;
 }
 
 function animeWeekRowHtml(episode, nowMs, mine) {
@@ -332,7 +332,7 @@ function animeWeekRowHtml(episode, nowMs, mine) {
   const poster = hidden || !episode.poster ? '' : html`<img src="${episode.poster}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>`;
   return html`<article class="offline-item myseries-item week-row${aired ? ' is-aired' : ''}" data-anime="${id}">
       <time class="week-time" datetime="${new Date(episode.airing_at * 1000).toISOString()}">${animeClock(new Date(episode.airing_at * 1000))}</time>
-      <div class="offline-poster"${hidden ? html` role="img" aria-label="Image masquée pour l’épisode ${number}"` : ''}>${poster}<span aria-hidden="true">${hidden ? number : '▷'}</span></div>
+      <div class="offline-poster"${hidden ? html` role="img" aria-label="${tHtml('anime.image_masquee_pour_l_episode_x', number)}"` : ''}>${poster}<span aria-hidden="true">${hidden ? number : '▷'}</span></div>
       <div class="offline-info">
         <strong${episode.romaji ? html` title="${episode.romaji}"` : ''}>${episode.title || 'Sans titre'}</strong>
         <span class="myseries-fact">Épisode ${number}${state ? ` · ${escapeHtml(state)}` : ''}</span>
@@ -340,7 +340,7 @@ function animeWeekRowHtml(episode, nowMs, mine) {
       </div>
       <div class="offline-actions">
         <span class="week-when">${animeAiringLabel(episode.airing_at, nowMs)}</span>
-        ${hidden ? html`<button type="button" class="btn btn-secondary spoiler-reveal-btn" ${act('revealScheduleEpisode', id, number)} aria-label="Afficher l’image de l’épisode ${number}">${KINO_I18N.t('anime.afficher')}</button>` : ''}
+        ${hidden ? html`<button type="button" class="btn btn-secondary spoiler-reveal-btn" ${act('revealScheduleEpisode', id, number)} aria-label="${tHtml('anime.afficher_l_image_de_l_episode_x', number)}">${KINO_I18N.t('anime.afficher')}</button>` : ''}
         <button type="button" class="btn btn-secondary" ${act('openAnimeWork', id)}>${KINO_I18N.t('anime.fiche')}</button>
       </div>
     </article>`;
@@ -376,8 +376,8 @@ export function renderAnimeWeek() {
   const total = days.reduce((sum, day) => sum + day.shown.length, 0);
   const followed = days.reduce((sum, day) => sum + day.episodes.filter(episode => episode.kino && mine.has(episode.kino.id)).length, 0);
   if (summary) {
-    summary.textContent = [`${total} épisode${total > 1 ? 's' : ''} sur sept jours`,
-      followed ? `${followed} de vos animes` : '', data.stale ? 'planning de la dernière visite' : ''].filter(Boolean).join(' · ');
+    summary.textContent = [`${KINO_I18N.t('anime.x_episode_x_sur_sept_jours', total, total > 1 ? 's' : '')}`,
+      followed ? `${KINO_I18N.t('anime.x_de_vos_animes', followed)}` : '', data.stale ? 'planning de la dernière visite' : ''].filter(Boolean).join(' · ');
   }
   render(daysBar, days.map((day, index) => html`<button type="button" class="chip${index === animeWeekDay ? ' active' : ''}" aria-pressed="${index === animeWeekDay}" ${act('selectAnimeWeekDay', index)}>${day.label} <span class="lib-count">${day.shown.length || ''}</span></button>`));
   const day = days[animeWeekDay];

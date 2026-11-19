@@ -143,7 +143,13 @@
     // A text no dictionary has as such may still be covered by a rule with a
     // variable part (« {} s » -> « {} 秒 »), as the observer would show it.
     const text = translations[key] ?? (lang === 'fr' ? source : translate(source) ?? source);
-    const out = fill(text, values.map(String));
+    // A value that is itself a French text (« 3 épisodes ») shows translated, as
+    // the observer translated the parts of a text it matched.
+    const parts = values.map(value => {
+      const part = String(value);
+      return lang === 'fr' ? part : translate(part) ?? part;
+    });
+    const out = fill(text, parts);
     if (text !== source) fromKeys.add(out.trim().replace(/\s+/g, ' '));
     return out;
   }

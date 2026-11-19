@@ -1,7 +1,7 @@
 // --- Cloud: files gathered by work (cloud_titles.py), with the catalogue poster ---
 
 import { registerActions, runAction } from './actions.js';
-import { THIS, VALUE, act, actOn, attrJson, escapeHtml, html, render, safeUrl } from './html.js';
+import { THIS, VALUE, act, actOn, attrJson, escapeHtml, html, render, safeUrl, tHtml } from './html.js';
 import { Spoilers } from './spoilers.js';
 import {
   PROVIDER_META, RELATED_CLIENT_CACHE, activeTab, api, checkConfig, configuredProviders,
@@ -38,9 +38,9 @@ function cloudPlural(count, word) {
 
 function cloudEpisodeCode(file) {
   const pad = n => String(n).padStart(2, '0');
-  if (file.season != null && file.episode != null) return `S${pad(file.season)}E${pad(file.episode)}`;
-  if (file.episode != null) return `Épisode ${file.episode}`;
-  if (file.season != null) return `Saison ${file.season}`;
+  if (file.season != null && file.episode != null) return `${KINO_I18N.t('settings.s_x_e_x', pad(file.season), pad(file.episode))}`;
+  if (file.episode != null) return `${KINO_I18N.t('settings.episode_x', file.episode)}`;
+  if (file.season != null) return `${KINO_I18N.t('settings.saison_x', file.season)}`;
   return '';
 }
 
@@ -50,8 +50,8 @@ function cloudQualityLabel(file) {
 
 function cloudSeasonsText(seasons) {
   if (!seasons || !seasons.length) return '';
-  if (seasons.length === 1) return `saison ${seasons[0]}`;
-  return `saisons ${seasons.slice(0, -1).join(', ')} et ${seasons.at(-1)}`;
+  if (seasons.length === 1) return `${KINO_I18N.t('settings.saison_x_2', seasons[0])}`;
+  return `${KINO_I18N.t('settings.saisons_x_et_x', seasons.slice(0, -1).join(', '), seasons.at(-1))}`;
 }
 
 function cloudGroup(key) {
@@ -91,12 +91,12 @@ function cloudGroupMeta(group) {
     const episodes = group.files.filter(file => file.episode != null).length;
     const seen = group.files.filter(file => cloudFileWatched(group, file)).length;
     parts.push('Série', episodes === group.count ? cloudPlural(episodes, 'épisode') : cloudPlural(group.count, 'fichier'));
-    if (seen) parts.push(`${seen} vu${seen > 1 ? 's' : ''}`);
+    if (seen) parts.push(`${KINO_I18N.t('settings.x_vu_x', seen, seen > 1 ? 's' : '')}`);
     const seasons = cloudSeasonsText(group.seasons);
     if (seasons) parts.push(seasons);
   } else if (group.kind === 'movie') {
     parts.push('Film');
-    if (group.count > 1) parts.push(`${group.count} versions`);
+    if (group.count > 1) parts.push(`${KINO_I18N.t('settings.x_versions', group.count)}`);
     else if (cloudQualityLabel(group.files[0])) parts.push(cloudQualityLabel(group.files[0]));
     if (cloudFileWatched(group, group.files[0])) parts.push('vu');
   } else {
@@ -104,13 +104,13 @@ function cloudGroupMeta(group) {
   }
   if (Number(group.bytes) > 0) parts.push(offlineSize(group.bytes));
   const added = cloudDate(group.latest);
-  if (added) parts.push(`ajouté le ${added}`);
+  if (added) parts.push(`${KINO_I18N.t('settings.ajoute_le_x', added)}`);
   return parts.join(' · ');
 }
 
 function cloudToggleLabel(group) {
   if (group.kind === 'series' && group.files.every(file => file.episode != null)) return cloudPlural(group.count, 'épisode');
-  return group.count > 1 ? `${group.count} fichiers` : 'Fichier';
+  return group.count > 1 ? `${KINO_I18N.t('settings.x_fichiers', group.count)}` : 'Fichier';
 }
 
 function cloudGroupHtml(group) {
@@ -122,15 +122,15 @@ function cloudGroupHtml(group) {
   const initial = html`<span aria-hidden="true">${(name || '?').trim().charAt(0).toUpperCase()}</span>`;
   const image = media?.poster ? html`<img src="${media.poster}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : '';
   const poster = media
-    ? html`<button type="button" class="cloud-poster" ${act('openCloudFiche', group.key)} aria-label="Ouvrir la fiche de ${name}">${initial}${image}</button>`
+    ? html`<button type="button" class="cloud-poster" ${act('openCloudFiche', group.key)} aria-label="${tHtml('settings.ouvrir_la_fiche_de_x', name)}">${initial}${image}</button>`
     : html`<div class="cloud-poster" aria-hidden="true">${initial}</div>`;
   const title = media ? html`<span${titleAttrs(media, group.kind)}>${name}</span>` : html`<span>${name}</span>`;
   const start = cloudStartIndex(group);
   const code = group.kind === 'series' ? cloudEpisodeCode(group.files[start]) : '';
   const play = group.kind === 'other' ? ''
-    : html`<button type="button" class="btn" ${act('playCloudFile', group.key, start, THIS)}>${code ? `Lancer ${escapeHtml(code)}` : 'Lancer'}</button>`;
+    : html`<button type="button" class="btn" ${act('playCloudFile', group.key, start, THIS)}>${code ? `${KINO_I18N.t('settings.lancer_x', code)}` : 'Lancer'}</button>`;
   const files = !open ? '' : html`<div class="cloud-files">${group.files.map((file, index) => cloudFileHtml(group, file, index))}${
-    group.count > 1 ? html`<div class="cloud-files-foot"><button type="button" class="btn btn-secondary" ${act('deleteCloudGroup', group.key, THIS)}>Retirer les ${group.count} fichiers du Cloud</button></div>` : ''}</div>`;
+    group.count > 1 ? html`<div class="cloud-files-foot"><button type="button" class="btn btn-secondary" ${act('deleteCloudGroup', group.key, THIS)}>${tHtml('settings.retirer_les_x_fichiers_du_cloud', group.count)}</button></div>` : ''}</div>`;
   return html`<article class="cloud-group${open ? ' is-open' : ''}" aria-label="${name}">
     ${poster}
     <div class="cloud-group-main">
@@ -145,10 +145,10 @@ function cloudGroupHtml(group) {
 function cloudFileHtml(group, file, index) {
   const key = attrJson(group.key);
   const label = group.kind === 'series' ? (cloudEpisodeCode(file) || 'Fichier')
-    : group.kind === 'movie' ? (cloudQualityLabel(file) || `Version ${index + 1}`) : file.filename;
+    : group.kind === 'movie' ? (cloudQualityLabel(file) || `${KINO_I18N.t('settings.version_x', index + 1)}`) : file.filename;
   const added = cloudDate(file.generated);
   const size = Number(file.bytes) > 0 ? offlineSize(file.bytes) : (file.filesize || '');
-  const details = [group.kind === 'other' ? '' : file.filename, size, added ? `ajouté le ${added}` : ''].filter(Boolean).join(' · ');
+  const details = [group.kind === 'other' ? '' : file.filename, size, added ? `${KINO_I18N.t('settings.ajoute_le_x', added)}` : ''].filter(Boolean).join(' · ');
   // Only a web address is offered; « other » files play only when they are videos.
   const web = /^https?:\/\//i.test(String(file.download || ''));
   const playable = web && (group.kind !== 'other' || CLOUD_VIDEO.test(file.filename));
@@ -163,7 +163,7 @@ function cloudFileHtml(group, file, index) {
       <div class="cloud-file-actions">
         ${play}
         ${save}
-        <button type="button" class="btn btn-secondary" ${act('deleteCloudFile', group.key, index, THIS)} aria-label="Retirer ${file.filename} du Cloud">${KINO_I18N.t('page.retirer')}</button>
+        <button type="button" class="btn btn-secondary" ${act('deleteCloudFile', group.key, index, THIS)} aria-label="${tHtml('settings.retirer_x_du_cloud', file.filename)}">${KINO_I18N.t('page.retirer')}</button>
       </div>
     </div>`;
 }
@@ -179,7 +179,7 @@ export function renderCloud() {
   const list = document.getElementById('rdCloudList');
   if (!cloudGroups.length) {
     if (tools) { tools.hidden = true; render(tools, ''); }
-    render(list, html`<p class="cloud-empty">Aucun fichier récent sur votre compte ${linkedAccounts.debridName || 'Debrid'}.</p>`);
+    render(list, html`<p class="cloud-empty">${tHtml('settings.aucun_fichier_recent_sur_votre_compte_x', linkedAccounts.debridName || 'Debrid')}</p>`);
     return;
   }
   const counts = { all: cloudGroups.length, movie: 0, series: 0, other: 0 };
@@ -278,7 +278,7 @@ async function deleteCloudFile(key, index, btn) {
   const file = cloudGroup(key)?.files[index];
   if (!file) return;
   const pName = linkedAccounts.debridName || 'votre débrideur';
-  if (!window.confirm(`Retirer « ${file.filename} » du Cloud ${pName} ?`)) return;
+  if (!window.confirm(`${KINO_I18N.t('settings.retirer_x_du_cloud_x', file.filename, pName)}`)) return;
   await deleteRdCloudItem(btn, file.ids || [file.id]);
 }
 
@@ -286,7 +286,7 @@ async function deleteCloudGroup(key, btn) {
   const group = cloudGroup(key);
   if (!group) return;
   const pName = linkedAccounts.debridName || 'votre débrideur';
-  if (!window.confirm(`Retirer les ${group.count} fichiers de « ${cloudName(group)} » du Cloud ${pName} ?`)) return;
+  if (!window.confirm(`${KINO_I18N.t('settings.retirer_les_x_fichiers_de_x_du_cloud_x', group.count, cloudName(group), pName)}`)) return;
   await deleteRdCloudItem(btn, group.files.flatMap(file => file.ids || [file.id]));
 }
 
@@ -322,7 +322,7 @@ async function onChangeRdRetention(daysStr) {
 async function purgeRdCloud(mode, btn) {
   const orig = btn ? btn.textContent : '';
   const pName = linkedAccounts.debridName || 'votre débrideur';
-  if (mode === 'all' && !window.confirm(`Vider tout le Cloud ${pName} ? Tous les fichiers et torrents du compte seront supprimés, sans retour possible.`)) return;
+  if (mode === 'all' && !window.confirm(`${KINO_I18N.t('settings.vider_tout_le_cloud_x_tous_les_fichiers', pName)}`)) return;
   if (btn) { btn.disabled = true; btn.textContent = KINO_I18N.t('settings.suppression'); }
   try {
     const res = await api('/api/rd-cleanup', {
@@ -332,7 +332,7 @@ async function purgeRdCloud(mode, btn) {
     });
     const noteEl = document.getElementById('rdCloudStatusNote');
     if (noteEl && res.cleaned) {
-      noteEl.textContent = `${res.cleaned.deleted_downloads} fichier(s) et ${res.cleaned.deleted_torrents} torrent(s) supprimés du Cloud ${pName}.`;
+      noteEl.textContent = `${KINO_I18N.t('settings.x_fichier_s_et_x_torrent_s_supprimes_du', res.cleaned.deleted_downloads, res.cleaned.deleted_torrents, pName)}`;
     }
     await loadRdCloud();
   } catch (e) {
@@ -357,7 +357,7 @@ export async function openTrailerModal(trailerId, title, year = '', lang = 'vf')
   if (btnVf) btnVf.classList.toggle('active', currentTrailerCtx.lang === 'vf');
   if (btnVo) btnVo.classList.toggle('active', currentTrailerCtx.lang === 'vo');
 
-  titleEl.textContent = `Bande-annonce (${currentTrailerCtx.lang.toUpperCase()}) — ${title || 'KINO'}`;
+  titleEl.textContent = `${KINO_I18N.t('settings.bande_annonce_x_x', currentTrailerCtx.lang.toUpperCase(), title || 'KINO')}`;
   if (video) { video.pause(); video.removeAttribute('src'); video.style.display = 'none'; }
   if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
   if (loading) loading.style.display = 'flex';
@@ -456,8 +456,8 @@ function diagnosticSummaryText(items) {
   const warnings = items.filter(item => item.state === 'warning').length;
   if (!problems && !warnings) return 'Tout fonctionne.';
   const parts = [];
-  if (problems) parts.push(`${problems} problème${problems > 1 ? 's' : ''}`);
-  if (warnings) parts.push(`${warnings} point${warnings > 1 ? 's' : ''} à vérifier`);
+  if (problems) parts.push(`${KINO_I18N.t('settings.x_probleme_x', problems, problems > 1 ? 's' : '')}`);
+  if (warnings) parts.push(`${KINO_I18N.t('settings.x_point_x_a_verifier', warnings, warnings > 1 ? 's' : '')}`);
   return `${parts.join(' et ')}.`;
 }
 
@@ -498,7 +498,7 @@ async function runDiagnostic() {
     diagnosticReport = '';
     if (copy) copy.disabled = true;
     if (list) list.hidden = true;
-    if (summary) summary.textContent = `Diagnostic impossible : ${error.message}`;
+    if (summary) summary.textContent = `${KINO_I18N.t('settings.diagnostic_impossible_x', error.message)}`;
   } finally {
     if (button) { button.disabled = false; button.textContent = KINO_I18N.t('settings.relancer_le_diagnostic'); }
   }
@@ -591,14 +591,14 @@ export async function triggerGdriveSync(btn) {
     if (res && res.status === 'synced') {
       const d = new Date((res.updated_at || Date.now()/1000) * 1000);
       const timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      if (el) render(el, html`<span style="color:#4ade80;">✓ Synchronisé (${res.history_count || 0} films, ${res.watchlist_count || 0} favoris) à ${timeStr}</span>`);
+      if (el) render(el, html`<span style="color:#4ade80;">${tHtml('settings.synchronise_x_films_x_favoris_a_x', res.history_count || 0, res.watchlist_count || 0, timeStr)}</span>`);
       await refreshUserLists();
     } else {
       if (el) render(el, html`<span style="color:var(--muted);">${(res && res.message) ? res.message : 'Google Drive non détecté'}</span>`);
     }
   } catch(e) {
     const el = document.getElementById('gdriveSyncStatus');
-    if (el) render(el, html`<span style="color:#ef4444;">Erreur : ${e.message}</span>`);
+    if (el) render(el, html`<span style="color:#ef4444;">${tHtml('settings.erreur_x', e.message)}</span>`);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = KINO_I18N.t('page.synchroniser'); }
   }
@@ -614,7 +614,7 @@ export async function loadSuggestionStatus() {
     const when = res.updated_at ? new Date(res.updated_at * 1000).toLocaleDateString((window.KINO_LOCALE || 'fr-FR'), { day: 'numeric', month: 'long' }) : '';
     const removed = Number(res.not_for_me || 0);
     el.textContent = pool >= 500
-      ? `Réserve de ${pool.toLocaleString((window.KINO_LOCALE || 'fr-FR'))} titres publics, mise à jour le ${when}.` + (removed ? ` ${removed} titre${removed > 1 ? 's' : ''} écarté${removed > 1 ? 's' : ''}.` : '')
+      ? `${KINO_I18N.t('settings.reserve_de_x_titres_publics_mise_a_jour', pool.toLocaleString((window.KINO_LOCALE || 'fr-FR')), when)}` + (removed ? ` ${KINO_I18N.t('settings.x_titre_x_ecarte_x', removed, removed > 1 ? 's' : '', removed > 1 ? 's' : '')}` : '')
       : (res.building ? 'Préparation de la réserve de titres…' : 'La réserve de titres se prépare au prochain lancement, avec internet.');
   } catch (e) {
     el.textContent = '';
@@ -630,7 +630,7 @@ async function resetNotForMe(btn) {
     showSettingsStatus('Enregistré', 'saved');
     loadSuggestionStatus();
   } catch (e) {
-    showSettingsStatus(`Pas enregistré : ${e.message}`, 'error');
+    showSettingsStatus(`${KINO_I18N.t('settings.pas_enregistre_x', e.message)}`, 'error');
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -642,15 +642,15 @@ function backupWhen(seconds, now = Date.now()) {
   const hour = date.toLocaleTimeString((window.KINO_LOCALE || 'fr-FR'), { hour: '2-digit', minute: '2-digit' });
   const day = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((day(new Date(now)) - day(date)) / 86400000);
-  if (days === 0) return `Aujourd’hui, ${hour}`;
-  if (days === 1) return `Hier, ${hour}`;
+  if (days === 0) return `${KINO_I18N.t('settings.aujourd_hui_x', hour)}`;
+  if (days === 1) return `${KINO_I18N.t('settings.hier_x', hour)}`;
   return `${date.toLocaleDateString((window.KINO_LOCALE || 'fr-FR'), { weekday: 'long', day: 'numeric', month: 'long' })}, ${hour}`;
 }
 
 function backupCounts(counts = {}) {
   const plural = (n, one, many) => `${n} ${n > 1 ? many : one}`;
   return [
-    `${Number(counts.watchlist || 0)} dans Ma Liste`,
+    `${KINO_I18N.t('settings.x_dans_ma_liste', Number(counts.watchlist || 0))}`,
     plural(Number(counts.seen || 0), 'vu', 'vus'),
     plural(Number(counts.in_progress || 0), 'en cours', 'en cours'),
     plural(Number(counts.rated || 0), 'noté', 'notés'),
@@ -666,7 +666,7 @@ function renderBackups(items = []) {
   if (!list) return;
   render(list, items.map(item => {
     const when = backupWhen(item.created_at);
-    const label = item.kind === 'before_restore' ? `Avant restauration · ${when}` : when;
+    const label = item.kind === 'before_restore' ? `${KINO_I18N.t('settings.avant_restauration_x', when)}` : when;
     return html`<div class="set-row backup-row">
       <div class="set-text"><span class="settings-label">${label}</span><p class="settings-desc">${backupCounts(item.counts)}</p></div>
       <button type="button" class="btn btn-secondary btn-small" data-backup="${item.id}" data-label="${label}"
@@ -692,7 +692,7 @@ async function backupNow(btn) {
     renderBackups(res.items || []);
     showSettingsStatus('Sauvegardé', 'saved');
   } catch (e) {
-    showSettingsStatus(`Pas sauvegardé : ${e.message}`, 'error');
+    showSettingsStatus(`${KINO_I18N.t('settings.pas_sauvegarde_x', e.message)}`, 'error');
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -709,7 +709,7 @@ async function restoreBackup(btn) {
     if (status) status.textContent = KINO_I18N.t('settings.restaure_kino_se_recharge');
     setTimeout(() => window.location.reload(), 900);
   } catch (e) {
-    showSettingsStatus(`Pas restauré : ${e.message}`, 'error');
+    showSettingsStatus(`${KINO_I18N.t('settings.pas_restaure_x', e.message)}`, 'error');
     btn.disabled = false;
   }
 }
@@ -775,7 +775,7 @@ async function chooseTvDevice(location) {
     await api('/api/tv/device', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ location }) });
     showSettingsStatus('Enregistré', 'saved');
   } catch (e) {
-    showSettingsStatus(`Pas enregistré : ${e.message}`, 'error');
+    showSettingsStatus(`${KINO_I18N.t('settings.pas_enregistre_x', e.message)}`, 'error');
   }
 }
 
@@ -917,13 +917,13 @@ async function saveConfigNow(withKey) {
       /** @type {HTMLSelectElement} */ (document.getElementById('cfgProvider')).value = provider;
       onConfigProviderChange();
       const meta = PROVIDER_META[provider] || PROVIDER_META.realdebrid;
-      showSettingsStatus(`Collez votre clé ${meta.name}, puis Vérifier.`, 'info');
+      showSettingsStatus(`${KINO_I18N.t('settings.collez_votre_cle_x_puis_verifier', meta.name)}`, 'info');
     } else {
       showSettingsStatus(withKey ? 'Clé enregistrée' : 'Enregistré', 'saved');
     }
     if (activeTab === 'rdcloud') loadRdCloud();
   } catch (e) {
-    showSettingsStatus(`Pas enregistré : ${e.message}`, 'error');
+    showSettingsStatus(`${KINO_I18N.t('settings.pas_enregistre_x', e.message)}`, 'error');
     throw e;
   }
 }

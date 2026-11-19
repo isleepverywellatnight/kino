@@ -66,7 +66,7 @@ function showPlaybackHelp(kind) {
     alternate('stalled');
   } else {
     explain(inAppActiveCues.length ? 'Une valeur positive affiche les sous-titres plus tard ; une valeur négative les avance.' : 'Activez d’abord une piste avec le bouton CC du lecteur.');
-    const change = delta => { adjustInAppSubDelay(delta); playbackHelpStatus(`Décalage : ${inAppSubDelaySec >= 0 ? '+' : ''}${inAppSubDelaySec} s`); };
+    const change = delta => { adjustInAppSubDelay(delta); playbackHelpStatus(`${KINO_I18N.t('help.decalage_x_x_s', inAppSubDelaySec >= 0 ? '+' : '', inAppSubDelaySec)}`); };
     action('Plus tôt (−0,5 s)', () => change(-0.5), !inAppActiveCues.length);
     action('Plus tard (+0,5 s)', () => change(0.5), !inAppActiveCues.length);
     action('Remettre à zéro', () => change(-inAppSubDelaySec), !inAppActiveCues.length);

@@ -1,7 +1,7 @@
 // --- Episode row helpers (kept with renderDetailEpisodes) ---
 
 import { registerActions } from './actions.js';
-import { EVENT, THIS, act, actOn, escapeHtml, html, raw, render } from './html.js';
+import { EVENT, THIS, act, actOn, escapeHtml, html, raw, render, tHtml } from './html.js';
 import { Spoilers } from './spoilers.js';
 import {
   activeFilter, allTorrents, api, currentMedia, getSeriesTargetEpisode, lastReadyDebrid,
@@ -73,7 +73,7 @@ export function episodeTileHtml(v, ctx) {
   // Numbers only: they go into handlers and attributes as they are.
   const seasonNum = Number(ctx.seasonNum) || 0;
   const epNum = Number(v.episode || v.number) || 1;
-  const code = `S${String(seasonNum).padStart(2, '0')}E${String(epNum).padStart(2, '0')}`;
+  const code = `${KINO_I18N.t('settings.s_x_e_x', String(seasonNum).padStart(2, '0'), String(epNum).padStart(2, '0'))}`;
   const hidden = spoilerConcealed(seriesId, seasonNum, epNum);
   const upcoming = episodeIsUpcoming(v, today);
   const title = hidden ? Spoilers.neutralTitle(epNum) : episodeName(v, epNum);
@@ -87,9 +87,9 @@ export function episodeTileHtml(v, ctx) {
   const classes = ['ep-tile', isWatched ? 'is-watched' : '', isNext ? 'is-next' : '', upcoming ? 'is-upcoming' : ''].filter(Boolean).join(' ');
   const badge = upcoming ? 'Inédit' : isNext ? (inProgress ? 'En cours' : 'À suivre') : isWatched ? '✓ Vu' : '';
   const air = episodeAirLabel(episodeAirDate(v));
-  const meta = [upcoming ? (air ? `Diffusion le ${air}` : 'À venir') : air, inProgress ? `${Math.round(pct)} % vu` : ''].filter(Boolean).join(' · ');
+  const meta = [upcoming ? (air ? `${KINO_I18N.t('sources.diffusion_le_x', air)}` : 'À venir') : air, inProgress ? `${KINO_I18N.t('sources.x_vu', Math.round(pct))}` : ''].filter(Boolean).join(' · ');
   const art = hidden
-    ? html`<span class="spoiler-neutral-art" aria-label="Image masquée pour l'épisode ${epNum}">ÉPISODE ${epNum}</span>`
+    ? html`<span class="spoiler-neutral-art" aria-label="${tHtml('sources.image_masquee_pour_l_episode_x', epNum)}">${tHtml('sources.episode_x', epNum)}</span>`
     : html`${thumb ? html`<img class="ep-tile-img" src="${thumb}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span class="ep-tile-fallback" aria-hidden="true">${epNum}</span>`;
   const inside = html`${art}${badge ? html`<span class="ep-tile-badge">${badge}</span>` : ''}${upcoming ? '' : html`<span class="ep-tile-play" aria-hidden="true">▶</span>`}${pct > 0 && !isWatched ? html`<span class="ep-tile-progress"><span style="width:${Math.min(100, Math.max(0, pct))}%"></span></span>` : ''}`;
   const action = inProgress ? 'Reprendre' : 'Lancer';
@@ -105,7 +105,7 @@ export function episodeTileHtml(v, ctx) {
         ${overview ? html`<p class="ep-tile-desc">${overview}</p>` : ''}
         <div class="ep-tile-actions">
           ${upcoming ? '' : html`<button type="button" class="btn btn-secondary ep-mini" ${act('pickSeriesEpisodeSources', seasonNum, epNum)}>${KINO_I18N.t('page.sources')}</button>`}
-          ${hidden ? html`<button type="button" class="btn btn-secondary ep-mini spoiler-reveal-btn" ${act('revealSpoilerEpisode', seasonNum, epNum)} aria-label="Afficher le titre, le résumé et l'image de l'épisode ${epNum}">${KINO_I18N.t('sources.afficher_pour_cet_episode')}</button>` : ''}
+          ${hidden ? html`<button type="button" class="btn btn-secondary ep-mini spoiler-reveal-btn" ${act('revealSpoilerEpisode', seasonNum, epNum)} aria-label="${tHtml('sources.afficher_le_titre_le_resume_et_l_image', epNum)}">${KINO_I18N.t('sources.afficher_pour_cet_episode')}</button>` : ''}
           ${upcoming ? '' : html`<button type="button" class="btn btn-secondary ep-mini ep-watch${isWatched ? ' is-on' : ''}" aria-pressed="${isWatched}" title="${isWatched ? 'Démarquer comme vu' : 'Marquer cet épisode comme vu'}" ${act('toggleWatchedSeriesEp', seasonNum, epNum)}>${isWatched ? '✓ Vu' : '✓ Marquer vu'}</button>`}
         </div>
       </div>
@@ -168,10 +168,10 @@ export function onSeasonChange(triggerReload = true) {
     render(eSel, eps.map(v => {
       const epNum = v.episode || v.number;
       const epTitle = spoilerEpisodeLabel(spoilerSeriesId(), s, epNum, v.name || v.title);
-      return html`<option value="${epNum}">E${String(epNum).padStart(2,'0')} — ${epTitle}</option>`;
+      return html`<option value="${epNum}">${tHtml('sources.e_x_x', String(epNum).padStart(2,'0'), epTitle)}</option>`;
     }));
   } else {
-    render(eSel, Array.from({length: 24}, (_, i) => html`<option value="${i+1}">Épisode ${i+1}</option>`));
+    render(eSel, Array.from({length: 24}, (_, i) => html`<option value="${i+1}">${tHtml('settings.episode_x', i+1)}</option>`));
   }
   if (triggerReload) reloadSeriesEpisode(false);
 }
@@ -185,7 +185,7 @@ export function reloadSeriesEpisode(scrollToTorrents = false) {
     type: 'series',
     season: s,
     episode: e,
-    title: `${currentMedia.name} — S${String(s).padStart(2,'0')}E${String(e).padStart(2,'0')}`
+    title: `${KINO_I18N.t('fiche.x_s_x_e_x', currentMedia.name, String(s).padStart(2,'0'), String(e).padStart(2,'0'))}`
   }, scrollToTorrents);
 }
 
@@ -242,7 +242,7 @@ export async function loadTorrents(params, scroll = true) {
     renderTorrents();
   } catch (e) {
     if (requestId !== torrentRequestId) return;
-    render(list, html`<p style="color:var(--muted); font-size:0.84rem;">Erreur : ${e.message}</p>`);
+    render(list, html`<p style="color:var(--muted); font-size:0.84rem;">${tHtml('settings.erreur_x', e.message)}</p>`);
   }
 }
 
@@ -450,9 +450,9 @@ function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
   // The recommended source says what put it first; older answers keep their announced signals.
   const strengths = isBest ? sourceReasons(t, 'good').slice(0, 4) : [];
   const explanation = sourceHidden ? ''
-    : strengths.length ? html`<div class="torrent-explanation">Pourquoi celle-ci : ${strengths.join(' · ')}</div>`
-      : reasons.length ? html`<div class="torrent-explanation">Pourquoi : ${reasons.join(' · ')}</div>` : '';
-  const warning = !sourceHidden && warnings.length ? html`<div class="torrent-warning">À vérifier : ${warnings.join(' · ')}</div>` : '';
+    : strengths.length ? html`<div class="torrent-explanation">${tHtml('sources.pourquoi_celle_ci_x', strengths.join(' · '))}</div>`
+      : reasons.length ? html`<div class="torrent-explanation">${tHtml('sources.pourquoi_x', reasons.join(' · '))}</div>` : '';
+  const warning = !sourceHidden && warnings.length ? html`<div class="torrent-warning">${tHtml('sources.a_verifier_x', warnings.join(' · '))}</div>` : '';
   const why = sourceHidden ? '' : sourceWhyHtml(t, best?.t);
 
   const qualBadges = (t.qualities || []).map(q => {
@@ -477,7 +477,7 @@ function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
       tip = html` title="${KINO_I18N.t('sources.qualite_blu_ray_integrale_sans')}"`;
     } else if (['Atmos', 'DTS', 'DTS-HD', 'TrueHD', '5.1', '7.1'].includes(qClean)) {
       cls = 'badge badge-codec-audio';
-      tip = html` title="Audio spatial / multicanal ${qClean}"`;
+      tip = html` title="${tHtml('sources.audio_spatial_multicanal_x', qClean)}"`;
     }
     return html`<span class="${cls}"${tip}>${qClean}</span>`;
   });
@@ -488,8 +488,8 @@ function sourceRowHtml(row, isBest, sourceHidden, sourceEpisode, best = null) {
   });
 
   const seeders = Number(t.seeders || 0);
-  const facts = [t.source, t.size_str, sourceDetails(t), seeders > 0 ? `${seeders} pair${seeders > 1 ? 's' : ''}` : '',
-    copies > 1 ? `trouvé ${copies} fois` : ''].filter(Boolean);
+  const facts = [t.source, t.size_str, sourceDetails(t), seeders > 0 ? `${KINO_I18N.t('sources.x_pair_x', seeders, seeders > 1 ? 's' : '')}` : '',
+    copies > 1 ? `${KINO_I18N.t('sources.trouve_x_fois', copies)}` : ''].filter(Boolean);
   // A concealed episode never shows the source's own description (it may name the episode).
   const meta = sourceHidden || facts.length > 2 || !t.meta ? facts.join(' • ') : escapeHtml(t.meta);
 
@@ -534,7 +534,7 @@ export function renderTorrents() {
 
   const subEl = document.getElementById('torrentsSub');
   if (subEl) {
-    const versions = `${rows.length} version${rows.length > 1 ? 's' : ''}`;
+    const versions = `${KINO_I18N.t('sources.x_version_x', rows.length, rows.length > 1 ? 's' : '')}`;
     const sources = `${filtered.length} source${filtered.length > 1 ? 's' : ''}${filtered.length !== allTorrents.length ? ` (sur ${allTorrents.length})` : ''}`;
     subEl.textContent = rows.length === filtered.length ? sources : `${versions} · ${sources}`;
   }
@@ -554,7 +554,7 @@ export function renderTorrents() {
       const hidden = group.rows.length - shown.length;
       const where = group.key === 'other' ? '' : ` en ${group.label}`;
       const toggle = !open && hidden > 0
-        ? html`<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="false">Voir ${hidden} autre${hidden > 1 ? 's' : ''}${where}</button>`
+        ? html`<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="false">${tHtml('sources.voir_x_autre_x_x', hidden, hidden > 1 ? 's' : '', where)}</button>`
         : (open && group.rows.length > SOURCE_GROUP_SIZE ? html`<button type="button" class="btn btn-secondary source-more" ${act('toggleSourceGroup', group.key)} aria-expanded="true">${KINO_I18N.t('page.reduire')}</button>` : '');
       return html`<section class="source-group" aria-label="${group.label}">
         <h4 class="source-group-title">${group.label} <span class="list-count">${group.rows.length}</span></h4>
@@ -623,11 +623,11 @@ async function debridCandidates(candidates) {
         continue;
       }
       if (i + 1 < candidates.length && (e.message.includes('451') || e.message.includes('infringing_file') || e.message.includes('refusé'))) {
-        render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Source #${i + 1} indisponible (451), passage à la suivante...</p>`);
+        render(box, html`<p style="color:var(--muted); font-size:0.85rem;">${tHtml('sources.source_x_indisponible_451_passage_a_la', i + 1)}</p>`);
         await new Promise(r => setTimeout(r, 500));
         continue;
       }
-      render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${e.message}</p>`);
+      render(box, html`<p style="color:var(--muted); font-size:0.85rem;">${tHtml('settings.erreur_x', e.message)}</p>`);
       return;
     }
   }
@@ -639,8 +639,8 @@ export function renderDebridState(res, season, episode, chosenTorrentTitle = '',
     // The service's words are shown as text; its progress, as a number.
     const progress = Math.min(100, Math.max(0, Number.parseFloat(res.progress) || 0));
     render(box, html`
-      <h3>Mise en cache Real-Debrid (${progress}%)</h3>
-      <p style="color:var(--muted); font-size:0.82rem; margin-top:4px;">Statut : ${res.status} • Vitesse : ${res.speed} • Pairs : ${Number(res.seeders) || 0}</p>
+      <h3>${tHtml('sources.mise_en_cache_real_debrid_x', progress)}</h3>
+      <p style="color:var(--muted); font-size:0.82rem; margin-top:4px;">${tHtml('sources.statut_x_vitesse_x_pairs_x', res.status, res.speed, Number(res.seeders) || 0)}</p>
       <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
     `);
     setTimeout(async () => {
@@ -652,7 +652,7 @@ export function renderDebridState(res, season, episode, chosenTorrentTitle = '',
         });
         renderDebridState(next, season, episode, chosenTorrentTitle, playlistCount);
       } catch (e) {
-        render(box, html`<p style="color:var(--muted); font-size:0.85rem;">Erreur : ${e.message}</p>`);
+        render(box, html`<p style="color:var(--muted); font-size:0.85rem;">${tHtml('settings.erreur_x', e.message)}</p>`);
       }
     }, 2500);
     return;
@@ -663,7 +663,7 @@ export function renderDebridState(res, season, episode, chosenTorrentTitle = '',
   const selectedHidden = currentMedia?.type === 'series' && spoilerConcealed(spoilerSeriesId(), Number(season), Number(episode));
 
   const subBanner = chosenTorrentTitle
-    ? html`<p style="color:var(--muted); font-size:0.8rem; margin-bottom:6px;">Lecture : ${selectedHidden ? Spoilers.neutralTitle(episode) : escapeHtml(chosenTorrentTitle)}</p>`
+    ? html`<p style="color:var(--muted); font-size:0.8rem; margin-bottom:6px;">${tHtml('sources.lecture_x', selectedHidden ? Spoilers.neutralTitle(episode) : escapeHtml(chosenTorrentTitle))}</p>`
     : '';
   const playlistNote = (playlistCount > 1 || (currentMedia && currentMedia.type === 'series'))
     ? html`<p style="color:var(--dim); font-size:0.77rem; margin-bottom:10px;">Playlist active${playlistCount > 1 ? ` (${playlistCount} épisodes)` : ''} — Touche <code style="color:var(--text); background:var(--surface-2); padding:1px 5px; border-radius:3px; border:1px solid var(--border);">&gt;</code> pour l'épisode suivant</p>`

@@ -5,7 +5,7 @@
 // same way. A second click on the chosen gesture takes the rating back.
 
 import { registerActions } from './actions.js';
-import { EVENT, THIS, act, html, render, replaceWith } from './html.js';
+import { EVENT, THIS, act, html, render, replaceWith, tHtml } from './html.js';
 import { RELATED_CLIENT_CACHE, api, refreshUserLists, userHistory } from './app-core.js';
 import { FOR_YOU_CACHE, homeKind, onHomeTab, renderHomeForYou } from './app-home.js';
 import { posterCardHtml } from './app-tabs.js';
@@ -65,7 +65,7 @@ function ratingAskFor(entry) {
   const season = Number(entry.season || 0);
   const seasonOver = entry.series_finished || Number(entry.next_season || 0) > season;
   if (!entry.completed || !season || !seasonOver) return '';
-  const asked = `S${season}`;
+  const asked = `${KINO_I18N.t('ratings.s_x', season)}`;
   return entry.rating_asked === asked ? '' : asked;
 }
 
@@ -78,7 +78,7 @@ function ratingGesturesHtml(id, current, { labels = true } = {}) {
   const chosen = ratingGesture(current);
   return html`<div class="rate-gestures${labels ? '' : ' is-compact'}" role="group" aria-label="${KINO_I18N.t('ratings.votre_avis')}">${RATING_GESTURES.map(g => {
     const pressed = chosen === g.key;
-    return html`<button type="button" class="rate-gesture is-${g.key}" data-rate-id="${id}" data-rate-value="${g.value}" aria-pressed="${pressed}" title="${pressed ? `${g.label} (cliquer pour retirer)` : g.label}"${labels ? '' : html` aria-label="${g.label}"`} ${act('rateFromButton', EVENT, THIS)}><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#${g.icon}${pressed ? '-fill' : ''}"></use></svg>${labels ? html`<span>${g.label}</span>` : ''}</button>`;
+    return html`<button type="button" class="rate-gesture is-${g.key}" data-rate-id="${id}" data-rate-value="${g.value}" aria-pressed="${pressed}" title="${pressed ? `${KINO_I18N.t('ratings.x_cliquer_pour_retirer', g.label)}` : g.label}"${labels ? '' : html` aria-label="${g.label}"`} ${act('rateFromButton', EVENT, THIS)}><svg class="ui-icon ui-icon-sm" aria-hidden="true"><use href="/icons.svg#${g.icon}${pressed ? '-fill' : ''}"></use></svg>${labels ? html`<span>${g.label}</span>` : ''}</button>`;
   })}</div>`;
 }
 
@@ -86,14 +86,14 @@ function ratingGesturesHtml(id, current, { labels = true } = {}) {
 export function ratingBadgeHtml(value) {
   const gesture = RATING_GESTURES.find(g => g.key === ratingGesture(value));
   if (gesture) {
-    return html`<span class="poster-user-rating is-${gesture.key}" title="Votre avis : ${gesture.label}"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#${gesture.icon}-fill"></use></svg></span>`;
+    return html`<span class="poster-user-rating is-${gesture.key}" title="${tHtml('ratings.votre_avis_x', gesture.label)}"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#${gesture.icon}-fill"></use></svg></span>`;
   }
   return value ? html`<span class="poster-user-rating" title="${KINO_I18N.t('ratings.votre_note')}">★ ${String(value)}/5</span>` : '';
 }
 
 // « Votre avis » in the fiche, for a title of the history.
 export function ficheRatingHtml(mediaId, entry, value) {
-  if (!entry) return value ? html`<span class="detail-chip detail-chip-strong">★ ${String(value)}/5 · Ma note</span>` : '';
+  if (!entry) return value ? html`<span class="detail-chip detail-chip-strong">${tHtml('ratings.x_5_ma_note', String(value))}</span>` : '';
   const stars = value && !ratingGesture(value) ? html`<span class="detail-chip">★ ${String(value)}/5</span>` : '';
   return html`<span class="fiche-rating" id="ficheRating" data-rating-id="${mediaId}"><span class="fiche-rating-label">${KINO_I18N.t('ratings.votre_avis')}</span>${stars}${ratingGesturesHtml(mediaId, value)}<span class="rate-status" role="status"></span></span>`;
 }
@@ -187,7 +187,7 @@ export function renderHomeRate() {
   sec.hidden = !all.length;
   if (!all.length) { render(row, ''); return; }
   const count = document.getElementById('homeRateCount');
-  if (count) count.textContent = all.length > 1 ? `${all.length} titres · un clic par titre suffit` : 'Un clic suffit';
+  if (count) count.textContent = all.length > 1 ? `${KINO_I18N.t('ratings.x_titres_un_clic_par_titre_suffit', all.length)}` : 'Un clic suffit';
   render(row, all.slice(0, HOME_RATE_SIZE).map(entry => {
     const media = { id: entry.id, name: entry.name, type: kind, year: entry.year || '', poster: ratingPoster(entry) };
     return html`<div class="foryou-item rate-item" data-rate-item="${entry.id}">${posterCardHtml(media, kind)}${ratingGesturesHtml(entry.id, '', { labels: false })}<button type="button" class="foryou-no" data-rate-id="${entry.id}" ${act('skipRating', EVENT, THIS)}>${KINO_I18N.t('ratings.passer')}</button><span class="rate-status" role="status"></span></div>`;
@@ -225,8 +225,8 @@ function showRatePrompt(entry, asked) {
     if (source) poster.src = source;
   }
   document.getElementById('ratePromptKicker').textContent = asked === 'film'
-    ? 'Film terminé' : (entry.series_finished ? 'Série terminée' : `Saison ${asked.slice(1)} terminée`);
-  document.getElementById('ratePromptTitle').textContent = `Vous avez aimé ${name} ?`;
+    ? 'Film terminé' : (entry.series_finished ? 'Série terminée' : `${KINO_I18N.t('ratings.saison_x_terminee', asked.slice(1))}`);
+  document.getElementById('ratePromptTitle').textContent = `${KINO_I18N.t('ratings.vous_avez_aime_x', name)}`;
   render(document.getElementById('ratePromptGestures'), ratingGesturesHtml(entry.id, ''));
   setRatingStatus(prompt, '');
   prompt.classList.remove('is-done');
