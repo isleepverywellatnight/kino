@@ -63,10 +63,17 @@ serveur Rust ; le navigateur du téléphone n'a pas d'autre choix.
 
   Seul le Mac a une vraie puce graphique : il tient 60 images/s. Les deux autres
   mesurent un GPU émulé par le processeur, pas gpui.
+
+  **Sur le PC Windows de l'utilisateur** (vraie carte graphique, écran à haute
+  fréquence) : 1 594 images, médiane 5,0 ms, p95 5,6 ms, pire image 28,9 ms,
+  aucune au-dessus de 33 ms. Feu vert pour la fluidité de la grille.
 - **Vidéo sous les contrôles gpui** (fait, voie universelle) : le rendu
   logiciel de libmpv dessine chaque image en mémoire, gpui l'affiche sous ses
   contrôles (`crates/kino-ui/src/video.rs`, même code sur les 3 systèmes). La CI
   lit une mire 1080p avec les libmpv publiées par KINO et garde une capture.
-- **Reste** : les voies natives, plus économes en processeur (fenêtre enfant
-  mpv sous gpui transparent sous Windows, vue OpenGL sous la vue Metal sur
-  macOS), mesurées contre la voie universelle ; CPU au repos.
+- **Voie native Windows** (`--video --native`, `native.rs`) : mpv dessine au
+  GPU dans une fenêtre enfant désactivée, sous la surface gpui transparente ;
+  les clics sur les contrôles au-dessus de la vidéo arrivent à gpui (vérifié en
+  CI par un vrai clic). Chaque mesure donne aussi `cpu_pct`.
+- **Reste** : voie native macOS (vue OpenGL de mpv sous la vue Metal de gpui),
+  Linux (X11 `wid`), CPU au repos.
