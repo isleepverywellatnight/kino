@@ -1,6 +1,6 @@
 // @ts-check
 // Stable properties are used across episodes; file-local stream indexes are never stored.
-const SeriesPlayback = (() => {
+export const SeriesPlayback = (() => {
   const aliases = {
     fre: 'fr', fra: 'fr', french: 'fr', francais: 'fr',
     eng: 'en', english: 'en',
@@ -136,4 +136,3 @@ const SeriesPlayback = (() => {
     releaseHasFrenchAudio, frenchSubtitlePlan, automaticSubtitles };
 })();
 
-if (typeof module !== 'undefined') module.exports = SeriesPlayback;

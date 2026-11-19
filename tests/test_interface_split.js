@@ -11,7 +11,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const { appParts, interfaceScripts } = require('../tools/interface_source.js');
 
 const parts = appParts();
-const read = name => fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js', name), 'utf8');
+const read = name => require('../tools/interface_source.js').scriptText(name);
 const doc = fs.readFileSync(path.join(path.join(__dirname, '..'), 'docs/dev/interface-files.md'), 'utf8');
 
 test('eleven parts, loaded between the helpers and the players', () => {

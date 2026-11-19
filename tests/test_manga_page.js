@@ -10,7 +10,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 
 const ROOT = path.join(__dirname, '..');
 const html = require('../tools/interface_source.js').indexHtml();
-const code = fs.readFileSync(path.join(ROOT, 'web/js/manga.js'), 'utf8');
+const code = require('../tools/interface_source.js').scriptText('manga.js');
 const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 const SERIES = { id: '118586', source: 'anilist', title: 'Frieren', cover: 'c.jpg', year: 2020 };
@@ -62,7 +62,8 @@ test('a new tab in the sidebar, its panel and its reader', () => {
   assert.match(withCalls(html), /id="tab-manga" onclick="switchTab\('manga'\)">[\s\S]*?icons\.svg#manga"[\s\S]*?icons\.svg#manga-fill"[\s\S]*?Manga<\/button>/);
   assert.match(html, /<div id="mangaPanel" class="manga-panel" style="display:none;">/);
   assert.match(html, /<div id="mangaReader" class="manga-reader" role="dialog" aria-modal="true" aria-labelledby="mangaReaderTitle" hidden>/);
-  assert.match(html, /<script src="\/js\/p2p-addons\.js"><\/script>\n\s+<script src="\/js\/manga\.js"><\/script>/);
+  const scripts = require('../tools/interface_source.js').interfaceScripts();
+  assert.equal(scripts[scripts.indexOf('p2p-addons.js') + 1], 'manga.js');
 });
 
 test('the tab: rows of the catalogue, and an invitation for the user\'s own files', async () => {

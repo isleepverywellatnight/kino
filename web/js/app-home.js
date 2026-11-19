@@ -1,5 +1,22 @@
 // @ts-check
 // --- « Nouveaux épisodes »: series with episodes released since the last viewing ---
+
+import { registerActions } from './actions.js';
+import { EVENT, THIS, act, actOn, escapeHtml, html, render } from './html.js';
+import {
+  META_CLIENT_CACHE, RELATED_CLIENT_CACHE, activeGenre, activeTab, api, catalogItems, catalogSort,
+  episodeCode, getInProgressHistory, getWatchedHistory, refreshUserLists, requestResumeMetas,
+  resumeBackdrop, resumeCardView, setActiveGenre, setCatalogSort, spoilerConcealed, userHistory,
+  userWatchlist,
+} from './app-core.js';
+import { CATALOG_SORTS, listItemKind, listItemState, saveCatalogView } from './app-lists.js';
+import { loadCatalog, posterCardHtml } from './app-tabs.js';
+import { displayTitle, frenchGenre, titleAttrs } from './app-fiche.js';
+import { episodeAirLabel } from './app-sources.js';
+import { renderHomeRate } from './ratings.js';
+import { currentAnimeSubTab, isAnimeTitle } from './anime-home.js';
+import { networkOnline, syncChipPressed } from './app-start.js';
+
 let newEpisodes = [];
 let newEpisodesToday = '';
 let newEpisodesAt = 0;
@@ -81,11 +98,11 @@ function renderHomeNew() {
 const HOME_SHELF_SIZE = 12;
 const homeBecauseRequests = new Set();
 
-function onHomeTab() {
+export function onHomeTab() {
   return activeTab === 'movies' || activeTab === 'series';
 }
 
-function homeKind() {
+export function homeKind() {
   return activeTab === 'series' ? 'series' : 'movie';
 }
 
@@ -149,10 +166,10 @@ function renderHomeBecause() {
 
 // « Pour vous »: KINO's own suggestions, each with its reason, and
 // « Pas pour moi » to take one out (and teach the next ones).
-const FOR_YOU_CACHE = new Map();
+export const FOR_YOU_CACHE = new Map();
 const forYouRequests = new Set();
 
-function renderHomeForYou() {
+export function renderHomeForYou() {
   const sec = document.getElementById('homeForYouSection');
   const row = document.getElementById('homeForYouRow');
   if (!sec || !row) return;
@@ -187,7 +204,7 @@ async function notForMe(event, id) {
   } catch (e) {}
 }
 
-function hideHomeRows() {
+export function hideHomeRows() {
   const resume = document.getElementById('homeResumeSection');
   const fresh = document.getElementById('homeNewSection');
   if (resume) resume.style.display = 'none';
@@ -207,7 +224,7 @@ function resumeBelongsToTab(entry) {
   return listItemKind(entry) === homeKind();
 }
 
-function renderHomeResume() {
+export function renderHomeResume() {
   // Without internet the home rows could not open anything: the catalogue says so instead.
   if (!networkOnline && activeTab !== 'history') {
     hideHomeRows();
@@ -288,10 +305,10 @@ async function clearAllHistory() {
   await removeHistoryItem('__all__');
 }
 
-let classicsCatalogCache = [];
-function setClassicsCatalogCache(value) { classicsCatalogCache = value; return value; }
+export let classicsCatalogCache = [];
+export function setClassicsCatalogCache(value) { classicsCatalogCache = value; return value; }
 
-function updateClassicsStatsBadge() {
+export function updateClassicsStatsBadge() {
   const statsEl = document.getElementById('listStatsBadge');
   if (!statsEl) return;
   if (activeTab !== 'classics') return;
@@ -310,7 +327,7 @@ function updateClassicsStatsBadge() {
   statsEl.style.display = 'inline-flex';
 }
 
-function renderGenreChipsForTab(tab) {
+export function renderGenreChipsForTab(tab) {
   const gf = document.getElementById('genreFilters');
   if (!gf) return;
   if (tab === 'anime') {
@@ -431,7 +448,7 @@ function revealActiveGenre() {
   updateGenreArrows();
 }
 
-function initGenreStrip() {
+export function initGenreStrip() {
   const row = document.getElementById('genreFilters');
   if (!row) return;
   row.addEventListener('scroll', updateGenreArrows, { passive: true });
@@ -457,7 +474,7 @@ function selectGenreBadge(genre) {
   selectGenre(genre, chip);
 }
 
-function selectGenre(genre, el) {
+export function selectGenre(genre, el) {
   setActiveGenre(genre);
   const genreChips = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#genreFilters .chip'))];
   genreChips.forEach(c => c.classList.remove('active'));
@@ -477,11 +494,11 @@ function onChangeCatalogSort(sortVal) {
   loadCatalog(type, activeGenre, true);
 }
 
-let heroSpotlightItems = [];
+export let heroSpotlightItems = [];
 let heroSpotlightIdx = 0;
 let heroSpotlightTimer = null;
 
-function renderHeroSpotlight(metas, fallbackType) {
+export function renderHeroSpotlight(metas, fallbackType) {
   const box = document.getElementById('heroSpotlight');
   if (!box) return;
   clearInterval(heroSpotlightTimer);

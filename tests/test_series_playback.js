@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const playback = require('../web/js/series-playback.js');
+const { SeriesPlayback: playback } = require('../web/js/series-playback.js');
 
 test('an audio language survives inverted track order and codec changes', () => {
   const preference = playback.describeAudio({index: 4, language: 'fra', codec: 'ac3', title: 'Français'});

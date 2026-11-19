@@ -7,14 +7,14 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const overlay = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+const overlay = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
 const app = require('../tools/interface_source.js').appSource();
 
 function loadOverlay() {
   const listeners = [];
   const context = { window: { addEventListener: (...args) => listeners.push(args) }, document: {}, localStorage: {} };
   vm.runInNewContext(overlay, context);
-  return { NativePlayer: context.window.NativePlayer, listeners };
+  return { NativePlayer: vm.runInContext('NativePlayer', context), listeners };
 }
 
 test('times and track names read naturally in French', () => {
@@ -47,7 +47,7 @@ function loadPlayOffline({ available, enabled, nativeFails = false }) {
     userHistory: [{ id: 'tt1', position: 600 }],
     pollDownloads: async () => {},
     openInAppPlayer: async (...args) => { calls.push(['web', ...args]); },
-    window: { NativePlayer: { available, enabled, open: async (...args) => { calls.push(['native', ...args]); if (nativeFails) throw new Error('x'); } } },
+    NativePlayer: { available, enabled, open: async (...args) => { calls.push(['native', ...args]); if (nativeFails) throw new Error('x'); } },
   };
   vm.runInNewContext(`${source}\nthis.play = playOfflineDownload;`, context);
   return { play: context.play, calls };
@@ -71,7 +71,7 @@ test('offline films use the native player only when it is available and switched
 test('the setting is shown only where the native player exists and is saved as a boolean', () => {
   const html = require('../tools/interface_source.js').indexHtml();
   assert.match(html, /id="cfgNativePlayerField" style="display:none;/);
-  assert.match(html, /<script src="\/js\/native-player.js"><\/script>/);
+  assert.ok(require('../tools/interface_source.js').interfaceScripts().includes('native-player.js'));
   assert.match(app, /nativeField\.style\.display = cfg\.native_player_available === true \? 'flex' : 'none'/);
   assert.match(app, /native_player: nativeToggle && document\.getElementById\('cfgNativePlayerField'\)\?\.style\.display !== 'none'/);
 });

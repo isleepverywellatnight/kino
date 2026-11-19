@@ -311,6 +311,13 @@ async function run(hwnd, videoUrl) {
   const baselineCursor = cursorShowing();
   say(`cursor shown by Windows in a normal window: ${baselineCursor}`);
 
+  // KINO's page is one ES module (web/js/main.js): it loaded, and KINO started.
+  const boot = await page.evaluate(() => ({
+    modules: [...document.scripts].filter(s => s.type === 'module').map(s => new URL(s.src).pathname),
+    tab: document.body.dataset.activeTab || '',
+  }));
+  check('the page starts from its one module', boot.modules.join() === '/js/main.js' && boot.tab !== '', JSON.stringify(boot));
+
   const style = win.GetWindowLongW(hwnd, -16) >>> 0;
   const [cw, ch] = clientSize(hwnd);
   const [, , ww, wh] = windowRect(hwnd);
@@ -378,7 +385,7 @@ async function run(hwnd, videoUrl) {
     check('double press maximizes', same(windowRect(hwnd), workArea(hwnd)),
       `${show(windowRect(hwnd))} events=${JSON.stringify(await page.evaluate(() => window.__kinoEvents))}`);
     if (!same(windowRect(hwnd), workArea(hwnd))) {
-      await page.evaluate(() => windowAction('maximize'));
+      await page.evaluate(async () => (await import('/js/actions.js')).runAction('windowAction', 'maximize'));
       await sleep(600);
       say(`after windowAction('maximize'): ${show(windowRect(hwnd))}`);
     }
@@ -390,7 +397,7 @@ async function run(hwnd, videoUrl) {
   }
 
   // The player: its buttons do not move the window.
-  await page.evaluate(url => openInAppPlayer(url, 'Test KINO'), videoUrl);
+  await page.evaluate(async url => (await import('/js/app-player.js')).openInAppPlayer(url, 'Test KINO'), videoUrl);
   await page.waitForFunction(() => { const v = document.getElementById('inAppVideo'); return v && v.currentTime > 1; }, null, { timeout: 30000 });
   screenshot('player', hwnd);
   const buttons = await page.evaluate(() => [...document.querySelectorAll('.inapp-hud-top .win-btn')].map(el => {
@@ -420,7 +427,7 @@ async function run(hwnd, videoUrl) {
   }
 
   // Fullscreen: once the controls hide, a mouse move brings the cursor back.
-  await page.evaluate(() => toggleInAppFullscreen());
+  await page.evaluate(async () => (await import('/js/app-player.js')).toggleInAppFullscreen());
   await page.waitForTimeout(800);
   const [, , fw, fh] = windowRect(hwnd);
   const [, , aw, ah] = workArea(hwnd);
@@ -444,17 +451,17 @@ async function run(hwnd, videoUrl) {
   check('cursor visible in fullscreen', shown === baselineCursor && state.cursor !== 'none',
     JSON.stringify({ ...state, windows_shows_cursor: shown, baseline: baselineCursor }));
   screenshot('fullscreen-after-move', hwnd);
-  await page.evaluate(() => toggleInAppFullscreen());
+  await page.evaluate(async () => (await import('/js/app-player.js')).toggleInAppFullscreen());
   await page.waitForTimeout(800);
 
   // The native player: libmpv draws in KINO's window, the page's controls stay over it.
   // KINO's own player closes first: its video must not be what shows through.
-  await page.evaluate(() => closeInAppPlayer());
+  await page.evaluate(async () => (await import('/js/app-player.js')).closeInAppPlayer());
   await page.waitForTimeout(500);
   await smallWindow();
-  const available = await page.evaluate(() => window.NativePlayer.available === true);
+  const available = await page.evaluate(async () => (await import('/js/native-player.js')).NativePlayer.available === true);
   check('native player available', available);
-  const native = available ? await page.evaluate(id => window.NativePlayer.open(
+  const native = available ? await page.evaluate(async id => (await import('/js/native-player.js')).NativePlayer.open(
     { id, filename: 'test.mp4' }, { type: 'movie', name: 'Test natif' }, 0, 'Test natif', null)
     .then(() => 'ok', error => String(error)), OFFLINE_ID) : 'unavailable';
   let playing = null;
@@ -494,7 +501,7 @@ async function run(hwnd, videoUrl) {
     paused = now ? (now.state || now).paused : null;
   }
   check('click on the native controls pauses', before0 === false && paused === true, JSON.stringify({ before: before0, after: paused }));
-  await page.evaluate(() => window.NativePlayer.close());
+  await page.evaluate(async () => (await import('/js/native-player.js')).NativePlayer.close());
   await page.waitForTimeout(800);
   const closed = await page.evaluate(() => fetch('/api/native-player/state').then(r => r.json()).catch(() => null));
   const page0 = await page.evaluate(() => document.documentElement.classList.contains('native-playing'));

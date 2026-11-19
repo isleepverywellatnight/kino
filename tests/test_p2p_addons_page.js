@@ -10,7 +10,7 @@ const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const ROOT = path.join(__dirname, '..');
-const read = name => fs.readFileSync(path.join(ROOT, name), 'utf8');
+const read = name => (/^web\/js\/[\w-]+\.js$/.test(name) ? require('../tools/interface_source.js').scriptText(name.slice(7)) : fs.readFileSync(path.join(ROOT, name), 'utf8'));
 const html = require('../tools/interface_source.js').indexHtml();
 const code = read('web/js/p2p-addons.js');
 const source = require('../tools/interface_source.js').appSource();
@@ -152,6 +152,7 @@ test('the add-ons catalogues are rows of posters in Explorer', async () => {
 test('« Lancer » and a chosen source wait for the consent, then go on', () => {
   assert.match(source, /if \(e\.code === 'p2p_consent'\) \{[\s\S]{0,200}if \(await askP2PConsent\(\)\) return oneClickPlay\(params, btn\);/);
   assert.match(source, /if \(e\.code === 'p2p_consent' && await askP2PConsent\(\)\) \{\n\s+i -= 1;\n\s+continue;/);
-  assert.match(html, /<script src="\/js\/anime-home\.js"><\/script>\n\s+<script src="\/js\/p2p-addons\.js"><\/script>/);
+  const scripts = require('../tools/interface_source.js').interfaceScripts();
+  assert.equal(scripts[scripts.indexOf('anime-home.js') + 1], 'p2p-addons.js');
   assert.match(html, /<h3 class="settings-subtitle">Sans service de débridage<\/h3>/);
 });

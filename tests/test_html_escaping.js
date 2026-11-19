@@ -11,7 +11,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const source = require('../tools/interface_source.js').appSource();
 const between = (start, end) => start + source.split(start, 2)[1].split(end, 1)[0];
 // The page's render helpers (web/js/html.js), then app-social's own.
-const helpers = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'web', 'js', 'html.js'), 'utf8')
+const helpers = require('../tools/interface_source.js').scriptText('html.js')
   + between('function listMediaArg(m)', 'async function checkTraktStatus()');
 // French display titles (titleAttrs, displayTitle, frenchGenre) are used by the
 // card and hero templates; load the real ones so their escaping is tested too.
@@ -19,7 +19,7 @@ const frenchTitles = between('const ORIGINAL_TITLES = new Map();', '// --- Immer
 const hero = between('function drawHeroSpotlightSlide()', 'let caseAudioCtx = null;');
 const posters = between('// One catalogue card', 'async function loadRdCloud()');
 const customLists = between('function renderCustomListsTab()', 'function surpriseMeFromCustomList(');
-const animeHome = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/anime-home.js'), 'utf8'));
+const animeHome = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('anime-home.js'));
 
 const HOSTILE = `Tom & "Jerry's" <img src=x onerror="window.pwned=1">`;
 

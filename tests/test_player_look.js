@@ -12,7 +12,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const app = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
-const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+const nativeSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
 
 function extract(name) {
   const start = app.search(new RegExp(`(?:async )?function ${name}\\(`));
@@ -193,7 +193,7 @@ function loadNative(state) {
     setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {}, Date,
   };
   vm.runInNewContext(nativeSource, context);
-  return { NativePlayer: context.window.NativePlayer, elements };
+  return { NativePlayer: vm.runInContext('NativePlayer', context), elements };
 }
 
 test('the native player uses the built-in player classes and icons', async () => {

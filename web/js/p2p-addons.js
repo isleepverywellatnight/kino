@@ -3,6 +3,13 @@
 // protocol), and the torrents KINO reads itself, peer to peer, once the user has
 // agreed to what it means.
 
+import { registerActions } from './actions.js';
+import { CHECKED, act, actOn, attrJson, html, render } from './html.js';
+import { api } from './app-core.js';
+import { LIST_SHELF_SIZE } from './app-letterboxd.js';
+import { posterCardHtml } from './app-tabs.js';
+import { offlineSize } from './app-start.js';
+
 let stremioAddons = [];
 let stremioCatalogs = [];
 let p2pState = { available: false, accepted: false, upload: 'minimum', download: 'none', encrypted: false, port: 0, cache_bytes: 0 };
@@ -11,7 +18,7 @@ let p2pConsentAnswer = null;
 // ---------- The consent, asked once ----------
 
 // Resolves true once the user agreed (and KINO saved it), false otherwise.
-function askP2PConsent() {
+export function askP2PConsent() {
   const dialog = document.getElementById('p2pConsent');
   if (!dialog) return Promise.resolve(false);
   const upload = document.getElementById('p2pConsentUpload');
@@ -45,7 +52,7 @@ async function answerP2PConsent(accepted) {
 
 // ---------- Paramètres → Compte ----------
 
-async function loadSourcesSettings() {
+export async function loadSourcesSettings() {
   try {
     const [p2p, addons] = await Promise.all([api('/api/p2p'), api('/api/stremio-addons')]);
     p2pState = p2p || p2pState;
@@ -194,7 +201,7 @@ async function removeStremioAddon(id) {
 
 // ---------- Explorer: the add-ons' catalogues ----------
 
-async function renderAddonCatalogs() {
+export async function renderAddonCatalogs() {
   const box = document.getElementById('addonCatalogs');
   if (!box) return;
   try {

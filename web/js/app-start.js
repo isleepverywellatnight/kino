@@ -1,5 +1,43 @@
 // Escape closes the dialog in front first. The remote QR code and Watch Party open over
 // the player: closing the whole player there interrupted the Playback Session.
+
+import { registerActions } from './actions.js';
+import { THIS, act, actOn, escapeHtml, html, render } from './html.js';
+import {
+  activeTab, api, checkConfig, closeTonightModal, currentMedia, loadSpoilerState, seriesMetaVideos,
+  userHistory,
+} from './app-core.js';
+import { hideHomeRows, initGenreStrip } from './app-home.js';
+import {
+  activeCasePoolMode, caseSpinState, closeCaseModal, foldSearchText, restoreCatalogView,
+  skipCaseSpin, surpriseMeMedia,
+} from './app-lists.js';
+import { closeLetterboxdModal } from './app-letterboxd.js';
+import {
+  initPosterPreviews, refreshSettingsSectionNavigation, searchResultsShown,
+  setRefreshSettingsSectionNavigation, switchTab,
+} from './app-tabs.js';
+import {
+  closeConfig, closeHeaderMenu, closeTrailerModal, initSettingsAutosave, openConfig,
+} from './app-cloud-settings.js';
+import {
+  checkTraktStatus, closeAddonsModal, closeRemoteModal, closeWatchPartyModal, startRemotePolling,
+} from './app-social.js';
+import {
+  closeDetailPanel, closeDetailTrailer, displayTitle, initOriginalTitles,
+  initSearchPlatformShortcuts, openPerson, openSearchPanel, runSearch, selectMedia, titleAttrs,
+  toggleShortcutsModal, updateSearchClearBtn,
+} from './app-fiche.js';
+import { updateEpisodeArrows } from './app-sources.js';
+import {
+  adjustInAppSubDelay, closeInAppMoreMenu, closeInAppPlayer, cycleInAppAudioBoost,
+  cycleInAppClarity, cycleInAppSpeed, cycleInAppSubtitles, exitInAppFullscreen, handleInAppMenuKey,
+  inAppNextTrack, inAppPrevTrack, inAppSeekRel, initInAppMoreMenu, initResizeHandles,
+  openInAppPlayer, resetInAppIdleTimer, setInAppVolume, skipInAppIntro, switchToExternalPlayer,
+  syncWindowState, toggleInAppFullscreen, toggleInAppMute, toggleInAppPiP, toggleInAppPlay,
+} from './app-player.js';
+import { NativePlayer } from './native-player.js';
+
 const ESCAPE_DIALOGS = [
   ['shortcutsModal', () => toggleShortcutsModal()],
   ['remoteModal', () => closeRemoteModal()],
@@ -7,7 +45,7 @@ const ESCAPE_DIALOGS = [
   ['addonsModal', () => closeAddonsModal()],
 ];
 
-function closeOpenDialogOnEscape() {
+export function closeOpenDialogOnEscape() {
   if (closeInAppMoreMenu(true)) return true;
   const trailer = document.getElementById('detailTrailer');
   if (trailer && !trailer.hidden) {
@@ -236,7 +274,7 @@ function offlineFreeText(bytes) {
   return ` · Libre : ${offlineSize(free)}`;
 }
 
-function offlineSize(bytes) {
+export function offlineSize(bytes) {
   if (!Number.isFinite(Number(bytes)) || Number(bytes) <= 0) return (window.KINO_LANG || 'fr') === 'fr' ? '0 octet' : '0 B';
   const units = (window.KINO_LANG || 'fr') === 'fr' ? ['octets', 'Ko', 'Mo', 'Go', 'To'] : ['B', 'KB', 'MB', 'GB', 'TB'];
   let value = Number(bytes), unit = 0;
@@ -369,7 +407,7 @@ async function downloadSeasonOffline(button) {
   }
 }
 
-async function playOfflineDownload(id) {
+export async function playOfflineDownload(id) {
   const item = offlineDownloads[id];
   if (!item?.available) { await pollDownloads(); return; }
   const media = {...item.media, offline_id: id};
@@ -377,9 +415,9 @@ async function playOfflineDownload(id) {
   const s = media.season, e = media.episode;
   const resumeSec = s && e ? (history?.ep_positions?.[`s${s}e${e}`]?.position || 0) : (history?.position || 0);
   const title = media.name ? `${media.name}${s && e ? ` — S${String(s).padStart(2, '0')}E${String(e).padStart(2, '0')}` : ''}` : item.filename;
-  if (window.NativePlayer?.available && window.NativePlayer.enabled) {
+  if (NativePlayer?.available && NativePlayer.enabled) {
     try {
-      await window.NativePlayer.open(item, media, resumeSec, title,
+      await NativePlayer.open(item, media, resumeSec, title,
         info => openInAppPlayer(item.url, title, null, media, info?.position || resumeSec, item.filename));
       return;
     } catch (error) {
@@ -413,7 +451,7 @@ async function removeOfflineDownload(id) {
   await pollDownloads();
 }
 
-async function pollDownloads() {
+export async function pollDownloads() {
   clearTimeout(downloadPollTimer);
   let data;
   try { data = await api('/api/downloads'); }
@@ -477,8 +515,8 @@ function initSettingsSectionNavigation() {
   window.addEventListener('resize', refreshSettingsSectionNavigation);
 }
 
-let kinoUpdatePendingAction = '';
-function setKinoUpdatePendingAction(value) { kinoUpdatePendingAction = value; return value; }
+export let kinoUpdatePendingAction = '';
+export function setKinoUpdatePendingAction(value) { kinoUpdatePendingAction = value; return value; }
 let kinoUpdatePollTimer = null;
 let kinoUpdateRetryTimer = null;
 
@@ -615,14 +653,14 @@ async function requestKinoUpdateAction(action) {
   }
 }
 
-function installKinoUpdate() { return requestKinoUpdateAction('install'); }
+export function installKinoUpdate() { return requestKinoUpdateAction('install'); }
 async function openKinoReleasePage() {
   const bridge = kinoUpdateBridge();
   if (bridge?.open_release_page) {
     try { await bridge.open_release_page(); } catch (error) { kinoUpdateMessage(error.message || String(error)); }
   }
 }
-function rollbackKinoUpdate() { return requestKinoUpdateAction('rollback'); }
+export function rollbackKinoUpdate() { return requestKinoUpdateAction('rollback'); }
 
 function initHeaderMenuKeyboard() {
   document.querySelectorAll('#headerDropdownMenu .header-dropdown-item').forEach(item => {
@@ -708,7 +746,7 @@ function enhanceKeyboardControls(root) {
 }
 
 // Filter chips are toggles: keep aria-pressed in step with the visible state.
-function syncChipPressed(chips, active) {
+export function syncChipPressed(chips, active) {
   for (const chip of chips) {
     if (chip.getAttribute('role') === 'button') chip.setAttribute('aria-pressed', String(chip === active));
   }
@@ -823,11 +861,11 @@ function navNote(screen) {
   renderNavBack();
 }
 
-function noteTab(tab) { navNote(navScreen({ kind: 'tab', key: tab, tab })); }
-function noteSearch(query, mode) { navNote(navScreen({ kind: 'search', key: `${mode}:${query}`, query, mode })); }
-function notePerson(name) { navNote(navScreen({ kind: 'person', key: name, name })); }
+export function noteTab(tab) { navNote(navScreen({ kind: 'tab', key: tab, tab })); }
+export function noteSearch(query, mode) { navNote(navScreen({ kind: 'search', key: `${mode}:${query}`, query, mode })); }
+export function notePerson(name) { navNote(navScreen({ kind: 'person', key: name, name })); }
 
-function noteFiche(media) {
+export function noteFiche(media) {
   if (!media || !media.id) return;
   const top = navStack[navStack.length - 1];
   navNote(navScreen(top || { kind: 'tab', key: activeTab, tab: activeTab }, media));
@@ -841,7 +879,7 @@ function navLabel(screen) {
   return NAV_TAB_LABELS[screen.tab] || 'l’écran précédent';
 }
 
-function canGoBack() {
+export function canGoBack() {
   return navStack.length > 1 && !navRestoring;
 }
 
@@ -876,7 +914,7 @@ function restoreScroll(y) {
   setTimeout(() => { if (Math.abs((window.scrollY || 0) - top) > 4) window.scrollTo({ top, behavior: 'auto' }); }, 450);
 }
 
-async function goBack() {
+export async function goBack() {
   if (!canGoBack()) return false;
   const leaving = navStack.pop();
   const target = navStack[navStack.length - 1];
@@ -915,7 +953,7 @@ window.addEventListener('mouseup', event => {
 });
 
 // --- Sans internet: the offline files first, plain words for the rest ---
-let networkOnline = true;
+export let networkOnline = true;
 let networkRetryTimer = null;
 let networkBackTimer = null;
 const NETWORK_RETRY_MS = 20000;
@@ -946,7 +984,7 @@ function setNetworkOnline(online) {
   if (online) networkCameBack();
 }
 
-function noteNetworkOffline() {
+export function noteNetworkOffline() {
   if (networkOnline) setNetworkOnline(false);
 }
 
@@ -982,11 +1020,11 @@ function networkCameBack() {
   else if (activeTab === 'offline') pollDownloads();
 }
 
-function needsInternetHtml(what) {
+export function needsInternetHtml(what) {
   return html`<div class="library-empty"><h3>${what} a besoin d’internet</h3><p>Vos fichiers hors ligne restent disponibles sur ce Mac.</p><button type="button" class="btn" ${act('switchTab', 'offline')}>Voir mes fichiers hors ligne</button></div>`;
 }
 
-function showOfflineCatalogue() {
+export function showOfflineCatalogue() {
   hideHomeRows();
   for (const id of ['heroSpotlight', 'genreFilters', 'catalogSortWrap', 'loadMoreWrap']) {
     const el = document.getElementById(id);
@@ -997,7 +1035,7 @@ function showOfflineCatalogue() {
 }
 
 // Offline, a search looks in the files kept on this Mac.
-function offlineSearchHtml(q) {
+export function offlineSearchHtml(q) {
   const wanted = foldSearchText(q);
   const found = Object.entries(offlineDownloads).filter(([, item]) => item.available
     && foldSearchText(`${offlineDisplay(item).title} ${item.filename || ''}`).includes(wanted));
@@ -1025,7 +1063,7 @@ function initUiLanguageSelect() {
 // KINO starts once every part of the page is loaded (web/js/main.js): nothing
 // above runs on its own but listeners, so no part depends on the order the
 // others load in.
-function startKino() {
+export function startKino() {
   initSettingsSectionNavigation();
   initSettingsAutosave();
   window.addEventListener('pywebviewready', refreshKinoUpdate);
