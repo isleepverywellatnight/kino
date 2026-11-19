@@ -602,7 +602,7 @@ async function oneClickPlay(params, btn) {
   setTimeout(() => { _isGlobalPlayLaunching = false; }, 3000);
 
   if (btn && btn.disabled) return;
-  const origHtml = btn ? btn.innerHTML : '';
+  const origHtml = btn ? raw(btn.innerHTML) : '';
   if (btn) {
     btn.disabled = true;
     render(btn, 'Play...');

@@ -69,7 +69,8 @@
   function buildOverlay() {
     if (element('nativePlayer')) return;
     // Windows has no title bar: the window's own buttons, as in KINO's player (shown by design.css).
-    const WINDOW_BUTTONS = String(element('inAppWindowButtons')?.outerHTML || '').replace(html` id="inAppWindowButtons"`, '');
+    // The page's own markup (KINO's player), so a fragment as it is.
+    const WINDOW_BUTTONS = raw(String(element('inAppWindowButtons')?.outerHTML || '').replace(' id="inAppWindowButtons"', ''));
     const root = document.createElement('div');
     root.id = 'nativePlayer';
     root.setAttribute('role', 'dialog');

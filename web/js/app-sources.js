@@ -694,7 +694,7 @@ async function sendDebridFileToTv(button, index) {
   const episode = isSeries ? Number(parsed?.episode || (file.is_target_ep ? chosenEpisode : 0) || 0) : 0;
   const media = currentMedia ? tvMediaPayload(currentMedia, season, episode) : null;
   const status = document.getElementById('debridTvStatus');
-  const label = button.innerHTML;
+  const label = raw(button.innerHTML);
   button.disabled = true;
   button.textContent = 'Envoi…';
   try {
@@ -799,7 +799,7 @@ async function openMpv(btn, url, filename, options = null) {
   setTimeout(() => { _isGlobalPlayLaunching = false; }, 3000);
 
   if (btn && btn.disabled) return;
-  const origText = btn ? btn.innerHTML : '';
+  const origText = btn ? raw(btn.innerHTML) : '';
   if (btn) {
     btn.disabled = true;
     render(btn, 'Play...');

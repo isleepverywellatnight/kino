@@ -178,6 +178,8 @@ function loadNative(state) {
     attributes: {}, classList: { add() {}, remove() {} },
     setAttribute(name, value) { this.attributes[name] = value; }, addEventListener() {},
   });
+  // KINO's player holds the Windows buttons the native player copies.
+  make('inAppWindowButtons').outerHTML = '<div class="win-controls no-drag" id="inAppWindowButtons"><button class="win-btn win-close"></button></div>';
   const document = {
     getElementById: id => (id === 'nativePlayer' && !appended ? null : make(id)),
     createElement: () => make('nativePlayer'),
@@ -208,6 +210,7 @@ test('the native player uses the built-in player classes and icons', async () =>
     assert.ok(markup.includes(piece), piece);
   }
   assert.match(markup, /<svg data-icon="pause"\/>/, 'shared icons from app.js');
+  assert.match(markup, /<div class="win-controls no-drag"><button class="win-btn win-close"><\/button><\/div>/, 'the Windows buttons, as markup and without the copied id');
   assert.equal(elements.nativePlay.innerHTML, '<svg data-icon="play"/>');
   assert.equal(elements.nativePlay.attributes['aria-label'], 'Lecture');
   assert.equal(elements.nativeSeek.value, '455');
