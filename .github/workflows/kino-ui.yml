@@ -95,9 +95,30 @@ jobs:
           frames=$(echo "${out#KINO-UI VIDEO }" | $(command -v python3 || command -v python) -c "import json,sys; print(json.load(sys.stdin)['video_frames'])")
           [ "$frames" -ge 60 ] || { echo "::error::Only $frames video frames reached the screen"; exit 1; }
           echo "::notice title=video ${{ matrix.os }}::${out#KINO-UI VIDEO }"
+      - name: Native video under gpui (Windows)
+        if: runner.os == 'Windows'
+        working-directory: crates/kino-ui
+        run: |
+          # mpv draws in a child window under gpui's transparent surface; at
+          # 3 s a real click on the play button must reach gpui.
+          target/release/kino-ui.exe --video --native --bench > native.log 2>&1 &
+          sleep 5
+          pwsh -NoProfile -Command '
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $p = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($p).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $p.Save("video-native.png")'
+          wait || true
+          cat native.log
+          out=$(grep "KINO-UI VIDEO {" native.log || true)
+          [ -n "$out" ] || { echo "::error::The native player printed nothing"; exit 1; }
+          echo "::notice title=native video ${{ matrix.os }}::${out#KINO-UI VIDEO }"
+          echo "$out" | grep -q '"click_reached_controls":true' \
+            || { echo "::error::A click over mpv's window did not reach gpui's controls"; exit 1; }
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: video-${{ matrix.os }}
-          path: crates/kino-ui/video.png
+          path: crates/kino-ui/video*.png
           if-no-files-found: ignore
