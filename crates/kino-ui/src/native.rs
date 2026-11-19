@@ -16,8 +16,9 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, EnumChildWindows, GW_CHILD, GW_HWNDNEXT, GetClassNameW, GetClientRect,
-    GetWindow, SWP_NOACTIVATE, SWP_NOZORDER, SetCursorPos, SetWindowPos, WINDOW_EX_STYLE, WS_CHILD,
-    WS_CLIPSIBLINGS, WS_DISABLED, WS_VISIBLE, WindowFromPoint,
+    GetCursorPos, GetForegroundWindow, GetWindow, SWP_NOACTIVATE, SWP_NOZORDER, SetCursorPos,
+    SetWindowPos, WINDOW_EX_STYLE, WS_CHILD, WS_CLIPSIBLINGS, WS_DISABLED, WS_VISIBLE,
+    WindowFromPoint,
 };
 use windows::core::{BOOL, w};
 
