@@ -92,8 +92,15 @@ function withCalls(html) {
   });
 }
 
+// The page's text keys (data-i18n="page.parametres"…) name the translation of
+// the French beside them; tests/test_i18n_catalogs.js checks them. Other tests
+// read the page without them.
+function withoutKeys(html) {
+  return String(html).replace(/ data-i18n(?:-title|-placeholder|-aria-label)?="[^"]*"/g, '');
+}
+
 function indexHtml(root = ROOT) {
-  return withCalls(fs.readFileSync(path.join(root, 'web', 'index.html'), 'utf8'));
+  return withCalls(withoutKeys(fs.readFileSync(path.join(root, 'web', 'index.html'), 'utf8')));
 }
 
 // What templates use to declare an action (act, actOn, THIS, EVENT…), taken from
@@ -122,4 +129,4 @@ function withHelpers(context = {}) {
   return context;
 }
 
-module.exports = { appParts, appSource, asScript, scriptText, withoutRegistrations, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls, templateHelpers, withHelpers };
+module.exports = { appParts, appSource, asScript, scriptText, withoutRegistrations, withoutKeys, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls, templateHelpers, withHelpers };
