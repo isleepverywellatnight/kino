@@ -119,8 +119,40 @@ function templateHelpers(root = ROOT) {
 // A test's context with those helpers, unless it brings its own. A file run alone
 // registers its actions (web/js/actions.js) into the context's own list,
 // context.actions; tools/frontend_check.js checks that every declared one is there.
+// KINO_I18N in French, as web/js/i18n.js gives it with web/js/i18n/fr.js: t(key)
+// is the key's French, « {} » filled with the values that follow.
+let frenchOnce = null;
+function frenchTexts(root = ROOT) {
+  if (frenchOnce) return frenchOnce;
+  const raw = fs.readFileSync(path.join(root, 'web', 'js', 'i18n', 'fr.js'), 'utf8');
+  frenchOnce = JSON.parse(raw.slice(raw.indexOf('KINO_I18N.source(') + 'KINO_I18N.source('.length, raw.lastIndexOf(')')));
+  return frenchOnce;
+}
+function frenchI18n() {
+  const texts = frenchTexts();
+  const fill = (text, values) => {
+    let next = 0;
+    return text.replace(/\{(\d*)\}/g, (_, index) => {
+      const value = index ? values[Number(index) - 1] : values[next++];
+      return value === undefined ? '' : String(value);
+    });
+  };
+  return {
+    lang: 'fr',
+    t(key, ...values) {
+      if (!Object.hasOwn(texts, key)) throw new Error(`KINO: unknown text key « ${key} »`);
+      return fill(texts[key], values);
+    },
+    translate: text => text,
+    months: style => FRENCH_MONTHS[style].slice(),
+    apply() {},
+    remaining: () => [],
+  };
+}
+
 function withHelpers(context = {}) {
   for (const [name, value] of Object.entries(templateHelpers())) if (!(name in context)) context[name] = value;
+  if (!('KINO_I18N' in context)) context.KINO_I18N = frenchI18n();
   if (!('registerActions' in context)) {
     const actions = {};
     Object.defineProperty(context, 'actions', { value: actions, enumerable: false, configurable: true });
@@ -129,4 +161,4 @@ function withHelpers(context = {}) {
   return context;
 }
 
-module.exports = { appParts, appSource, asScript, scriptText, withoutRegistrations, withoutKeys, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls, templateHelpers, withHelpers };
+module.exports = { frenchTexts, frenchI18n, appParts, appSource, asScript, scriptText, withoutRegistrations, withoutKeys, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls, templateHelpers, withHelpers };

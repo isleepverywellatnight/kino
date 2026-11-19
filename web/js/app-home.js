@@ -187,7 +187,7 @@ export function renderHomeForYou() {
   const items = (data?.items || []).filter(m => m?.id && !seen.has(m.id)).slice(0, HOME_SHELF_SIZE);
   sec.hidden = items.length < 4;
   if (sec.hidden) { render(row, ''); return; }
-  render(row, items.map(m => html`<div class="foryou-item" data-foryou="${m.id}">${posterCardHtml(m, kind)}<p class="foryou-why">${m.why || ''}</p><button type="button" class="foryou-no" ${act('notForMe', EVENT, m.id)}>Pas pour moi</button></div>`));
+  render(row, items.map(m => html`<div class="foryou-item" data-foryou="${m.id}">${posterCardHtml(m, kind)}<p class="foryou-why">${m.why || ''}</p><button type="button" class="foryou-no" ${act('notForMe', EVENT, m.id)}>${KINO_I18N.t('home.pas_pour_moi')}</button></div>`));
 }
 
 async function notForMe(event, id) {
@@ -256,7 +256,7 @@ export function renderHomeResume() {
   if (!items.length) {
     if (isHistoryPage) {
       sec.style.display = 'block';
-      render(grid, html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>Rien en cours de lecture</h3><p>Commencez un film ou une série, et retrouvez-le ici pour continuer plus tard.</p><button class="btn" ${act('switchTab', 'movies')}>Découvrir les films</button></div>`);
+      render(grid, html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>${KINO_I18N.t('home.rien_en_cours_de_lecture')}</h3><p>${KINO_I18N.t('home.commencez_un_film_ou_une_serie_et')}</p><button class="btn" ${act('switchTab', 'movies')}>${KINO_I18N.t('home.decouvrir_les_films')}</button></div>`);
     } else {
       sec.style.display = 'none';
     }
@@ -279,7 +279,7 @@ export function renderHomeResume() {
           </span>
           ${view.progress ? html`<span class="resume-progress-bar"><span class="resume-progress-fill" style="width:${view.progress}%;"></span></span>` : ''}
         </button>
-        <button class="resume-dismiss-btn" ${act('removeHistoryItem', h.id)} title="Retirer des lectures en cours" aria-label="Retirer ${name} des lectures en cours">×</button>
+        <button class="resume-dismiss-btn" ${act('removeHistoryItem', h.id)} title="${KINO_I18N.t('home.retirer_des_lectures_en_cours')}" aria-label="Retirer ${name} des lectures en cours">×</button>
       </article>
     `;
   }));
@@ -332,50 +332,50 @@ export function renderGenreChipsForTab(tab) {
   if (!gf) return;
   if (tab === 'anime') {
     render(gf, html`
-      <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>Tous</span>
-      <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>Action &amp; combats</span>
-      <span class="chip" data-genre="Fantasy" ${act('selectGenre', 'Fantasy', THIS)}>Fantasy &amp; magie</span>
-      <span class="chip" data-genre="Isekai" ${act('selectGenre', 'Isekai', THIS)}>Isekai</span>
-      <span class="chip" data-genre="Sci-Fi" ${act('selectGenre', 'Sci-Fi', THIS)}>SF &amp; mecha</span>
-      <span class="chip" data-genre="Slice of Life" ${act('selectGenre', 'Slice of Life', THIS)}>Tranche de vie</span>
-      <span class="chip" data-genre="Romance" ${act('selectGenre', 'Romance', THIS)}>Romance</span>
-      <span class="chip" data-genre="Comedy" ${act('selectGenre', 'Comedy', THIS)}>Comédie</span>
-      <span class="chip" data-genre="Sport" ${act('selectGenre', 'Sport', THIS)}>Sport</span>
-      <span class="chip" data-genre="Films d'Animation" ${act('selectGenre', 'Films d\'Animation', THIS)}>Films anime</span>
+      <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>${KINO_I18N.t('page.tous')}</span>
+      <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>${KINO_I18N.t('home.action_combats')}</span>
+      <span class="chip" data-genre="Fantasy" ${act('selectGenre', 'Fantasy', THIS)}>${KINO_I18N.t('home.fantasy_magie')}</span>
+      <span class="chip" data-genre="Isekai" ${act('selectGenre', 'Isekai', THIS)}>${KINO_I18N.t('home.isekai')}</span>
+      <span class="chip" data-genre="Sci-Fi" ${act('selectGenre', 'Sci-Fi', THIS)}>${KINO_I18N.t('home.sf_mecha')}</span>
+      <span class="chip" data-genre="Slice of Life" ${act('selectGenre', 'Slice of Life', THIS)}>${KINO_I18N.t('anime.tranche_de_vie')}</span>
+      <span class="chip" data-genre="Romance" ${act('selectGenre', 'Romance', THIS)}>${KINO_I18N.t('fiche.romance')}</span>
+      <span class="chip" data-genre="Comedy" ${act('selectGenre', 'Comedy', THIS)}>${KINO_I18N.t('page.comedie')}</span>
+      <span class="chip" data-genre="Sport" ${act('selectGenre', 'Sport', THIS)}>${KINO_I18N.t('anime.sport')}</span>
+      <span class="chip" data-genre="Films d'Animation" ${act('selectGenre', 'Films d\'Animation', THIS)}>${KINO_I18N.t('home.films_anime')}</span>
     `);
   } else if (tab === 'series') {
     render(gf, html`
-      <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>Toutes</span>
-      <span class="chip" data-genre="Drama" ${act('selectGenre', 'Drama', THIS)}>Drame</span>
-      <span class="chip" data-genre="Crime" ${act('selectGenre', 'Crime', THIS)}>Policier</span>
-      <span class="chip" data-genre="Thriller" ${act('selectGenre', 'Thriller', THIS)}>Thriller</span>
-      <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>Action</span>
-      <span class="chip" data-genre="Sci-Fi" ${act('selectGenre', 'Sci-Fi', THIS)}>Sci-Fi</span>
-      <span class="chip" data-genre="Comedy" ${act('selectGenre', 'Comedy', THIS)}>Comédie</span>
-      <span class="chip" data-genre="Adventure" ${act('selectGenre', 'Adventure', THIS)}>Aventure</span>
-      <span class="chip" data-genre="Fantasy" ${act('selectGenre', 'Fantasy', THIS)}>Fantastique</span>
-      <span class="chip" data-genre="Horror" ${act('selectGenre', 'Horror', THIS)}>Horreur</span>
-      <span class="chip" data-genre="Mystery" ${act('selectGenre', 'Mystery', THIS)}>Mystère</span>
-      <span class="chip" data-genre="War" ${act('selectGenre', 'War', THIS)}>Guerre</span>
-      <span class="chip" data-genre="Western" ${act('selectGenre', 'Western', THIS)}>Western</span>
-      <span class="chip" data-genre="Documentary" ${act('selectGenre', 'Documentary', THIS)}>Documentaire</span>
+      <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>${KINO_I18N.t('home.toutes')}</span>
+      <span class="chip" data-genre="Drama" ${act('selectGenre', 'Drama', THIS)}>${KINO_I18N.t('page.drame')}</span>
+      <span class="chip" data-genre="Crime" ${act('selectGenre', 'Crime', THIS)}>${KINO_I18N.t('page.policier')}</span>
+      <span class="chip" data-genre="Thriller" ${act('selectGenre', 'Thriller', THIS)}>${KINO_I18N.t('page.thriller')}</span>
+      <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>${KINO_I18N.t('page.action')}</span>
+      <span class="chip" data-genre="Sci-Fi" ${act('selectGenre', 'Sci-Fi', THIS)}>${KINO_I18N.t('page.sci_fi')}</span>
+      <span class="chip" data-genre="Comedy" ${act('selectGenre', 'Comedy', THIS)}>${KINO_I18N.t('page.comedie')}</span>
+      <span class="chip" data-genre="Adventure" ${act('selectGenre', 'Adventure', THIS)}>${KINO_I18N.t('page.aventure')}</span>
+      <span class="chip" data-genre="Fantasy" ${act('selectGenre', 'Fantasy', THIS)}>${KINO_I18N.t('page.fantastique')}</span>
+      <span class="chip" data-genre="Horror" ${act('selectGenre', 'Horror', THIS)}>${KINO_I18N.t('page.horreur')}</span>
+      <span class="chip" data-genre="Mystery" ${act('selectGenre', 'Mystery', THIS)}>${KINO_I18N.t('fiche.mystere')}</span>
+      <span class="chip" data-genre="War" ${act('selectGenre', 'War', THIS)}>${KINO_I18N.t('page.guerre')}</span>
+      <span class="chip" data-genre="Western" ${act('selectGenre', 'Western', THIS)}>${KINO_I18N.t('page.western')}</span>
+      <span class="chip" data-genre="Documentary" ${act('selectGenre', 'Documentary', THIS)}>${KINO_I18N.t('page.documentaire')}</span>
     `);
   } else {
     render(gf, html`
-      <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>Tous</span>
-      <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>Action</span>
-      <span class="chip" data-genre="Sci-Fi" ${act('selectGenre', 'Sci-Fi', THIS)}>Sci-Fi</span>
-      <span class="chip" data-genre="Thriller" ${act('selectGenre', 'Thriller', THIS)}>Thriller</span>
-      <span class="chip" data-genre="Crime" ${act('selectGenre', 'Crime', THIS)}>Policier</span>
-      <span class="chip" data-genre="Adventure" ${act('selectGenre', 'Adventure', THIS)}>Aventure</span>
-      <span class="chip" data-genre="Animation" ${act('selectGenre', 'Animation', THIS)}>Animation</span>
-      <span class="chip" data-genre="Comedy" ${act('selectGenre', 'Comedy', THIS)}>Comédie</span>
-      <span class="chip" data-genre="Drama" ${act('selectGenre', 'Drama', THIS)}>Drame</span>
-      <span class="chip" data-genre="Fantasy" ${act('selectGenre', 'Fantasy', THIS)}>Fantastique</span>
-      <span class="chip" data-genre="Horror" ${act('selectGenre', 'Horror', THIS)}>Horreur</span>
-      <span class="chip" data-genre="War" ${act('selectGenre', 'War', THIS)}>Guerre</span>
-      <span class="chip" data-genre="Western" ${act('selectGenre', 'Western', THIS)}>Western</span>
-      <span class="chip" data-genre="Documentary" ${act('selectGenre', 'Documentary', THIS)}>Documentaire</span>
+      <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>${KINO_I18N.t('page.tous')}</span>
+      <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>${KINO_I18N.t('page.action')}</span>
+      <span class="chip" data-genre="Sci-Fi" ${act('selectGenre', 'Sci-Fi', THIS)}>${KINO_I18N.t('page.sci_fi')}</span>
+      <span class="chip" data-genre="Thriller" ${act('selectGenre', 'Thriller', THIS)}>${KINO_I18N.t('page.thriller')}</span>
+      <span class="chip" data-genre="Crime" ${act('selectGenre', 'Crime', THIS)}>${KINO_I18N.t('page.policier')}</span>
+      <span class="chip" data-genre="Adventure" ${act('selectGenre', 'Adventure', THIS)}>${KINO_I18N.t('page.aventure')}</span>
+      <span class="chip" data-genre="Animation" ${act('selectGenre', 'Animation', THIS)}>${KINO_I18N.t('page.animation')}</span>
+      <span class="chip" data-genre="Comedy" ${act('selectGenre', 'Comedy', THIS)}>${KINO_I18N.t('page.comedie')}</span>
+      <span class="chip" data-genre="Drama" ${act('selectGenre', 'Drama', THIS)}>${KINO_I18N.t('page.drame')}</span>
+      <span class="chip" data-genre="Fantasy" ${act('selectGenre', 'Fantasy', THIS)}>${KINO_I18N.t('page.fantastique')}</span>
+      <span class="chip" data-genre="Horror" ${act('selectGenre', 'Horror', THIS)}>${KINO_I18N.t('page.horreur')}</span>
+      <span class="chip" data-genre="War" ${act('selectGenre', 'War', THIS)}>${KINO_I18N.t('page.guerre')}</span>
+      <span class="chip" data-genre="Western" ${act('selectGenre', 'Western', THIS)}>${KINO_I18N.t('page.western')}</span>
+      <span class="chip" data-genre="Documentary" ${act('selectGenre', 'Documentary', THIS)}>${KINO_I18N.t('page.documentaire')}</span>
     `);
   }
 }
@@ -603,9 +603,9 @@ function drawHeroSpotlightSlide() {
       </div>
       ${desc ? html`<div class="hero-desc">${desc}</div>` : ''}
       <div class="hero-actions">
-        <button class="btn" ${act('oneClickCard', EVENT, THIS, mediaObj)}>Regarder</button>
-        <button class="btn btn-secondary" ${act('selectMedia', mediaObj)}>Voir la fiche</button>
-        <button class="btn btn-secondary" ${act('openTrailerModal', '', item.name || 'KINO', year, 'vf')}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>Bande-annonce</button>
+        <button class="btn" ${act('oneClickCard', EVENT, THIS, mediaObj)}>${KINO_I18N.t('home.regarder')}</button>
+        <button class="btn btn-secondary" ${act('selectMedia', mediaObj)}>${KINO_I18N.t('core.voir_la_fiche')}</button>
+        <button class="btn btn-secondary" ${act('openTrailerModal', '', item.name || 'KINO', year, 'vf')}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>${KINO_I18N.t('page.bande_annonce')}</button>
       </div>
     </div>
     <div class="hero-dots">
