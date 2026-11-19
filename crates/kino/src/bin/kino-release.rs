@@ -1,10 +1,11 @@
-//! Signs KINO updates: a macOS .kinoupdate package, or a Windows installer's
-//! .sig. The private key lives outside the project and the app; the release
+//! Signs KINO updates: a macOS .kinoupdate package, or the .sig of a Windows
+//! installer or a Linux AppImage. The private key lives outside the project and the app; the release
 //! workflow reads it from the KINO_UPDATE_SIGNING_KEY secret.
 //!
 //!   kino-release --init-key [--key K]                  create the key pair (once)
 //!   kino-release --app dist/KINO.app --output X        macOS: signed package
 //!   kino-release --installer dist/KINO-Windows.exe     Windows: writes KINO-Windows.exe.sig
+//!   kino-release --appimage dist/KINO-Linux-x86_64.AppImage   Linux: writes its .sig
 //!
 //! Common: --key PATH (PKCS#8 PEM), --notes TEXT, --min-macos 14.0, --public-key PATH
 
@@ -15,7 +16,8 @@ use base64::Engine;
 use ed25519_dalek::SigningKey;
 use ed25519_dalek::pkcs8::{DecodePrivateKey, EncodePrivateKey, spki::der::pem::LineEnding};
 use kino::update::{
-    self, BUNDLE_ID, DATA_SCHEMA, UPDATE_FORMAT, WINDOWS_INSTALLER, canonical_json,
+    self, BUNDLE_ID, DATA_SCHEMA, LINUX_ARTIFACT, SignedArtifact, UPDATE_FORMAT, WINDOWS_ARTIFACT,
+    canonical_json,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -107,20 +109,21 @@ fn notes(text: &str) -> String {
     text.chars().take(4000).collect()
 }
 
-fn sign_installer(installer: &Path, key: &Path, text: &str) -> Result<()> {
-    if installer.file_name().and_then(|n| n.to_str()) != Some(WINDOWS_INSTALLER) {
-        return Err(format!("Nom d'installateur attendu : {WINDOWS_INSTALLER}"));
+/// The .sig of a Windows installer or a Linux AppImage, next to it.
+fn sign_artifact(installer: &Path, key: &Path, text: &str, target: &SignedArtifact) -> Result<()> {
+    if installer.file_name().and_then(|n| n.to_str()) != Some(target.name) {
+        return Err(format!("Nom de fichier attendu : {}", target.name));
     }
     // Built by the same job, from the same version declaration.
     let version = kino::backup::app_version();
     update::version_tuple(version)?;
     let key = signing_key(key)?;
     let (sha256, size) = sha256_and_size(installer)?;
-    let payload = json!({"format": UPDATE_FORMAT, "version": version, "platform": "win32", "architecture": "x64", "bundle_id": BUNDLE_ID,
-                         "data_schema": DATA_SCHEMA, "notes": notes(text), "artifact": {"name": WINDOWS_INSTALLER, "sha256": sha256, "size": size}});
-    let output = installer.with_file_name(format!("{WINDOWS_INSTALLER}.sig"));
+    let payload = json!({"format": UPDATE_FORMAT, "version": version, "platform": target.platform, "architecture": target.architecture, "bundle_id": BUNDLE_ID,
+                         "data_schema": DATA_SCHEMA, "notes": notes(text), "artifact": {"name": target.name, "sha256": sha256, "size": size}});
+    let output = installer.with_file_name(format!("{}.sig", target.name));
     std::fs::write(&output, envelope(payload, &key)).map_err(|e| e.to_string())?;
-    println!("Signature de l'installateur : {}", output.display());
+    println!("Signature : {}", output.display());
     Ok(())
 }
 
@@ -201,7 +204,9 @@ fn main() {
     let done = if args.iter().any(|a| a == "--init-key") {
         init_key(&key)
     } else if let Some(installer) = value("--installer") {
-        sign_installer(Path::new(&installer), &key, &text)
+        sign_artifact(Path::new(&installer), &key, &text, &WINDOWS_ARTIFACT)
+    } else if let Some(image) = value("--appimage") {
+        sign_artifact(Path::new(&image), &key, &text, &LINUX_ARTIFACT)
     } else if let (Some(app), Some(output)) = (value("--app"), value("--output")) {
         package(
             Path::new(&app),
@@ -212,7 +217,7 @@ fn main() {
         )
     } else {
         Err(
-            "--app et --output sont requis pour créer un paquet (ou --installer, ou --init-key)."
+            "--app et --output sont requis pour créer un paquet (ou --installer, --appimage, ou --init-key)."
                 .into(),
         )
     };

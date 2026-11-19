@@ -405,3 +405,82 @@ fn the_automatic_check_setting() {
     );
     assert!(!again.auto_check());
 }
+
+/// The .sig of a Linux AppImage: accepted for KINO on Linux x86_64, refused
+/// for Windows' installer, and the other way round.
+#[test]
+fn appimage_signatures_name_their_target() {
+    let payload = |platform: &str, architecture: &str, name: &str| {
+        json!({"format": update::UPDATE_FORMAT, "version": "9.0.0", "platform": platform,
+               "architecture": architecture, "bundle_id": update::BUNDLE_ID,
+               "data_schema": update::DATA_SCHEMA, "notes": "Notes",
+               "artifact": {"name": name, "sha256": "a".repeat(64), "size": 1000}})
+    };
+    let linux = envelope(&payload("linux", "x86_64", update::LINUX_APPIMAGE), &key());
+    let checked =
+        update::verify_artifact_signature(&linux, &public_hex(), "1.0.0", &update::LINUX_ARTIFACT)
+            .unwrap();
+    assert_eq!(checked["artifact"]["name"], update::LINUX_APPIMAGE);
+    assert_eq!(
+        update::verify_installer_signature(&linux, &public_hex(), "1.0.0").unwrap_err(),
+        "Cet installateur ne cible pas KINO sur Windows."
+    );
+    let windows = envelope(&payload("win32", "x64", update::WINDOWS_INSTALLER), &key());
+    assert_eq!(
+        update::verify_artifact_signature(
+            &windows,
+            &public_hex(),
+            "1.0.0",
+            &update::LINUX_ARTIFACT
+        )
+        .unwrap_err(),
+        "Cet AppImage ne cible pas KINO sur Linux."
+    );
+    let renamed = envelope(&payload("linux", "x86_64", "KINO.AppImage"), &key());
+    assert_eq!(
+        update::verify_artifact_signature(
+            &renamed,
+            &public_hex(),
+            "1.0.0",
+            &update::LINUX_ARTIFACT
+        )
+        .unwrap_err(),
+        "Nom d'AppImage incohérent."
+    );
+    assert_eq!(
+        update::verify_artifact_signature(&linux, &public_hex(), "9.0.0", &update::LINUX_ARTIFACT)
+            .unwrap_err(),
+        "Cet AppImage n'est pas plus récent que KINO."
+    );
+}
+
+/// The restarted AppImage gets none of the old mount's paths: a list keeps
+/// its other parts, a single path is removed, the rest is left alone.
+#[test]
+fn the_restart_forgets_the_old_mount() {
+    let vars = [
+        (
+            "XDG_DATA_DIRS",
+            "/tmp/.mount_KINOab/usr/share:/usr/share:/usr/local/share",
+        ),
+        (
+            "GST_PLUGIN_SYSTEM_PATH_1_0",
+            "/tmp/.mount_KINOab/usr/lib/gstreamer-1.0",
+        ),
+        ("GTK_THEME", "Adwaita:dark"),
+        ("HOME", "/home/me"),
+    ]
+    .map(|(k, v)| (std::ffi::OsString::from(k), std::ffi::OsString::from(v)));
+    let changed =
+        update::without_mount(vars.into_iter(), std::ffi::OsStr::new("/tmp/.mount_KINOab"));
+    assert_eq!(
+        changed,
+        vec![
+            (
+                "XDG_DATA_DIRS".into(),
+                Some("/usr/share:/usr/local/share".to_string())
+            ),
+            ("GST_PLUGIN_SYSTEM_PATH_1_0".into(), None),
+        ]
+    );
+}

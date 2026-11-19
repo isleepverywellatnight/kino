@@ -42,7 +42,7 @@ O KINO contém tudo de que precisa: player de vídeo, FFmpeg, interface. Não h�
 
 - **macOS**: abra o arquivo `.dmg` e arraste o KINO para Aplicativos.
 - **Windows**: execute `KINO-Windows.exe`. O KINO se instala com um clique, sem direitos de administrador, e abre em seguida.
-- **Linux**: torne `KINO-Linux-x86_64.AppImage` executável (Propriedades → Permissões, ou `chmod +x`) e abra-o. Os vídeos tocam na janela do KINO, ou no mpv se estiver instalado. O KINO avisa sobre novas versões: baixe o novo AppImage.
+- **Linux**: torne `KINO-Linux-x86_64.AppImage` executável (Propriedades → Permissões, ou `chmod +x`) e abra-o. Os vídeos tocam na janela do KINO, ou no mpv se estiver instalado. As próximas versões são instaladas pelo próprio KINO, como nos outros sistemas.
 
 As próximas versões são instaladas pelo próprio KINO: **Configurações → Atualizações**.
 
