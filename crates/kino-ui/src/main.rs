@@ -333,6 +333,10 @@ struct Player {
     /// gpui saw the button pressed.
     probe: Option<String>,
     pressed: bool,
+    /// KINO's window (Windows), for the bench's click on either path.
+    parent: Option<isize>,
+    /// Where gpui saw the last press anywhere in the window (`--bench`).
+    root_press: Option<(f32, f32)>,
 }
 
 impl Player {
@@ -366,6 +370,8 @@ impl Player {
                 click: None,
                 probe: None,
                 pressed: false,
+                parent: None,
+                root_press: None,
             };
         }
         // mpv says when a frame is ready; it is drawn off the main thread.
@@ -408,6 +414,8 @@ impl Player {
             click: None,
             probe: None,
             pressed: false,
+            parent: None,
+            root_press: None,
         }
     }
 
@@ -417,7 +425,7 @@ impl Player {
         };
         let elapsed = bench.tick();
         #[cfg(windows)]
-        if let Some((parent, _)) = self.host {
+        if let Some(parent) = self.parent {
             // At 3 s, a real click on the play button; at 4.5 s, its effect.
             let paused = self.video.lock().map(|v| v.paused()).unwrap_or(false);
             match self.click {
@@ -429,6 +437,11 @@ impl Player {
                     if let Some((_, host)) = self.host {
                         self.probe = Some(native::probe(parent, host, x as i32, y as i32));
                     }
+                    self.probe = Some(format!(
+                        "{} target=({x},{y}) viewport={:?} scale={scale}",
+                        self.probe.take().unwrap_or_default(),
+                        window.viewport_size()
+                    ));
                     native::click(parent, x as i32, y as i32);
                 }
                 Some((before, None)) if elapsed >= Duration::from_millis(4500) => {
@@ -456,16 +469,19 @@ impl Player {
             report["video_frames"] = self.draws.len().into();
             report["draw_p50_ms"] = at(0.5).into();
             report["draw_p95_ms"] = at(0.95).into();
+            if self.parent.is_some() {
+                report["click_reached_controls"] =
+                    self.click.and_then(|(_, reached)| reached).into();
+                report["click_probe"] = self.probe.clone().into();
+                report["press_seen"] = self.pressed.into();
+                report["root_press"] = format!("{:?}", self.root_press).into();
+            }
             if self.host.is_some() {
                 let video = self.video.lock().ok();
                 let count = |name| video.as_ref().and_then(|v| v.count(name));
                 report["path"] = "native".into();
                 report["video_dropped"] = count("frame-drop-count").into();
                 report["decoder_dropped"] = count("decoder-frame-drop-count").into();
-                report["click_reached_controls"] =
-                    self.click.and_then(|(_, reached)| reached).into();
-                report["click_probe"] = self.probe.clone().into();
-                report["press_seen"] = self.pressed.into();
             } else {
                 report["path"] = "software".into();
             }
@@ -583,7 +599,15 @@ impl Render for Player {
             ),
             None => picture,
         };
-        let root = div().size_full().flex().flex_col().text_color(rgb(TEXT));
+        let root = div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .text_color(rgb(TEXT))
+            .capture_any_mouse_down(cx.listener(|player, event: &MouseDownEvent, _, _| {
+                player.root_press =
+                    Some((f32::from(event.position.x), f32::from(event.position.y)));
+            }));
         let root = if self.host.is_some() {
             root
         } else {
@@ -655,7 +679,12 @@ fn main() {
                             eprintln!("KINO-UI VIDEO ERROR {error}");
                             std::process::exit(2);
                         });
-                    cx.new(|cx| Player::new(video, host, bench, cx))
+                    let parent = window_hwnd(window);
+                    cx.new(|cx| {
+                        let mut player = Player::new(video, host, bench, cx);
+                        player.parent = parent;
+                        player
+                    })
                 })
                 .map(|_| ()),
             None => cx
@@ -670,15 +699,25 @@ fn main() {
     });
 }
 
+/// KINO's window handle (Windows).
+#[cfg(windows)]
+fn window_hwnd(window: &Window) -> Option<isize> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    match HasWindowHandle::window_handle(window).ok()?.as_raw() {
+        RawWindowHandle::Win32(handle) => Some(handle.hwnd.get()),
+        _ => None,
+    }
+}
+
+#[cfg(not(windows))]
+fn window_hwnd(_: &Window) -> Option<isize> {
+    None
+}
+
 /// KINO's window and the child window mpv draws in (Windows).
 #[cfg(windows)]
 fn native_host(window: &Window) -> Option<(isize, isize)> {
-    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-    let RawWindowHandle::Win32(handle) = HasWindowHandle::window_handle(window).ok()?.as_raw()
-    else {
-        return None;
-    };
-    let parent = handle.hwnd.get();
+    let parent = window_hwnd(window)?;
     native::create_host(parent).map(|host| (parent, host))
 }
 
