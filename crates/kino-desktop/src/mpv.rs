@@ -235,7 +235,9 @@ impl Drop for Mpv {
 /// What the window's event loop does for the controller, on the main thread.
 pub enum MainCall {
     Open(Arc<Mpv>, String, mpsc::Sender<Result<(), String>>),
-    /// The player's video is up: the page may let it show through.
+    /// Windows: the player's video is up, the page may let it show through
+    /// (macOS draws in its own view under the page from the start).
+    #[cfg(windows)]
     Reveal(Arc<Mpv>),
     Close(mpsc::Sender<()>),
 }
@@ -276,6 +278,7 @@ impl Controller {
 
     /// Once mpv shows the video (its output is configured), the main thread
     /// reveals it; a player closed before, or a file without video, never is.
+    #[cfg(windows)]
     fn reveal_when_shown(&self, player: &Arc<Mpv>) {
         let to_main = self.to_main.clone();
         let player = Arc::downgrade(player);
@@ -367,6 +370,7 @@ impl kino::native::NativePlayer for Controller {
         self.main(MainCall::Open(player.clone(), path.to_string(), tx));
         rx.recv_timeout(Duration::from_secs(10))
             .map_err(|_| "main thread".to_string())??;
+        #[cfg(windows)]
         self.reveal_when_shown(&player);
         playing.player = Some(player);
         playing.path = path.to_string();

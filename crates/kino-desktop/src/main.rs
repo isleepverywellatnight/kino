@@ -1056,8 +1056,6 @@ fn main() -> Result<()> {
                 mpv::MainCall::Open(player, path, reply) => {
                     let _ = reply.send(native_side.open(&page_view, player, &path));
                 }
-                // macOS draws in its own view under the page from the start.
-                mpv::MainCall::Reveal(_) => {}
                 mpv::MainCall::Close(reply) => {
                     native_side.close(&page_view);
                     let _ = reply.send(());
