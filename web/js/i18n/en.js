@@ -1218,6 +1218,7 @@ KINO_I18N.load({
 "server.impossible_de_resoudre_s_x_e_x_x": "Can't resolve S{}E{} ({}).",
 "server.info_plist_du_paquet_illisible": "Package Info.plist unreadable.",
 "server.installez_kino_avec_son_installateur": "Install KINO with its installer to receive updates.",
+"server.installez_le_fichier_flatpak_de_la": "Install the new version's .flatpak file to update KINO.",
 "server.kino_garde_x_addons_au_plus_retirez_en": "KINO keeps {} add-ons at most: remove one first.",
 "server.kino_va_fermer_puis_redemarrer": "KINO will close, then restart automatically.",
 "server.kino_va_redemarrer_avec_la_nouvelle": "KINO will restart with the new version.",

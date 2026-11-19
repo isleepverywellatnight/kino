@@ -1256,6 +1256,7 @@ KINO_I18N.load({
 "server.impossible_de_resoudre_s_x_e_x_x": "无法解析 S{}E{}（{}）。",
 "server.info_plist_du_paquet_illisible": "无法读取安装包的 Info.plist。",
 "server.installez_kino_avec_son_installateur": "请用安装程序安装 KINO 以接收更新。",
+"server.installez_le_fichier_flatpak_de_la": "请安装新版本的 .flatpak 文件以更新 KINO。",
 "server.kino_garde_x_addons_au_plus_retirez_en": "KINO 最多保留 {} 个插件：请先移除一个。",
 "server.kino_va_fermer_puis_redemarrer": "KINO 将关闭并自动重新启动。",
 "server.kino_va_redemarrer_avec_la_nouvelle": "KINO 将以新版本重新启动。",

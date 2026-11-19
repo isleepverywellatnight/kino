@@ -1257,6 +1257,7 @@ KINO_I18N.load({
 "server.impossible_de_resoudre_s_x_e_x_x": "Не удалось найти S{}E{} ({}).",
 "server.info_plist_du_paquet_illisible": "Не удалось прочитать Info.plist пакета.",
 "server.installez_kino_avec_son_installateur": "Установите KINO через его установщик, чтобы получать обновления.",
+"server.installez_le_fichier_flatpak_de_la": "Установите файл .flatpak новой версии, чтобы обновить KINO.",
 "server.kino_garde_x_addons_au_plus_retirez_en": "KINO хранит не больше {} дополнений: сначала удалите одно.",
 "server.kino_va_fermer_puis_redemarrer": "KINO закроется и автоматически перезапустится.",
 "server.kino_va_redemarrer_avec_la_nouvelle": "KINO перезапустится с новой версией.",

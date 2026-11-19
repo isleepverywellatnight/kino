@@ -1573,6 +1573,7 @@ KINO_I18N.source({
 "server.info_plist_du_paquet_illisible": "Info.plist du paquet illisible.",
 "server.installer_la_mise_a_jour": "installer la mise à jour",
 "server.installez_kino_avec_son_installateur": "Installez KINO avec son installateur pour recevoir les mises à jour.",
+"server.installez_le_fichier_flatpak_de_la": "Installez le fichier .flatpak de la nouvelle version pour mettre KINO à jour.",
 "server.integrale": "intégrale",
 "server.internet_repond": "Internet répond.",
 "server.kino_1_1_lecteur_de_films_local_photos": "KINO/1.1 (lecteur de films local ; photos de la distribution)",

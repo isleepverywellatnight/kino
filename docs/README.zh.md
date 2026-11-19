@@ -35,12 +35,14 @@ KINO 不托管、不提供也不分发任何内容。它查询用户自选的来
 | **Windows** — Windows 10 或 11，64 位 | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
 | **Windows on ARM** — ARM 电脑（骁龙等）上的 Windows 11 | [**KINO-Windows-arm64.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows-arm64.exe) |
 | **Linux** — x86_64：Ubuntu 22.04、Debian 12、Fedora 36 或更高版本 | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
+| **Linux (Flatpak)** — x86_64，任何支持 Flatpak 的发行版 | [**KINO-Linux-x86_64.flatpak**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.flatpak) |
 
 KINO 自带所需的一切：视频播放器、FFmpeg、界面。无需另外安装任何东西。之后在设置中粘贴你的 Debrid 服务密钥即可。
 
 - **macOS**：打开 `.dmg` 文件，把 KINO 拖到“应用程序”。
 - **Windows**：运行 `KINO-Windows.exe`。KINO 一键安装，无需管理员权限，安装后自动打开。
 - **Linux**：将 `KINO-Linux-x86_64.AppImage` 设为可执行（属性 → 权限，或 `chmod +x`），然后打开。视频在 KINO 窗口中播放；如已安装 mpv，则用 mpv 播放。之后的版本可像其他系统一样在 KINO 中直接安装。
+- **Linux (Flatpak)**：运行 `flatpak install --user KINO-Linux-x86_64.flatpak`，然后从菜单打开 KINO。Flatpak 会从 Flathub 获取 GNOME 运行时。更新时安装新的 `.flatpak` 文件即可。
 
 之后的版本可在 KINO 中直接安装：**设置 → 更新**。
 
