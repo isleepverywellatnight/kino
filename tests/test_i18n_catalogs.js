@@ -121,7 +121,7 @@ test('t(key) gives the text in the language, else in English, else in French, wi
   assert.throws(() => page('en').I18N.t('page.no_such_text'), /unknown text key « page\.no_such_text »/);
 });
 
-test('data-i18n gives an element its text and attributes, in French too', () => {
+test('data-i18n gives an element its text and attributes', () => {
   const key = Object.keys(source).find(k => !source[k].includes('{}'));
   const el = (dataset) => ({ nodeType: 1, dataset, textContent: 'avant', attributes: {}, setAttribute(n, v) { this.attributes[n] = v; } });
   const button = el({ i18n: key, i18nTitle: key });
@@ -133,7 +133,6 @@ test('data-i18n gives an element its text and attributes, in French too', () => 
   assert.deepEqual(button.attributes, { title: source[key] });
   assert.deepEqual(field.attributes, { placeholder: source[key], 'aria-label': source[key] });
   assert.equal(field.textContent, 'avant', 'no data-i18n: its text is left');
-  assert.equal(typeof fr.listeners.DOMContentLoaded, 'function', 'French applies the keys once the page is read');
   const en = page('en');
   const english = i18n.readLanguage('en')[key];
   en.I18N.apply(root);
@@ -155,4 +154,30 @@ test('every key the code names exists', () => {
     for (const m of text.matchAll(/\bdata-i18n(?:-title|-placeholder|-aria-label)?="([^"$]+)"/g)) named.add(m[1]);
   }
   assert.deepEqual([...named].filter(key => !Object.hasOwn(source, key)), []);
+});
+
+test('a text no dictionary has as such still takes a rule with a variable part', () => {
+  const ja = page('ja').I18N;
+  const en = i18n.readLanguage('en');
+  const jaTable = i18n.readLanguage('ja');
+  const ruled = Object.keys(source).find(key => !Object.hasOwn(jaTable, key) && !Object.hasOwn(en, key)
+    && !source[key].includes('{}') && ja.translate(source[key]) !== source[key]);
+  assert.ok(ruled, 'a text only a rule translates');
+  assert.equal(ja.t(ruled), ja.translate(source[ruled]));
+});
+
+test('in the page, a keyed element holds the French of its key', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'web/index.html'), 'utf8');
+  const decode = text => text.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  const norm = text => decode(text).split(/\s+/).filter(Boolean).join(' ');
+  let keyed = 0;
+  for (const m of html.matchAll(/<([a-z][\w-]*)\b([^<>]*?) data-i18n="([^"]+)"[^<>]*>([^<>]*)<\/\1>/g)) {
+    assert.equal(norm(m[4]), source[m[3]], m[3]);
+    keyed += 1;
+  }
+  for (const m of html.matchAll(/\s(title|placeholder|aria-label)="([^"]*)"[^<>]*?\sdata-i18n-\1="([^"]+)"/g)) {
+    assert.equal(norm(m[2]), source[m[3]], m[3]);
+    keyed += 1;
+  }
+  assert.ok(keyed > 300, `${keyed} keyed texts`);
 });
