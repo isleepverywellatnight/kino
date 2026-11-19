@@ -29,5 +29,5 @@ test('a finished series starts again from the first episode', () => {
   assert.equal(context.a.finished, true);
   assert.deepEqual([context.a.season, context.a.episode, context.a.isNext], [1, 1, false]);
   assert.deepEqual([context.b.season, context.b.episode, context.b.isNext], [1, 5, true]);
-  assert.match(source, /btnLabel = targetEp\.finished \? 'Revoir'/);
+  assert.match(source, /btnLabel = targetEp\.finished \? ["']Revoir["']/);
 });

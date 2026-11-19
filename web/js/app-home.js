@@ -38,8 +38,8 @@ function refreshNewEpisodes(force = false) {
 function releasedLabel(day, today) {
   const days = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86400000);
   if (!Number.isFinite(days)) return '';
-  if (days <= 0) return 'Sorti aujourd’hui';
-  if (days === 1) return 'Sorti hier';
+  if (days <= 0) return KINO_I18N.t('home.sorti_aujourd_hui');
+  if (days === 1) return KINO_I18N.t('home.sorti_hier');
   if (days < 7) return `${KINO_I18N.t('home.sorti_il_y_a_x_jours', days)}`;
   return `${KINO_I18N.t('home.sorti_le_x', episodeAirLabel(day))}`;
 }
@@ -57,9 +57,9 @@ function newEpisodeCardHtml(item, today) {
   let status = item.in_progress ? `${KINO_I18N.t('home.reprendre_x', releasedLabel(item.released, today).toLowerCase())}` : releasedLabel(item.released, today);
   // The badge already says « Nouvelle série » / « Saison 3 »: the line gives the date and size.
   if (kind === 'premiere' || kind === 'season') status = `${releasedLabel(item.released, today)}${item.new_count > 1 ? ` · ${count}` : ''}`;
-  else if (!item.is_new) status = `${KINO_I18N.t('home.x_x_depuis_votre_dernier_visionnage', item.new_count, item.new_count > 1 ? 'nouveaux épisodes' : 'nouvel épisode')}`;
-  else if (others > 0) status += ` · +${others} autre${others > 1 ? 's' : ''}`;
-  const badge = kind === 'premiere' ? 'Nouvelle série' : kind === 'season' ? `${KINO_I18N.t('settings.saison_x', item.season)}` : 'Nouveau';
+  else if (!item.is_new) status = `${KINO_I18N.t('home.x_x_depuis_votre_dernier_visionnage', item.new_count, KINO_I18N.t(item.new_count > 1 ? 'home.nouveaux_episodes' : 'home.nouvel_episode'))}`;
+  else if (others > 0) status += ` · ${KINO_I18N.t(others > 1 ? 'home.plus_x_autres' : 'home.plus_x_autre', others)}`;
+  const badge = kind === 'premiere' ? KINO_I18N.t('home.nouvelle_serie') : kind === 'season' ? `${KINO_I18N.t('settings.saison_x', item.season)}` : KINO_I18N.t('home.nouveau');
   // A new season of a series never started: no episode name or still, the card opens the fiche.
   const kicker = kind === 'season' ? `${KINO_I18N.t('home.saison_x_disponible', item.season)}` : [code, episodeName].filter(Boolean).join(' · ');
   const play = { imdb_id: item.id, type: 'series', season: item.season, episode: item.episode,
@@ -86,8 +86,8 @@ function renderHomeNew() {
   const sec = document.getElementById('homeNewSection');
   const grid = document.getElementById('homeNewGrid');
   if (!sec || !grid) return new Set();
-  // New episodes are series: the row belongs to the Séries tab.
-  const items = activeTab === 'series' ? newEpisodes : [];
+  // New episodes are series: the row belongs to the Séries tab (anime have their page).
+  const items = activeTab === 'series' ? newEpisodes.filter(item => !isAnimeTitle(item)) : [];
   sec.style.display = items.length ? 'block' : 'none';
   render(grid, items.map(item => newEpisodeCardHtml(item, newEpisodesToday || new Date().toISOString().slice(0, 10))));
   return new Set(items.map(item => item.id));
@@ -109,7 +109,7 @@ export function homeKind() {
 // Ma Liste titles of the tab's type, newest first, neither seen nor in progress.
 function homeListItems(kind = homeKind()) {
   const inProgress = new Set(getInProgressHistory().map(h => h.id));
-  return (userWatchlist || []).filter(m => m?.id && listItemKind(m) === kind && listItemState(m) !== 'watched' && !inProgress.has(m.id));
+  return (userWatchlist || []).filter(m => m?.id && !isAnimeTitle(m) && listItemKind(m) === kind && listItemState(m) !== 'watched' && !inProgress.has(m.id));
 }
 
 function renderHomeList() {
@@ -132,7 +132,7 @@ function renderHomeList() {
 // The last title of the tab's type seen to the end.
 function homeBecauseSource(kind = homeKind()) {
   return getWatchedHistory()
-    .filter(h => listItemKind(h) === kind && /^tt\d{1,12}$/.test(String(h.id || '')))
+    .filter(h => !isAnimeTitle(h) && listItemKind(h) === kind && /^tt\d{1,12}$/.test(String(h.id || '')))
     .sort((a, b) => Number(b.last_watched || 0) - Number(a.last_watched || 0))[0] || null;
 }
 
@@ -153,7 +153,7 @@ function renderHomeBecause() {
   }
   const seen = new Set(getWatchedHistory().map(h => h.id));
   const items = (Array.isArray(related?.items) ? related.items : [])
-    .filter(m => m?.id && m.id !== source.id && !seen.has(m.id));
+    .filter(m => m?.id && m.id !== source.id && !seen.has(m.id) && !isAnimeTitle(m));
   sec.hidden = items.length < 4;
   if (sec.hidden) {
     render(row, '');
@@ -184,7 +184,7 @@ export function renderHomeForYou() {
       .finally(() => forYouRequests.delete(kind));
   }
   const seen = new Set(getWatchedHistory().map(h => h.id));
-  const items = (data?.items || []).filter(m => m?.id && !seen.has(m.id)).slice(0, HOME_SHELF_SIZE);
+  const items = (data?.items || []).filter(m => m?.id && !seen.has(m.id) && !isAnimeTitle(m)).slice(0, HOME_SHELF_SIZE);
   sec.hidden = items.length < 4;
   if (sec.hidden) { render(row, ''); return; }
   render(row, items.map(m => html`<div class="foryou-item" data-foryou="${m.id}">${posterCardHtml(m, kind)}<p class="foryou-why">${m.why || ''}</p><button type="button" class="foryou-no" ${act('notForMe', EVENT, m.id)}>${KINO_I18N.t('home.pas_pour_moi')}</button></div>`));
@@ -221,7 +221,8 @@ export function hideHomeRows() {
 function resumeBelongsToTab(entry) {
   if (activeTab === 'history') return true;
   if (activeTab === 'anime') return isAnimeTitle(entry);
-  return listItemKind(entry) === homeKind();
+  // Films and Séries leave anime to the anime page.
+  return !isAnimeTitle(entry) && listItemKind(entry) === homeKind();
 }
 
 export function renderHomeResume() {

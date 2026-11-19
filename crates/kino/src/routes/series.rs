@@ -40,7 +40,8 @@ fn lists(s: &Shared) -> (Vec<Value>, Vec<Value>) {
 async fn new_episodes(State(s): State<Shared>) -> Response {
     let today = meta::today_utc();
     let (history, watchlist) = lists(&s);
-    let episodes = series::new_episodes(&s.meta, &history, &watchlist, &today).await;
+    let mut episodes = series::new_episodes(&s.meta, &history, &watchlist, &today).await;
+    crate::anime_home::mark_anime(&s.db, &mut episodes);
     Json(json!({"episodes": episodes, "today": today})).into_response()
 }
 
@@ -73,7 +74,9 @@ async fn stats(State(s): State<Shared>) -> Response {
 }
 
 async fn user_lists(State(s): State<Shared>) -> Response {
-    let (history, watchlist) = lists(&s);
+    let (mut history, mut watchlist) = lists(&s);
+    crate::anime_home::mark_anime(&s.db, &mut history);
+    crate::anime_home::mark_anime(&s.db, &mut watchlist);
     let cfg = crate::db::spawn_blocking(crate::config::load)
         .await
         .unwrap_or_default();
