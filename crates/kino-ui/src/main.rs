@@ -657,7 +657,8 @@ fn main() {
 #[cfg(windows)]
 fn native_host(window: &Window) -> Option<(isize, isize)> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-    let RawWindowHandle::Win32(handle) = window.window_handle().ok()?.as_raw() else {
+    let RawWindowHandle::Win32(handle) = HasWindowHandle::window_handle(window).ok()?.as_raw()
+    else {
         return None;
     };
     let parent = handle.hwnd.get();
