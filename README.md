@@ -61,8 +61,8 @@ nothing else to install. Then paste your debrid service key in Settings.
   administrator rights, then opens.
 - **Linux**: make `KINO-Linux-x86_64.AppImage` executable (Properties →
   Permissions, or `chmod +x`), then open it. Videos play in KINO's window, or
-  in mpv if it is installed. KINO announces new versions: download the new
-  AppImage.
+  in mpv if it is installed. Later versions install from KINO
+  itself, like on the other systems.
 
 Later versions install from KINO itself: **Settings → Updates**.
 
