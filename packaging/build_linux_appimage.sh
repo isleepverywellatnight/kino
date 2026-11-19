@@ -97,6 +97,14 @@ export PATH="$TOOLS:$PATH"
   --custom-apprun "$STAGE/AppRun" \
   --plugin gtk --plugin gstreamer
 
+# JACK's client library, which linuxdeploy leaves to the system: FFmpeg needs
+# it (through libavdevice) to start, and not every desktop has it. Without a
+# JACK server it does nothing.
+for lib in libjack.so.0 libdb-5.3.so; do
+  cp -L "/usr/lib/$MULTIARCH/$lib" "$APPDIR/usr/lib/$lib"
+done
+patchelf --set-rpath '$ORIGIN' "$APPDIR/usr/lib/libjack.so.0"
+
 # KINO's interface and its assets, next to it; WebKitGTK's injected
 # bundle next to its processes.
 cp -R web "$APPDIR/usr/bin/web"

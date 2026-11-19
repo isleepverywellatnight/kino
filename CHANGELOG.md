@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1
+
+- Linux: the AppImage carries JACK's client library, which FFmpeg needs to
+  start: on a system without JACK, KINO's FFmpeg (video details, intros)
+  did not run.
+
 ## 2.1.0
 
 - Linux: KINO comes as an AppImage (x86_64; Ubuntu 22.04, Debian 12, Fedora 36
