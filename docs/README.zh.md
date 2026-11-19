@@ -39,7 +39,7 @@ KINO 自带所需的一切：视频播放器、FFmpeg、界面。无需另外安
 
 - **macOS**：打开 `.dmg` 文件，把 KINO 拖到“应用程序”。
 - **Windows**：运行 `KINO-Windows.exe`。KINO 一键安装，无需管理员权限，安装后自动打开。
-- **Linux**：将 `KINO-Linux-x86_64.AppImage` 设为可执行（属性 → 权限，或 `chmod +x`），然后打开。视频在 KINO 窗口中播放；如已安装 mpv，则用 mpv 播放。KINO 会提示新版本：请下载新的 AppImage。
+- **Linux**：将 `KINO-Linux-x86_64.AppImage` 设为可执行（属性 → 权限，或 `chmod +x`），然后打开。视频在 KINO 窗口中播放；如已安装 mpv，则用 mpv 播放。之后的版本可像其他系统一样在 KINO 中直接安装。
 
 之后的版本可在 KINO 中直接安装：**设置 → 更新**。
 

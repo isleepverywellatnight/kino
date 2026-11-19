@@ -258,10 +258,26 @@ jobs:
       # Self-check, start-up on a virtual screen, video in the page.
       - name: AppImage test
         run: tools/linux_appimage_test.sh
+      - name: AppImage signature
+        env:
+          KINO_UPDATE_SIGNING_KEY: ${{ secrets.KINO_UPDATE_SIGNING_KEY }}
+          VERSION: ${{ needs.checks.outputs.version }}
+        run: |
+          if [ -z "$KINO_UPDATE_SIGNING_KEY" ]; then
+            echo "::warning::KINO_UPDATE_SIGNING_KEY absent : AppImage non signé pour les mises à jour."
+            exit 0
+          fi
+          key="$RUNNER_TEMP/kino-update-key.pem"
+          printf '%s\n' "$KINO_UPDATE_SIGNING_KEY" > "$key"
+          cargo build --release --locked -p kino --bin kino-release
+          target/release/kino-release --appimage dist/KINO-Linux-x86_64.AppImage --key "$key" --notes "KINO $VERSION"
+          rm -f "$key"
       - uses: actions/upload-artifact@v7
         with:
           name: kino-linux
-          path: dist/KINO-Linux-x86_64.AppImage
+          path: |
+            dist/KINO-Linux-x86_64.AppImage
+            dist/KINO-Linux-x86_64.AppImage.sig
           if-no-files-found: error
       - uses: actions/upload-artifact@v7
         if: always()
