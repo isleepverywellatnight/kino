@@ -8,7 +8,14 @@ declare const KINO_I18N: {
   source(table: Record<string, string>): void;
   /** web/js/i18n/<lang>.js: the translation of each key. */
   load(table: Record<string, string>): void;
-  t(text: string): string;
+  /** The text of a key (web/js/i18n/fr.js) in the interface's language; values fill « {} ». */
+  t(key: string, ...values: Array<string | number>): string;
+  /** Gives the elements with data-i18n… under root their text in the interface's language. */
+  apply(root: ParentNode & Node): void;
+  /** A French text as the page shows it in the interface's language. */
+  translate(text: string): string;
+  /** The French texts the observer translated so far (those without a key yet). */
+  remaining(): string[];
   months(style: 'long' | 'short' | 'narrow'): string[];
   choose(next: string): Promise<void>;
 };

@@ -30,8 +30,9 @@ const SOURCE = path.join(I18N, 'fr.js');
 const LANGUAGE_CALL = 'KINO_I18N.load';
 const SOURCE_CALL = 'KINO_I18N.source';
 // Found in the code but never shown: console messages, names, a log line.
-const NOT_SHOWN = new Set([', html', 'KINO_I18N.choose', 'blob: {}', 'Base lente sur un thread async',
-  'KINO: action « {} » registered twice', 'KINO: no action « {} »', 'KINO: unreadable arguments for « {} »']);
+const NOT_SHOWN = new Set([', html', 'KINO_I18N.choose', 'blob: {}', 'Base lente sur un thread async', 'DOMContentLoaded']);
+// KINO's messages to the developer console (« KINO: no action … »).
+const CONSOLE = /^KINO: /;
 const ATTRIBUTES = ['placeholder', 'title', 'aria-label', 'alt', 'data-tooltip', 'data-label'];
 const W = '[\\p{L}\\p{N}_]';
 // Python's \b: a change between a word character (any letter or digit, any
@@ -259,7 +260,7 @@ function locate() {
     if (parts.includes('tests') || parts.includes('bin')) continue;
     for (const t of rustTexts(fs.readFileSync(module, 'utf8'))) add(t, module);
   }
-  for (const text of [...found.keys()]) if (!isShownText(text) || NOT_SHOWN.has(text)) found.delete(text);
+  for (const text of [...found.keys()]) if (!isShownText(text) || NOT_SHOWN.has(text) || CONSOLE.test(text)) found.delete(text);
   return found;
 }
 
