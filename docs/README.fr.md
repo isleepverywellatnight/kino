@@ -37,11 +37,13 @@ KINO n'héberge, ne fournit et ne distribue aucun contenu. Il interroge des sour
 |---|---|
 | **macOS** — Mac Apple Silicon (M1 ou plus récent), macOS 14 ou plus récent | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
 | **Windows** — Windows 10 ou 11, 64 bits | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
+| **Linux** — x86_64 : Ubuntu 22.04, Debian 12, Fedora 36 ou plus récent | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
 
 KINO contient tout ce qu'il lui faut : lecteur vidéo, FFmpeg, interface. Il n'y a rien d'autre à installer. Il suffit ensuite de coller la clé de votre service de débridage dans Paramètres.
 
 - **macOS** : ouvrez le fichier `.dmg` et glissez KINO dans Applications.
 - **Windows** : lancez `KINO-Windows.exe`. KINO s'installe en un clic, sans droits administrateur, puis s'ouvre.
+- **Linux** : rendez `KINO-Linux-x86_64.AppImage` exécutable (Propriétés → Permissions, ou `chmod +x`), puis ouvrez-le. Les vidéos se lisent dans la fenêtre de KINO, ou dans mpv s'il est installé. KINO annonce les nouvelles versions : téléchargez le nouvel AppImage.
 
 Les versions suivantes s'installent depuis KINO : **Paramètres → Mises à jour**.
 

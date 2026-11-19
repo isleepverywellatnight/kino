@@ -22,3 +22,4 @@ vendor/libmpv-windows/
 /target/
 node_modules/
 vendor/ffmpeg/
+vendor/linuxdeploy/

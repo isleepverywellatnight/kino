@@ -51,6 +51,7 @@ their country.
 |---|---|
 | **macOS** — Apple Silicon Mac (M1 or later), macOS 14 or later | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
 | **Windows** — Windows 10 or 11, 64-bit | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
+| **Linux** — x86_64: Ubuntu 22.04, Debian 12, Fedora 36 or later | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
 
 KINO contains everything it needs: video player, FFmpeg, interface. There is
 nothing else to install. Then paste your debrid service key in Settings.
@@ -58,6 +59,10 @@ nothing else to install. Then paste your debrid service key in Settings.
 - **macOS**: open the `.dmg` file and drag KINO into Applications.
 - **Windows**: run `KINO-Windows.exe`. KINO installs in one click, without
   administrator rights, then opens.
+- **Linux**: make `KINO-Linux-x86_64.AppImage` executable (Properties →
+  Permissions, or `chmod +x`), then open it. Videos play in KINO's window, or
+  in mpv if it is installed. KINO announces new versions: download the new
+  AppImage.
 
 Later versions install from KINO itself: **Settings → Updates**.
 

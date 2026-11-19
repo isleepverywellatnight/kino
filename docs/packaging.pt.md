@@ -6,7 +6,7 @@ Estas etapas são para o desenvolvimento. Para usar o KINO, basta baixá-lo (vej
 
 ## Publicar uma versão
 
-Mude `version` em `Cargo.toml` ([workspace.package]) e faça push na `main`: só isso. Quando a versão da `main` ainda não tem release, o GitHub Actions (`.github/workflows/build.yml`) compila os dois aplicativos, testa, publica a release com a tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `SHA256SUMS.txt`) e depois a reinstala num Mac e num Windows limpos com os comandos do README.
+Mude `version` em `Cargo.toml` ([workspace.package]) e faça push na `main`: só isso. Quando a versão da `main` ainda não tem release, o GitHub Actions (`.github/workflows/build.yml`) compila os três aplicativos, testa, publica a release com a tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Linux-x86_64.AppImage`, `SHA256SUMS.txt`) e depois a reinstala num Mac e num Windows limpos com os comandos do README.
 
 Para que o KINO instale sozinho as novas versões, a CI assina as atualizações com o secret `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables → Actions): o conteúdo da chave privada criada por `cargo run -p kino --bin kino-release -- --init-key`, cuja parte pública é `assets/update_public_key.hex`. Sem esse secret, o KINO anuncia a nova versão e oferece o download.
 
@@ -40,6 +40,21 @@ cargo run -p kino-desktop                           # run from the sources
 cargo build --release --locked -p kino-desktop
 pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
+```
+
+### Linux (x86_64)
+
+O AppImage é compilado no Ubuntu 22.04, o sistema mais antigo suportado: funciona em sistemas com a mesma glibc ou uma mais recente. Ele traz o WebKitGTK e os plugins do GStreamer com que a página reproduz vídeos; o FFmpeg é o do sistema de compilação.
+
+```bash
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev patchelf ffmpeg \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav \
+  xvfb imagemagick
+tools/fetch_linuxdeploy.sh                            # linuxdeploy e seus plugins, fixados e verificados, em vendor/
+cargo run -p kino-desktop                             # executar a partir do código-fonte
+cargo build --release --locked -p kino-desktop
+packaging/build_linux_appimage.sh                     # dist/KINO-Linux-x86_64.AppImage
+tools/linux_appimage_test.sh                          # autoverificação, inicialização e vídeo, numa tela virtual
 ```
 
 Um aplicativo compilado verifica o próprio conteúdo com `--self-check`.

@@ -6,7 +6,7 @@
 
 ## 发布新版本
 
-修改 `Cargo.toml` ([workspace.package]) 中的 `version` 并推送到 `main`，就这么简单。当 `main` 上的版本还没有发布时，GitHub Actions（`.github/workflows/build.yml`）会构建两个应用、进行测试、发布带 `vX.Y.Z` 标签的版本（`KINO-macOS.dmg`、`KINO-Windows.exe`、`SHA256SUMS.txt`），然后用 README 中的命令在全新的 Mac 和 Windows 上重新安装验证。
+修改 `Cargo.toml` ([workspace.package]) 中的 `version` 并推送到 `main`，就这么简单。当 `main` 上的版本还没有发布时，GitHub Actions（`.github/workflows/build.yml`）会构建三个应用、进行测试、发布带 `vX.Y.Z` 标签的版本（`KINO-macOS.dmg`、`KINO-Windows.exe`、`KINO-Linux-x86_64.AppImage`、`SHA256SUMS.txt`），然后用 README 中的命令在全新的 Mac 和 Windows 上重新安装验证。
 
 要让 KINO 自动安装新版本，CI 会用 `KINO_UPDATE_SIGNING_KEY` 机密（Settings → Secrets and variables → Actions）为更新签名：其内容是 `cargo run -p kino --bin kino-release -- --init-key` 生成的私钥，对应的公钥是 `assets/update_public_key.hex`。没有这个机密时，KINO 只会提示有新版本并提供下载。
 
@@ -40,6 +40,21 @@ cargo run -p kino-desktop                           # run from the sources
 cargo build --release --locked -p kino-desktop
 pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
+```
+
+### Linux (x86_64)
+
+AppImage 在 Ubuntu 22.04（支持的最旧系统）上构建：可在 glibc 相同或更新的系统上运行。它包含 WebKitGTK 以及页面播放视频所用的 GStreamer 插件；FFmpeg 取自构建系统。
+
+```bash
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev patchelf ffmpeg \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav \
+  xvfb imagemagick
+tools/fetch_linuxdeploy.sh                            # linuxdeploy 及其插件（固定版本并校验）放入 vendor/
+cargo run -p kino-desktop                             # 从源码运行
+cargo build --release --locked -p kino-desktop
+packaging/build_linux_appimage.sh                     # dist/KINO-Linux-x86_64.AppImage
+tools/linux_appimage_test.sh                          # 在虚拟屏幕上自检、启动并播放视频
 ```
 
 构建好的应用可用 `--self-check` 检查自身内容。
