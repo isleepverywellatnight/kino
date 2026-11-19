@@ -329,6 +329,10 @@ struct Player {
     /// `--bench --native`: whether a real click on the play button, over
     /// mpv's window, reached gpui (pause state before the click).
     click: Option<(bool, Option<bool>)>,
+    /// `--bench --native`: what Windows found under the click, and whether
+    /// gpui saw the button pressed.
+    probe: Option<String>,
+    pressed: bool,
 }
 
 impl Player {
@@ -360,6 +364,8 @@ impl Player {
                 bench: bench.then(Bench::new),
                 host,
                 click: None,
+                probe: None,
+                pressed: false,
             };
         }
         // mpv says when a frame is ready; it is drawn off the main thread.
@@ -400,6 +406,8 @@ impl Player {
             bench: bench.then(Bench::new),
             host: None,
             click: None,
+            probe: None,
+            pressed: false,
         }
     }
 
@@ -418,6 +426,9 @@ impl Player {
                     let height = f32::from(window.viewport_size().height);
                     let (x, y) = (44.0 * scale, (height - 36.0) * scale);
                     self.click = Some((paused, None));
+                    if let Some((_, host)) = self.host {
+                        self.probe = Some(native::probe(parent, host, x as i32, y as i32));
+                    }
                     native::click(parent, x as i32, y as i32);
                 }
                 Some((before, None)) if elapsed >= Duration::from_secs(4) => {
@@ -453,6 +464,8 @@ impl Player {
                 report["decoder_dropped"] = count("decoder-frame-drop-count").into();
                 report["click_reached_controls"] =
                     self.click.and_then(|(_, reached)| reached).into();
+                report["click_probe"] = self.probe.clone().into();
+                report["press_seen"] = self.pressed.into();
             } else {
                 report["path"] = "software".into();
             }
@@ -521,6 +534,10 @@ impl Player {
                             .bg(gpui::rgba(0xffffff26))
                             .hover(|style| style.bg(gpui::rgba(0xffffff40)))
                             .child(if paused { "▶" } else { "❚❚" })
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|player, _, _, _| player.pressed = true),
+                            )
                             .on_click(cx.listener(|player, _, _, cx| {
                                 if let Ok(video) = player.video.lock() {
                                     video.set_paused(!video.paused());

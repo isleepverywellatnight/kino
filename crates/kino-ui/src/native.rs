@@ -11,12 +11,13 @@ use windows::Win32::Foundation::{FILETIME, HWND, LPARAM, POINT, RECT};
 use windows::Win32::Graphics::Gdi::ClientToScreen;
 use windows::Win32::System::Threading::{GetCurrentProcess, GetProcessTimes};
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    EnableWindow, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
-    MOUSEINPUT, SendInput,
+    EnableWindow, INPUT, INPUT_0, INPUT_MOUSE, IsWindowEnabled, MOUSEEVENTF_LEFTDOWN,
+    MOUSEEVENTF_LEFTUP, MOUSEINPUT, SendInput,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, EnumChildWindows, GetClientRect, SWP_NOACTIVATE, SWP_NOZORDER, SetCursorPos,
-    SetWindowPos, WINDOW_EX_STYLE, WS_CHILD, WS_CLIPSIBLINGS, WS_DISABLED, WS_VISIBLE,
+    CreateWindowExW, EnumChildWindows, GW_CHILD, GW_HWNDNEXT, GetClassNameW, GetClientRect,
+    GetWindow, SWP_NOACTIVATE, SWP_NOZORDER, SetCursorPos, SetWindowPos, WINDOW_EX_STYLE, WS_CHILD,
+    WS_CLIPSIBLINGS, WS_DISABLED, WS_VISIBLE, WindowFromPoint,
 };
 use windows::core::{BOOL, w};
 
@@ -101,6 +102,45 @@ pub fn click(parent: isize, x: i32, y: i32) {
             &[button(MOUSEEVENTF_LEFTDOWN), button(MOUSEEVENTF_LEFTUP)],
             std::mem::size_of::<INPUT>() as i32,
         );
+    }
+}
+
+/// `--bench`: what Windows finds at `(x, y)` in `parent`'s client area —
+/// which window, of what class, enabled or not — and the host's children.
+pub fn probe(parent: isize, host: isize, x: i32, y: i32) -> String {
+    let mut point = POINT { x, y };
+    let describe = |window: HWND| {
+        let mut class = [0u16; 64];
+        // SAFETY: a window handle and a buffer of its length.
+        let length = unsafe { GetClassNameW(window, &mut class) };
+        let role = match window.0 as isize {
+            w if w == parent => "kino",
+            w if w == host => "host",
+            _ => "other",
+        };
+        // SAFETY: a window handle.
+        let enabled = unsafe { IsWindowEnabled(window) }.as_bool();
+        format!(
+            "{role}:{}:{}",
+            String::from_utf16_lossy(&class[..length.max(0) as usize]),
+            if enabled { "enabled" } else { "disabled" }
+        )
+    };
+    // SAFETY: plain queries on this process's windows.
+    unsafe {
+        let _ = ClientToScreen(hwnd(parent), &mut point);
+        let under = WindowFromPoint(point);
+        let mut children = Vec::new();
+        let mut child = GetWindow(hwnd(host), GW_CHILD).ok();
+        while let Some(c) = child {
+            children.push(describe(c));
+            child = GetWindow(c, GW_HWNDNEXT).ok();
+        }
+        format!(
+            "under={} children=[{}]",
+            describe(under),
+            children.join(",")
+        )
     }
 }
 
