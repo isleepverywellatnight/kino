@@ -314,6 +314,19 @@ fn library_ids(db: &Db) -> Vec<String> {
     mine
 }
 
+/// Marks the anime among `items` (`is_anime: true`): titles KINO knows as
+/// anime, and the user's anime titles. The film and series pages leave them
+/// to the anime page.
+pub fn mark_anime(db: &Db, items: &mut [Value]) {
+    let mine: std::collections::HashSet<String> = library_ids(db).into_iter().collect();
+    for item in items.iter_mut().filter(|i| i.is_object()) {
+        let id = py_str(&item["id"]);
+        if crate::meta::is_anime_item(item) || mine.contains(&id) {
+            item["is_anime"] = json!(true);
+        }
+    }
+}
+
 /// « À la une »: the rows, with the user's own anime titles.
 pub async fn home(meta: &Meta, force: bool) -> Value {
     let today = Local::now().date_naive();

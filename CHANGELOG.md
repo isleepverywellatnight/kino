@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.3.0
+
+- Linux: KINO also comes as a Flatpak (KINO-Linux-x86_64.flatpak), on the
+  GNOME runtime from Flathub, with the codecs the page's player needs. It
+  shares its library and settings with the AppImage; install the new
+  .flatpak file to update.
+- The native player's line « décodage logiciel / matériel » is translated.
+- Poster cards no longer show raw markup under the title when the title has
+  your rating (« Aimé », « Adoré »…); « Marquer vu », « Revoir » and the new
+  episodes' line (« 6 nouveaux épisodes depuis… ») are translated.
+- Films and Séries no longer show anime: À continuer, Nouveaux épisodes,
+  Ma Liste, « Si vous avez aimé » and Pour vous leave them to the Anime page.
+
 ## 2.2.1
 
 - Fast scrolling no longer freezes KINO, and the page no longer lags. Each

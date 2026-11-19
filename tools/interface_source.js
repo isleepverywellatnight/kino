@@ -197,6 +197,8 @@ function frenchI18n() {
 function withHelpers(context = {}) {
   for (const [name, value] of Object.entries(templateHelpers())) if (!(name in context)) context[name] = value;
   if (!('KINO_I18N' in context)) context.KINO_I18N = frenchI18n();
+  // anime-home.js's test, without the anime library: the titles the server names.
+  if (!('isAnimeTitle' in context)) context.isAnimeTitle = entry => Boolean(entry && (entry.is_anime || entry.type === 'anime'));
   if (!('registerActions' in context)) {
     const actions = {};
     Object.defineProperty(context, 'actions', { value: actions, enumerable: false, configurable: true });

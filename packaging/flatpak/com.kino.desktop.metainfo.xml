@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.kino.desktop</id>
+  <name>KINO</name>
+  <summary>Films, series, anime and manga</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>KINO finds films, series, anime and manga, plays them, and keeps your library, history and lists on your computer.</p>
+  </description>
+  <launchable type="desktop-id">com.kino.desktop.desktop</launchable>
+  <url type="homepage">https://github.com/isleepverywellatnight/kino</url>
+  <content_rating type="oars-1.1"/>
+</component>

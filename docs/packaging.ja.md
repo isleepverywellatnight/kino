@@ -6,7 +6,7 @@
 
 ## バージョンの公開
 
-`Cargo.toml` ([workspace.package]) の `version` を変更して `main` に push するだけです。`main` のバージョンにまだリリースがなければ、GitHub Actions（`.github/workflows/build.yml`）が3 つのアプリをビルドしてテストし、`vX.Y.Z` タグ付きでリリース（`KINO-macOS.dmg`、`KINO-Windows.exe`、`KINO-Windows-arm64.exe`、`KINO-Linux-x86_64.AppImage`、`SHA256SUMS.txt`）を公開したあと、README のコマンドでクリーンな Mac と Windows に再インストールして確認します。
+`Cargo.toml` ([workspace.package]) の `version` を変更して `main` に push するだけです。`main` のバージョンにまだリリースがなければ、GitHub Actions（`.github/workflows/build.yml`）が3 つのアプリをビルドしてテストし、`vX.Y.Z` タグ付きでリリース（`KINO-macOS.dmg`、`KINO-Windows.exe`、`KINO-Windows-arm64.exe`、`KINO-Linux-x86_64.AppImage`、`KINO-Linux-x86_64.flatpak`、`SHA256SUMS.txt`）を公開したあと、README のコマンドでクリーンな Mac と Windows に再インストールして確認します。
 
 KINO が新しいバージョンを自動でインストールできるよう、CI はシークレット `KINO_UPDATE_SIGNING_KEY`（Settings → Secrets and variables → Actions）でアップデートに署名します。中身は `cargo run -p kino --bin kino-release -- --init-key` で作成した秘密鍵で、公開鍵は `assets/update_public_key.hex` です。このシークレットがない場合、KINO は新しいバージョンを通知してダウンロードを案内します。
 
@@ -58,6 +58,8 @@ cargo build --release --locked -p kino-desktop
 packaging/build_linux_appimage.sh                     # dist/KINO-Linux-x86_64.AppImage
 tools/linux_appimage_test.sh                          # 仮想画面でセルフチェック・起動・動画を確認
 ```
+
+Flatpak（`KINO-Linux-x86_64.flatpak`、GNOME ランタイム）は同じビルドを収めます：`tools/fetch_ffmpeg.sh` のあと `packaging/build_flatpak.sh`（`flatpak`、`flatpak-builder` とユーザーリモートの Flathub が必要）。
 
 ビルドしたアプリは `--self-check` で中身を確認できます。
 

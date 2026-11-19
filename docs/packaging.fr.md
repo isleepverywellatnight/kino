@@ -6,7 +6,7 @@ Ces étapes concernent le développement. Pour utiliser KINO, il suffit de le t�
 
 ## Publier une version
 
-Changez `version` dans `Cargo.toml` ([workspace.package]) et poussez sur `main` : c'est tout. Quand la version de `main` n'a pas encore de release, GitHub Actions (`.github/workflows/build.yml`) construit les trois applications, les teste, publie la release avec son tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Windows-arm64.exe`, `KINO-Linux-x86_64.AppImage`, `SHA256SUMS.txt`), puis la réinstalle sur un Mac et un Windows vierges avec les commandes du README.
+Changez `version` dans `Cargo.toml` ([workspace.package]) et poussez sur `main` : c'est tout. Quand la version de `main` n'a pas encore de release, GitHub Actions (`.github/workflows/build.yml`) construit les trois applications, les teste, publie la release avec son tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Windows-arm64.exe`, `KINO-Linux-x86_64.AppImage`, `KINO-Linux-x86_64.flatpak`, `SHA256SUMS.txt`), puis la réinstalle sur un Mac et un Windows vierges avec les commandes du README.
 
 Pour que KINO installe lui-même les nouvelles versions, la CI signe les mises à jour avec le secret `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables → Actions) : le contenu de la clé privée créée par `cargo run -p kino --bin kino-release -- --init-key`, dont la partie publique est `assets/update_public_key.hex`. Sans ce secret, KINO annonce la nouvelle version et propose de la télécharger.
 
@@ -58,6 +58,8 @@ cargo build --release --locked -p kino-desktop
 packaging/build_linux_appimage.sh                     # dist/KINO-Linux-x86_64.AppImage
 tools/linux_appimage_test.sh                          # auto-vérification, démarrage et vidéo, sur un écran virtuel
 ```
+
+Le Flatpak (`KINO-Linux-x86_64.flatpak`, runtime GNOME) contient le même build : `tools/fetch_ffmpeg.sh`, puis `packaging/build_flatpak.sh` (il faut `flatpak`, `flatpak-builder` et Flathub en dépôt utilisateur).
 
 Une application construite vérifie ce qu'elle contient avec `--self-check`.
 

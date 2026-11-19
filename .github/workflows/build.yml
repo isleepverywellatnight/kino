@@ -70,7 +70,7 @@ jobs:
       - name: Install scripts
         run: |
           bash -n packaging/install.sh
-          for script in packaging/build_linux_appimage.sh tools/fetch_linuxdeploy.sh tools/linux_appimage_test.sh; do
+          for script in packaging/build_linux_appimage.sh packaging/build_flatpak.sh tools/fetch_linuxdeploy.sh tools/linux_appimage_test.sh; do
             bash -n "$script"
           done
 
@@ -310,6 +310,12 @@ jobs:
             dist/KINO-Linux-x86_64.AppImage
             dist/KINO-Linux-x86_64.AppImage.sig
           if-no-files-found: error
+      # For the Flatpak job (not a release file: its name is not kino-*).
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-binary
+          path: target/release/kino-desktop
+          if-no-files-found: error
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -317,9 +323,60 @@ jobs:
           path: dist/*-linux.png
           if-no-files-found: ignore
 
+  # The same Linux build as a Flatpak bundle on the GNOME runtime, installed
+  # and started here.
+  flatpak:
+    needs: [checks, linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: linux-binary
+          path: target/release
+      - name: Flatpak tools
+        run: |
+          chmod 755 target/release/kino-desktop
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder xvfb
+          # Flatpak's sandbox needs user namespaces, which Ubuntu 24.04 restricts.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: FFmpeg to ship
+        run: tools/fetch_ffmpeg.sh
+      - name: Build the Flatpak
+        run: packaging/build_flatpak.sh
+      - name: Flatpak test
+        run: |
+          # The runtime's codecs (freedesktop 25.08: codecs-extra; before: ffmpeg-full).
+          flatpak install --user -y --noninteractive flathub org.freedesktop.Platform.codecs-extra//25.08 \
+            || flatpak install --user -y --noninteractive flathub org.freedesktop.Platform.ffmpeg-full//25.08 \
+            || echo "::warning::No codecs extension found for the 25.08 runtime"
+          flatpak install --user -y --noninteractive dist/KINO-Linux-x86_64.flatpak
+          flatpak run com.kino.desktop --self-check
+          # Start-up on a virtual screen: KINO's server answers with its page.
+          xvfb-run -a flatpak run com.kino.desktop > "$RUNNER_TEMP/kino.log" 2>&1 &
+          ok=false
+          for _ in $(seq 60); do
+            sleep 2
+            if page=$(curl -fsS http://127.0.0.1:8080/ 2>/dev/null) && [[ "$page" == *KINO* ]]; then ok=true; break; fi
+          done
+          sleep 10
+          alive=false
+          flatpak ps | grep -q com.kino.desktop && alive=true
+          flatpak kill com.kino.desktop || true
+          cat "$RUNNER_TEMP/kino.log"
+          [ "$ok" = true ] || { echo "::error::KINO's server did not answer"; exit 1; }
+          [ "$alive" = true ] || { echo "::error::KINO closed at start-up"; exit 1; }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kino-flatpak
+          path: dist/KINO-Linux-x86_64.flatpak
+          if-no-files-found: error
+
   release:
     if: needs.checks.outputs.publish == 'true'
-    needs: [checks, macos, windows, linux]
+    needs: [checks, macos, windows, linux, flatpak]
     runs-on: ubuntu-latest
     permissions:
       contents: write
