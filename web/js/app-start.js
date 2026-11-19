@@ -38,6 +38,7 @@ import {
 } from './app-player.js';
 import { NativePlayer } from './native-player.js';
 
+/** @type {Array<[string, () => void]>} */
 const ESCAPE_DIALOGS = [
   ['shortcutsModal', () => toggleShortcutsModal()],
   ['remoteModal', () => closeRemoteModal()],
@@ -63,7 +64,7 @@ export function closeOpenDialogOnEscape() {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (document.getElementById('playbackHelp')?.open) return;
+  if (/** @type {HTMLDialogElement} */ (document.getElementById('playbackHelp'))?.open) return;
   const overlay = document.getElementById('inAppPlayerOverlay');
   const isPlayerActive = overlay && overlay.classList.contains('active');
   const isInput = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement ? document.activeElement.tagName : '');
@@ -72,7 +73,7 @@ window.addEventListener('keydown', (e) => {
     // Global macOS & keyboard shortcuts
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      const si = document.getElementById('searchInput');
+      const si = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
       if (si) { si.focus(); si.select(); openSearchPanel(); }
       return;
     }
@@ -83,7 +84,7 @@ window.addEventListener('keydown', (e) => {
     }
     if (e.key === '/' && !isInput) {
       e.preventDefault();
-      const si = document.getElementById('searchInput');
+      const si = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
       if (si) { si.focus(); si.select(); openSearchPanel(); }
       return;
     }
@@ -148,7 +149,7 @@ window.addEventListener('keydown', (e) => {
         return;
       }
       if (isInput && document.activeElement) {
-        document.activeElement.blur();
+        /** @type {HTMLElement} */ (document.activeElement).blur();
         return;
       }
       const dp = document.getElementById('detailPanel');
@@ -190,11 +191,11 @@ window.addEventListener('keydown', (e) => {
     inAppSeekRel(10);
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
-    const v = document.getElementById('inAppVideo');
+    const v = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
     if (v) setInAppVolume(v.volume + 0.05, true);
   } else if (e.key === 'ArrowDown') {
     e.preventDefault();
-    const v = document.getElementById('inAppVideo');
+    const v = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
     if (v) setInAppVolume(v.volume - 0.05, true);
   } else if (e.key === 'f' || e.key === 'F') {
     e.preventDefault();
@@ -336,10 +337,10 @@ function renderOfflineLibraryData(data) {
       const id = item.id;
       const status = escapeHtml(offlineStatus(item));
       const actions = item.available
-        ? html`<button class="btn" ${act('playOfflineDownload', String(id))}>Lancer</button>`
+        ? html`<button class="btn" ${act('playOfflineDownload', String(id))}>${KINO_I18N.t('page.lancer')}</button>`
         : ['queued', 'downloading', 'waiting'].includes(item.status)
-          ? html`<button class="btn btn-secondary" ${act('downloadAction', String(id), 'pause')}>Pause</button>`
-          : html`<button class="btn btn-secondary" ${act('downloadAction', String(id), 'resume')}>Reprendre</button><button class="btn btn-secondary" ${act('downloadAction', String(id), 'restart')}>Recommencer</button>`;
+          ? html`<button class="btn btn-secondary" ${act('downloadAction', String(id), 'pause')}>${KINO_I18N.t('start.pause')}</button>`
+          : html`<button class="btn btn-secondary" ${act('downloadAction', String(id), 'resume')}>${KINO_I18N.t('sources.reprendre')}</button><button class="btn btn-secondary" ${act('downloadAction', String(id), 'restart')}>${KINO_I18N.t('start.recommencer')}</button>`;
       const canRemove = !['queued', 'downloading'].includes(item.status);
       const shown = offlineDisplay(item);
       return html`<article class="offline-item">
@@ -349,11 +350,11 @@ function renderOfflineLibraryData(data) {
           <span>${offlineSize(item.bytes_done)}${item.bytes_total ? ' / ' + offlineSize(item.bytes_total) : ''}</span>
           ${item.status === 'downloading' ? html`<div class="progress-bar"><div class="progress-fill" style="width:${Math.max(0, Math.min(100, item.progress || 0))}%"></div></div>` : ''}
         </div>
-        <div class="offline-actions">${actions}${canRemove ? html`<button class="btn btn-secondary" ${act('removeOfflineDownload', String(id))}>Retirer</button>` : ''}</div>
+        <div class="offline-actions">${actions}${canRemove ? html`<button class="btn btn-secondary" ${act('removeOfflineDownload', String(id))}>${KINO_I18N.t('page.retirer')}</button>` : ''}</div>
       </article>`;
     }) : (networkOnline
-      ? html`<div class="library-empty"><h3>Aucun fichier hors ligne</h3><p>Depuis une source prête à lire ou le lecteur, choisissez « Garder hors ligne ». Les fichiers terminés apparaîtront ici.</p></div>`
-      : html`<div class="library-empty"><h3>Aucun fichier hors ligne sur ce Mac</h3><p>Sans internet, KINO ne peut rien lire pour le moment. Quand la connexion reviendra, choisissez « Garder hors ligne » sur une source prête à lire ou dans le lecteur.</p></div>`))]);
+      ? html`<div class="library-empty"><h3>${KINO_I18N.t('start.aucun_fichier_hors_ligne')}</h3><p>${KINO_I18N.t('start.depuis_une_source_prete_a_lire_ou_le')}</p></div>`
+      : html`<div class="library-empty"><h3>${KINO_I18N.t('start.aucun_fichier_hors_ligne_sur_ce_mac')}</h3><p>${KINO_I18N.t('start.sans_internet_kino_ne_peut_rien_lire')}</p></div>`))]);
 }
 
 // --- A whole season for offline: the episodes already out, one after another ---
@@ -369,7 +370,7 @@ function seasonEpisodesOut(season, today = new Date().toISOString().slice(0, 10)
 
 async function downloadSeasonOffline(button) {
   if (!currentMedia?.id) return;
-  const season = Number(document.getElementById('seasonSelect')?.value || 1);
+  const season = Number(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'))?.value || 1);
   const episodes = seasonEpisodesOut(season);
   const name = displayTitle(currentMedia) || currentMedia.name || 'cette série';
   if (!episodes.length) {
@@ -384,7 +385,7 @@ async function downloadSeasonOffline(button) {
   const count = `${episodes.length} épisode${episodes.length > 1 ? 's' : ''}`;
   if (!window.confirm(`Télécharger ${episodes.length > 1 ? 'les ' : 'l’'}${count} sorti${episodes.length > 1 ? 's' : ''} de la saison ${season} de « ${name} » pour les regarder hors ligne ?\n\nIls se téléchargent l’un après l’autre, même si KINO est fermé puis rouvert. Un épisode pèse souvent 1 à 4 Go.${free}`)) return;
   const label = button ? button.textContent : '';
-  if (button) { button.disabled = true; button.textContent = 'Ajout…'; }
+  if (button) { button.disabled = true; button.textContent = KINO_I18N.t('start.ajout'); }
   try {
     const result = await api('/api/download-season', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -467,13 +468,13 @@ export async function pollDownloads() {
   const panel = document.getElementById('downloadsPanel');
   if (panel) panel.style.display = active.length && activeTab !== 'offline' ? 'block' : 'none';
   const list = document.getElementById('downloadsList');
-  if (list) render(list, active.map(item => html`<div class="offline-active-row"><strong>${item.title || item.filename}</strong><span>${offlineSize(item.bytes_done)}${item.bytes_total ? ' / ' + offlineSize(item.bytes_total) : ''} · ${Math.round(item.progress || 0)}%</span><button class="btn btn-secondary" ${act('downloadAction', String(item.id), 'pause')}>Pause</button></div>`));
+  if (list) render(list, active.map(item => html`<div class="offline-active-row"><strong>${item.title || item.filename}</strong><span>${offlineSize(item.bytes_done)}${item.bytes_total ? ' / ' + offlineSize(item.bytes_total) : ''} · ${Math.round(item.progress || 0)}%</span><button class="btn btn-secondary" ${act('downloadAction', String(item.id), 'pause')}>${KINO_I18N.t('start.pause')}</button></div>`));
   renderOfflineLibraryData(data);
   if (active.length) downloadPollTimer = setTimeout(pollDownloads, 1000);
 }
 
 function initSettingsSectionNavigation() {
-  const links = [...document.querySelectorAll('.settings-index-item')];
+  const links = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.settings-index-item'))];
   const sections = links.map(link => document.getElementById(link.dataset.settingsTarget));
   if (!links.length || sections.some(section => !section)) return;
   const select = selected => {
@@ -532,7 +533,7 @@ function kinoUpdateMessage(message) {
 function renderKinoUpdate(state) {
   if (!state) return;
   document.getElementById('kinoUpdateVersion').textContent = state.version || '—';
-  const auto = document.getElementById('kinoUpdateAuto');
+  const auto = /** @type {HTMLInputElement} */ (document.getElementById('kinoUpdateAuto'));
   if (auto) auto.checked = state.auto_check !== false;
   const candidate = document.getElementById('kinoUpdateCandidate');
   candidate.hidden = !state.candidate;
@@ -543,7 +544,7 @@ function renderKinoUpdate(state) {
   document.getElementById('kinoUpdateChooseBtn').hidden = !state.local_packages;
   document.getElementById('kinoUpdatePageBtn').hidden = !state.latest;
   document.getElementById('kinoUpdateRollbackRow').hidden = !state.rollback_supported;
-  const rollback = document.getElementById('kinoUpdateRollbackBtn');
+  const rollback = /** @type {HTMLButtonElement} */ (document.getElementById('kinoUpdateRollbackBtn'));
   rollback.disabled = !state.rollback_available;
   document.getElementById('kinoUpdateRollbackDescription').textContent = state.rollback_available
     ? `KINO ${state.rollback_version || 'précédent'} est conservé sur ce Mac.`
@@ -663,7 +664,7 @@ async function openKinoReleasePage() {
 export function rollbackKinoUpdate() { return requestKinoUpdateAction('rollback'); }
 
 function initHeaderMenuKeyboard() {
-  document.querySelectorAll('#headerDropdownMenu .header-dropdown-item').forEach(item => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#headerDropdownMenu .header-dropdown-item')).forEach(item => {
     item.setAttribute('role', 'button');
     item.setAttribute('tabindex', '0');
     item.addEventListener('keydown', event => {
@@ -792,7 +793,7 @@ function initDialogFocus() {
       open = now;
       if (now) {
         opener = document.activeElement;
-        const target = backdrop.querySelector('.modal-close') || backdrop.querySelector(FOCUSABLE);
+        const target = /** @type {HTMLElement | null} */ (backdrop.querySelector('.modal-close') || backdrop.querySelector(FOCUSABLE));
         if (target && !backdrop.contains(document.activeElement)) target.focus({ preventScroll: true });
       } else if (opener && document.contains(opener)
         && (!document.activeElement || document.activeElement === document.body || backdrop.contains(document.activeElement))) {
@@ -896,8 +897,8 @@ function renderNavBack() {
 
 async function showNavBase(screen) {
   if (screen.kind === 'search') {
-    document.getElementById('searchType').value = screen.mode;
-    document.getElementById('searchInput').value = screen.query;
+    /** @type {HTMLSelectElement} */ (document.getElementById('searchType')).value = screen.mode;
+    /** @type {HTMLInputElement} */ (document.getElementById('searchInput')).value = screen.query;
     updateSearchClearBtn();
     await runSearch();
   } else if (screen.kind === 'person') {
@@ -1002,14 +1003,14 @@ function renderNetworkBanner(mode) {
 }
 
 async function retryNetwork() {
-  const button = document.getElementById('networkRetryButton');
-  if (button) { button.disabled = true; button.textContent = 'Vérification…'; }
+  const button = /** @type {HTMLButtonElement} */ (document.getElementById('networkRetryButton'));
+  if (button) { button.disabled = true; button.textContent = KINO_I18N.t('page.verification'); }
   try {
     const online = await refreshNetwork(true);
-    if (!online && button) button.textContent = 'Toujours sans internet';
+    if (!online && button) button.textContent = KINO_I18N.t('start.toujours_sans_internet');
     await new Promise(resolve => setTimeout(resolve, online ? 0 : 1500));
   } finally {
-    if (button) { button.disabled = false; button.textContent = 'Réessayer'; }
+    if (button) { button.disabled = false; button.textContent = KINO_I18N.t('page.reessayer'); }
   }
 }
 
@@ -1021,7 +1022,7 @@ function networkCameBack() {
 }
 
 export function needsInternetHtml(what) {
-  return html`<div class="library-empty"><h3>${what} a besoin d’internet</h3><p>Vos fichiers hors ligne restent disponibles sur ce Mac.</p><button type="button" class="btn" ${act('switchTab', 'offline')}>Voir mes fichiers hors ligne</button></div>`;
+  return html`<div class="library-empty"><h3>${what} a besoin d’internet</h3><p>${KINO_I18N.t('start.vos_fichiers_hors_ligne_restent')}</p><button type="button" class="btn" ${act('switchTab', 'offline')}>${KINO_I18N.t('start.voir_mes_fichiers_hors_ligne')}</button></div>`;
 }
 
 export function showOfflineCatalogue() {
@@ -1040,9 +1041,9 @@ export function offlineSearchHtml(q) {
   const found = Object.entries(offlineDownloads).filter(([, item]) => item.available
     && foldSearchText(`${offlineDisplay(item).title} ${item.filename || ''}`).includes(wanted));
   if (!found.length) return needsInternetHtml('La recherche');
-  return html`<div class="network-results"><h3>Sans internet : dans vos fichiers hors ligne</h3>${found.map(([id, item]) => {
+  return html`<div class="network-results"><h3>${KINO_I18N.t('start.sans_internet_dans_vos_fichiers_hors')}</h3>${found.map(([id, item]) => {
     const shown = offlineDisplay(item);
-    return html`<article class="offline-item"><div class="offline-info"><strong${shown.titleAttrs}>${shown.title}</strong><span class="offline-kind">${shown.kind}</span></div><div class="offline-actions"><button class="btn" ${act('playOfflineDownload', String(id))}>Lancer</button></div></article>`;
+    return html`<article class="offline-item"><div class="offline-info"><strong${shown.titleAttrs}>${shown.title}</strong><span class="offline-kind">${shown.kind}</span></div><div class="offline-actions"><button class="btn" ${act('playOfflineDownload', String(id))}>${KINO_I18N.t('page.lancer')}</button></div></article>`;
   })}</div>`;
 }
 
@@ -1054,7 +1055,7 @@ async function openFirstTab() {
 
 // Paramètres → Langue de l'interface: each language under its own name.
 function initUiLanguageSelect() {
-  const select = document.getElementById('cfgUiLanguage');
+  const select = /** @type {HTMLSelectElement} */ (document.getElementById('cfgUiLanguage'));
   if (!select || !window.KINO_LANGUAGES) return;
   for (const [code, name] of Object.entries(window.KINO_LANGUAGES)) select.add(new Option(name, code));
   select.value = window.KINO_LANG;

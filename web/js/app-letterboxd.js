@@ -34,7 +34,7 @@ export function openLetterboxdModal() {
   letterboxdCsvContent = '';
   letterboxdCsvName = '';
 
-  const inp = document.getElementById('lbxUrlInput');
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('lbxUrlInput'));
   if (inp && !inp.value && linkedAccounts.letterboxdUser) {
     inp.value = linkedAccounts.letterboxdUser;
   }
@@ -73,7 +73,7 @@ function clearLetterboxdCsv(ev) {
   if (ev) ev.stopPropagation();
   letterboxdCsvContent = '';
   letterboxdCsvName = '';
-  const fileInp = document.getElementById('lbxCsvFileInput');
+  const fileInp = /** @type {HTMLInputElement} */ (document.getElementById('lbxCsvFileInput'));
   if (fileInp) fileInp.value = '';
   const fnEl = document.getElementById('lbxCsvFileName');
   const clrBtn = document.getElementById('lbxCsvClearBtn');
@@ -158,15 +158,15 @@ async function submitLetterboxdImport(options = {}) {
   const restoreRemoved = options.restoreRemoved === true;
   const restoreBtn = document.getElementById('lbxRestoreRemovedBtn');
   if (restoreBtn) restoreBtn.hidden = true;
-  const urlOrUser = (document.getElementById('lbxUrlInput')?.value || '').trim();
+  const urlOrUser = (/** @type {HTMLInputElement} */ (document.getElementById('lbxUrlInput'))?.value || '').trim();
   const csvText = (letterboxdCsvContent || '').trim();
   const st = document.getElementById('lbxImportStatus');
-  const btn = document.getElementById('lbxSubmitBtn');
+  const btn = /** @type {HTMLButtonElement} */ (document.getElementById('lbxSubmitBtn'));
 
   if (!urlOrUser && !csvText) {
     if (st) {
       st.style.color = '#f87171';
-      st.textContent = 'Indiquez votre pseudo Letterboxd ou choisissez un fichier .csv.';
+      st.textContent = KINO_I18N.t('letterboxd.indiquez_votre_pseudo_letterboxd_ou');
       st.style.display = 'block';
     }
     return;
@@ -175,11 +175,11 @@ async function submitLetterboxdImport(options = {}) {
   const origTxt = btn ? btn.textContent : 'Synchroniser';
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Synchronisation...';
+    btn.textContent = KINO_I18N.t('letterboxd.synchronisation');
   }
   if (st) {
     st.style.color = '#fbbf24';
-    st.textContent = 'Récupération de Letterboxd et mise à jour de la bibliothèque...';
+    st.textContent = KINO_I18N.t('letterboxd.recuperation_de_letterboxd_et_mise_a');
     st.style.display = 'block';
   }
 
@@ -294,15 +294,15 @@ function renderSavedListsInModal() {
 }
 
 export async function submitLetterboxdCustomListImport() {
-  const urlInp = document.getElementById('lbxCustomListUrlInput');
+  const urlInp = /** @type {HTMLInputElement} */ (document.getElementById('lbxCustomListUrlInput'));
   const url = (urlInp?.value || '').trim();
   const st = document.getElementById('lbxCustomListStatus');
-  const btn = document.getElementById('lbxCustomListSubmitBtn');
+  const btn = /** @type {HTMLButtonElement} */ (document.getElementById('lbxCustomListSubmitBtn'));
 
   if (!url) {
     if (st) {
       st.style.color = '#f87171';
-      st.textContent = 'Veuillez coller une URL de liste Letterboxd valide.';
+      st.textContent = KINO_I18N.t('letterboxd.veuillez_coller_une_url_de_liste');
       st.style.display = 'block';
     }
     return;
@@ -311,11 +311,11 @@ export async function submitLetterboxdCustomListImport() {
   const origTxt = btn ? btn.textContent : 'Importer cette liste';
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Importation en cours...';
+    btn.textContent = KINO_I18N.t('letterboxd.importation_en_cours');
   }
   if (st) {
     st.style.color = '#fbbf24';
-    st.textContent = 'Analyse de la liste et résolution des métadonnées (1-2 min max)...';
+    st.textContent = KINO_I18N.t('letterboxd.analyse_de_la_liste_et_resolution_des');
     st.style.display = 'block';
   }
 
@@ -408,8 +408,8 @@ export function renderCustomListsTab() {
   if (catTitle) {
     render(catTitle, html`
       <div class="lists-title">
-        <span>Listes Letterboxd</span>
-        <button type="button" class="btn btn-secondary" ${act('openLetterboxdListImport')}>+ Importer une liste</button>
+        <span>${KINO_I18N.t('letterboxd.listes_letterboxd')}</span>
+        <button type="button" class="btn btn-secondary" ${act('openLetterboxdListImport')}>${KINO_I18N.t('letterboxd.importer_une_liste')}</button>
       </div>`);
   }
 
@@ -420,9 +420,9 @@ export function renderCustomListsTab() {
     render(grid, html`
       <div class="library-empty">
         <span class="library-empty-icon" aria-hidden="true">≡</span>
-        <h3>Aucune liste Letterboxd importée</h3>
-        <p>Collez le lien d'une liste Letterboxd publique (Top 250, A24, un réalisateur, une ambiance) pour la retrouver ici, prête à lancer, avec sa roulette.</p>
-        <button type="button" class="btn" ${act('openLetterboxdListImport')}>Importer une liste Letterboxd</button>
+        <h3>${KINO_I18N.t('letterboxd.aucune_liste_letterboxd_importee')}</h3>
+        <p>${KINO_I18N.t('letterboxd.collez_le_lien_d_une_liste_letterboxd')}</p>
+        <button type="button" class="btn" ${act('openLetterboxdListImport')}>${KINO_I18N.t('letterboxd.importer_une_liste_letterboxd')}</button>
       </div>`);
     return;
   }
@@ -449,23 +449,23 @@ function customListShelfHtml(list) {
         <div class="list-shelf-info">
           <h3 class="list-shelf-title">${label}</h3>
           <div class="list-shelf-meta">${progress.total} titre${progress.total > 1 ? 's' : ''} · ${progress.watched} vu${progress.watched > 1 ? 's' : ''}</div>
-          <div class="list-shelf-progress" role="progressbar" aria-label="Titres vus" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.pct}"><span style="width:${progress.pct}%"></span></div>
+          <div class="list-shelf-progress" role="progressbar" aria-label="${KINO_I18N.t('letterboxd.titres_vus')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.pct}"><span style="width:${progress.pct}%"></span></div>
           ${list.description ? html`<p class="list-shelf-desc">${list.description}</p>` : ''}
         </div>
         <div class="list-shelf-actions">
-          <button type="button" class="btn" ${act('openCustomList', list.id)}>Tout voir</button>
-          <button type="button" class="btn-surprise" ${act('surpriseMeFromCustomList', list.id)} title="Tirer un titre non vu de cette liste">Roulette</button>
-          ${/^https:\/\/letterboxd\.com\//.test(String(list.url || '')) ? html`<a href="${safeUrl(list.url)}" target="_blank" rel="noopener" class="btn btn-secondary">Letterboxd ↗</a>` : ''}
-          <button type="button" class="btn btn-secondary" ${act('deleteLetterboxdCustomList', list.id)} aria-label="Retirer la liste ${label}">Retirer</button>
+          <button type="button" class="btn" ${act('openCustomList', list.id)}>${KINO_I18N.t('letterboxd.tout_voir')}</button>
+          <button type="button" class="btn-surprise" ${act('surpriseMeFromCustomList', list.id)} title="${KINO_I18N.t('letterboxd.tirer_un_titre_non_vu_de_cette_liste')}">${KINO_I18N.t('page.roulette')}</button>
+          ${/^https:\/\/letterboxd\.com\//.test(String(list.url || '')) ? html`<a href="${safeUrl(list.url)}" target="_blank" rel="noopener" class="btn btn-secondary">${KINO_I18N.t('fiche.letterboxd')}</a>` : ''}
+          <button type="button" class="btn btn-secondary" ${act('deleteLetterboxdCustomList', list.id)} aria-label="Retirer la liste ${label}">${KINO_I18N.t('page.retirer')}</button>
         </div>
       </div>
-      ${items.length ? html`<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie'))}${items.length > LIST_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${act('openCustomList', list.id)}>Voir les ${items.length} titres</button>` : ''}</div>` : html`<p class="list-shelf-empty">Cette liste est vide.</p>`}
+      ${items.length ? html`<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie'))}${items.length > LIST_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${act('openCustomList', list.id)}>Voir les ${items.length} titres</button>` : ''}</div>` : html`<p class="list-shelf-empty">${KINO_I18N.t('letterboxd.cette_liste_est_vide')}</p>`}
     </section>`;
 }
 
 export function openCustomList(listId) {
   openCustomListId = listId;
-  const input = document.getElementById('listFilterInput');
+  const input = /** @type {HTMLInputElement} */ (document.getElementById('listFilterInput'));
   if (input) input.value = '';
   renderCustomListsTab();
   window.scrollTo?.({ top: 0, behavior: 'auto' });
@@ -484,12 +484,12 @@ function renderOpenCustomList(list) {
   grid.style.gap = '';
   const catTitle = document.getElementById('catalogTitle');
   if (catTitle) {
-    render(catTitle, html`<span class="lists-title"><button type="button" class="btn btn-secondary lists-back" ${act('closeCustomList')} aria-label="Revenir aux listes">← Listes</button><span>${list.title || 'Liste'}</span></span>`);
+    render(catTitle, html`<span class="lists-title"><button type="button" class="btn btn-secondary lists-back" ${act('closeCustomList')} aria-label="${KINO_I18N.t('letterboxd.revenir_aux_listes')}">${KINO_I18N.t('letterboxd.listes')}</button><span>${list.title || 'Liste'}</span></span>`);
   }
   const wlw = document.getElementById('watchlistActionsWrap');
   if (wlw) wlw.style.display = 'flex';
   const surpriseLbl = document.getElementById('listSurpriseBtnLabel');
-  if (surpriseLbl) surpriseLbl.textContent = 'Roulette sur cette liste';
+  if (surpriseLbl) surpriseLbl.textContent = KINO_I18N.t('letterboxd.roulette_sur_cette_liste');
   renderActiveListTab();
 }
 

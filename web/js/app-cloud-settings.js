@@ -152,18 +152,18 @@ function cloudFileHtml(group, file, index) {
   // Only a web address is offered; « other » files play only when they are videos.
   const web = /^https?:\/\//i.test(String(file.download || ''));
   const playable = web && (group.kind !== 'other' || CLOUD_VIDEO.test(file.filename));
-  const play = playable ? html`<button type="button" class="btn" ${act('playCloudFile', group.key, index, THIS)}>Lancer</button>` : '';
-  const save = web ? html`<button type="button" class="btn btn-secondary" ${act('startPcDownload', file.download, file.filename)}>Télécharger</button>
-        <a class="btn btn-secondary" href="${safeUrl(file.download)}" target="_blank" rel="noopener">Lien direct</a>` : '';
+  const play = playable ? html`<button type="button" class="btn" ${act('playCloudFile', group.key, index, THIS)}>${KINO_I18N.t('page.lancer')}</button>` : '';
+  const save = web ? html`<button type="button" class="btn btn-secondary" ${act('startPcDownload', file.download, file.filename)}>${KINO_I18N.t('settings.telecharger')}</button>
+        <a class="btn btn-secondary" href="${safeUrl(file.download)}" target="_blank" rel="noopener">${KINO_I18N.t('settings.lien_direct')}</a>` : '';
   return html`<div class="cloud-file">
       <div class="cloud-file-main">
-        <div class="cloud-file-label">${label}${cloudFileWatched(group, file) ? html` <span class="cloud-seen">Vu</span>` : ''}</div>
+        <div class="cloud-file-label">${label}${cloudFileWatched(group, file) ? html` <span class="cloud-seen">${KINO_I18N.t('settings.vu')}</span>` : ''}</div>
         <div class="cloud-file-name" title="${file.filename}">${details}</div>
       </div>
       <div class="cloud-file-actions">
         ${play}
         ${save}
-        <button type="button" class="btn btn-secondary" ${act('deleteCloudFile', group.key, index, THIS)} aria-label="Retirer ${file.filename} du Cloud">Retirer</button>
+        <button type="button" class="btn btn-secondary" ${act('deleteCloudFile', group.key, index, THIS)} aria-label="Retirer ${file.filename} du Cloud">${KINO_I18N.t('page.retirer')}</button>
       </div>
     </div>`;
 }
@@ -194,8 +194,8 @@ export function renderCloud() {
     const bytes = cloudGroups.reduce((total, group) => total + (Number(group.bytes) || 0), 0);
     const summary = [cloudPlural(cloudGroups.length, 'titre'), cloudPlural(files, 'fichier'), bytes > 0 ? offlineSize(bytes) : ''].filter(Boolean).join(' · ');
     tools.hidden = false;
-    render(tools, html`<div class="cloud-chips" role="group" aria-label="Type de titre">${chips}</div>
-      <input type="search" id="rdCloudSearch" class="cloud-search" placeholder="Rechercher un titre" aria-label="Rechercher dans le Cloud" value="${cloudQuery}" ${actOn('input', 'onCloudSearch', VALUE)}>
+    render(tools, html`<div class="cloud-chips" role="group" aria-label="${KINO_I18N.t('settings.type_de_titre')}">${chips}</div>
+      <input type="search" id="rdCloudSearch" class="cloud-search" placeholder="${KINO_I18N.t('settings.rechercher_un_titre')}" aria-label="${KINO_I18N.t('settings.rechercher_dans_le_cloud')}" value="${cloudQuery}" ${actOn('input', 'onCloudSearch', VALUE)}>
       <span class="cloud-summary">${summary}</span>`);
   }
   renderCloudList();
@@ -205,7 +205,7 @@ function renderCloudList() {
   const list = document.getElementById('rdCloudList');
   if (!list || !cloudGroups.length) return;
   const visible = cloudVisibleGroups();
-  render(list, visible.length ? visible.map(cloudGroupHtml) : html`<p class="cloud-empty">Aucun titre ne correspond.</p>`);
+  render(list, visible.length ? visible.map(cloudGroupHtml) : html`<p class="cloud-empty">${KINO_I18N.t('settings.aucun_titre_ne_correspond')}</p>`);
 }
 
 function setCloudFilter(kind) {
@@ -292,7 +292,7 @@ async function deleteCloudGroup(key, btn) {
 
 async function deleteRdCloudItem(btn, ids) {
   const label = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Suppression…'; }
+  if (btn) { btn.disabled = true; btn.textContent = KINO_I18N.t('settings.suppression_2'); }
   try {
     await api('/api/rd-delete', {
       method: 'POST',
@@ -309,7 +309,7 @@ async function deleteRdCloudItem(btn, ids) {
 async function onChangeRdRetention(daysStr) {
   const rd_retention_days = parseInt(daysStr || '0', 10);
   if (document.getElementById('cfgRdRetention')) {
-    document.getElementById('cfgRdRetention').value = String(rd_retention_days);
+    /** @type {HTMLSelectElement} */ (document.getElementById('cfgRdRetention')).value = String(rd_retention_days);
   }
   await api('/api/config', {
     method: 'POST',
@@ -323,7 +323,7 @@ async function purgeRdCloud(mode, btn) {
   const orig = btn ? btn.textContent : '';
   const pName = linkedAccounts.debridName || 'votre débrideur';
   if (mode === 'all' && !window.confirm(`Vider tout le Cloud ${pName} ? Tous les fichiers et torrents du compte seront supprimés, sans retour possible.`)) return;
-  if (btn) { btn.disabled = true; btn.textContent = 'Suppression...'; }
+  if (btn) { btn.disabled = true; btn.textContent = KINO_I18N.t('settings.suppression'); }
   try {
     const res = await api('/api/rd-cleanup', {
       method: 'POST',
@@ -345,11 +345,11 @@ async function purgeRdCloud(mode, btn) {
 export async function openTrailerModal(trailerId, title, year = '', lang = 'vf') {
   setCurrentTrailerCtx({trailerId: trailerId || '', title: title || '', year: year || '', lang: lang || 'vf'});
   const modal = document.getElementById('trailerModal');
-  const video = document.getElementById('trailerVideo');
-  const iframe = document.getElementById('trailerIframe');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('trailerVideo'));
+  const iframe = /** @type {HTMLIFrameElement} */ (document.getElementById('trailerIframe'));
   const loading = document.getElementById('trailerLoading');
   const titleEl = document.getElementById('trailerModalTitle');
-  const extLink = document.getElementById('trailerExternalLink');
+  const extLink = /** @type {HTMLAnchorElement} */ (document.getElementById('trailerExternalLink'));
   const btnVf = document.getElementById('trailerBtnVf');
   const btnVo = document.getElementById('trailerBtnVo');
   if (!modal) return;
@@ -398,8 +398,8 @@ function switchTrailerLang(lang) {
 
 export function closeTrailerModal() {
   const modal = document.getElementById('trailerModal');
-  const video = document.getElementById('trailerVideo');
-  const iframe = document.getElementById('trailerIframe');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('trailerVideo'));
+  const iframe = /** @type {HTMLIFrameElement} */ (document.getElementById('trailerIframe'));
   if (video) { video.pause(); video.removeAttribute('src'); video.style.display = 'none'; }
   if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
   if (modal) modal.style.display = 'none';
@@ -434,7 +434,7 @@ export function closeHeaderMenu() {
 
 window.addEventListener('click', (e) => {
   const wrap = document.querySelector('.header-menu-wrap');
-  if (wrap && !wrap.contains(e.target)) {
+  if (wrap && !wrap.contains(/** @type {Node} */ (e.target))) {
     closeHeaderMenu();
   }
 });
@@ -465,24 +465,24 @@ function diagnosticItemHtml(item) {
   const state = DIAGNOSTIC_STATES[item.state] ? item.state : 'warning';
   const advice = item.advice ? html`<span class="diagnostic-advice">${item.advice}</span>` : '';
   const section = /^settings-[a-z]+$/.test(item.section || '') ? item.section : '';
-  const open = section && state !== 'ok' ? html`<button type="button" class="btn btn-secondary" ${act('openSettingsSection', String(section))}>Ouvrir</button>` : '';
+  const open = section && state !== 'ok' ? html`<button type="button" class="btn btn-secondary" ${act('openSettingsSection', String(section))}>${KINO_I18N.t('page.ouvrir')}</button>` : '';
   return html`<li class="diagnostic-item is-${state}"><span class="diagnostic-mark" aria-hidden="true">${DIAGNOSTIC_MARKS[state]}</span><div><strong>${item.label}<span class="diagnostic-state">${DIAGNOSTIC_STATES[state]}</span></strong><span>${item.summary}</span>${advice}</div>${open}</li>`;
 }
 
 function openSettingsSection(id) {
-  const link = document.querySelector(`.settings-index-item[data-settings-target="${id}"]`);
+  const link = /** @type {HTMLElement | null} */ (document.querySelector(`.settings-index-item[data-settings-target="${id}"]`));
   if (link) link.click();
   else document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: 'auto' });
 }
 
 async function runDiagnostic() {
-  const button = document.getElementById('diagnosticRunBtn');
+  const button = /** @type {HTMLButtonElement} */ (document.getElementById('diagnosticRunBtn'));
   const summary = document.getElementById('diagnosticSummary');
   const list = document.getElementById('diagnosticList');
-  const copy = document.getElementById('diagnosticCopyBtn');
-  const report = document.getElementById('diagnosticReport');
-  if (button) { button.disabled = true; button.textContent = 'Vérification…'; }
-  if (summary) summary.textContent = 'Vérification en cours…';
+  const copy = /** @type {HTMLButtonElement} */ (document.getElementById('diagnosticCopyBtn'));
+  const report = /** @type {HTMLTextAreaElement} */ (document.getElementById('diagnosticReport'));
+  if (button) { button.disabled = true; button.textContent = KINO_I18N.t('page.verification'); }
+  if (summary) summary.textContent = KINO_I18N.t('settings.verification_en_cours');
   document.getElementById('diagnosticCopyStatus').textContent = '';
   try {
     const result = await api('/api/diagnostic');
@@ -500,7 +500,7 @@ async function runDiagnostic() {
     if (list) list.hidden = true;
     if (summary) summary.textContent = `Diagnostic impossible : ${error.message}`;
   } finally {
-    if (button) { button.disabled = false; button.textContent = 'Relancer le diagnostic'; }
+    if (button) { button.disabled = false; button.textContent = KINO_I18N.t('settings.relancer_le_diagnostic'); }
   }
 }
 
@@ -510,15 +510,15 @@ async function copyDiagnosticReport() {
   const status = document.getElementById('diagnosticCopyStatus');
   try {
     await navigator.clipboard.writeText(diagnosticReport);
-    status.textContent = 'Rapport copié.';
+    status.textContent = KINO_I18N.t('settings.rapport_copie');
   } catch (error) {
     // No clipboard here: the report is shown selected, ready for ⌘C.
-    const box = document.getElementById('diagnosticReport');
+    const box = /** @type {HTMLTextAreaElement} */ (document.getElementById('diagnosticReport'));
     box.value = diagnosticReport;
     box.hidden = false;
     box.focus();
     box.select();
-    status.textContent = 'Le rapport est sélectionné : appuyez sur ⌘C pour le copier.';
+    status.textContent = KINO_I18N.t('settings.le_rapport_est_selectionne_appuyez_sur_c');
   }
 }
 
@@ -540,7 +540,7 @@ const NOTIFICATION_STATUS = {
 async function testEpisodeNotification(button) {
   const status = document.getElementById('cfgNotificationStatus');
   if (button) button.disabled = true;
-  if (status) status.textContent = 'Envoi…';
+  if (status) status.textContent = KINO_I18N.t('settings.envoi');
   try {
     const result = await api('/api/notifications/test', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}' });
     if (status) status.textContent = NOTIFICATION_STATUS[result.status] || 'Réponse inattendue de macOS.';
@@ -558,7 +558,7 @@ async function openFromNotification(info) {
   if (activeTab !== 'series') await switchTab('series');
   await selectMedia({ id: info.id, name: info.name || '', type: 'series' });
 }
-window.addEventListener('kino-notification', event => openFromNotification(event.detail));
+window.addEventListener('kino-notification', event => openFromNotification(/** @type {CustomEvent} */ (event).detail));
 
 // From the setup notice: straight to the key field.
 function focusDebridKey() {
@@ -572,7 +572,7 @@ export function closeConfig() {
 }
 
 function togglePasswordVisibility(inputId, btn) {
-  const inp = document.getElementById(inputId);
+  const inp = /** @type {HTMLInputElement | null} */ (document.getElementById(inputId));
   if (!inp) return;
   if (inp.type === 'password') {
     inp.type = 'text';
@@ -584,7 +584,7 @@ function togglePasswordVisibility(inputId, btn) {
 }
 
 export async function triggerGdriveSync(btn) {
-  if (btn) { btn.disabled = true; btn.textContent = 'En cours...'; }
+  if (btn) { btn.disabled = true; btn.textContent = KINO_I18N.t('settings.en_cours'); }
   try {
     const res = await api('/api/sync/gdrive');
     const el = document.getElementById('gdriveSyncStatus');
@@ -600,7 +600,7 @@ export async function triggerGdriveSync(btn) {
     const el = document.getElementById('gdriveSyncStatus');
     if (el) render(el, html`<span style="color:#ef4444;">Erreur : ${e.message}</span>`);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Synchroniser'; }
+    if (btn) { btn.disabled = false; btn.textContent = KINO_I18N.t('page.synchroniser'); }
   }
 }
 
@@ -670,7 +670,7 @@ function renderBackups(items = []) {
     return html`<div class="set-row backup-row">
       <div class="set-text"><span class="settings-label">${label}</span><p class="settings-desc">${backupCounts(item.counts)}</p></div>
       <button type="button" class="btn btn-secondary btn-small" data-backup="${item.id}" data-label="${label}"
-        ${act('restoreBackup', THIS)}${item.restorable ? '' : html` disabled title="Sauvegarde d’une version trop différente de KINO"`}>Restaurer</button>
+        ${act('restoreBackup', THIS)}${item.restorable ? '' : html` disabled title="${KINO_I18N.t('settings.sauvegarde_d_une_version_trop_differente')}"`}>${KINO_I18N.t('settings.restaurer')}</button>
     </div>`;
   }));
 }
@@ -706,7 +706,7 @@ async function restoreBackup(btn) {
   try {
     await api('/api/backups/restore', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id }) });
     const status = document.getElementById('backupsStatus');
-    if (status) status.textContent = 'Restauré. KINO se recharge…';
+    if (status) status.textContent = KINO_I18N.t('settings.restaure_kino_se_recharge');
     setTimeout(() => window.location.reload(), 900);
   } catch (e) {
     showSettingsStatus(`Pas restauré : ${e.message}`, 'error');
@@ -724,14 +724,14 @@ export function showTmdbStatus(hasKey, message) {
 }
 
 async function verifyTmdbKey(btn) {
-  const input = document.getElementById('cfgTmdbKey');
+  const input = /** @type {HTMLInputElement} */ (document.getElementById('cfgTmdbKey'));
   const key = (input?.value || '').trim();
   if (!key) {
     showTmdbStatus(false, 'Collez d’abord votre clé d’API TMDB.');
     input?.focus();
     return;
   }
-  if (btn) { btn.disabled = true; btn.textContent = 'Vérification…'; }
+  if (btn) { btn.disabled = true; btn.textContent = KINO_I18N.t('page.verification'); }
   try {
     await api('/api/tmdb/key', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ key }) });
     if (input) input.value = '';
@@ -741,23 +741,23 @@ async function verifyTmdbKey(btn) {
   } catch (e) {
     showTmdbStatus(false, e.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Vérifier'; }
+    if (btn) { btn.disabled = false; btn.textContent = KINO_I18N.t('page.verifier'); }
   }
 }
 
 // Settings → Connexions → Téléviseur: the TVs of the local network (tv_cast.py).
 export async function loadTvDevices(refresh = false, btn = null) {
-  const select = document.getElementById('cfgTvDevice');
+  const select = /** @type {HTMLSelectElement} */ (document.getElementById('cfgTvDevice'));
   const status = document.getElementById('cfgTvStatus');
   if (!select) return;
-  if (btn) { btn.disabled = true; btn.textContent = 'Recherche…'; }
+  if (btn) { btn.disabled = true; btn.textContent = KINO_I18N.t('settings.recherche'); }
   try {
     const res = await api(`/api/tv/devices${refresh ? '?refresh=1' : ''}`);
     const devices = res.devices || [];
     const chosen = (res.chosen && res.chosen.location) || '';
     render(select, devices.length
       ? devices.map(d => html`<option value="${d.location}">${d.name}</option>`)
-      : html`<option value="">Aucune TV trouvée</option>`);
+      : html`<option value="">${KINO_I18N.t('page.aucune_tv_trouvee')}</option>`);
     if (chosen && devices.some(d => d.location === chosen)) select.value = chosen;
     if (status) status.textContent = devices.length
       ? 'Le Mac envoie la vidéo à cette TV : il doit rester allumé pendant le film.'
@@ -765,7 +765,7 @@ export async function loadTvDevices(refresh = false, btn = null) {
   } catch (e) {
     if (status) status.textContent = e.message;
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Rechercher'; }
+    if (btn) { btn.disabled = false; btn.textContent = KINO_I18N.t('page.rechercher'); }
   }
 }
 
@@ -780,13 +780,13 @@ async function chooseTvDevice(location) {
 }
 
 export function toggleDiscordRpcFields() {
-  const chk = document.getElementById('cfgDiscordRpc');
+  const chk = /** @type {HTMLInputElement} */ (document.getElementById('cfgDiscordRpc'));
   const opt = document.getElementById('discordRpcOptions');
   if (opt) opt.hidden = !(chk && chk.checked);
 }
 
 function onDiscordPresetChange() {
-  const p = document.getElementById('cfgDiscordPreset');
+  const p = /** @type {HTMLSelectElement} */ (document.getElementById('cfgDiscordPreset'));
   const box = document.getElementById('cfgDiscordCustomBox');
   if (box && p) {
     box.style.display = (p.value === 'custom') ? 'flex' : 'none';
@@ -831,29 +831,30 @@ function scheduleSettingsSave() {
 
 // From the key field: save the key (and its service), then show what the service says.
 async function verifyDebridKey(btn) {
-  const token = document.getElementById('cfgToken')?.value.trim() || '';
-  const provider = document.getElementById('cfgProvider')?.value || 'realdebrid';
+  const token = /** @type {HTMLInputElement} */ (document.getElementById('cfgToken'))?.value.trim() || '';
+  const provider = /** @type {HTMLSelectElement} */ (document.getElementById('cfgProvider'))?.value || 'realdebrid';
   if (!token && !(configuredProviders && configuredProviders[provider])) {
     showSettingsStatus('Collez d’abord votre clé.', 'error');
     document.getElementById('cfgToken')?.focus();
     return;
   }
-  if (btn) { btn.disabled = true; btn.textContent = 'Vérification…'; }
+  if (btn) { btn.disabled = true; btn.textContent = KINO_I18N.t('page.verification'); }
   try {
     await saveConfig({ withKey: true });
   } catch (e) {
     // The status line already says why.
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Vérifier'; }
+    if (btn) { btn.disabled = false; btn.textContent = KINO_I18N.t('page.verifier'); }
   }
 }
 
 function settingsPayload(withKey) {
-  const value = (id, fallback) => (document.getElementById(id) ? document.getElementById(id).value : fallback);
-  const checked = (id, fallback) => (document.getElementById(id) ? document.getElementById(id).checked : fallback);
+  const field = id => /** @type {HTMLInputElement | null} */ (document.getElementById(id));
+  const value = (id, fallback) => (field(id) ? field(id).value : fallback);
+  const checked = (id, fallback) => (field(id) ? field(id).checked : fallback);
   const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
   const debrid_provider = value('cfgProvider', 'realdebrid');
-  const nativeToggle = document.getElementById('cfgNativePlayer');
+  const nativeToggle = /** @type {HTMLInputElement} */ (document.getElementById('cfgNativePlayer'));
   const payload = {
     download_dir: value('cfgDir', '').trim(),
     player_mode: value('cfgPlayerMode', playerPrefs.playerMode || (isMacPlatform ? 'integrated' : 'kino')),
@@ -870,7 +871,7 @@ function settingsPayload(withKey) {
       ? nativeToggle.checked : undefined,
   };
   let discord_client_id = '1556492442415398973';
-  const presetEl = document.getElementById('cfgDiscordPreset');
+  const presetEl = /** @type {HTMLSelectElement} */ (document.getElementById('cfgDiscordPreset'));
   if (presetEl) {
     discord_client_id = presetEl.value === 'custom'
       ? (value('cfgDiscordClientId', '').trim() || '1556492442415398973')
@@ -897,7 +898,7 @@ function saveConfig(options = {}) {
 
 async function saveConfigNow(withKey) {
   const payload = settingsPayload(withKey);
-  const provider = document.getElementById('cfgProvider')?.value || 'realdebrid';
+  const provider = /** @type {HTMLSelectElement} */ (document.getElementById('cfgProvider'))?.value || 'realdebrid';
   const providerWaits = !withKey && !('debrid_provider' in payload);
   showSettingsStatus('Enregistrement…', 'saving');
   try {
@@ -909,11 +910,11 @@ async function saveConfigNow(withKey) {
     playerPrefs.playerMode = payload.player_mode;
     playerPrefs.hdrMode = payload.hdr_mode;
     playerPrefs.audioMode = payload.audio_mode;
-    if (withKey && document.getElementById('cfgToken')) document.getElementById('cfgToken').value = '';
+    if (withKey && document.getElementById('cfgToken')) /** @type {HTMLInputElement} */ (document.getElementById('cfgToken')).value = '';
     if (!settingsSaveTimer) await checkConfig();
     if (providerWaits && document.getElementById('cfgProvider')) {
       // checkConfig put back the active service: keep the one being set up on screen.
-      document.getElementById('cfgProvider').value = provider;
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgProvider')).value = provider;
       onConfigProviderChange();
       const meta = PROVIDER_META[provider] || PROVIDER_META.realdebrid;
       showSettingsStatus(`Collez votre clé ${meta.name}, puis Vérifier.`, 'info');

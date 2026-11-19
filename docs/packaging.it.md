@@ -56,10 +56,10 @@ node tests/windows-ui/windows_ui.js  # Windows only: the real window, real mouse
 
 ## Traduzioni
 
-L'interfaccia è scritta in francese. `web/js/i18n.js` la traduce durante la visualizzazione con un dizionario per lingua, `web/js/i18n/<lingua>.js`, che associa ogni testo francese alla sua traduzione (`{}` indica una parte variabile). Un testo mancante appare in inglese, o in francese per l'inglese.
+L'interfaccia è scritta in francese. Ogni testo francese ha una chiave: `web/js/i18n/fr.js` fornisce il testo francese di ogni chiave e il dizionario di ogni lingua, `web/js/i18n/<lingua>.js`, la sua traduzione (`{}` indica una parte variabile). `web/js/i18n.js` li usa durante la visualizzazione. Un testo mancante appare in inglese, o in francese per l'inglese. `tests/test_i18n_catalogs.js` verifica che ogni testo del codice abbia la sua chiave e che i dizionari traducano solo chiavi esistenti.
 
 ```bash
-node tools/i18n.js extract          # web/ and crates/ texts -> web/js/i18n/strings.json
+node tools/i18n.js extract          # new texts of web/ and crates/ -> web/js/i18n/fr.js, each with a key
 node tools/i18n.js status           # translated texts, per language
 node tools/i18n.js missing de       # texts German still lacks
 ```

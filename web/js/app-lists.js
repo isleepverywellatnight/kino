@@ -150,7 +150,7 @@ function playCaseTickSound(progress = 0, imdbRating = 0) {
     const pingOsc = ctx.createOscillator();
     const pingGain = ctx.createGain();
     pingOsc.type = 'sine';
-    const ratingVal = parseFloat(imdbRating || '0') || 0;
+    const ratingVal = parseFloat(String(imdbRating || '0')) || 0;
     const ratingBoost = ratingVal >= 8.5 ? 120 : (ratingVal >= 8.0 ? 60 : 0);
     const pingFreq = 380 + (progress * 260) + ratingBoost;
     pingOsc.frequency.setValueAtTime(pingFreq, now);
@@ -200,7 +200,7 @@ function playCaseWinSound(imdbRating = 0) {
     dropOsc.stop(now + 0.44);
 
     // 2. Accord arpégé de révélation
-    const rVal = parseFloat(imdbRating || '0') || 0;
+    const rVal = parseFloat(String(imdbRating || '0')) || 0;
     const notes = rVal >= 8.2
       ? [523.25, 659.25, 783.99, 987.77, 1174.66]
       : [440.0, 554.37, 659.25, 880.0];
@@ -262,7 +262,7 @@ export function restoreCatalogView() {
   if (CATALOG_SORTS.includes(saved.sort)) setCatalogSort(saved.sort);
   const chip = document.getElementById('hideWatchedChip');
   if (chip) chip.classList.toggle('active', hideWatchedInCatalog);
-  const select = document.getElementById('catalogSortSelect');
+  const select = /** @type {HTMLSelectElement} */ (document.getElementById('catalogSortSelect'));
   if (select) select.value = catalogSort;
 }
 
@@ -361,7 +361,7 @@ function resetListFilters() {
     view.state = 'all';
     saveListView();
   }
-  const input = document.getElementById('listFilterInput');
+  const input = /** @type {HTMLInputElement} */ (document.getElementById('listFilterInput'));
   if (input) input.value = '';
   renderActiveListTab();
 }
@@ -412,8 +412,8 @@ export function renderActiveListTab() {
   const rawList = activeListItems();
   if (!rawList) return;
   const view = listView[activeTab];
-  const q = foldSearchText((document.getElementById('listFilterInput')?.value || '').trim());
-  const sortSelect = document.getElementById('listSortSelect');
+  const q = foldSearchText((/** @type {HTMLInputElement} */ (document.getElementById('listFilterInput'))?.value || '').trim());
+  const sortSelect = /** @type {HTMLSelectElement} */ (document.getElementById('listSortSelect'));
   if (sortSelect) {
     sortSelect.value = view.sort;
     const added = sortSelect.querySelector?.('option[value="added"]');
@@ -471,7 +471,7 @@ export function renderActiveListTab() {
 
   if (rawList.length && !filtered.length) {
     const grid = document.getElementById('postersGrid');
-    if (grid) render(grid, html`<div class="library-empty"><h3>Aucun titre ne correspond</h3><p>Changez de filtre ou de recherche.</p><button type="button" class="btn" ${act('resetListFilters')}>Tout afficher</button></div>`);
+    if (grid) render(grid, html`<div class="library-empty"><h3>${KINO_I18N.t('lists.aucun_titre_ne_correspond')}</h3><p>${KINO_I18N.t('lists.changez_de_filtre_ou_de_recherche')}</p><button type="button" class="btn" ${act('resetListFilters')}>${KINO_I18N.t('page.tout_afficher')}</button></div>`);
     return;
   }
   renderPosterCards(filtered, 'movie');
@@ -659,13 +659,13 @@ export async function surpriseMeMedia(poolArg = null) {
   render(winPanel, '');
   if (skipBtn) skipBtn.style.display = 'inline-flex';
   if (kickerEl) {
-    if (poolMode === 'watchlist') kickerEl.textContent = 'TIRAGE · MA LISTE';
-    else if (poolMode === 'watched') kickerEl.textContent = 'TIRAGE · DÉJÀ VUS';
-    else if (poolMode === 'classics') kickerEl.textContent = 'TIRAGE · CLASSIQUES À VOIR DANS SA VIE';
+    if (poolMode === 'watchlist') kickerEl.textContent = KINO_I18N.t('lists.tirage_ma_liste');
+    else if (poolMode === 'watched') kickerEl.textContent = KINO_I18N.t('lists.tirage_deja_vus');
+    else if (poolMode === 'classics') kickerEl.textContent = KINO_I18N.t('lists.tirage_classiques_a_voir_dans_sa_vie');
     else if (poolMode === 'customlist') kickerEl.textContent = `TIRAGE · ${(customListRouletteTitle || 'LISTE LETTERBOXD').toUpperCase()}`;
     else kickerEl.textContent = activeGenre ? `TIRAGE · ${activeGenre.toUpperCase()}` : (fallbackType === 'series' ? 'TIRAGE · SÉRIES' : 'TIRAGE · FILMS');
   }
-  if (titleEl) titleEl.textContent = 'Sélection en cours...';
+  if (titleEl) titleEl.textContent = KINO_I18N.t('lists.selection_en_cours');
 
   modal.style.display = 'flex';
   modal.classList.add('active');
@@ -799,12 +799,12 @@ function finishCaseSpin(skipped = false) {
         </div>
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <button class="btn" ${act('casePlayOneClick', EVENT, THIS)}>Lancer</button>
-        <button class="btn btn-secondary" ${act('caseOpenDetails')}>Fiche &amp; Sources</button>
-        <button class="btn btn-secondary" ${act('caseOpenTrailer')}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>Bande-annonce</button>
-        <button class="btn btn-secondary" id="caseWlBtn" ${act('caseToggleWatchlist', THIS)} title="Ajouter ou retirer ce titre de Ma Liste">${inWl ? '✓ Dans Ma Liste' : '+ Ma Liste'}</button>
-        ${poolMode !== 'watched' ? html`<button class="btn btn-secondary" ${act('caseMarkWatchedAndRespin', THIS)} title="Marquer ce titre comme Déjà vu, le retirer de la roulette et relancer un tirage">✓ Déjà vu</button>` : ''}
-        <button class="btn-surprise" ${act('surpriseMeMedia', String(poolMode || 'catalog'))}>Relancer</button>
+        <button class="btn" ${act('casePlayOneClick', EVENT, THIS)}>${KINO_I18N.t('page.lancer')}</button>
+        <button class="btn btn-secondary" ${act('caseOpenDetails')}>${KINO_I18N.t('lists.fiche_sources')}</button>
+        <button class="btn btn-secondary" ${act('caseOpenTrailer')}><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#trailer"></use></svg>${KINO_I18N.t('page.bande_annonce')}</button>
+        <button class="btn btn-secondary" id="caseWlBtn" ${act('caseToggleWatchlist', THIS)} title="${KINO_I18N.t('lists.ajouter_ou_retirer_ce_titre_de_ma_liste')}">${inWl ? '✓ Dans Ma Liste' : '+ Ma Liste'}</button>
+        ${poolMode !== 'watched' ? html`<button class="btn btn-secondary" ${act('caseMarkWatchedAndRespin', THIS)} title="${KINO_I18N.t('lists.marquer_ce_titre_comme_deja_vu_le')}">${KINO_I18N.t('lists.deja_vu')}</button>` : ''}
+        <button class="btn-surprise" ${act('surpriseMeMedia', String(poolMode || 'catalog'))}>${KINO_I18N.t('lists.relancer')}</button>
       </div>
     `);
     winPanel.style.display = 'flex';
@@ -826,7 +826,7 @@ async function caseMarkWatchedAndRespin(btnEl) {
   if (!m || !m.id) return;
   if (btnEl) {
     btnEl.disabled = true;
-    btnEl.textContent = '✓ Ajouté aux déjà vus...';
+    btnEl.textContent = KINO_I18N.t('lists.ajoute_aux_deja_vus');
   }
   try {
     const res = await api('/api/watched-toggle', {
@@ -855,7 +855,7 @@ async function caseMarkWatchedAndRespin(btnEl) {
   } catch (e) {
     if (btnEl) {
       btnEl.disabled = false;
-      btnEl.textContent = '✓ Déjà vu';
+      btnEl.textContent = KINO_I18N.t('lists.deja_vu');
     }
   }
 }
@@ -925,7 +925,7 @@ function mySeriesItemHtml(item) {
         ${facts.map(fact => html`<span class="myseries-fact">${fact}</span>`)}
         ${item.aired && item.group !== 'start' ? html`<div class="progress-bar" role="img" aria-label="${item.seen} épisodes vus sur ${item.aired}"><div class="progress-fill" style="width:${share}%"></div></div>` : ''}
       </div>
-      <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" ${act('openMySeries', String(id))}>Fiche</button></div>
+      <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" ${act('openMySeries', String(id))}>${KINO_I18N.t('anime.fiche')}</button></div>
     </article>`;
 }
 
@@ -933,7 +933,7 @@ function renderMySeries() {
   const grid = document.getElementById('postersGrid');
   if (!grid || activeTab !== 'myseries') return;
   if (!mySeriesData.length) {
-    render(grid, html`<div class="library-empty"><h3>Aucune série suivie pour l’instant</h3><p>Lancez un épisode, ou ajoutez une série à Ma Liste : elle apparaîtra ici, avec les épisodes qui restent et les prochains à sortir.</p></div>`);
+    render(grid, html`<div class="library-empty"><h3>${KINO_I18N.t('lists.aucune_serie_suivie_pour_l_instant')}</h3><p>${KINO_I18N.t('lists.lancez_un_episode_ou_ajoutez_une_serie_a')}</p></div>`);
     return;
   }
   render(grid, MY_SERIES_GROUPS.map(([group, label]) => {
@@ -946,7 +946,7 @@ function renderMySeries() {
 export async function loadMySeries() {
   const grid = document.getElementById('postersGrid');
   const request = ++mySeriesRequest;
-  if (grid) render(grid, html`<p class="myseries-fact">Chargement de vos séries…</p>`);
+  if (grid) render(grid, html`<p class="myseries-fact">${KINO_I18N.t('lists.chargement_de_vos_series')}</p>`);
   try {
     const data = await api('/api/my-series');
     if (request !== mySeriesRequest) return;
@@ -1049,7 +1049,7 @@ function calendarItemHtml(item, later = false) {
         <strong${titleAttrs(item, 'series')}>${displayTitle(item)}</strong>
         ${facts.filter(Boolean).map(fact => html`<span class="myseries-fact">${fact}</span>`)}
       </div>
-      <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" ${act('openCalendarSeries', String(id))}>Fiche</button></div>
+      <div class="offline-actions">${play}<button type="button" class="btn btn-secondary" ${act('openCalendarSeries', String(id))}>${KINO_I18N.t('anime.fiche')}</button></div>
     </article>`;
 }
 
@@ -1072,13 +1072,13 @@ function renderReleaseCalendar() {
   const data = releaseCalendarData;
   if (!grid || activeTab !== 'calendar' || !data) return;
   if (!data.series) {
-    render(grid, html`<div class="library-empty"><h3>Aucune série suivie pour l’instant</h3><p>Lancez un épisode, ou ajoutez une série à Ma Liste : ses prochaines sorties apparaîtront ici, jour par jour.</p></div>`);
+    render(grid, html`<div class="library-empty"><h3>${KINO_I18N.t('lists.aucune_serie_suivie_pour_l_instant')}</h3><p>${KINO_I18N.t('lists.lancez_un_episode_ou_ajoutez_une_serie_a_2')}</p></div>`);
     return;
   }
   const missing = data.unavailable
     ? html`<p class="myseries-fact calendar-none">${data.unavailable} série${data.unavailable > 1 ? 's' : ''} sans liste d’épisodes pour le moment : le calendrier est incomplet.</p>` : '';
   const later = (data.later || []).length
-    ? html`<h3 class="search-group-title">Plus tard <span class="list-count">${data.later.length}</span></h3>${data.later.map(item => calendarItemHtml(item, true))}` : '';
+    ? html`<h3 class="search-group-title">${KINO_I18N.t('page.plus_tard')} <span class="list-count">${data.later.length}</span></h3>${data.later.map(item => calendarItemHtml(item, true))}` : '';
   render(grid, [missing,
     calendarWeekHtml(data, data.start, 'Cette semaine', 'Rien ne sort cette semaine pour vos séries.'),
     calendarWeekHtml(data, calendarShift(data.start, 7), 'Semaine prochaine', 'Rien ne sort la semaine prochaine pour vos séries.'),
@@ -1088,7 +1088,7 @@ function renderReleaseCalendar() {
 export async function loadReleaseCalendar() {
   const grid = document.getElementById('postersGrid');
   const request = ++releaseCalendarRequest;
-  if (grid) render(grid, html`<p class="myseries-fact">Chargement du calendrier…</p>`);
+  if (grid) render(grid, html`<p class="myseries-fact">${KINO_I18N.t('lists.chargement_du_calendrier')}</p>`);
   try {
     const data = await api('/api/calendar');
     if (request !== releaseCalendarRequest) return;

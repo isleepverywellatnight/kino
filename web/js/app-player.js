@@ -54,7 +54,7 @@ async function windowAction(action) {
 }
 
 export function initResizeHandles() {
-  const handles = document.querySelectorAll('.win-resize-handle');
+  const handles = /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.win-resize-handle'));
   const isWin = /Win/i.test(navigator.platform || navigator.userAgent);
   handles.forEach(h => {
     h.addEventListener('mousedown', async (e) => {
@@ -150,14 +150,14 @@ function updateInAppFsBtnUI() {
   if (!fsBtn) return;
   const isFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
   if (isFs) {
-    fsBtn.title = "Quitter le plein écran (F ou Échap)";
+    fsBtn.title = KINO_I18N.t('player.quitter_le_plein_ecran_f_ou_echap');
     render(fsBtn, html`
       <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
       </svg>
     `);
   } else {
-    fsBtn.title = "Plein écran (F)";
+    fsBtn.title = KINO_I18N.t('page.plein_ecran_f');
     render(fsBtn, html`
       <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
@@ -303,8 +303,8 @@ function inAppSeriesScope(media, title, recovery) {
   const id = isSeries ? String(media.id || '').trim().toLowerCase() : '';
   if (!/^[a-z0-9][a-z0-9:_-]{1,95}$/.test(id)) return { id: '', scope: '' };
   const episodeMatch = String(title || '').match(/\bS(\d{1,3})[ ._-]*E(\d{1,3})\b/i);
-  const season = Number(recovery?.params?.season || episodeMatch?.[1] || media.season || document.getElementById('seasonSelect')?.value || 1);
-  const episode = Number(recovery?.params?.episode || episodeMatch?.[2] || media.episode || document.getElementById('episodeSelect')?.value || 1);
+  const season = Number(recovery?.params?.season || episodeMatch?.[1] || media.season || /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'))?.value || 1);
+  const episode = Number(recovery?.params?.episode || episodeMatch?.[2] || media.episode || /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect'))?.value || 1);
   return { id, scope: `${id}:s${season}:e${episode}` };
 }
 
@@ -316,7 +316,7 @@ function inAppSeriesPreferenceStatus(message) {
 function updateInAppSeriesPreferenceUI() {
   const button = document.getElementById('inAppSeriesPreferenceBtn');
   if (button) button.style.display = inAppSeriesId ? 'inline-flex' : 'none';
-  const reset = document.getElementById('inAppSeriesPreferenceReset');
+  const reset = /** @type {HTMLButtonElement} */ (document.getElementById('inAppSeriesPreferenceReset'));
   if (reset) reset.disabled = !inAppSeriesPreference;
   const audio = inAppAudioTracks.find(track => track.index === inAppSelectedAudioIndex);
   const subtitle = inAppAvailableSubs[inAppActiveSubIdx];
@@ -328,12 +328,12 @@ function openInAppSeriesPreference() {
   if (!inAppSeriesId) return;
   updateInAppSeriesPreferenceUI();
   inAppSeriesPreferenceStatus(inAppSeriesPreference ? 'Réglages mémorisés pour cette série.' : 'Cette série utilise les réglages généraux.');
-  const dialog = document.getElementById('inAppSeriesPreferenceDialog');
+  const dialog = /** @type {HTMLDialogElement} */ (document.getElementById('inAppSeriesPreferenceDialog'));
   if (dialog && !dialog.open) dialog.showModal();
 }
 
 function closeInAppSeriesPreference() {
-  document.getElementById('inAppSeriesPreferenceDialog')?.close();
+  /** @type {HTMLDialogElement} */ (document.getElementById('inAppSeriesPreferenceDialog'))?.close();
   resetInAppIdleTimer();
 }
 
@@ -507,7 +507,7 @@ function setInAppMediaSource(video, url, onFailure) {
       const buffer = mediaSource.addSourceBuffer('video/mp4');
       const response = await fetch(url, { signal: controller.signal });
       if (!response.ok || !response.body) {
-        const error = new Error('Stream unavailable');
+        const error = /** @type {Error & { status?: number }} */ (new Error('Stream unavailable'));
         error.status = response.status;
         throw error;
       }
@@ -611,7 +611,7 @@ function renderInAppAudioTracks(tracks, selectedIndex) {
 }
 
 export function changeInAppAudioTrack(value, rememberForSession = true) {
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   const track = inAppAudioTracks.find(item => String(item.index) === String(value));
   if (!video || !track || !inAppCurrentUrl) return;
   const wasPlaying = !video.paused;
@@ -628,7 +628,7 @@ export function changeInAppAudioTrack(value, rememberForSession = true) {
 }
 
 export function inAppSeekTo(seconds) {
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!video) return;
   const total = inAppDuration(video);
   const target = Math.max(0, total > 0 ? Math.min(total, seconds) : seconds);
@@ -660,7 +660,7 @@ export function resetInAppIdleTimer() {
   overlay.classList.remove('idle');
   clearTimeout(inAppIdleTimeout);
   inAppIdleTimeout = setTimeout(() => {
-    const video = document.getElementById('inAppVideo');
+    const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
     if (video && !video.paused && !inAppIsDraggingVol && !isInAppMoreMenuOpen()) {
       overlay.classList.add('idle');
     }
@@ -704,7 +704,7 @@ export function closeInAppMoreMenu(returnFocus) {
 // « Sur la TV »: the TV goes on from this moment, the Mac stops.
 async function sendInAppPlaybackToTv() {
   closeInAppMoreMenu(false);
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   const position = Math.floor(inAppAbsoluteTime(video));
   const base = inAppCurrentMedia || {};
   const code = /S(\d{1,3})E(\d{1,4})/i.exec(`${inAppCurrentFilename || ''} ${inAppCurrentTitle || ''}`);
@@ -736,7 +736,7 @@ export function handleInAppMenuKey(event) {
   if (!menu || menu.hidden || !menu.contains(document.activeElement)) return false;
   if (event.key === ' ' || event.key === 'Enter') return true;
   const items = inAppMenuItems();
-  const index = items.indexOf(document.activeElement);
+  const index = items.indexOf(/** @type {HTMLButtonElement} */ (document.activeElement));
   let next = -1;
   if (event.key === 'ArrowDown') next = (index + 1) % items.length;
   else if (event.key === 'ArrowUp') next = (index - 1 + items.length) % items.length;
@@ -754,11 +754,11 @@ export function initInAppMoreMenu() {
   // Settings that cycle (voix, clarté, vitesse, taille) keep the menu open;
   // an action that opens something else closes it.
   menu.addEventListener('click', event => {
-    const item = event.target.closest?.('button');
+    const item = /** @type {Element} */ (event.target).closest?.('button');
     if (item && !item.dataset.name) closeInAppMoreMenu(false);
   });
   document.addEventListener('pointerdown', event => {
-    if (isInAppMoreMenuOpen() && !event.target.closest?.('.kp-more')) closeInAppMoreMenu(false);
+    if (isInAppMoreMenuOpen() && !/** @type {Element} */ (event.target).closest?.('.kp-more')) closeInAppMoreMenu(false);
   });
 }
 
@@ -794,7 +794,7 @@ function updatePlayPauseBtn(isPlaying) {
 }
 
 export function setInAppVolume(vol, unmute = true) {
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!video) return;
   const clamped = Math.max(0, Math.min(1, vol));
   video.volume = clamped;
@@ -810,7 +810,7 @@ export function setInAppVolume(vol, unmute = true) {
 }
 
 function updateInAppVolUI() {
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!video) return;
   const fill = document.getElementById('inAppVolFill');
   const txt = document.getElementById('inAppVolText');
@@ -833,7 +833,7 @@ function updateInAppVolUI() {
 }
 
 export function toggleInAppMute() {
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!video) return;
   if (video.muted) {
     video.muted = false;
@@ -851,7 +851,7 @@ export function toggleInAppMute() {
 }
 
 export function fixInAppAudio() {
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!video || !inAppCurrentUrl) return;
   const curSec = Math.floor(inAppAbsoluteTime(video));
   inAppNeedsAudioConversion = true;
@@ -865,7 +865,7 @@ export function fixInAppAudio() {
   video.play().catch(() => {});
   updateInAppVolUI();
   const btn = document.getElementById('inAppAudioFixBtn');
-  if (btn) btn.textContent = 'Son AAC demandé';
+  if (btn) btn.textContent = KINO_I18N.t('player.son_aac_demande');
 }
 
 function handleVolScrub(e) {
@@ -899,7 +899,7 @@ function onVolMouseDown(e) {
 }
 
 function inAppWheelVolume(delta) {
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!video) return;
   const step = delta > 0 ? -0.05 : 0.05;
   setInAppVolume(video.volume + step, true);
@@ -952,7 +952,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
   const subOverlay = document.getElementById('inAppSubOverlay');
   if (subOverlay) { subOverlay.style.display = 'none'; render(subOverlay, ''); }
   const btn = document.getElementById('inAppSubsBtn');
-  if (btn) { btn.textContent = 'CC : Off'; btn.style.borderColor = ''; }
+  if (btn) { btn.textContent = KINO_I18N.t('page.cc_off'); btn.style.borderColor = ''; }
 
   if (!inAppCurrentMedia || !inAppCurrentMedia.id) return;
   if (inAppCurrentMedia.offline_id) {
@@ -972,8 +972,8 @@ async function loadInAppSubtitlesForCurrentMedia() {
     updateInAppSeriesPreferenceUI();
     return;
   }
-  const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : 1);
-  const e = inAppCurrentMedia.episode || (document.getElementById('episodeSelect') ? parseInt(document.getElementById('episodeSelect').value) : 1);
+  const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value) : 1);
+  const e = inAppCurrentMedia.episode || (document.getElementById('episodeSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value) : 1);
   const mtype = inAppCurrentMedia.type || 'movie';
   try {
     // The played file name lets KINO prefer subtitles timed for this release.
@@ -1033,7 +1033,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
 export async function cycleInAppSubtitles() {
   resetInAppIdleTimer();
   if (inAppAvailableSubs.length <= 1) {
-    showInAppToast(html`<strong>Sous-titres</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucun sous-titre OpenSubtitles trouvé pour ce titre</span>`, 1800);
+    showInAppToast(html`<strong>${KINO_I18N.t('page.sous_titres')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.aucun_sous_titre_opensubtitles_trouve')}</span>`, 1800);
     return;
   }
   await activateInAppSubtitle((inAppActiveSubIdx + 1) % inAppAvailableSubs.length, true);
@@ -1091,7 +1091,7 @@ async function activateInAppSubtitle(index, rememberForSession = true) {
   } catch (err) {
     if (generation !== inAppPlaybackGeneration || inAppActiveSubIdx !== index) return;
     inAppActiveSubIdx = 0;
-    if (btn) { btn.textContent = 'CC : Off'; btn.style.borderColor = ''; }
+    if (btn) { btn.textContent = KINO_I18N.t('page.cc_off'); btn.style.borderColor = ''; }
     if (subOverlay) { subOverlay.style.display = 'none'; render(subOverlay, ''); }
     showInAppToast('Sous-titres indisponibles pour ce fichier. Essayez une autre piste avec CC.', 5000);
   }
@@ -1162,13 +1162,13 @@ function applyInAppAudioUI(mode, showToast = false) {
     btn.textContent = isBoost ? 'Boost' : 'Normal';
     btn.style.borderColor = isBoost ? '#fafafa' : '';
   }
-  const sel = document.getElementById('cfgAudioMode');
+  const sel = /** @type {HTMLSelectElement} */ (document.getElementById('cfgAudioMode'));
   if (sel) sel.value = playerPrefs.audioMode;
   if (showToast) {
     showInAppToast(
       isBoost
-        ? html`<strong>Boost Voix / Audio Nuit activé</strong><br><span style="font-size:0.78rem; color:var(--muted);">Dialogues rehaussés & explosions adoucies (normalisation dynamique)</span>`
-        : html`<strong>Audio : Standard</strong><br><span style="font-size:0.78rem; color:var(--muted);">Plage dynamique cinéma originale sans compression</span>`,
+        ? html`<strong>${KINO_I18N.t('player.boost_voix_audio_nuit_active')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.dialogues_rehausses_explosions_adoucies')}</span>`
+        : html`<strong>${KINO_I18N.t('player.audio_standard')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.plage_dynamique_cinema_originale_sans')}</span>`,
       1900
     );
   }
@@ -1194,12 +1194,12 @@ let inAppNextEpCancelled = false;
 function applyInAppSpeed(idx, showToast = false) {
   inAppSpeedIdx = ((idx % INAPP_SPEED_PRESETS.length) + INAPP_SPEED_PRESETS.length) % INAPP_SPEED_PRESETS.length;
   const spd = INAPP_SPEED_PRESETS[inAppSpeedIdx];
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   const btn = document.getElementById('inAppSpeedBtn');
   if (video) {
     video.playbackRate = spd;
     if ('preservesPitch' in video) video.preservesPitch = true;
-    else if ('webkitPreservesPitch' in video) video.webkitPreservesPitch = true;
+    else if ('webkitPreservesPitch' in video) /** @type {HTMLVideoElement} */ (video).webkitPreservesPitch = true;
   }
   if (btn) {
     btn.textContent = `${spd}x`;
@@ -1217,9 +1217,9 @@ export function cycleInAppSpeed(step = 1) {
 
 async function captureInAppScreenshot() {
   resetInAppIdleTimer();
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!video || !video.videoWidth || !video.videoHeight) {
-    showInAppToast(html`<strong>Capture impossible</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucune image vidéo active</span>`, 1600);
+    showInAppToast(html`<strong>${KINO_I18N.t('player.capture_impossible')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.aucune_image_video_active')}</span>`, 1600);
     return;
   }
   try {
@@ -1240,10 +1240,10 @@ async function captureInAppScreenshot() {
       })
     });
     if (res && res.filename) {
-      showInAppToast(html`<strong>Capture enregistrée</strong><br><span style="font-size:0.78rem; color:var(--muted);">${res.filename}</span>`, 2200);
+      showInAppToast(html`<strong>${KINO_I18N.t('player.capture_enregistree')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${res.filename}</span>`, 2200);
     }
   } catch (e) {
-    showInAppToast(html`<strong>Capture protégée (CORS)</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez Shift+Cmd+4 / Win+Shift+S ou le Moteur KINO</span>`, 2200);
+    showInAppToast(html`<strong>${KINO_I18N.t('player.capture_protegee_cors')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.utilisez_shift_cmd_4_win_shift_s_ou_le')}</span>`, 2200);
   }
 }
 
@@ -1254,8 +1254,8 @@ async function loadInAppIntroData(streamUrl, media) {
   const isSeriesOrAnime = Boolean((media.type === 'series' || media.type === 'anime') || (inAppPlaylist && inAppPlaylist.length > 1));
   if (!isSeriesOrAnime) return;
 
-  const s = media.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : 1);
-  const e = media.episode || (document.getElementById('episodeSelect') ? parseInt(document.getElementById('episodeSelect').value) : 1);
+  const s = media.season || (document.getElementById('seasonSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value) : 1);
+  const e = media.episode || (document.getElementById('episodeSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value) : 1);
   const title = media.name || media.title || inAppCurrentTitle || '';
   const mtype = media.type || 'series';
   const imdbId = media.id || '';
@@ -1351,7 +1351,7 @@ function cancelNextEpAuto() {
 // --- Mode Picture-in-Picture (PiP — Fenêtre flottante macOS) ---
 export async function toggleInAppPiP() {
   resetInAppIdleTimer();
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   const btn = document.getElementById('inAppPipBtn');
   if (!video) return;
   try {
@@ -1359,7 +1359,7 @@ export async function toggleInAppPiP() {
       const nextMode = video.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture';
       video.webkitSetPresentationMode(nextMode);
       if (btn) btn.style.borderColor = nextMode === 'picture-in-picture' ? '#fafafa' : '';
-      showInAppToast(nextMode === 'picture-in-picture' ? html`<strong>⧉ Picture-in-Picture activé</strong>` : html`<strong>⧉ Retour à la fenêtre KINO</strong>`, 1400);
+      showInAppToast(nextMode === 'picture-in-picture' ? html`<strong>${KINO_I18N.t('player.picture_in_picture_active')}</strong>` : html`<strong>${KINO_I18N.t('player.retour_a_la_fenetre_kino')}</strong>`, 1400);
       return;
     }
     if (document.pictureInPictureElement) {
@@ -1368,16 +1368,16 @@ export async function toggleInAppPiP() {
     } else if (video.requestPictureInPicture) {
       await video.requestPictureInPicture();
       if (btn) btn.style.borderColor = '#fafafa';
-      showInAppToast(html`<strong>⧉ Picture-in-Picture activé</strong>`, 1400);
+      showInAppToast(html`<strong>${KINO_I18N.t('player.picture_in_picture_active')}</strong>`, 1400);
     }
   } catch (e) {
-    showInAppToast(html`<strong>⧉ PiP indisponible sur ce flux</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez « Moteur KINO » pour le mode flottant natif</span>`, 1800);
+    showInAppToast(html`<strong>${KINO_I18N.t('player.pip_indisponible_sur_ce_flux')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.utilisez_moteur_kino_pour_le_mode')}</span>`, 1800);
   }
 }
 
 export async function openInAppPlayer(streamUrl, title, playlist = null, media = null, resumeSec = 0, releaseName = '', recovery = null) {
   const overlay = document.getElementById('inAppPlayerOverlay');
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   const titleEl = document.getElementById('inAppTitle');
 
   clearTimeout(inAppFallbackTimer);
@@ -1541,7 +1541,7 @@ export async function openInAppPlayer(streamUrl, title, playlist = null, media =
       video._userMuted = true;
     }
   } catch(e) {}
-  video.volume = (savedVol !== null && !isNaN(savedVol) && parseFloat(savedVol) > 0) ? Math.max(0.05, parseFloat(savedVol)) : 1.0;
+  video.volume = (savedVol !== null && !isNaN(Number(savedVol)) && parseFloat(savedVol) > 0) ? Math.max(0.05, parseFloat(savedVol)) : 1.0;
 
   applyInAppAudioUI(playerPrefs.audioMode || 'voice_boost', false);
   applyInAppSpeed(1, false);
@@ -1568,8 +1568,8 @@ export async function openInAppPlayer(streamUrl, title, playlist = null, media =
       video.currentTime = resumeSec;
     }
     if (inAppCurrentMedia && inAppCurrentMedia.id) {
-      const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : null);
-      const e = inAppCurrentMedia.episode || (document.getElementById('episodeSelect') ? parseInt(document.getElementById('episodeSelect').value) : null);
+      const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value) : null);
+      const e = inAppCurrentMedia.episode || (document.getElementById('episodeSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value) : null);
       api('/api/history-record', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ media: {
@@ -1592,7 +1592,7 @@ export async function openInAppPlayer(streamUrl, title, playlist = null, media =
       return;
     }
     if (!inAppIsRemux) {
-      showInAppToast(html`Format conteneur MKV/Audio non natif.<br><strong>Remuxing vidéo/audio instantané...</strong>`, 2200);
+      showInAppToast(html`Format conteneur MKV/Audio non natif.<br><strong>${KINO_I18N.t('player.remuxing_video_audio_instantane')}</strong>`, 2200);
       video.removeEventListener('playing', video._onPlayingHandler || (() => {}));
       video.removeEventListener('error', video._onErrorHandler || (() => {}));
       const remuxPlaying = () => {
@@ -1651,7 +1651,7 @@ export async function openInAppPlayer(streamUrl, title, playlist = null, media =
         video.muted = true;
         updateInAppVolUI();
         video.play().then(() => {
-          showInAppToast(html`<strong>Cliquez sur l'écran ou appuyez sur M pour activer le son</strong>`, 3500);
+          showInAppToast(html`<strong>${KINO_I18N.t('player.cliquez_sur_l_ecran_ou_appuyez_sur_m')}</strong>`, 3500);
         }).catch(() => {});
       } else if (video.error || video.readyState === 0) {
         onFallbackRequired('play_reject');
@@ -1689,7 +1689,7 @@ export function closeInAppPlayer() {
   clearTimeout(inAppFallbackTimer);
   exitInAppFullscreen();
   const overlay = document.getElementById('inAppPlayerOverlay');
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   const subOverlay = document.getElementById('inAppSubOverlay');
   if (subOverlay) { subOverlay.style.display = 'none'; render(subOverlay, ''); }
   const skipCard = document.getElementById('inAppSkipIntroCard');
@@ -1749,7 +1749,7 @@ export function closeInAppPlayer() {
 }
 
 export function toggleInAppPlay() {
-  const video = document.getElementById('inAppVideo');
+  const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!video) return;
   if (video.paused) {
     video.play().then(() => updatePlayPauseBtn(true)).catch(() => {});
@@ -1956,7 +1956,7 @@ export async function switchToExternalPlayer() {
   }
 }
 
-const inAppVideoEl = document.getElementById('inAppVideo');
+const inAppVideoEl = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
 const inAppOverlayEl = document.getElementById('inAppPlayerOverlay');
 const inAppPlayPauseBtnEl = document.getElementById('inAppPlayPauseBtn');
 const inAppSeekFillEl = document.getElementById('inAppSeekFill');
@@ -2078,8 +2078,8 @@ if (inAppVideoEl) {
       const now = Date.now();
       if (inAppCurrentMedia && inAppCurrentMedia.id && now - inAppLastSaveTime > 10000 && curT > 5) {
         inAppLastSaveTime = now;
-        const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : null);
-        const e = inAppCurrentMedia.episode || (document.getElementById('episodeSelect') ? parseInt(document.getElementById('episodeSelect').value) : null);
+        const s = inAppCurrentMedia.season || (document.getElementById('seasonSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value) : null);
+        const e = inAppCurrentMedia.episode || (document.getElementById('episodeSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value) : null);
         api('/api/history-record', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},

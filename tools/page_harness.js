@@ -145,8 +145,12 @@ async function loadPage(answer = () => ({})) {
     addEventListener() {}, removeEventListener() {},
     activeElement: null, fullscreenElement: null, visibilityState: 'visible', hidden: false,
     exitFullscreen: () => Promise.resolve(),
-    // web/js/i18n.js writes its dictionary's script tag: the page stays in French here.
-    write() {},
+    // web/js/i18n.js writes its dictionaries' script tags: the page stays in French
+    // here, with the French texts of the keys (fr.js), run as the page would.
+    write(markup) {
+      const file = /src="\/js\/i18n\/(fr)\.js"/.exec(markup)?.[1];
+      if (file) vm.runInContext(fs.readFileSync(path.join(ROOT, 'web', 'js', 'i18n', `${file}.js`), 'utf8'), context, { filename: `i18n/${file}.js` });
+    },
   };
   const observer = class { observe() {} unobserve() {} disconnect() {} takeRecords() { return []; } };
   const context = {

@@ -56,10 +56,10 @@ node tests/windows-ui/windows_ui.js  # Windows only: the real window, real mouse
 
 ## 翻译
 
-界面原文为法语。`web/js/i18n.js` 在显示时进行翻译，每种语言一个词典 `web/js/i18n/<语言>.js`，将每段法语文本对应到译文（`{}` 表示可变部分）。缺失的文本显示为英语，英语缺失时显示法语。
+界面原文为法语。每段法语文本都有一个键：`web/js/i18n/fr.js` 给出每个键的法语文本，各语言的词典 `web/js/i18n/<语言>.js` 给出其译文（`{}` 表示可变部分）。`web/js/i18n.js` 在显示时使用它们。缺失的文本显示为英语，英语缺失时显示法语。`tests/test_i18n_catalogs.js` 检查代码中的每段文本都有键，且词典只翻译已存在的键。
 
 ```bash
-node tools/i18n.js extract          # web/ and crates/ texts -> web/js/i18n/strings.json
+node tools/i18n.js extract          # new texts of web/ and crates/ -> web/js/i18n/fr.js, each with a key
 node tools/i18n.js status           # translated texts, per language
 node tools/i18n.js missing de       # texts German still lacks
 ```

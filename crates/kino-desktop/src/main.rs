@@ -551,6 +551,7 @@ fn self_check() -> Result<Value, String> {
         "js/playback-help.js",
         "js/vendor/peerjs.min.js",
         "js/i18n.js",
+        "js/i18n/fr.js",
         "js/i18n/en.js",
     ] {
         if !web.join(file).is_file() {

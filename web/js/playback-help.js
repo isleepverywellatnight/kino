@@ -14,14 +14,14 @@ function playbackHelpStatus(message) {
 }
 
 function openPlaybackHelp() {
-  const dialog = document.getElementById('playbackHelp');
+  const dialog = /** @type {HTMLDialogElement} */ (document.getElementById('playbackHelp'));
   if (!dialog.open) dialog.showModal();
-  document.getElementById('playbackHelpRetry').disabled = !inAppRecovery;
+  /** @type {HTMLButtonElement} */ (document.getElementById('playbackHelpRetry')).disabled = !inAppRecovery;
   showPlaybackHelp('no_audio');
 }
 
 export function closePlaybackHelp() {
-  document.getElementById('playbackHelp')?.close();
+  /** @type {HTMLDialogElement} */ (document.getElementById('playbackHelp'))?.close();
   resetInAppIdleTimer();
 }
 
@@ -29,7 +29,7 @@ function showPlaybackHelp(kind) {
   const host = document.getElementById('playbackHelpActions');
   host.replaceChildren();
   playbackHelpStatus('');
-  document.querySelectorAll('[data-help-kind]').forEach(button => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-help-kind]')).forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.helpKind === kind));
   });
   const explain = text => { const p = document.createElement('p'); p.textContent = text; host.append(p); };
@@ -46,7 +46,7 @@ function showPlaybackHelp(kind) {
       playbackHelpStatus('Son réactivé à 70 %. Vérifiez aussi le volume et la sortie audio de macOS.');
     });
     if (inAppAudioTracks.length) {
-      const label = document.createElement('label'); label.textContent = 'Piste audio ';
+      const label = document.createElement('label'); label.textContent = KINO_I18N.t('page.piste_audio');
       const select = document.createElement('select'); select.className = 'inapp-btn';
       inAppAudioTracks.forEach((track, index) => {
         const option = document.createElement('option'); option.value = track.index;
@@ -90,7 +90,7 @@ async function replacePlaybackSource(reason) {
     if (recovery !== inAppRecovery || generation !== inAppPlaybackGeneration) return;
     recovery.feedbackRecorded = true;
     recovery.resetPosition = reason === 'wrong_content';
-    if (recovery.resetPosition) document.getElementById('inAppVideo').pause();
+    if (recovery.resetPosition) /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo')).pause();
     closePlaybackHelp();
     await recoverInAppSource(generation);
   } catch (_) {

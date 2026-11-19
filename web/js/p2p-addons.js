@@ -19,16 +19,16 @@ let p2pConsentAnswer = null;
 
 // Resolves true once the user agreed (and KINO saved it), false otherwise.
 export function askP2PConsent() {
-  const dialog = document.getElementById('p2pConsent');
+  const dialog = /** @type {HTMLDialogElement} */ (document.getElementById('p2pConsent'));
   if (!dialog) return Promise.resolve(false);
-  const upload = document.getElementById('p2pConsentUpload');
+  const upload = /** @type {HTMLSelectElement} */ (document.getElementById('p2pConsentUpload'));
   if (upload) upload.value = p2pState.upload || 'minimum';
   if (typeof dialog.showModal === 'function' && !dialog.open) dialog.showModal();
   return new Promise(resolve => { p2pConsentAnswer = resolve; });
 }
 
 async function answerP2PConsent(accepted) {
-  const dialog = document.getElementById('p2pConsent');
+  const dialog = /** @type {HTMLDialogElement} */ (document.getElementById('p2pConsent'));
   const resolve = p2pConsentAnswer;
   p2pConsentAnswer = null;
   if (dialog?.open) dialog.close();
@@ -38,7 +38,7 @@ async function answerP2PConsent(accepted) {
     return;
   }
   try {
-    const upload = document.getElementById('p2pConsentUpload')?.value || 'minimum';
+    const upload = /** @type {HTMLSelectElement} */ (document.getElementById('p2pConsentUpload'))?.value || 'minimum';
     p2pState = await api('/api/p2p/consent', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accept: true, upload }) });
   } catch (error) {
@@ -66,7 +66,7 @@ export async function loadSourcesSettings() {
 }
 
 function renderP2PSettings() {
-  const toggle = document.getElementById('cfgP2P');
+  const toggle = /** @type {HTMLInputElement} */ (document.getElementById('cfgP2P'));
   const status = document.getElementById('cfgP2PStatus');
   if (toggle) {
     toggle.checked = Boolean(p2pState.accepted);
@@ -76,19 +76,19 @@ function renderP2PSettings() {
   const fields = { cfgP2PUpload: p2pState.upload || 'minimum', cfgP2PDownload: p2pState.download || 'none',
     cfgP2PPort: p2pState.port ? String(p2pState.port) : '' };
   for (const [id, value] of Object.entries(fields)) {
-    const field = document.getElementById(id);
+    const field = /** @type {HTMLInputElement | HTMLSelectElement | null} */ (document.getElementById(id));
     if (field) {
       field.value = value;
       field.disabled = !p2pState.available;
     }
   }
-  const encrypted = document.getElementById('cfgP2PEncrypted');
+  const encrypted = /** @type {HTMLInputElement} */ (document.getElementById('cfgP2PEncrypted'));
   if (encrypted) {
     encrypted.checked = Boolean(p2pState.encrypted);
     encrypted.disabled = !p2pState.available;
   }
   const cache = document.getElementById('cfgP2PCache');
-  const clear = document.getElementById('cfgP2PClear');
+  const clear = /** @type {HTMLButtonElement} */ (document.getElementById('cfgP2PClear'));
   const bytes = Number(p2pState.cache_bytes) || 0;
   if (cache) {
     cache.textContent = bytes > 0 ? `${offlineSize(bytes)} sur cet ordinateur. KINO garde les deux derniers torrents lus et efface le reste au démarrage.`
@@ -153,7 +153,7 @@ function stremioAddonHtml(addon) {
         <span>${[offers, addon.version ? `v${addon.version}` : ''].filter(Boolean).join(' · ')}</span>
       </div>
       <label class="k-switch" title="${addon.enabled ? 'Désactiver cet addon' : 'Activer cet addon'}"><input type="checkbox" role="switch" aria-label="${addon.name} actif"${addon.enabled ? ' checked' : ''} ${actOn('change', 'toggleStremioAddon', addon.id, CHECKED)}><span aria-hidden="true"></span></label>
-      <button type="button" class="btn btn-secondary btn-small" ${act('removeStremioAddon', addon.id)} aria-label="Retirer ${addon.name}">Retirer</button>
+      <button type="button" class="btn btn-secondary btn-small" ${act('removeStremioAddon', addon.id)} aria-label="Retirer ${addon.name}">${KINO_I18N.t('page.retirer')}</button>
     </li>`;
 }
 
@@ -161,7 +161,7 @@ function renderStremioAddons() {
   const list = document.getElementById('stremioAddonList');
   if (!list) return;
   render(list, stremioAddons.length ? stremioAddons.map(stremioAddonHtml)
-    : html`<li class="addon-empty">Aucun addon pour l’instant. Collez l’adresse d’un addon : elle finit par manifest.json.</li>`);
+    : html`<li class="addon-empty">${KINO_I18N.t('p2p.aucun_addon_pour_l_instant_collez_l')}</li>`);
 }
 
 async function changeStremioAddons(payload) {
@@ -174,8 +174,8 @@ async function changeStremioAddons(payload) {
 
 async function addStremioAddon(event) {
   if (event) event.preventDefault();
-  const input = document.getElementById('stremioAddonUrl');
-  const button = document.getElementById('stremioAddonAdd');
+  const input = /** @type {HTMLInputElement} */ (document.getElementById('stremioAddonUrl'));
+  const button = /** @type {HTMLButtonElement} */ (document.getElementById('stremioAddonAdd'));
   const url = input?.value.trim();
   if (!url) return;
   if (button) button.disabled = true;
@@ -223,7 +223,7 @@ export async function renderAddonCatalogs() {
           <div class="list-shelf-meta">${catalog.addon_name} · ${catalog.type === 'series' ? 'Séries' : 'Films'}</div>
         </div>
       </div>
-      <div class="list-shelf-row" data-addon-catalog="${index}"><p class="list-shelf-empty">Chargement…</p></div>
+      <div class="list-shelf-row" data-addon-catalog="${index}"><p class="list-shelf-empty">${KINO_I18N.t('anime.chargement')}</p></div>
     </section>`));
   await Promise.all(stremioCatalogs.map(async (catalog, index) => {
     const row = box.querySelector(`[data-addon-catalog="${index}"]`);
@@ -231,9 +231,9 @@ export async function renderAddonCatalogs() {
       const data = await api(`/api/stremio-addons/catalog?addon=${encodeURIComponent(catalog.addon)}&type=${encodeURIComponent(catalog.type)}&id=${encodeURIComponent(catalog.id)}`);
       const items = data?.items || [];
       if (row) render(row, items.length ? items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, catalog.type))
-        : html`<p class="list-shelf-empty">Ce catalogue est vide.</p>`);
+        : html`<p class="list-shelf-empty">${KINO_I18N.t('p2p.ce_catalogue_est_vide')}</p>`);
     } catch (error) {
-      if (row) render(row, html`<p class="list-shelf-empty">Ce catalogue ne répond pas pour le moment.</p>`);
+      if (row) render(row, html`<p class="list-shelf-empty">${KINO_I18N.t('p2p.ce_catalogue_ne_repond_pas_pour_le')}</p>`);
     }
   }));
 }
