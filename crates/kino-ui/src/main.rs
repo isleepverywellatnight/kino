@@ -481,7 +481,7 @@ impl Render for Player {
                             .py_1()
                             .rounded_md()
                             .bg(gpui::rgba(0x000000b0))
-                            .child("Mire de test KINO"),
+                            .child("KINO test pattern"),
                     )
                     .child(self.controls(cx)),
             )
