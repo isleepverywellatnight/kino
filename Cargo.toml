@@ -1,5 +1,7 @@
 [workspace]
 members = ["crates/kino", "crates/kino-desktop"]
+# The native interface (gpui) has its own workspace during phase G0 (crates/kino-ui/Cargo.toml).
+exclude = ["crates/kino-ui"]
 resolver = "2"
 
 # KINO's version: the app, its bundle, its updates and its releases.
