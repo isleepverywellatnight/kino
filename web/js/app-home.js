@@ -632,3 +632,8 @@ function ensureHeroFrenchDescription(item) {
     .finally(() => heroFrenchRequests.delete(item.id));
 }
 
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  clearAllHistory, notForMe, onChangeCatalogSort, removeHistoryItem, scrollGenres, selectGenre,
+  selectGenreBadge, setHeroSpotlightIdx,
+});

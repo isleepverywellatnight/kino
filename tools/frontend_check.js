@@ -164,6 +164,37 @@ function handlerCalls(texts) {
   return calls;
 }
 
+// The actions that run other actions by name: their string arguments are names too.
+const WRAPPERS = new Set(['kinoMenuAction', 'kinoOnBackdrop', 'kinoOnEnter', 'kinoSubmit']);
+
+// The names given to registerActions({ switchTab, kinoRemove(element) {…}, 'A.b': … }):
+// the keys of its object at the top level of the braces.
+function registeredActions(sources) {
+  const names = new Set();
+  for (const src of sources) {
+    for (const m of src.matchAll(/\bregisterActions\(\{/g)) {
+      let depth = 1;
+      let i = m.index + m[0].length;
+      let atKey = true;
+      while (i < src.length && depth > 0) {
+        const rest = src.slice(i);
+        const ch = src[i];
+        if (depth === 1 && atKey) {
+          const key = /^\s*(?:'([^']+)'|([A-Za-z_$][\w$]*))\s*(?=[,:(}])/.exec(rest);
+          if (key) { names.add(key[1] || key[2]); i += key[0].length; atKey = false; continue; }
+        }
+        if (ch === '/' && src[i + 1] === '/') { i = src.indexOf('\n', i); if (i < 0) break; continue; }
+        if (ch === '\'' || ch === '"' || ch === '`') { i = src.indexOf(ch, i + 1) + 1; continue; }
+        if ('({['.includes(ch)) depth++;
+        else if (')}]'.includes(ch)) depth--;
+        else if (ch === ',' && depth === 1) atKey = true;
+        i++;
+      }
+    }
+  }
+  return names;
+}
+
 function check(root) {
   const webDir = path.join(root, 'web');
   // The pages: the window's and the phone remote's.
@@ -193,16 +224,23 @@ function check(root) {
     if (!globals.has(name)) missingHandlers.push({ name, count });
   }
   // Declared actions (web/js/actions.js runs them): data-on-click="name" in a page,
-  // act('name', …) and actOn('type', 'name', …) in a template.
+  // act('name', …) and actOn('type', 'name', …) in a template, and the names the
+  // wrappers (kinoMenuAction, kinoOnEnter…) run in turn. Each must be registered.
   const actions = new Map();
   const count = name => actions.set(name, (actions.get(name) || 0) + 1);
-  for (const m of html.matchAll(/data-on-[a-z]+="([\w$.]+)"/g)) count(m[1]);
-  for (const file of jsFiles) {
-    for (const m of file.src.matchAll(/\bact\('([\w$.]+)'/g)) count(m[1]);
-    for (const m of file.src.matchAll(/\bactOn\('[a-z]+', '([\w$.]+)'/g)) count(m[1]);
+  for (const m of html.matchAll(/data-on-([a-z]+)="([\w$.]+)"(?: data-\1-args='([^']*)')?/g)) {
+    count(m[2]);
+    if (WRAPPERS.has(m[2]) && m[3]) for (const arg of JSON.parse(m[3])) if (typeof arg === 'string') count(arg);
   }
+  for (const file of jsFiles) {
+    for (const m of file.src.matchAll(/\b(?:act\(|actOn\('[a-z]+', )'([\w$.]+)'((?:, [^)]*)?)\)/g)) {
+      count(m[1]);
+      if (WRAPPERS.has(m[1])) for (const arg of m[2].matchAll(/'([\w$.]+)'/g)) count(arg[1]);
+    }
+  }
+  const registered = registeredActions(jsFiles.map(file => file.src));
   for (const [name, n] of actions) {
-    if (!globals.has(name.split('.')[0])) missingHandlers.push({ name, count: n });
+    if (!registered.has(name)) missingHandlers.push({ name, count: n });
   }
 
   const htmlIds = new Set([...html.matchAll(/\bid\s*=\s*["']([^"'$]+)["']/g)].map(m => m[1]));
@@ -233,7 +271,7 @@ function check(root) {
   return { undefinedCalls, missingHandlers, missingIds, htmlWrites };
 }
 
-module.exports = { tokenize, definedNames, calledNames, handlerCalls, globalNames, check };
+module.exports = { tokenize, definedNames, calledNames, handlerCalls, globalNames, registeredActions, check };
 
 if (require.main === module) {
   const result = check(path.resolve(__dirname, '..'));

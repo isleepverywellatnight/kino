@@ -913,3 +913,19 @@ async function openFolder() {
   await api('/api/open-folder', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
 }
 
+// A choice of the header menu, then the menu closes.
+function kinoMenuAction(name) {
+  runAction(name);
+  closeHeaderMenu();
+}
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  backupNow, chooseTvDevice, closeTrailerModal, copyDiagnosticReport, deleteCloudFile,
+  deleteCloudGroup, focusDebridKey, kinoMenuAction, loadTvDevices, onChangeRdRetention,
+  onCloudSearch, onDiscordPresetChange, openCloudFiche, openConfig, openDiagnostic, openFolder,
+  openSettingsSection, openTrailerModal, playCloudFile, purgeRdCloud, resetNotForMe, restoreBackup,
+  runDiagnostic, setCloudFilter, switchTrailerLang, testEpisodeNotification, toggleCloudGroup,
+  toggleDiscordRpcFields, toggleHeaderMenu, togglePasswordVisibility, triggerGdriveSync,
+  verifyDebridKey, verifyTmdbKey,
+});

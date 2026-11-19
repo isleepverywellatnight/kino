@@ -112,3 +112,8 @@ async function pollState() {
 
 setInterval(pollState, 1000);
 pollState();
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  onSeekChange, onSeekInput, onVolumeInput, sendCommand, toggleMute, togglePlay,
+});

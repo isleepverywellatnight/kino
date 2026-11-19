@@ -2125,3 +2125,27 @@ if (inAppOverlayEl) {
   }, { passive: false });
 }
 
+// A double click on the bar maximizes, except on its controls.
+function kinoBarDoubleClick(event) {
+  if (!event.target.closest('.no-drag')) windowAction('maximize');
+}
+
+// A double click on the player: out of full screen if in it, else maximize.
+function kinoPlayerDoubleClick() {
+  const full = document.body.classList.contains('is-fullscreen')
+    || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  if (full) toggleInAppFullscreen();
+  else windowAction('maximize');
+}
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  cancelNextEpAuto, captureInAppScreenshot, changeInAppAudioTrack, closeInAppPlayer,
+  closeInAppSeriesPreference, cycleInAppAudioBoost, cycleInAppClarity, cycleInAppSpeed,
+  cycleInAppSubSize, cycleInAppSubtitles, dismissSkipIntro, fixInAppAudio, handleVolScrub,
+  inAppNextTrack, inAppPrevTrack, inAppSeekRel, kinoBarDoubleClick, kinoPlayerDoubleClick,
+  onVolMouseDown, openInAppSeriesPreference, resetInAppSeriesPreference, saveInAppSeriesPreference,
+  seekInApp, sendInAppPlaybackToTv, skipInAppIntro, switchToExternalPlayer, toggleInAppFullscreen,
+  toggleInAppMoreMenu, toggleInAppMute, toggleInAppPiP, toggleInAppPlay, undoInAppSkip,
+  windowAction,
+});

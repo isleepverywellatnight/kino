@@ -6,26 +6,42 @@
 // state and files. `data-click-stop` stops the event there, as
 // event.stopPropagation() did.
 //
+// A declared name runs only what a file registered under it
+// (registerActions({ switchTab, … })), never whatever the page happens to hold
+// under that name.
+//
 // One listener per kind of event answers for the whole page, pages drawn later
 // included. Events that bubble are followed from the target up to the page,
 // in that order, as inline handlers ran; the others (focus, load, error,
 // toggle, close, scroll) are caught on their way down.
+
+/** @type {Map<string, Function>} */
+const pageActions = new Map();
+
+/** Makes these functions available to the markup, each under its key. */
+function registerActions(handlers) {
+  for (const [name, fn] of Object.entries(handlers)) {
+    if (typeof fn !== 'function') throw new TypeError(`KINO: action « ${name} » is not a function`);
+    if (pageActions.has(name)) throw new Error(`KINO: action « ${name} » registered twice`);
+    pageActions.set(name, fn);
+  }
+}
+
+/** Runs the action registered under this name; false when there is none. */
+function runAction(name, ...args) {
+  const fn = pageActions.get(name);
+  if (!fn) {
+    console.warn(`KINO: no action « ${name} »`);
+    return false;
+  }
+  fn(...args);
+  return true;
+}
+
 (function () {
   'use strict';
   const BUBBLING = ['click', 'dblclick', 'mousedown', 'change', 'input', 'keydown', 'submit'];
   const DIRECT = ['focus', 'load', 'error', 'toggle', 'close', 'scroll'];
-
-  // `window.name` or `window.Some.name`: a function of the page, nothing else.
-  function target(name) {
-    if (!/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/.test(name)) return null;
-    let owner = window;
-    const parts = name.split('.');
-    for (const part of parts.slice(0, -1)) {
-      owner = owner && owner[part];
-    }
-    const fn = owner && owner[parts[parts.length - 1]];
-    return typeof fn === 'function' ? { owner, fn } : null;
-  }
 
   function argument(arg, element, event) {
     if (!arg || typeof arg !== 'object' || Array.isArray(arg) || !('$' in arg)) return arg;
@@ -41,9 +57,9 @@
 
   function run(element, type, event) {
     const name = element.getAttribute(`data-on-${type}`);
-    const found = name && target(name);
-    if (!found) {
-      if (name) console.warn(`KINO: no action « ${name} »`);
+    if (!name) return;
+    if (!pageActions.has(name)) {
+      console.warn(`KINO: no action « ${name} »`);
       return;
     }
     let args = [];
@@ -57,7 +73,7 @@
       }
     }
     if (element.hasAttribute(`data-${type}-stop`)) event.stopPropagation();
-    found.fn.apply(found.owner === window ? undefined : found.owner, args.map(arg => argument(arg, element, event)));
+    runAction(name, ...args.map(arg => argument(arg, element, event)));
   }
 
   for (const type of BUBBLING) {
@@ -76,108 +92,53 @@
   }
 
   // --- What used to be a few words of code in the markup ---
-
-  // A choice of the header menu, then the menu closes.
-  window.kinoMenuAction = function (name) {
-    const found = target(name);
-    if (found) found.fn.call(found.owner === window ? undefined : found.owner);
-    if (typeof window.closeHeaderMenu === 'function') window.closeHeaderMenu();
-  };
-
-  // A click on the dark backdrop of a dialog (not inside it) closes it.
-  window.kinoOnBackdrop = function (event, element, name) {
-    if (event.target !== element) return;
-    const found = target(name);
-    if (found) found.fn.call(found.owner === window ? undefined : found.owner);
-  };
-
-  // Enter in a field.
-  window.kinoOnEnter = function (event, name) {
-    if (event.key !== 'Enter') return;
-    const found = target(name);
-    if (found) found.fn.call(found.owner === window ? undefined : found.owner);
-  };
-
-  // A form sent by KINO itself, not by the page reloading.
-  window.kinoSubmit = function (event, name) {
-    event.preventDefault();
-    const found = target(name);
-    if (found) found.fn.call(found.owner === window ? undefined : found.owner);
-  };
-
-  // A button that opens a hidden file field.
-  window.kinoPickFile = function (id) {
-    const input = document.getElementById(id);
-    if (input) input.click();
-  };
-
-  // An element that has nothing to show (an image that does not load) goes.
-  window.kinoRemove = function (element) {
-    element.remove();
-  };
-
-  // A press on a suggestion keeps the focus in the search field.
-  window.kinoKeepFocus = function (event) {
-    event.preventDefault();
-  };
-
-  // An image that does not load stays as a faint shape.
-  window.kinoDimImage = function (element) {
-    element.style.opacity = 0.08;
-  };
-
-  // The title's logo has loaded: the hero shows it instead of the text.
-  window.kinoHeroLogo = function (element) {
-    element.closest('.detail-hero')?.classList.add('has-logo');
-  };
-
-  // An image that does not load keeps its place, unseen.
-  window.kinoInvisible = function (element) {
-    element.style.visibility = 'hidden';
-  };
-
-  // A poster has arrived: its placeholder fades out.
-  window.kinoLoaded = function (element) {
-    element.classList.add('is-loaded');
-  };
-
-  // A poster that does not load: the card shows the title instead.
-  window.kinoPosterFailed = function (element, id) {
-    element.classList.add('is-loaded');
-    window.handlePosterCardError(element, id);
-  };
-
-  // An image that does not load is hidden.
-  window.kinoHideImage = function (element) {
-    element.hidden = true;
-  };
-
-  // A double click on the bar maximizes, except on its controls.
-  window.kinoBarDoubleClick = function (event) {
-    if (!event.target.closest('.no-drag')) window.windowAction('maximize');
-  };
-
-  // A double click on the player: out of full screen if in it, else maximize.
-  window.kinoPlayerDoubleClick = function () {
-    const full = document.body.classList.contains('is-fullscreen')
-      || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-    if (full) window.toggleInAppFullscreen();
-    else window.windowAction('maximize');
-  };
-
-  // « Surprise »: from the classics when on that tab, else from the catalogue.
-  window.kinoSurprise = function () {
-    // eslint-disable-next-line no-undef
-    window.surpriseMeMedia(activeTab === 'classics' ? 'classics' : 'catalog');
-  };
-
-  window.kinoSpoilerSetting = function (value) {
-    window.setGlobalSpoilerProtection(value === 'on');
-  };
-
-  // The peer-to-peer consent dialog closed without an answer: a « no ».
-  window.kinoP2PConsentClosed = function () {
-    // eslint-disable-next-line no-undef
-    if (p2pConsentAnswer) window.answerP2PConsent(false);
-  };
+  // (those that belong to one part of KINO are registered by that part).
+  registerActions({
+    // A click on the dark backdrop of a dialog (not inside it) closes it.
+    kinoOnBackdrop(event, element, name) {
+      if (event.target === element) runAction(name);
+    },
+    // Enter in a field.
+    kinoOnEnter(event, name) {
+      if (event.key === 'Enter') runAction(name);
+    },
+    // A form sent by KINO itself, not by the page reloading.
+    kinoSubmit(event, name) {
+      event.preventDefault();
+      runAction(name);
+    },
+    // A button that opens a hidden file field.
+    kinoPickFile(id) {
+      const input = document.getElementById(id);
+      if (input) input.click();
+    },
+    // An element that has nothing to show (an image that does not load) goes.
+    kinoRemove(element) {
+      element.remove();
+    },
+    // A press on a suggestion keeps the focus in the search field.
+    kinoKeepFocus(event) {
+      event.preventDefault();
+    },
+    // An image that does not load stays as a faint shape.
+    kinoDimImage(element) {
+      element.style.opacity = 0.08;
+    },
+    // The title's logo has loaded: the hero shows it instead of the text.
+    kinoHeroLogo(element) {
+      element.closest('.detail-hero')?.classList.add('has-logo');
+    },
+    // An image that does not load keeps its place, unseen.
+    kinoInvisible(element) {
+      element.style.visibility = 'hidden';
+    },
+    // A poster has arrived: its placeholder fades out.
+    kinoLoaded(element) {
+      element.classList.add('is-loaded');
+    },
+    // An image that does not load is hidden.
+    kinoHideImage(element) {
+      element.hidden = true;
+    },
+  });
 })();

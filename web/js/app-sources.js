@@ -952,3 +952,11 @@ async function openMpv(btn, url, filename, options = null) {
     }
   }, true);
 })();
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  copyTorrentMagnet, debridFromIndex, downloadDebridFile, onSeasonChange, openDebridFile,
+  openDebridLink, pickSeriesEpisodeSources, reloadSeriesEpisode, rememberSourcesMore,
+  renderTorrents, saveCurrentPlaybackOffline, scrollEpisodes, sendDebridFileToTv, setFilter,
+  startPcDownload, toggleSourceGroup, updateEpisodeArrows,
+});

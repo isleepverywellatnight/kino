@@ -134,3 +134,9 @@ async function exportPlaybackDiagnostic() {
     }
   } catch (_) { playbackHelpStatus('Impossible d’exporter le diagnostic.'); }
 }
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  closePlaybackHelp, exportPlaybackDiagnostic, openPlaybackHelp, retryPlaybackSources,
+  showPlaybackHelp,
+});

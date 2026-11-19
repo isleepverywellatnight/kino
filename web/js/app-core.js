@@ -951,3 +951,16 @@ function requestResumeMetas(items) {
   });
 }
 
+function kinoSpoilerSetting(value) {
+  setGlobalSpoilerProtection(value === 'on');
+}
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  closeTonightModal, findTonightChoices, kinoSpoilerSetting, moveJourneyWork,
+  onConfigProviderChange, openJourneyWork, openResumeCard, openTonightChoice, openTonightModal,
+  playJourneyWork, playTonightChoice, resetJourneyOrder, resetTonightPreferences,
+  restoreTonightChoice, resumeImageFallback, revealJourneyTitle, revealSpoilerEpisode,
+  sendTonightFeedback, setGlobalSpoilerProtection, setSeriesSpoilerProtection, toggleWatchlist,
+  undoTonightFeedback,
+});

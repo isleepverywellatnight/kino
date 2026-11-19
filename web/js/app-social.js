@@ -956,3 +956,13 @@ async function toggleWatchedWholeSeason(customSeason = null) {
   }
 }
 
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  closeAddonsModal, closeCommunityActiveList, closeRemoteModal, closeWatchPartyModal,
+  copyRemoteUrl, copyWpRoomCode, createWatchPartyRoom, importCustomLetterboxdFromInput,
+  joinWatchPartyRoom, leaveWatchPartyRoom, openAddonsModal, openCommunityList, openImportedList,
+  openRemoteModal, openWatchPartyModal, sendWpMessage, setCommunityStateFilter, showJoinWatchParty,
+  surpriseMeFromCommunityList, surpriseMeFromOpenCommunityList, toggleAddonSwitch, toggleTraktAuth,
+  toggleWatchedItem, toggleWatchedSeriesEp, toggleWatchedWholeSeason, toggleWpChat,
+  triggerTraktSync, uploadAddonFile,
+});

@@ -247,3 +247,8 @@ function closeRatePrompt() {
   if (prompt) prompt.hidden = true;
   if (typeof renderHomeRate === 'function') renderHomeRate();
 }
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  closeRatePrompt, rateFromButton, skipRating,
+});
