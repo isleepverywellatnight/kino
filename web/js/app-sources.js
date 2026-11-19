@@ -948,9 +948,12 @@ export async function openMpv(btn, url, filename, options = null) {
 // maximizes it — Windows may keep the second press from the page.
 (function initWinNativeWindow() {
   const isWin = /Windows/i.test(navigator.userAgent);
+  // Linux: KINO's window has no frame of its own either; its bar works as on Windows.
+  const isLinux = !isWin && /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent);
   const mark = () => {
-    if (isWin && (window.pywebview || (window.chrome && window.chrome.webview))) {
+    if ((isWin && (window.pywebview || (window.chrome && window.chrome.webview))) || (isLinux && window.pywebview)) {
       document.body.classList.add('is-win-native');
+      if (isLinux) document.body.classList.add('is-linux-native');
     }
   };
   mark();
@@ -964,15 +967,42 @@ export async function openMpv(btn, url, filename, options = null) {
     if (!region || target.closest(INTERACTIVE)) return;
     e.preventDefault();
     const api = window.pywebview && window.pywebview.api;
+    const drag = () => {
+      if (api && api.start_window_drag) {
+        Promise.resolve(api.start_window_drag()).then(() => {
+          if (typeof syncWindowState === 'function') syncWindowState();
+        }).catch(() => {});
+      }
+    };
+    // Linux: a drag takes the mouse from the page, which would never see the
+    // second press of a double press (KINO's bar maximizes on it). A press
+    // becomes a drag only once the mouse moves, as Windows does in the app.
+    if (isLinux) {
+      const start = { x: e.screenX, y: e.screenY };
+      const stop = () => {
+        document.removeEventListener('mousemove', move, true);
+        document.removeEventListener('mouseup', stop, true);
+      };
+      const move = (/** @type {MouseEvent} */ m) => {
+        if (!(m.buttons & 1)) { stop(); return; }
+        if (Math.abs(m.screenX - start.x) < 4 && Math.abs(m.screenY - start.y) < 4) return;
+        stop();
+        drag();
+      };
+      document.addEventListener('mousemove', move, true);
+      document.addEventListener('mouseup', stop, true);
+      return;
+    }
     if (api && api.start_window_drag) {
       Promise.resolve(api.start_window_drag()).then(() => {
         if (typeof syncWindowState === 'function') syncWindowState();
       }).catch(() => {});
     }
   }, true);
-  // The app handles the double press: a dblclick on the bar would toggle a second time.
+  // Windows: the app handles the double press, a dblclick on the bar would toggle a
+  // second time. Linux leaves it to the page (kinoBarDoubleClick).
   document.addEventListener('dblclick', (e) => {
-    if (e.isTrusted && document.body.classList.contains('is-win-native')
+    if (isWin && e.isTrusted && document.body.classList.contains('is-win-native')
         && /** @type {Element} */ (e.target).closest('.pywebview-drag-region') && !/** @type {Element} */ (e.target).closest(INTERACTIVE)) {
       e.stopPropagation();
     }

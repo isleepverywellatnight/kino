@@ -36,11 +36,13 @@ KINO не размещает, не предоставляет и не распр
 |---|---|
 | **macOS** — Mac на Apple Silicon (M1 или новее), macOS 14 или новее | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
 | **Windows** — Windows 10 или 11, 64 бит | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
+| **Linux** — x86_64: Ubuntu 22.04, Debian 12, Fedora 36 или новее | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
 
 В KINO есть всё необходимое: видеоплеер, FFmpeg, интерфейс. Больше ничего устанавливать не нужно. Затем вставьте ключ вашего сервиса debrid в Настройках.
 
 - **macOS**: откройте файл `.dmg` и перетащите KINO в «Программы».
 - **Windows**: запустите `KINO-Windows.exe`. KINO устанавливается в один клик, без прав администратора, и сразу открывается.
+- **Linux**: сделайте `KINO-Linux-x86_64.AppImage` исполняемым (Свойства → Права или `chmod +x`) и откройте его. Видео играет в окне KINO или в mpv, если он установлен. KINO сообщает о новых версиях: скачайте новый AppImage.
 
 Следующие версии устанавливаются из самого KINO: **Настройки → Обновления**.
 

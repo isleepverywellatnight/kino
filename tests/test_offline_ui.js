@@ -57,8 +57,8 @@ test('the offline summary shows the free space left for downloads', () => {
     document: {getElementById: id => id === 'postersGrid' ? grid : null},
       };
   vm.runInNewContext(`${offlineFunctions}; renderOfflineLibraryData({downloads: {}, used_bytes: 21.44 * 1024 ** 3, free_bytes: 15 * 1024 ** 3});`, context);
-  assert.match(grid.innerHTML, /Utilisé sur ce Mac : 21 Go · Libre : 15 Go/);
+  assert.match(grid.innerHTML, /Utilisé sur cet ordinateur : 21 Go · Libre : 15 Go/);
   vm.runInNewContext(`${offlineFunctions}; renderOfflineLibraryData({downloads: {}, used_bytes: 0, free_bytes: null});`, context);
   assert.doesNotMatch(grid.innerHTML, /Libre/);
-  assert.match(grid.innerHTML, /Utilisé sur ce Mac : 0 octet/);
+  assert.match(grid.innerHTML, /Utilisé sur cet ordinateur : 0 octet/);
 });

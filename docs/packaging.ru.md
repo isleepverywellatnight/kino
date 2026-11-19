@@ -6,7 +6,7 @@
 
 ## Публикация версии
 
-Измените `version` в `Cargo.toml` ([workspace.package]) и отправьте в `main` — это всё. Если у версии в `main` ещё нет релиза, GitHub Actions (`.github/workflows/build.yml`) собирает оба приложения, тестирует их, публикует релиз с тегом `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `SHA256SUMS.txt`), а затем переустанавливает его на чистых Mac и Windows командами из README.
+Измените `version` в `Cargo.toml` ([workspace.package]) и отправьте в `main` — это всё. Если у версии в `main` ещё нет релиза, GitHub Actions (`.github/workflows/build.yml`) собирает все три приложения, тестирует их, публикует релиз с тегом `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Linux-x86_64.AppImage`, `SHA256SUMS.txt`), а затем переустанавливает его на чистых Mac и Windows командами из README.
 
 Чтобы KINO сам устанавливал новые версии, CI подписывает обновления секретом `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables → Actions): это содержимое закрытого ключа, созданного `cargo run -p kino --bin kino-release -- --init-key`; его открытая часть — `assets/update_public_key.hex`. Без этого секрета KINO сообщает о новой версии и предлагает её скачать.
 
@@ -40,6 +40,21 @@ cargo run -p kino-desktop                           # run from the sources
 cargo build --release --locked -p kino-desktop
 pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
+```
+
+### Linux (x86_64)
+
+AppImage собирается на Ubuntu 22.04, самой старой поддерживаемой системе: он работает на системах с той же glibc или более новой. Внутри — WebKitGTK и плагины GStreamer, которыми страница воспроизводит видео; FFmpeg берётся из системы сборки.
+
+```bash
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev patchelf ffmpeg \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav \
+  xvfb imagemagick
+tools/fetch_linuxdeploy.sh                            # linuxdeploy и его плагины, закреплённые и проверенные, в vendor/
+cargo run -p kino-desktop                             # запуск из исходников
+cargo build --release --locked -p kino-desktop
+packaging/build_linux_appimage.sh                     # dist/KINO-Linux-x86_64.AppImage
+tools/linux_appimage_test.sh                          # самопроверка, запуск и видео на виртуальном экране
 ```
 
 Собранное приложение проверяет своё содержимое командой `--self-check`.
