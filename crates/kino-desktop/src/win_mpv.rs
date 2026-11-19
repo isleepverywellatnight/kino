@@ -1,6 +1,8 @@
 //! KINO's native player on Windows: libmpv draws in KINO's own window (its
 //! `wid`), under the page, whose background turns transparent while it plays
-//! so the page's controls show over the video, as on macOS. No other process
+//! so the page's controls show over the video, as on macOS. It turns
+//! transparent only once mpv shows the video: before, nothing is under the
+//! page, and the player looked gone for a moment. No other process
 //! and no window moved between processes (`win_dock.rs` does that for mpv.exe).
 
 use std::sync::{Arc, OnceLock};
@@ -27,24 +29,35 @@ pub fn window_options(window: Arc<OnceLock<isize>>) -> impl Fn() -> Vec<(String,
 /// What lives on the main thread while a film plays.
 #[derive(Default)]
 pub struct MainSide {
-    playing: bool,
+    playing: Option<Arc<Mpv>>,
+    revealed: bool,
 }
 
 impl MainSide {
-    /// Opens `path` in `player` and clears the page's background over it.
+    /// Opens `path` in `player`; the page keeps its background (« Chargement »)
+    /// until `reveal`.
     pub fn open(&mut self, webview: &WebView, player: Arc<Mpv>, path: &str) -> Result<(), String> {
         self.close(webview);
         player.command(&["loadfile".into(), path.into()])?;
-        webview
-            .set_background_color((0, 0, 0, 0))
-            .map_err(|e| e.to_string())?;
-        self.playing = true;
+        self.playing = Some(player);
         Ok(())
+    }
+
+    /// mpv shows `player`'s video: the page's background clears over it.
+    pub fn reveal(&mut self, webview: &WebView, player: &Arc<Mpv>) {
+        let current = self
+            .playing
+            .as_ref()
+            .is_some_and(|p| Arc::ptr_eq(p, player));
+        if current && !self.revealed && webview.set_background_color((0, 0, 0, 0)).is_ok() {
+            self.revealed = true;
+        }
     }
 
     /// The page's own background again; the controller then ends the player.
     pub fn close(&mut self, webview: &WebView) {
-        if std::mem::take(&mut self.playing) {
+        self.playing = None;
+        if std::mem::take(&mut self.revealed) {
             let _ = webview.set_background_color(PAGE_BACKGROUND);
         }
     }
