@@ -6,7 +6,7 @@ Diese Schritte betreffen die Entwicklung. Um KINO zu nutzen, lade es einfach her
 
 ## Eine Version veröffentlichen
 
-Ändere `version` in `Cargo.toml` ([workspace.package]) und pushe auf `main` – das ist alles. Wenn die Version auf `main` noch keine Release hat, baut GitHub Actions (`.github/workflows/build.yml`) beide Apps, testet sie, veröffentlicht die Release mit ihrem Tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `SHA256SUMS.txt`) und installiert sie dann mit den Befehlen aus der README auf einem frischen Mac und einem frischen Windows.
+Ändere `version` in `Cargo.toml` ([workspace.package]) und pushe auf `main` – das ist alles. Wenn die Version auf `main` noch keine Release hat, baut GitHub Actions (`.github/workflows/build.yml`) die drei Apps, testet sie, veröffentlicht die Release mit ihrem Tag `vX.Y.Z` (`KINO-macOS.dmg`, `KINO-Windows.exe`, `KINO-Linux-x86_64.AppImage`, `SHA256SUMS.txt`) und installiert sie dann mit den Befehlen aus der README auf einem frischen Mac und einem frischen Windows.
 
 Damit KINO neue Versionen selbst installiert, signiert die CI die Updates mit dem Secret `KINO_UPDATE_SIGNING_KEY` (Settings → Secrets and variables → Actions): dem Inhalt des privaten Schlüssels, den `cargo run -p kino --bin kino-release -- --init-key` erzeugt und dessen öffentlicher Teil `assets/update_public_key.hex` ist. Ohne dieses Secret kündigt KINO die neue Version an und bietet den Download an.
 
@@ -40,6 +40,21 @@ cargo run -p kino-desktop                           # run from the sources
 cargo build --release --locked -p kino-desktop
 pwsh packaging\build_windows_app.ps1
 iscc /DAppVersion=1.9.0 packaging\kino.iss         # dist\KINO-Windows.exe
+```
+
+### Linux (x86_64)
+
+Das AppImage wird auf Ubuntu 22.04 gebaut, dem ältesten unterstützten System: Es läuft auf Systemen mit derselben oder einer neueren glibc. Es enthält WebKitGTK und die GStreamer-Plugins, mit denen die Seite Videos abspielt; FFmpeg stammt vom Build-System.
+
+```bash
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev patchelf ffmpeg \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav \
+  xvfb imagemagick
+tools/fetch_linuxdeploy.sh                            # linuxdeploy und seine Plugins, fixiert und geprüft, nach vendor/
+cargo run -p kino-desktop                             # aus den Quellen starten
+cargo build --release --locked -p kino-desktop
+packaging/build_linux_appimage.sh                     # dist/KINO-Linux-x86_64.AppImage
+tools/linux_appimage_test.sh                          # Selbsttest, Start und Video auf einem virtuellen Bildschirm
 ```
 
 Eine gebaute App prüft ihren Inhalt mit `--self-check`.

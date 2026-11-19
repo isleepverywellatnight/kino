@@ -33,11 +33,13 @@ KINO はコンテンツをホスト・提供・配布しません。ユーザー
 |---|---|
 | **macOS** — Apple シリコン搭載 Mac（M1 以降）、macOS 14 以降 | [**KINO-macOS.dmg**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-macOS.dmg) |
 | **Windows** — Windows 10 または 11、64 ビット | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
+| **Linux** — x86_64：Ubuntu 22.04、Debian 12、Fedora 36 以降 | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
 
 KINO には必要なものがすべて入っています：ビデオプレーヤー、FFmpeg、インターフェース。ほかに何もインストールする必要はありません。あとは設定で Debrid サービスのキーを貼り付けるだけです。
 
 - **macOS**：`.dmg` ファイルを開き、KINO を「アプリケーション」にドラッグします。
 - **Windows**：`KINO-Windows.exe` を実行します。KINO は管理者権限なしでワンクリックでインストールされ、そのまま起動します。
+- **Linux**：`KINO-Linux-x86_64.AppImage` に実行権限を付けて（プロパティ → アクセス権、または `chmod +x`）開きます。動画は KINO のウィンドウで、mpv がインストールされていれば mpv で再生されます。新しいバージョンは KINO が知らせます：新しい AppImage をダウンロードしてください。
 
 以降のバージョンは KINO からインストールできます：**設定 → アップデート**。
 
