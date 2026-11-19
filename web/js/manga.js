@@ -455,3 +455,10 @@ document.addEventListener('keydown', event => {
   event.preventDefault();
   event.stopImmediatePropagation();
 }, true);
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  chooseMangaFolder, closeMangaReader, downloadMangaVolume, mangaReaderClick, openMangaReader,
+  openMangaSeries, openMangaTorrent, renderMangaTab, searchManga, setMangaLang, showMangaVolumes,
+  toggleMangaDirection, toggleMangaMode,
+});

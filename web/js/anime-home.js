@@ -415,3 +415,9 @@ function loadAnimeWeek(force = false) {
   })();
   return animeWeekRequest;
 }
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  loadAnimeHome, loadAnimeWeek, openAnimeWork, revealScheduleEpisode, selectAnimeWeekDay,
+  setAnimeWeekFilter, switchAnimeSubTab,
+});

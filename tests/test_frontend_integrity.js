@@ -56,6 +56,35 @@ test('the check finds each kind of mistake', () => {
   }
 });
 
+test('a declared action must be registered, wrapped names included', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kino-frontend-check-'));
+  try {
+    fs.mkdirSync(path.join(root, 'web/js'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'web/index.html'), `
+      <button data-on-click="present">ok</button>
+      <button data-on-click="notRegistered">broken</button>
+      <div data-on-click="kinoMenuAction" data-click-args='["menuGone"]'></div>`);
+    fs.writeFileSync(path.join(root, 'web/js/a.js'), [
+      'function present() {}',
+      'function notRegistered() {}',
+      'function kinoMenuAction(name) {}',
+      'function tpl() { return `<i ${act(\'fromTemplate\')}></i><b ${actOn(\'error\', \'kinoOnEnter\', EVENT, \'enterGone\')}></b>`; }',
+      'registerActions({',
+      '  // a comment between keys',
+      '  present, kinoMenuAction,',
+      "  'A.b': value => value,",
+      '  kinoOnEnter(event, name) { if (event.key === "Enter") run(name, { nested: [1, 2] }); },',
+      '});',
+    ].join('\n'));
+    const result = checker.check(root);
+    assert.deepEqual(result.missingHandlers.map(item => item.name).sort(), ['enterGone', 'fromTemplate', 'menuGone', 'notRegistered']);
+    assert.deepEqual([...checker.registeredActions([fs.readFileSync(path.join(root, 'web/js/a.js'), 'utf8')])].sort(),
+      ['A.b', 'kinoMenuAction', 'kinoOnEnter', 'present']);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('the tokenizer reads template expressions and skips regexes', () => {
   const { code, strings } = checker.tokenize('const a = `x${f(/[)]/.test(s) ? `y${g()}` : "z"}`;');
   assert.match(code, /\bf\s*\(/);

@@ -230,3 +230,14 @@ async function renderAddonCatalogs() {
     }
   }));
 }
+
+// The peer-to-peer consent dialog closed without an answer: a « no ».
+function kinoP2PConsentClosed() {
+  if (p2pConsentAnswer) answerP2PConsent(false);
+}
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  addStremioAddon, answerP2PConsent, clearP2PCache, kinoP2PConsentClosed, removeStremioAddon,
+  setP2PEnabled, setP2PSetting, toggleStremioAddon,
+});

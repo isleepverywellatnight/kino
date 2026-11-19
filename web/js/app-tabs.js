@@ -566,3 +566,13 @@ async function loadRdCloud() {
   }
 }
 
+// A poster that does not load: the card shows the title instead.
+function kinoPosterFailed(element, id) {
+  element.classList.add('is-loaded');
+  handlePosterCardError(element, id);
+}
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  kinoPosterFailed, loadMoreCatalog, loadRdCloud, switchTab,
+});

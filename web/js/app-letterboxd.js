@@ -491,3 +491,10 @@ function surpriseMeFromCustomList(listId) {
   surpriseMeMedia({ items: pool, title: l.title });
 }
 
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  clearLetterboxdCsv, closeCustomList, closeLetterboxdModal, deleteLetterboxdCustomList,
+  handleLetterboxdCsvFile, openCustomList, openLetterboxdListImport, openLetterboxdModal,
+  submitLetterboxdCustomListImport, submitLetterboxdImport, surpriseMeFromCustomList,
+  switchLbxModalTab, toggleCardWatched,
+});

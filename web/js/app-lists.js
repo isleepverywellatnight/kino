@@ -1100,3 +1100,17 @@ async function playCalendarEpisode(id, season, episode, btn) {
     name: item.name, poster: item.poster || '', year: item.year || '',
   }, btn);
 }
+
+// « Surprise »: from the classics when on that tab, else from the catalogue.
+function kinoSurprise() {
+  surpriseMeMedia(activeTab === 'classics' ? 'classics' : 'catalog');
+}
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  caseMarkWatchedAndRespin, caseOpenDetails, caseOpenTrailer, casePlayOneClick,
+  caseToggleWatchlist, closeCaseModal, kinoSurprise, onChangeListSort, openCalendarSeries,
+  openMySeries, playCalendarEpisode, playMySeries, renderActiveListTab, resetListFilters,
+  setListFilter, skipCaseSpin, surpriseMeFromCurrentList, surpriseMeMedia, toggleCaseSound,
+  toggleHideWatchedCatalog,
+});

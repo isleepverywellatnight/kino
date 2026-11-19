@@ -1702,3 +1702,12 @@ function renderDetailEpisodes(seasonNum) {
   requestEpisodeOverviews(seriesId, seasonNum);
 }
 
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  backFromPerson, clearSearchInput, closeDetailTrailer, detailBackdropFallback, ficheGlow,
+  forgetRecentSearches, handleTorrentFileSelect, onSearchInput, onSearchKeyDown, oneClickCard,
+  oneClickSeriesEpisode, openPerson, openSearchPanel, openTorrentFile, playDetailTrailer,
+  playReadyInstead, selectDetailSeason, selectMedia, selectSearchSuggest, setPersonFilter,
+  setSearchFilter, stopWaitingPreparation, switchDetailTrailer, togglePersonOthers,
+  toggleSearchMode, toggleShortcutsModal, tvControl,
+});

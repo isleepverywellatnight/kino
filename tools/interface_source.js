@@ -26,8 +26,16 @@ function inFrench(text) {
     .replace(/window\.KINO_LANG\b/g, "'fr'").replace(/window\.KINO_LOCALE\b/g, "'fr-FR'");
 }
 
+// Each file ends with the list of actions it gives the markup (registerActions({ … })):
+// names only, checked by tools/frontend_check.js. Tests that cut a file's text up to
+// its end leave the list out, so that it does not name functions they did not take.
+const REGISTRATION = /\n\/\/ What the markup may run from this file \(web\/js\/actions\.js\)\.\nregisterActions\(\{\n[\s\S]*?\n\}\);\n/g;
+function withoutRegistrations(text) {
+  return text.replace(REGISTRATION, '\n');
+}
+
 function appSource(root = ROOT) {
-  return inFrench(appParts(root).map(name => fs.readFileSync(path.join(root, 'web', 'js', name), 'utf8')).join(''));
+  return inFrench(withoutRegistrations(appParts(root).map(name => fs.readFileSync(path.join(root, 'web', 'js', name), 'utf8')).join('')));
 }
 
 // Every interface script, in loading order (app parts, helpers, players).
@@ -79,10 +87,17 @@ function templateHelpers(root = ROOT) {
   return helpersOnce;
 }
 
-// A test's context with those helpers, unless it brings its own.
+// A test's context with those helpers, unless it brings its own. A file run alone
+// registers its actions (web/js/actions.js) into the context's own list,
+// context.actions; tools/frontend_check.js checks that every declared one is there.
 function withHelpers(context = {}) {
   for (const [name, value] of Object.entries(templateHelpers())) if (!(name in context)) context[name] = value;
+  if (!('registerActions' in context)) {
+    const actions = {};
+    Object.defineProperty(context, 'actions', { value: actions, enumerable: false, configurable: true });
+    context.registerActions = handlers => { Object.assign(actions, handlers); };
+  }
   return context;
 }
 
-module.exports = { appParts, appSource, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls, templateHelpers, withHelpers };
+module.exports = { appParts, appSource, withoutRegistrations, interfaceScripts, inFrench, FRENCH_MONTHS, indexHtml, withCalls, templateHelpers, withHelpers };

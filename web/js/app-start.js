@@ -1049,3 +1049,11 @@ syncWindowState();
   for (const [code, name] of Object.entries(window.KINO_LANGUAGES)) select.add(new Option(name, code));
   select.value = window.KINO_LANG;
 })();
+
+// What the markup may run from this file (web/js/actions.js).
+registerActions({
+  checkKinoUpdates, chooseKinoUpdate, closeFiche, downloadAction, downloadSeasonOffline, goBack,
+  installKinoUpdate, openKinoReleasePage, playOfflineDownload, removeOfflineDownload, retryNetwork,
+  rollbackKinoUpdate, setKinoUpdateAuto,
+  'KINO_I18N.choose': value => KINO_I18N.choose(value),
+});
