@@ -235,9 +235,9 @@ export async function switchTab(tab) {
     if (wlw) wlw.style.display = 'flex';
     if (lm) lm.style.display = 'none';
     if (hs) hs.style.display = 'none';
-    if (surpriseLbl) surpriseLbl.textContent = 'Tirage sur Ma Liste';
+    if (surpriseLbl) surpriseLbl.textContent = KINO_I18N.t('page.tirage_sur_ma_liste');
     document.getElementById('homeResumeSection').style.display = 'none';
-    document.getElementById('catalogTitle').textContent = 'Ma Liste';
+    document.getElementById('catalogTitle').textContent = KINO_I18N.t('page.ma_liste_2');
     renderActiveListTab();
   } else if (tab === 'watched') {
     if (gf) gf.style.display = 'none';
@@ -245,9 +245,9 @@ export async function switchTab(tab) {
     if (wlw) wlw.style.display = 'flex';
     if (lm) lm.style.display = 'none';
     if (hs) hs.style.display = 'none';
-    if (surpriseLbl) surpriseLbl.textContent = 'Tirage Rewatch';
+    if (surpriseLbl) surpriseLbl.textContent = KINO_I18N.t('tabs.tirage_rewatch');
     document.getElementById('homeResumeSection').style.display = 'none';
-    document.getElementById('catalogTitle').textContent = 'Déjà vus';
+    document.getElementById('catalogTitle').textContent = KINO_I18N.t('page.deja_vus');
     renderActiveListTab();
   } else if (tab === 'customlists') {
     if (gf) gf.style.display = 'none';
@@ -278,7 +278,7 @@ export async function switchTab(tab) {
     if (hs) hs.style.display = 'none';
     if (statsEl) statsEl.style.display = 'none';
     document.getElementById('homeResumeSection').style.display = 'none';
-    document.getElementById('catalogTitle').textContent = 'Mes séries';
+    document.getElementById('catalogTitle').textContent = KINO_I18N.t('page.mes_series');
     document.getElementById('postersGrid').style.display = 'flex';
     document.getElementById('postersGrid').style.flexDirection = 'column';
     await loadMySeries();
@@ -290,7 +290,7 @@ export async function switchTab(tab) {
     if (hs) hs.style.display = 'none';
     if (statsEl) statsEl.style.display = 'none';
     document.getElementById('homeResumeSection').style.display = 'none';
-    document.getElementById('catalogTitle').textContent = 'Calendrier';
+    document.getElementById('catalogTitle').textContent = KINO_I18N.t('page.calendrier');
     document.getElementById('postersGrid').style.display = 'flex';
     document.getElementById('postersGrid').style.flexDirection = 'column';
     await loadReleaseCalendar();
@@ -302,7 +302,7 @@ export async function switchTab(tab) {
     if (hs) hs.style.display = 'none';
     if (statsEl) statsEl.style.display = 'none';
     document.getElementById('homeResumeSection').style.display = 'none';
-    document.getElementById('catalogTitle').textContent = 'Hors ligne';
+    document.getElementById('catalogTitle').textContent = KINO_I18N.t('page.hors_ligne');
     document.getElementById('postersGrid').style.display = 'flex';
     document.getElementById('postersGrid').style.flexDirection = 'column';
     await pollDownloads();
@@ -401,7 +401,7 @@ export async function loadCatalog(type, genre = '', reset = true) {
 async function loadMoreCatalog() {
   const btn = /** @type {HTMLButtonElement} */ (document.getElementById('loadMoreBtn'));
   const orig = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Chargement...'; }
+  if (btn) { btn.disabled = true; btn.textContent = KINO_I18N.t('page.chargement'); }
   setCatalogSkip(catalogSkip + (50));
   const type = activeTab === 'series' ? 'series' : (activeTab === 'classics' ? 'classics' : (activeTab === 'anime' ? 'anime' : 'movie'));
   try {
@@ -428,7 +428,7 @@ function handlePosterCardError(img, id) {
 
 // Grey cards while a grid loads: the page keeps its shape instead of jumping.
 export function posterSkeletons(count = 12) {
-  return [html`<div class="poster-skeleton-status" role="status">Chargement…</div>`, Array.from({length: count}, () => html`
+  return [html`<div class="poster-skeleton-status" role="status">${KINO_I18N.t('anime.chargement')}</div>`, Array.from({length: count}, () => html`
     <div class="poster-card is-skeleton" aria-hidden="true">
       <div class="poster-art"></div>
       <div class="poster-info"><span class="skeleton-line" style="width:82%"></span><span class="skeleton-line" style="width:44%"></span></div>
@@ -505,7 +505,7 @@ export function posterCardHtml(m, fallbackType) {
     const isMovieWatched = Boolean(histItem && mtype !== 'series' && (histItem.completed || Number(histItem.progress_pct || 0) >= 85));
     const watchedEpsCount = (histItem && mtype === 'series' && Array.isArray(histItem.watched_episodes)) ? histItem.watched_episodes.length : 0;
     const watchedPill = isMovieWatched
-      ? html`<button type="button" class="poster-watched" ${act('toggleCardWatched', EVENT, mediaObj)} title="Cliquer pour retirer des Déjà vus">✓ Vu</button>`
+      ? html`<button type="button" class="poster-watched" ${act('toggleCardWatched', EVENT, mediaObj)} title="${KINO_I18N.t('tabs.cliquer_pour_retirer_des_deja_vus')}">${KINO_I18N.t('anime.vu')}</button>`
       : (watchedEpsCount > 0 ? html`<span class="poster-watched is-static">✓ ${watchedEpsCount} ép.</span>` : '');
     let btnLabel = 'Lancer';
     if (histItem && mtype === 'series' && histItem.season && histItem.episode) {
@@ -568,11 +568,11 @@ export function renderPosterCards(metas, fallbackType) {
   }
   if (!displayList.length) {
     if (activeTab === 'watchlist') {
-      render(grid, html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">＋</span><h3>Votre liste commence ici</h3><p>Ajoutez un film ou une série depuis sa fiche pour le retrouver facilement.</p><button class="btn" ${act('switchTab', 'movies')}>Découvrir les films</button></div>`);
+      render(grid, html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">＋</span><h3>${KINO_I18N.t('tabs.votre_liste_commence_ici')}</h3><p>${KINO_I18N.t('tabs.ajoutez_un_film_ou_une_serie_depuis_sa')}</p><button class="btn" ${act('switchTab', 'movies')}>${KINO_I18N.t('home.decouvrir_les_films')}</button></div>`);
     } else if (activeTab === 'watched') {
-      render(grid, html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">✓</span><h3>Aucun titre terminé</h3><p>Les films et épisodes que vous avez vus apparaîtront ici.</p><button class="btn" ${act('switchTab', 'movies')}>Découvrir les films</button></div>`);
+      render(grid, html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">✓</span><h3>${KINO_I18N.t('tabs.aucun_titre_termine')}</h3><p>${KINO_I18N.t('tabs.les_films_et_episodes_que_vous_avez_vus')}</p><button class="btn" ${act('switchTab', 'movies')}>${KINO_I18N.t('home.decouvrir_les_films')}</button></div>`);
     } else {
-      render(grid, html`<div class="library-empty"><h3>Aucun résultat</h3><p>Essayez un autre filtre ou une autre recherche.</p></div>`);
+      render(grid, html`<div class="library-empty"><h3>${KINO_I18N.t('tabs.aucun_resultat')}</h3><p>${KINO_I18N.t('tabs.essayez_un_autre_filtre_ou_une_autre')}</p></div>`);
     }
     return;
   }

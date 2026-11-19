@@ -92,7 +92,7 @@ async function setGlobalSpoilerProtection(enabled) {
     await changeSpoilerState({action: 'global', enabled});
     if (status) status.textContent = enabled ? 'Protection activée.' : 'Protection désactivée.';
   } catch (error) {
-    if (status) status.textContent = 'Impossible de mémoriser ce réglage.';
+    if (status) status.textContent = KINO_I18N.t('core.impossible_de_memoriser_ce_reglage');
     refreshSpoilerSurfaces();
   }
 }
@@ -154,7 +154,7 @@ export async function loadAnimeJourney(media, meta) {
   if (!panel) return;
   const requestId = ++animeJourneyRequestId;
   const originId = media.id;
-  render(panel, html`<p class="journey-empty">Chargement du parcours…</p>`);
+  render(panel, html`<p class="journey-empty">${KINO_I18N.t('core.chargement_du_parcours')}</p>`);
   try {
     const title = meta.name || media.name;
     const year = meta.releaseInfo || meta.year || media.year || '';
@@ -174,7 +174,7 @@ export async function loadAnimeJourney(media, meta) {
     }));
   } catch (error) {
     if (requestId === animeJourneyRequestId && currentMedia?.id === originId) {
-      render(panel, html`<p class="journey-empty">Parcours indisponible pour le moment.</p>`);
+      render(panel, html`<p class="journey-empty">${KINO_I18N.t('core.parcours_indisponible_pour_le_moment')}</p>`);
     }
   }
 }
@@ -227,7 +227,7 @@ async function moveJourneyWork(id, delta) {
     renderAnimeJourney();
   } catch (error) {
     const status = document.getElementById('journeyStatus');
-    if (status) status.textContent = 'Impossible de mémoriser cet ordre.';
+    if (status) status.textContent = KINO_I18N.t('core.impossible_de_memoriser_cet_ordre');
   }
 }
 
@@ -242,7 +242,7 @@ async function resetJourneyOrder() {
     renderAnimeJourney();
   } catch (error) {
     const status = document.getElementById('journeyStatus');
-    if (status) status.textContent = 'Impossible de rétablir l’ordre de sortie.';
+    if (status) status.textContent = KINO_I18N.t('core.impossible_de_retablir_l_ordre_de_sortie');
   }
 }
 
@@ -486,28 +486,28 @@ export async function checkConfig() {
         const exp = cfg.user.premium > 0 ? Math.ceil(cfg.user.premium / 86400) + ' jours' : 'Gratuit';
         cfgAccTitle.textContent = `${pmeta.name} · Connecté (${cfg.user.username})`;
         cfgAccSub.textContent = cfg.user.premium > 0 ? `Abonnement valide encore ${exp}.` : 'Compte gratuit, sans abonnement.';
-        cfgAccBadge.textContent = 'Actif';
+        cfgAccBadge.textContent = KINO_I18N.t('core.actif');
         cfgAccBadge.style.color = '#4ade80';
         cfgAccBadge.style.borderColor = 'rgba(74,222,128,0.4)';
         cfgAccBadge.style.background = 'rgba(74,222,128,0.1)';
       } else if (cfg.has_token && cfg.user_status === 'invalid') {
         cfgAccTitle.textContent = `${pmeta.name} · Clé refusée`;
-        cfgAccSub.textContent = 'La clé est invalide ou expirée. Collez-en une nouvelle, puis Vérifier.';
-        cfgAccBadge.textContent = 'Clé refusée';
+        cfgAccSub.textContent = KINO_I18N.t('core.la_cle_est_invalide_ou_expiree_collez_en');
+        cfgAccBadge.textContent = KINO_I18N.t('core.cle_refusee');
         cfgAccBadge.style.color = '#ef4444';
         cfgAccBadge.style.borderColor = 'rgba(239,68,68,0.4)';
         cfgAccBadge.style.background = 'rgba(239,68,68,0.1)';
       } else if (cfg.has_token) {
         cfgAccTitle.textContent = `${pmeta.name} · Vérification impossible`;
-        cfgAccSub.textContent = 'Le service ne répond pas pour le moment. Réessayez plus tard.';
-        cfgAccBadge.textContent = 'Indisponible';
+        cfgAccSub.textContent = KINO_I18N.t('core.le_service_ne_repond_pas_pour_le_moment');
+        cfgAccBadge.textContent = KINO_I18N.t('core.indisponible');
         cfgAccBadge.style.color = '#eab308';
         cfgAccBadge.style.borderColor = 'rgba(234,179,8,0.4)';
         cfgAccBadge.style.background = 'rgba(234,179,8,0.1)';
       } else {
         cfgAccTitle.textContent = `${pmeta.name} · Pas de clé`;
-        cfgAccSub.textContent = 'Collez votre clé ci-dessous, puis Vérifier.';
-        cfgAccBadge.textContent = 'Non connecté';
+        cfgAccSub.textContent = KINO_I18N.t('core.collez_votre_cle_ci_dessous_puis');
+        cfgAccBadge.textContent = KINO_I18N.t('page.non_connecte');
         cfgAccBadge.style.color = '#eab308';
         cfgAccBadge.style.borderColor = 'rgba(234,179,8,0.4)';
         cfgAccBadge.style.background = 'rgba(234,179,8,0.1)';
@@ -531,19 +531,19 @@ export async function checkConfig() {
           <span class="user-status-dot" style="background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.6);"></span>
           <span style="color:#ef4444; font-weight:600;">${pmeta.short} • Clé invalide</span>
         `);
-        badge.title = 'Clé API invalide ou expirée. Cliquer pour reconfigurer.';
+        badge.title = KINO_I18N.t('core.cle_api_invalide_ou_expiree_cliquer_pour');
       } else if (cfg.has_token) {
         render(badge, html`
           <span class="user-status-dot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.6);"></span>
           <span style="color:#eab308; font-weight:600;">${pmeta.short} • Vérification impossible</span>
         `);
-        badge.title = 'Le service débrideur ne répond pas. Réessayez plus tard.';
+        badge.title = KINO_I18N.t('core.le_service_debrideur_ne_repond_pas');
       } else {
         render(badge, html`
           <span class="user-status-dot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.6);"></span>
-          <span style="color:#eab308; font-weight:600;">Non configuré</span>
+          <span style="color:#eab308; font-weight:600;">${KINO_I18N.t('core.non_configure')}</span>
         `);
-        badge.title = 'Cliquez pour configurer votre clé débrideur';
+        badge.title = KINO_I18N.t('core.cliquez_pour_configurer_votre_cle');
       }
     }
   } catch (e) {
@@ -643,26 +643,26 @@ function renderTonightResult(result) {
       </div>
       <div class="tonight-choice-actions">
         <button type="button" class="btn" ${act('playTonightChoice', index, EVENT)}>${choice.offline_id ? 'Lire hors ligne' : 'Regarder'}</button>
-        <button type="button" class="btn btn-secondary" ${act('openTonightChoice', index)}>Voir la fiche</button>
+        <button type="button" class="btn btn-secondary" ${act('openTonightChoice', index)}>${KINO_I18N.t('core.voir_la_fiche')}</button>
       </div>
-      <div class="tonight-feedback-actions" aria-label="Votre avis sur cette idée">
-        <button type="button" ${act('sendTonightFeedback', index, 'defer')}>Pas ce soir</button>
-        <button type="button" ${act('sendTonightFeedback', index, 'seen')}>Déjà vu</button>
-        <button type="button" ${act('sendTonightFeedback', index, 'exclude')}>Ça ne m’intéresse pas</button>
+      <div class="tonight-feedback-actions" aria-label="${KINO_I18N.t('core.votre_avis_sur_cette_idee')}">
+        <button type="button" ${act('sendTonightFeedback', index, 'defer')}>${KINO_I18N.t('core.pas_ce_soir')}</button>
+        <button type="button" ${act('sendTonightFeedback', index, 'seen')}>${KINO_I18N.t('core.deja_vu')}</button>
+        <button type="button" ${act('sendTonightFeedback', index, 'exclude')}>${KINO_I18N.t('core.ca_ne_m_interesse_pas')}</button>
       </div>
     </article>
   `));
   const review = document.getElementById('tonightReview');
   if (review) render(review, tonightReviewItems.length
     ? tonightReviewItems.map((item, index) => html`<div class="tonight-review-row"><span><strong>${item.name || 'Titre'}</strong><small>${item.decision === 'deferred' ? 'Reporté 24 h' : item.decision === 'seen' ? 'Marqué déjà vu' : 'Écarté de Ce soir'}</small></span><button type="button" class="btn btn-secondary" ${act('restoreTonightChoice', index)}>${item.decision === 'seen' ? 'Annuler' : 'Réintégrer'}</button></div>`)
-    : html`<p class="tonight-review-empty">Aucun titre reporté ou écarté.</p>`);
+    : html`<p class="tonight-review-empty">${KINO_I18N.t('core.aucun_titre_reporte_ou_ecarte')}</p>`);
   const reviewSummary = document.getElementById('tonightReviewSummary');
   if (reviewSummary) reviewSummary.textContent = `Mes choix${tonightReviewItems.length ? ` (${tonightReviewItems.length})` : ''}`;
   const undo = document.getElementById('tonightUndo');
   if (undo) {
     undo.style.display = tonightUndoAction ? 'flex' : 'none';
     render(undo, tonightUndoAction
-      ? html`<span>${tonightUndoAction.label}</span><button type="button" class="btn btn-secondary" ${act('undoTonightFeedback')}>Annuler</button>` : '');
+      ? html`<span>${tonightUndoAction.label}</span><button type="button" class="btn btn-secondary" ${act('undoTonightFeedback')}>${KINO_I18N.t('page.annuler')}</button>` : '');
   }
 }
 
@@ -674,7 +674,7 @@ async function findTonightChoices() {
   if (!status || !choices || !button) return;
   button.disabled = true;
   render(choices, '');
-  status.textContent = 'Recherche dans Ma Liste…';
+  status.textContent = KINO_I18N.t('core.recherche_dans_ma_liste');
   try {
     const result = await api('/api/tonight', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -685,7 +685,7 @@ async function findTonightChoices() {
     if (request !== tonightRequestId) return;
     renderTonightResult(result);
   } catch (error) {
-    if (request === tonightRequestId) status.textContent = 'Impossible de préparer les suggestions. Réessayez.';
+    if (request === tonightRequestId) status.textContent = KINO_I18N.t('core.impossible_de_preparer_les_suggestions');
   } finally {
     if (request === tonightRequestId) button.disabled = false;
   }

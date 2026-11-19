@@ -150,14 +150,14 @@ function updateInAppFsBtnUI() {
   if (!fsBtn) return;
   const isFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
   if (isFs) {
-    fsBtn.title = "Quitter le plein écran (F ou Échap)";
+    fsBtn.title = KINO_I18N.t('player.quitter_le_plein_ecran_f_ou_echap');
     render(fsBtn, html`
       <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
       </svg>
     `);
   } else {
-    fsBtn.title = "Plein écran (F)";
+    fsBtn.title = KINO_I18N.t('page.plein_ecran_f');
     render(fsBtn, html`
       <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
@@ -865,7 +865,7 @@ export function fixInAppAudio() {
   video.play().catch(() => {});
   updateInAppVolUI();
   const btn = document.getElementById('inAppAudioFixBtn');
-  if (btn) btn.textContent = 'Son AAC demandé';
+  if (btn) btn.textContent = KINO_I18N.t('player.son_aac_demande');
 }
 
 function handleVolScrub(e) {
@@ -952,7 +952,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
   const subOverlay = document.getElementById('inAppSubOverlay');
   if (subOverlay) { subOverlay.style.display = 'none'; render(subOverlay, ''); }
   const btn = document.getElementById('inAppSubsBtn');
-  if (btn) { btn.textContent = 'CC : Off'; btn.style.borderColor = ''; }
+  if (btn) { btn.textContent = KINO_I18N.t('page.cc_off'); btn.style.borderColor = ''; }
 
   if (!inAppCurrentMedia || !inAppCurrentMedia.id) return;
   if (inAppCurrentMedia.offline_id) {
@@ -1033,7 +1033,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
 export async function cycleInAppSubtitles() {
   resetInAppIdleTimer();
   if (inAppAvailableSubs.length <= 1) {
-    showInAppToast(html`<strong>Sous-titres</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucun sous-titre OpenSubtitles trouvé pour ce titre</span>`, 1800);
+    showInAppToast(html`<strong>${KINO_I18N.t('page.sous_titres')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.aucun_sous_titre_opensubtitles_trouve')}</span>`, 1800);
     return;
   }
   await activateInAppSubtitle((inAppActiveSubIdx + 1) % inAppAvailableSubs.length, true);
@@ -1091,7 +1091,7 @@ async function activateInAppSubtitle(index, rememberForSession = true) {
   } catch (err) {
     if (generation !== inAppPlaybackGeneration || inAppActiveSubIdx !== index) return;
     inAppActiveSubIdx = 0;
-    if (btn) { btn.textContent = 'CC : Off'; btn.style.borderColor = ''; }
+    if (btn) { btn.textContent = KINO_I18N.t('page.cc_off'); btn.style.borderColor = ''; }
     if (subOverlay) { subOverlay.style.display = 'none'; render(subOverlay, ''); }
     showInAppToast('Sous-titres indisponibles pour ce fichier. Essayez une autre piste avec CC.', 5000);
   }
@@ -1167,8 +1167,8 @@ function applyInAppAudioUI(mode, showToast = false) {
   if (showToast) {
     showInAppToast(
       isBoost
-        ? html`<strong>Boost Voix / Audio Nuit activé</strong><br><span style="font-size:0.78rem; color:var(--muted);">Dialogues rehaussés & explosions adoucies (normalisation dynamique)</span>`
-        : html`<strong>Audio : Standard</strong><br><span style="font-size:0.78rem; color:var(--muted);">Plage dynamique cinéma originale sans compression</span>`,
+        ? html`<strong>${KINO_I18N.t('player.boost_voix_audio_nuit_active')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.dialogues_rehausses_explosions_adoucies')}</span>`
+        : html`<strong>${KINO_I18N.t('player.audio_standard')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.plage_dynamique_cinema_originale_sans')}</span>`,
       1900
     );
   }
@@ -1219,7 +1219,7 @@ async function captureInAppScreenshot() {
   resetInAppIdleTimer();
   const video = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!video || !video.videoWidth || !video.videoHeight) {
-    showInAppToast(html`<strong>Capture impossible</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucune image vidéo active</span>`, 1600);
+    showInAppToast(html`<strong>${KINO_I18N.t('player.capture_impossible')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.aucune_image_video_active')}</span>`, 1600);
     return;
   }
   try {
@@ -1240,10 +1240,10 @@ async function captureInAppScreenshot() {
       })
     });
     if (res && res.filename) {
-      showInAppToast(html`<strong>Capture enregistrée</strong><br><span style="font-size:0.78rem; color:var(--muted);">${res.filename}</span>`, 2200);
+      showInAppToast(html`<strong>${KINO_I18N.t('player.capture_enregistree')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${res.filename}</span>`, 2200);
     }
   } catch (e) {
-    showInAppToast(html`<strong>Capture protégée (CORS)</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez Shift+Cmd+4 / Win+Shift+S ou le Moteur KINO</span>`, 2200);
+    showInAppToast(html`<strong>${KINO_I18N.t('player.capture_protegee_cors')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.utilisez_shift_cmd_4_win_shift_s_ou_le')}</span>`, 2200);
   }
 }
 
@@ -1359,7 +1359,7 @@ export async function toggleInAppPiP() {
       const nextMode = video.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture';
       video.webkitSetPresentationMode(nextMode);
       if (btn) btn.style.borderColor = nextMode === 'picture-in-picture' ? '#fafafa' : '';
-      showInAppToast(nextMode === 'picture-in-picture' ? html`<strong>⧉ Picture-in-Picture activé</strong>` : html`<strong>⧉ Retour à la fenêtre KINO</strong>`, 1400);
+      showInAppToast(nextMode === 'picture-in-picture' ? html`<strong>${KINO_I18N.t('player.picture_in_picture_active')}</strong>` : html`<strong>${KINO_I18N.t('player.retour_a_la_fenetre_kino')}</strong>`, 1400);
       return;
     }
     if (document.pictureInPictureElement) {
@@ -1368,10 +1368,10 @@ export async function toggleInAppPiP() {
     } else if (video.requestPictureInPicture) {
       await video.requestPictureInPicture();
       if (btn) btn.style.borderColor = '#fafafa';
-      showInAppToast(html`<strong>⧉ Picture-in-Picture activé</strong>`, 1400);
+      showInAppToast(html`<strong>${KINO_I18N.t('player.picture_in_picture_active')}</strong>`, 1400);
     }
   } catch (e) {
-    showInAppToast(html`<strong>⧉ PiP indisponible sur ce flux</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez « Moteur KINO » pour le mode flottant natif</span>`, 1800);
+    showInAppToast(html`<strong>${KINO_I18N.t('player.pip_indisponible_sur_ce_flux')}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${KINO_I18N.t('player.utilisez_moteur_kino_pour_le_mode')}</span>`, 1800);
   }
 }
 
@@ -1592,7 +1592,7 @@ export async function openInAppPlayer(streamUrl, title, playlist = null, media =
       return;
     }
     if (!inAppIsRemux) {
-      showInAppToast(html`Format conteneur MKV/Audio non natif.<br><strong>Remuxing vidéo/audio instantané...</strong>`, 2200);
+      showInAppToast(html`Format conteneur MKV/Audio non natif.<br><strong>${KINO_I18N.t('player.remuxing_video_audio_instantane')}</strong>`, 2200);
       video.removeEventListener('playing', video._onPlayingHandler || (() => {}));
       video.removeEventListener('error', video._onErrorHandler || (() => {}));
       const remuxPlaying = () => {
@@ -1651,7 +1651,7 @@ export async function openInAppPlayer(streamUrl, title, playlist = null, media =
         video.muted = true;
         updateInAppVolUI();
         video.play().then(() => {
-          showInAppToast(html`<strong>Cliquez sur l'écran ou appuyez sur M pour activer le son</strong>`, 3500);
+          showInAppToast(html`<strong>${KINO_I18N.t('player.cliquez_sur_l_ecran_ou_appuyez_sur_m')}</strong>`, 3500);
         }).catch(() => {});
       } else if (video.error || video.readyState === 0) {
         onFallbackRequired('play_reject');

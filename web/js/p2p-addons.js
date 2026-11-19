@@ -153,7 +153,7 @@ function stremioAddonHtml(addon) {
         <span>${[offers, addon.version ? `v${addon.version}` : ''].filter(Boolean).join(' · ')}</span>
       </div>
       <label class="k-switch" title="${addon.enabled ? 'Désactiver cet addon' : 'Activer cet addon'}"><input type="checkbox" role="switch" aria-label="${addon.name} actif"${addon.enabled ? ' checked' : ''} ${actOn('change', 'toggleStremioAddon', addon.id, CHECKED)}><span aria-hidden="true"></span></label>
-      <button type="button" class="btn btn-secondary btn-small" ${act('removeStremioAddon', addon.id)} aria-label="Retirer ${addon.name}">Retirer</button>
+      <button type="button" class="btn btn-secondary btn-small" ${act('removeStremioAddon', addon.id)} aria-label="Retirer ${addon.name}">${KINO_I18N.t('page.retirer')}</button>
     </li>`;
 }
 
@@ -161,7 +161,7 @@ function renderStremioAddons() {
   const list = document.getElementById('stremioAddonList');
   if (!list) return;
   render(list, stremioAddons.length ? stremioAddons.map(stremioAddonHtml)
-    : html`<li class="addon-empty">Aucun addon pour l’instant. Collez l’adresse d’un addon : elle finit par manifest.json.</li>`);
+    : html`<li class="addon-empty">${KINO_I18N.t('p2p.aucun_addon_pour_l_instant_collez_l')}</li>`);
 }
 
 async function changeStremioAddons(payload) {
@@ -223,7 +223,7 @@ export async function renderAddonCatalogs() {
           <div class="list-shelf-meta">${catalog.addon_name} · ${catalog.type === 'series' ? 'Séries' : 'Films'}</div>
         </div>
       </div>
-      <div class="list-shelf-row" data-addon-catalog="${index}"><p class="list-shelf-empty">Chargement…</p></div>
+      <div class="list-shelf-row" data-addon-catalog="${index}"><p class="list-shelf-empty">${KINO_I18N.t('anime.chargement')}</p></div>
     </section>`));
   await Promise.all(stremioCatalogs.map(async (catalog, index) => {
     const row = box.querySelector(`[data-addon-catalog="${index}"]`);
@@ -231,9 +231,9 @@ export async function renderAddonCatalogs() {
       const data = await api(`/api/stremio-addons/catalog?addon=${encodeURIComponent(catalog.addon)}&type=${encodeURIComponent(catalog.type)}&id=${encodeURIComponent(catalog.id)}`);
       const items = data?.items || [];
       if (row) render(row, items.length ? items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, catalog.type))
-        : html`<p class="list-shelf-empty">Ce catalogue est vide.</p>`);
+        : html`<p class="list-shelf-empty">${KINO_I18N.t('p2p.ce_catalogue_est_vide')}</p>`);
     } catch (error) {
-      if (row) render(row, html`<p class="list-shelf-empty">Ce catalogue ne répond pas pour le moment.</p>`);
+      if (row) render(row, html`<p class="list-shelf-empty">${KINO_I18N.t('p2p.ce_catalogue_ne_repond_pas_pour_le')}</p>`);
     }
   }));
 }

@@ -90,66 +90,66 @@ export const NativePlayer = (function () {
     render(root, html`
       <div class="inapp-hud-top native-top pywebview-drag-region">
         <div class="kp-top-left no-drag">
-          <button type="button" class="inapp-btn kp-pill kp-back" id="nativeBack">← Retour</button>
+          <button type="button" class="inapp-btn kp-pill kp-back" id="nativeBack">${KINO_I18N.t('page.retour_2')}</button>
         </div>
-        <div class="kp-title"><span id="nativeTitle"></span><small class="kp-subtitle" id="nativeInfo">Lecteur natif</small></div>
+        <div class="kp-title"><span id="nativeTitle"></span><small class="kp-subtitle" id="nativeInfo">${KINO_I18N.t('native.lecteur_natif')}</small></div>
         <div class="kp-top-actions no-drag">
-          <select class="inapp-btn kp-pill kp-select" id="nativeAudio" aria-label="Piste audio" title="Choisir la piste audio"></select>
-          <select class="inapp-btn kp-pill kp-select" id="nativeSubs" aria-label="Sous-titres" title="Choisir les sous-titres"></select>
+          <select class="inapp-btn kp-pill kp-select" id="nativeAudio" aria-label="${KINO_I18N.t('page.piste_audio')}" title="${KINO_I18N.t('page.choisir_la_piste_audio')}"></select>
+          <select class="inapp-btn kp-pill kp-select" id="nativeSubs" aria-label="${KINO_I18N.t('page.sous_titres')}" title="${KINO_I18N.t('native.choisir_les_sous_titres')}"></select>
           <div class="kp-more">
-            <button type="button" class="inapp-btn kp-pill" id="nativeMoreBtn" aria-expanded="false" aria-controls="nativeMoreMenu" title="Réglages de l'image et du son, sous-titres en ligne, partage"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>Options</button>
-            <div id="nativeMoreMenu" class="kp-menu" role="group" aria-label="Options de lecture" hidden>
-              <div class="kp-menu-heading">Image et son</div>
+            <button type="button" class="inapp-btn kp-pill" id="nativeMoreBtn" aria-expanded="false" aria-controls="nativeMoreMenu" title="${KINO_I18N.t('native.reglages_de_l_image_et_du_son_sous')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>${KINO_I18N.t('page.options')}</button>
+            <div id="nativeMoreMenu" class="kp-menu" role="group" aria-label="${KINO_I18N.t('page.options_de_lecture')}" hidden>
+              <div class="kp-menu-heading">${KINO_I18N.t('page.image_et_son')}</div>
               <button type="button" class="inapp-btn kp-menu-item" id="nativeSubSize" data-name="Taille des sous-titres">A</button>
-              <button type="button" class="inapp-btn kp-menu-item" id="nativeVoice" data-name="Voix">Normal</button>
-              <button type="button" class="inapp-btn kp-menu-item" id="nativeClarity" data-name="Clarté">Normal</button>
+              <button type="button" class="inapp-btn kp-menu-item" id="nativeVoice" data-name="Voix">${KINO_I18N.t('page.normal')}</button>
+              <button type="button" class="inapp-btn kp-menu-item" id="nativeClarity" data-name="Clarté">${KINO_I18N.t('page.normal')}</button>
               <button type="button" class="inapp-btn kp-menu-item" id="nativeSpeed" data-name="Vitesse">1.0x</button>
-              <div class="kp-menu-heading">Partager</div>
-              <button type="button" class="inapp-btn kp-menu-item" id="nativeTv" title="Continuer sur la TV, au même moment" hidden>Sur la TV</button>
-              <button type="button" class="inapp-btn kp-menu-item" id="nativeKeep" hidden>Garder hors ligne</button>
-              <button type="button" class="inapp-btn kp-menu-item" id="nativeShot">Capturer l'image</button>
-              <button type="button" class="inapp-btn kp-menu-item" id="nativeRemote">Télécommande</button>
-              <button type="button" class="inapp-btn kp-menu-item" id="nativeParty">Watch Party</button>
-              <div class="kp-menu-heading" id="nativeWebHeading" hidden>Autre lecteur</div>
-              <button type="button" class="inapp-btn kp-menu-item" id="nativeWeb" title="Image dans l'image" hidden>Ouvrir dans le lecteur intégré</button>
-              <div class="kp-menu-heading">Sous-titres en ligne</div>
-              <div id="nativeOnlineSubs" class="kp-menu-list"><p class="kp-menu-note">Ouvrez ce menu pour chercher.</p></div>
+              <div class="kp-menu-heading">${KINO_I18N.t('native.partager')}</div>
+              <button type="button" class="inapp-btn kp-menu-item" id="nativeTv" title="${KINO_I18N.t('page.continuer_sur_la_tv_au_meme_moment')}" hidden>${KINO_I18N.t('page.sur_la_tv')}</button>
+              <button type="button" class="inapp-btn kp-menu-item" id="nativeKeep" hidden>${KINO_I18N.t('page.garder_hors_ligne')}</button>
+              <button type="button" class="inapp-btn kp-menu-item" id="nativeShot">${KINO_I18N.t('page.capturer_l_image')}</button>
+              <button type="button" class="inapp-btn kp-menu-item" id="nativeRemote">${KINO_I18N.t('page.telecommande')}</button>
+              <button type="button" class="inapp-btn kp-menu-item" id="nativeParty">${KINO_I18N.t('page.watch_party')}</button>
+              <div class="kp-menu-heading" id="nativeWebHeading" hidden>${KINO_I18N.t('native.autre_lecteur')}</div>
+              <button type="button" class="inapp-btn kp-menu-item" id="nativeWeb" title="${KINO_I18N.t('page.image_dans_l_image')}" hidden>${KINO_I18N.t('native.ouvrir_dans_le_lecteur_integre')}</button>
+              <div class="kp-menu-heading">${KINO_I18N.t('native.sous_titres_en_ligne')}</div>
+              <div id="nativeOnlineSubs" class="kp-menu-list"><p class="kp-menu-note">${KINO_I18N.t('native.ouvrez_ce_menu_pour_chercher')}</p></div>
             </div>
           </div>
         </div>
         ${WINDOW_BUTTONS}
       </div>
-      <div class="native-center" id="nativeStatus" aria-live="polite">Chargement…</div>
+      <div class="native-center" id="nativeStatus" aria-live="polite">${KINO_I18N.t('anime.chargement')}</div>
       <div class="inapp-floating-card" id="nativeSkipCard">
-        <button type="button" class="btn" id="nativeSkipGo">Passer l'intro</button>
-        <button type="button" class="btn btn-secondary" id="nativeSkipClose" aria-label="Masquer « Passer l'intro »">✕</button>
+        <button type="button" class="btn" id="nativeSkipGo">${KINO_I18N.t('page.passer_l_intro')}</button>
+        <button type="button" class="btn btn-secondary" id="nativeSkipClose" aria-label="${KINO_I18N.t('native.masquer_passer_l_intro')}">✕</button>
       </div>
       <div class="inapp-floating-card" id="nativeUndoCard">
-        <button type="button" class="btn btn-secondary" id="nativeUndoGo">↩ Revenir</button>
+        <button type="button" class="btn btn-secondary" id="nativeUndoGo">${KINO_I18N.t('native.revenir')}</button>
       </div>
       <div class="inapp-floating-card" id="nativeNextCard" role="status">
-        <div><div class="kp-next-label">À suivre dans <span id="nativeNextCount">10</span> s</div><div class="kp-next-title" id="nativeNextTitle">Épisode suivant</div></div>
-        <button type="button" class="btn" id="nativeNextGo">Lancer</button>
-        <button type="button" class="btn btn-secondary" id="nativeNextCancel">Annuler</button>
+        <div><div class="kp-next-label">${KINO_I18N.t('page.a_suivre_dans')} <span id="nativeNextCount">10</span> s</div><div class="kp-next-title" id="nativeNextTitle">${KINO_I18N.t('page.episode_suivant')}</div></div>
+        <button type="button" class="btn" id="nativeNextGo">${KINO_I18N.t('page.lancer')}</button>
+        <button type="button" class="btn btn-secondary" id="nativeNextCancel">${KINO_I18N.t('page.annuler')}</button>
       </div>
       <div class="inapp-hud-bottom native-bottom">
-        <input type="range" class="kp-range kp-seek" id="nativeSeek" min="0" max="1000" value="0" aria-label="Position dans le film">
+        <input type="range" class="kp-range kp-seek" id="nativeSeek" min="0" max="1000" value="0" aria-label="${KINO_I18N.t('native.position_dans_le_film')}">
         <div class="inapp-controls-row">
           <div class="inapp-controls-group">
-            <button type="button" class="inapp-btn inapp-btn-icon" id="nativePrev" aria-label="Épisode précédent" title="Épisode précédent" hidden>${icon('prev')}</button>
-            <button type="button" class="inapp-btn inapp-btn-icon" id="nativeBack10" aria-label="Reculer de 10 secondes" title="Reculer 10 s (Flèche gauche)">${icon('back10')}</button>
-            <button type="button" class="inapp-btn inapp-btn-icon" id="nativePlay" aria-label="Pause" title="Lecture / Pause (Espace)">${icon('pause')}</button>
-            <button type="button" class="inapp-btn inapp-btn-icon" id="nativeFwd10" aria-label="Avancer de 10 secondes" title="Avancer 10 s (Flèche droite)">${icon('fwd10')}</button>
-            <button type="button" class="inapp-btn inapp-btn-icon" id="nativeNext" aria-label="Épisode suivant" title="Épisode suivant" hidden>${icon('next')}</button>
+            <button type="button" class="inapp-btn inapp-btn-icon" id="nativePrev" aria-label="${KINO_I18N.t('remote.episode_precedent')}" title="${KINO_I18N.t('remote.episode_precedent')}" hidden>${icon('prev')}</button>
+            <button type="button" class="inapp-btn inapp-btn-icon" id="nativeBack10" aria-label="${KINO_I18N.t('page.reculer_de_10_secondes')}" title="${KINO_I18N.t('native.reculer_10_s_fleche_gauche')}">${icon('back10')}</button>
+            <button type="button" class="inapp-btn inapp-btn-icon" id="nativePlay" aria-label="${KINO_I18N.t('start.pause')}" title="${KINO_I18N.t('page.lecture_pause_espace')}">${icon('pause')}</button>
+            <button type="button" class="inapp-btn inapp-btn-icon" id="nativeFwd10" aria-label="${KINO_I18N.t('page.avancer_de_10_secondes')}" title="${KINO_I18N.t('native.avancer_10_s_fleche_droite')}">${icon('fwd10')}</button>
+            <button type="button" class="inapp-btn inapp-btn-icon" id="nativeNext" aria-label="${KINO_I18N.t('page.episode_suivant')}" title="${KINO_I18N.t('page.episode_suivant')}" hidden>${icon('next')}</button>
             <span class="kp-time" id="nativeTime">0:00 / 0:00</span>
           </div>
           <div class="inapp-controls-group">
             <div class="inapp-vol-group">
-              <button type="button" class="inapp-btn inapp-btn-icon" id="nativeMute" aria-label="Couper le son" title="Muet (M)">${icon('volHigh')}</button>
-              <input type="range" class="kp-range kp-volume" id="nativeVolume" min="0" max="100" value="100" aria-label="Volume">
+              <button type="button" class="inapp-btn inapp-btn-icon" id="nativeMute" aria-label="${KINO_I18N.t('native.couper_le_son')}" title="${KINO_I18N.t('page.muet_m')}">${icon('volHigh')}</button>
+              <input type="range" class="kp-range kp-volume" id="nativeVolume" min="0" max="100" value="100" aria-label="${KINO_I18N.t('native.volume')}">
               <span class="inapp-vol-text" id="nativeVolumeText">100%</span>
             </div>
-            <button type="button" class="inapp-btn inapp-btn-icon" id="nativeFullscreen" aria-label="Plein écran" title="Plein écran (F)">${icon('fullscreen')}</button>
+            <button type="button" class="inapp-btn inapp-btn-icon" id="nativeFullscreen" aria-label="${KINO_I18N.t('page.plein_ecran')}" title="${KINO_I18N.t('page.plein_ecran_f')}">${icon('fullscreen')}</button>
           </div>
         </div>
       </div>`);
@@ -327,11 +327,11 @@ export const NativePlayer = (function () {
     if (!box) return;
     const subs = session.onlineSubs;
     if (subs === 'loading') {
-      render(box, html`<p class="kp-menu-note">Recherche…</p>`);
+      render(box, html`<p class="kp-menu-note">${KINO_I18N.t('settings.recherche')}</p>`);
     } else if (subs === 'none') {
-      render(box, html`<p class="kp-menu-note">Pas de recherche possible pour ce fichier.</p>`);
+      render(box, html`<p class="kp-menu-note">${KINO_I18N.t('native.pas_de_recherche_possible_pour_ce')}</p>`);
     } else if (!Array.isArray(subs) || !subs.length) {
-      render(box, html`<p class="kp-menu-note">Aucun sous-titre trouvé en ligne.</p>`);
+      render(box, html`<p class="kp-menu-note">${KINO_I18N.t('native.aucun_sous_titre_trouve_en_ligne')}</p>`);
     } else {
       render(box, subs.map((choice, index) => html`<button type="button" class="inapp-btn kp-menu-item" data-online="${index}"${choice.added ? ' disabled' : ''}>${choice.label}${choice.added ? ' · ajouté' : ''}</button>`));
       /** @type {NodeListOf<HTMLElement>} */ (box.querySelectorAll('[data-online]')).forEach(button => {
@@ -361,7 +361,7 @@ export const NativePlayer = (function () {
       session.onlineSubs = onlineSubtitleChoices(result.subtitles);
     } catch (error) {
       session.onlineSubs = null;
-      render(element('nativeOnlineSubs'), html`<p class="kp-menu-note">Recherche impossible pour le moment.</p>`);
+      render(element('nativeOnlineSubs'), html`<p class="kp-menu-note">${KINO_I18N.t('native.recherche_impossible_pour_le_moment')}</p>`);
       return;
     }
     renderOnlineSubtitles();
@@ -545,7 +545,7 @@ export const NativePlayer = (function () {
     // Subtitles read « CC : … » like the built-in player's button.
     const prefix = type === 'sub' ? 'CC : ' : '';
     const options = wanted.map(track => html`<option value="${track.id}" ${track.selected ? 'selected' : ''}>${prefix + trackLabel(track)}</option>`);
-    if (allowNone) options.unshift(html`<option value="no" ${wanted.some(track => track.selected) ? '' : 'selected'}>CC : Off</option>`);
+    if (allowNone) options.unshift(html`<option value="no" ${wanted.some(track => track.selected) ? '' : 'selected'}>${KINO_I18N.t('page.cc_off')}</option>`);
     render(select, options || html`<option>—</option>`);
     select.disabled = wanted.length === 0;
   }
@@ -732,7 +732,7 @@ export const NativePlayer = (function () {
     element('nativeWebHeading').hidden = !session.fallback;
     loadIntro();
     element('nativeTitle').textContent = session.title;
-    element('nativeStatus').textContent = 'Chargement…';
+    element('nativeStatus').textContent = KINO_I18N.t('anime.chargement');
     element('nativeStatus').style.display = 'block';
     document.documentElement.classList.add('native-playing');
     element('nativePlayer').classList.add('active');
