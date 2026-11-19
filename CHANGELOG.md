@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.0
+
+- KINO is now written in Rust from end to end: the app no longer carries
+  Python. Your library, history, settings and keys are kept as they are, and
+  an update from 1.9.2 installs by itself.
+- Windows: the native player (libmpv) plays inside KINO's window, with
+  KINO's controls over the video.
+- Windows: the window has no frame of its own. It maximizes within the screen
+  without covering the taskbar, a double click on the bar maximizes it, and
+  dragging a maximized window gives it back its size under the cursor.
+- A new look for windows, messages and empty screens, and small text made
+  easier to read.
+- Windows and Linux: the services' keys, the TMDB key and the Trakt tokens are
+  also kept in the system's keychain.
+- Google Drive sync no longer copies the Trakt tokens to other computers.
+- The page runs only KINO's own scripts, and what services send is shown as
+  text, never as markup.
+- Peer-to-peer: a torrent is ready before its files are chosen.
+- Suggestions come faster.
+
 ## 1.9.2
 
 - Windows: fixed a crash (access violation) that could happen at startup or
