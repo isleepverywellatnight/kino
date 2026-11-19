@@ -1,0 +1,59 @@
+# KINO's native interface (crates/kino-ui, gpui), phase G0 of docs/dev/plan-gpui.md:
+# it builds on macOS, Windows and Linux, opens its window and scrolls a grid of
+# 300 posters by itself (--bench), printing each system's frame times.
+name: Native UI (gpui)
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["crates/kino-ui/**", ".github/workflows/kino-ui.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["crates/kino-ui/**", ".github/workflows/kino-ui.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kino-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Linux libraries and a virtual screen
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-x11-dev libxcb1-dev libfontconfig1-dev libfreetype-dev \
+            libwayland-dev libvulkan1 mesa-vulkan-drivers xvfb openbox
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: crates/kino-ui
+      - name: Build
+        working-directory: crates/kino-ui
+        run: cargo build --release --locked
+      - name: Fast-scroll bench
+        working-directory: crates/kino-ui
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            Xvfb :99 -screen 0 1280x800x24 & sleep 1
+            DISPLAY=:99 openbox & sleep 1
+            export DISPLAY=:99
+          fi
+          exe=target/release/kino-ui
+          [ "$RUNNER_OS" = Windows ] && exe=target/release/kino-ui.exe
+          out=$("$exe" --bench | tee /dev/stderr | grep "KINO-UI BENCH" || true)
+          [ -n "$out" ] || { echo "::error::The bench printed nothing (the window did not run)"; exit 1; }
+          echo "::notice title=${{ matrix.os }}::${out#KINO-UI BENCH }"

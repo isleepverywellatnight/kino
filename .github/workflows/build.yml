@@ -348,10 +348,9 @@ jobs:
         run: packaging/build_flatpak.sh
       - name: Flatpak test
         run: |
-          # The runtime's codecs (freedesktop 25.08: codecs-extra; before: ffmpeg-full).
-          flatpak install --user -y --noninteractive flathub org.freedesktop.Platform.codecs-extra//25.08 \
-            || flatpak install --user -y --noninteractive flathub org.freedesktop.Platform.ffmpeg-full//25.08 \
-            || echo "::warning::No codecs extension found for the 25.08 runtime"
+          # The runtime's codecs (H.264, HEVC…): freedesktop 25.08's codecs-extra, branch
+          # 25.08-extra, which Flatpak also installs with the runtime.
+          flatpak install --user -y --noninteractive flathub org.freedesktop.Platform.codecs-extra//25.08-extra
           flatpak install --user -y --noninteractive dist/KINO-Linux-x86_64.flatpak
           flatpak run com.kino.desktop --self-check
           # Start-up on a virtual screen: KINO's server answers with its page.

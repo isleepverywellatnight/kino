@@ -1,0 +1,19 @@
+# KINO's native interface (gpui), docs/dev/plan-gpui.md. Phase G0: a go/no-go
+# trial. Its own workspace for now: gpui pins its dependencies (Cargo.lock
+# from the gpui crate), and KINO's crates join it once they agree.
+[package]
+name = "kino-ui"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT"
+
+[dependencies]
+gpui = "=0.2.2"
+image = { version = "0.25", default-features = false, features = ["jpeg"] }
+serde_json = "1"
+
+[profile.release]
+debug = false
+
+[workspace]
