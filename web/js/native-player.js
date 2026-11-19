@@ -596,7 +596,7 @@ export const NativePlayer = (function () {
     status.style.display = status.textContent ? 'block' : 'none';
     const info = [];
     if (state.width && state.height) info.push(`${state.width}×${state.height}`);
-    info.push(state.hwdec && state.hwdec !== 'no' ? 'décodage matériel' : 'décodage logiciel');
+    info.push(KINO_I18N.t(state.hwdec && state.hwdec !== 'no' ? 'native.decodage_materiel' : 'native.decodage_logiciel'));
     element('nativeInfo').textContent = `${KINO_I18N.t('native.lecteur_natif_x', info.join(' · '))}`;
     fillTracks(element('nativeAudio'), state.tracks || [], 'audio', false);
     fillTracks(element('nativeSubs'), state.tracks || [], 'sub', true);
