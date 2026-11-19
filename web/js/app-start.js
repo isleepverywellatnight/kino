@@ -1064,7 +1064,25 @@ function initUiLanguageSelect() {
 // KINO starts once every part of the page is loaded (web/js/main.js): nothing
 // above runs on its own but listeners, so no part depends on the order the
 // others load in.
+// While the page scrolls, the cards passing under the cursor do not react
+// (hover, preview): fast scrolling stays smooth. They do again 150 ms after.
+function initQuietScroll() {
+  const root = document.documentElement;
+  let timer = null;
+  const scrolling = () => {
+    if (!timer) root.classList.add('is-scrolling');
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      root.classList.remove('is-scrolling');
+      timer = null;
+    }, 150);
+  };
+  document.addEventListener('scroll', scrolling, { capture: true, passive: true });
+  document.addEventListener('wheel', scrolling, { passive: true });
+}
+
 export function startKino() {
+  initQuietScroll();
   initSettingsSectionNavigation();
   initSettingsAutosave();
   window.addEventListener('pywebviewready', refreshKinoUpdate);

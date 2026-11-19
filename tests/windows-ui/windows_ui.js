@@ -19,7 +19,7 @@ const { chromium } = require('playwright-core');
 
 const PROJECT = path.resolve(__dirname, '..', '..');
 const PORT = 9333;
-const EXPECTED_CHECKS = 34;
+const EXPECTED_CHECKS = 36;
 const FFMPEG = process.env.KINO_FFMPEG || path.join(PROJECT, 'vendor', 'ffmpeg', 'ffmpeg.exe');
 // The mpv KINO bundles (tools/fetch_mpv_windows.ps1), set as the test home's player.
 const MPV = path.join(PROJECT, 'vendor', 'mpv-windows', 'mpv.exe');
@@ -50,7 +50,16 @@ const win = {
   GetWindow: user32.func('intptr_t __stdcall GetWindow(intptr_t hwnd, uint32 cmd)'),
   GetClassNameW: user32.func('int __stdcall GetClassNameW(intptr_t hwnd, _Out_ char16_t *buf, int max)'),
   IsWindow: user32.func('bool __stdcall IsWindow(intptr_t hwnd)'),
+  SendMessageTimeoutW: user32.func('intptr_t __stdcall SendMessageTimeoutW(intptr_t hwnd, uint32 msg, uintptr_t wp, intptr_t lp, uint32 flags, uint32 timeout, _Out_ uintptr_t *result)'),
 };
+
+// How long KINO's window takes to answer a message (WM_NULL), in ms: a window
+// that stops answering is « ne répond pas » for Windows.
+function answerTime(hwnd) {
+  const start = process.hrtime.bigint();
+  win.SendMessageTimeoutW(hwnd, 0, 0, 0, 0x0002, 3000, [0]); // SMTO_ABORTIFHUNG
+  return Number(process.hrtime.bigint() - start) / 1e6;
+}
 
 // Synchronous output: the log stays whole even when the test ends with process.exit
 // (stdout to a pipe is asynchronous on Windows).
@@ -216,7 +225,15 @@ function makeVideo(folder) {
 // The test video over HTTP, with byte ranges (players seek with them).
 function serve(file) {
   const size = fs.statSync(file).size;
+  const poster = path.join(path.dirname(file), 'poster.jpg');
+  execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=342x513', '-frames:v', '1', poster]);
+  const posterBytes = fs.readFileSync(poster);
   const server = http.createServer((req, res) => {
+    // Posters arrive after a short wait, as from TMDB: cards wait for them while scrolling.
+    if (req.url.startsWith('/poster/')) {
+      setTimeout(() => res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' }).end(posterBytes), 150 + Math.random() * 350);
+      return;
+    }
     if (req.url !== '/test.mp4') { res.writeHead(404).end(); return; }
     const range = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
     let start = 0, end = size - 1;
@@ -277,6 +294,112 @@ async function pageTargetReady() {
     return false;
   }
 }
+
+// Fast scrolling over a grid of 300 poster cards with the real mouse wheel:
+// the page's longest frame (requestAnimationFrame gap) and the window's
+// slowest answer to Windows while it scrolls. `css` is added to the page first.
+async function fastScroll(page, hwnd, css) {
+  await page.evaluate(async css => {
+    const { runAction } = await import('/js/actions.js');
+    runAction('switchTab', 'movies');
+    // The catalogue's own answer (none without a TMDB key) comes first.
+    await new Promise(r => setTimeout(r, 2000));
+    const { renderPosterCards } = await import('/js/app-tabs.js');
+    renderPosterCards(Array.from({ length: 300 }, (_, i) => ({ id: `tt${2000000 + i}`, name: `Film ${i}`, type: 'movie', year: '2014',
+      poster: `http://127.0.0.1:8765/poster/${Date.now()}-${i}.jpg`, imdbRating: '7.5', genres: ['Drama'], runtime: '120 min' })), 'movie');
+    document.getElementById('scrollProbeStyle')?.remove();
+    const style = document.createElement('style');
+    style.id = 'scrollProbeStyle';
+    style.textContent = css;
+    document.head.appendChild(style);
+    window.scrollTo(0, 0);
+  }, css);
+  await page.waitForTimeout(1500);
+  // Over the grid's first visible cards (the grid itself runs far below the screen).
+  const grid = await page.locator('#postersGrid').boundingBox();
+  await move(...await screenPoint(page, hwnd, grid.x + Math.min(grid.width / 2, 300),
+    Math.min(grid.y + 200, await page.evaluate(() => innerHeight - 100))));
+  await page.evaluate(() => {
+    window.__gaps = [];
+    let last = performance.now();
+    const tick = t => { window.__gaps.push(t - last); last = t; window.__raf = requestAnimationFrame(tick); };
+    window.__raf = requestAnimationFrame(tick);
+  });
+  let slowest = 0;
+  for (let burst = 0; burst < 4; burst++) {
+    for (let i = 0; i < 30; i++) {
+      win.mouse_event(0x0800, 0, 0, burst % 2 ? 360 : -360, 0); // MOUSEEVENTF_WHEEL, 3 notches
+      await sleep(10);
+      slowest = Math.max(slowest, answerTime(hwnd));
+    }
+  }
+  await sleep(600);
+  const gaps = await page.evaluate(() => { cancelAnimationFrame(window.__raf); return window.__gaps; });
+  gaps.sort((a, b) => a - b);
+  return { frames: gaps.length, p95: Math.round(gaps[Math.floor(gaps.length * 0.95)] || 0),
+    longest: Math.round(gaps[gaps.length - 1] || 0), over100: gaps.filter(g => g > 100).length, window: Math.round(slowest) };
+}
+
+// The window filmed while something happens: PowerShell waits for `go` (its
+// start is slow), then grabs `count` frames, each with the spread of its
+// brightness (a frame drawn by nothing, black or white, has none), and keeps
+// a few as JPEG for the log. Returns { ready, done }: await ready, write go, await done.
+function filmWindow(hwnd, count) {
+  const [x, y, w, h] = windowRect(hwnd);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kino-film-'));
+  const go = path.join(dir, 'go');
+  const script = `
+Add-Type -AssemblyName System.Drawing
+Add-Type -Namespace K -Name Dpi -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware();'
+[K.Dpi]::SetProcessDPIAware() | Out-Null
+$shot = New-Object System.Drawing.Bitmap ${w}, ${h}
+$g = [System.Drawing.Graphics]::FromImage($shot)
+$jpeg = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
+$params = New-Object System.Drawing.Imaging.EncoderParameters 1
+$params.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter ([System.Drawing.Imaging.Encoder]::Quality), 60L
+"READY"
+while (-not (Test-Path '${go}')) { Start-Sleep -Milliseconds 5 }
+$clock = [Diagnostics.Stopwatch]::StartNew()
+for ($i = 0; $i -lt ${count}; $i++) {
+  $g.CopyFromScreen(${x}, ${y}, 0, 0, $shot.Size)
+  $values = @()
+  for ($gx = 1; $gx -le 16; $gx++) { for ($gy = 1; $gy -le 9; $gy++) {
+    $c = $shot.GetPixel([int](${w} * $gx / 17), [int](${h} * $gy / 10))
+    $values += 0.299 * $c.R + 0.587 * $c.G + 0.114 * $c.B } }
+  $mean = ($values | Measure-Object -Average).Average
+  $spread = [Math]::Sqrt((($values | ForEach-Object { ($_ - $mean) * ($_ - $mean) }) | Measure-Object -Average).Average)
+  "FRAME $i $($clock.ElapsedMilliseconds) $([Math]::Round($mean, 1)) $([Math]::Round($spread, 1))"
+  if ($i % 4 -eq 0) {
+    $small = New-Object System.Drawing.Bitmap $shot, 480, ([int](${h} * 480 / ${w}))
+    $small.Save((Join-Path '${dir}' "frame-$i.jpg"), $jpeg, $params)
+  }
+  Start-Sleep -Milliseconds 60
+}`;
+  const child = spawn('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { stdio: ['ignore', 'pipe', 'inherit'] });
+  let out = '';
+  let readyResolve;
+  const ready = new Promise(resolve => { readyResolve = resolve; });
+  child.stdout.on('data', chunk => { out += chunk; if (out.includes('READY')) readyResolve(); });
+  const done = new Promise(resolve => child.on('exit', () => {
+    const frames = [...out.matchAll(/FRAME (\d+) (\d+) ([\d.]+) ([\d.]+)/g)]
+      .map(m => ({ i: Number(m[1]), ms: Number(m[2]), mean: Number(m[3]), spread: Number(m[4]) }));
+    for (const f of frames) {
+      const jpg = path.join(dir, `frame-${f.i}.jpg`);
+      if (fs.existsSync(jpg)) say(`SCREENSHOT film-${f.i}-${f.ms}ms\n${fs.readFileSync(jpg).toString('base64')}\nEND SCREENSHOT`);
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+    resolve(frames);
+  }));
+  return { ready, done, go: () => fs.writeFileSync(go, '') };
+}
+
+// KINO 2.0's poster cards: a shimmer on every card still loading and a blurred
+// « + » button on each, without the quiet scroll (for the comparison).
+const OLD_CARDS_CSS = `.poster-art { background: linear-gradient(100deg, #1d1d1d 30%, #292929 50%, #1d1d1d 70%) !important;
+  background-size: 220% 100% !important; animation: posterShimmer 1.4s ease-in-out infinite !important; }
+  .poster-art:has(img.is-loaded) { animation: none !important; background: #1d1d1d !important; }
+  .wl-btn { -webkit-backdrop-filter: blur(10px) !important; backdrop-filter: blur(10px) !important; }
+  html.is-scrolling .poster-card { pointer-events: auto !important; }`;
 
 async function run(hwnd, videoUrl) {
   // Playwright may keep the about:blank it saw before KINO navigated: connect again.
@@ -454,6 +577,14 @@ async function run(hwnd, videoUrl) {
   await page.evaluate(async () => (await import('/js/app-player.js')).toggleInAppFullscreen());
   await page.waitForTimeout(800);
 
+  // Fast scrolling over 300 cards: KINO 2.0's cards, then today's.
+  await smallWindow();
+  const old = await fastScroll(page, hwnd, OLD_CARDS_CSS);
+  const now = await fastScroll(page, hwnd, '');
+  say(`fast scroll, KINO 2.0 cards: ${JSON.stringify(old)}`);
+  say(`fast scroll, today: ${JSON.stringify(now)}`);
+  check('fast scrolling stays smooth', now.longest <= 250 && now.window <= 500, JSON.stringify({ old, now }));
+
   // The native player: libmpv draws in KINO's window, the page's controls stay over it.
   // KINO's own player closes first: its video must not be what shows through.
   await page.evaluate(async () => (await import('/js/app-player.js')).closeInAppPlayer());
@@ -461,9 +592,17 @@ async function run(hwnd, videoUrl) {
   await smallWindow();
   const available = await page.evaluate(async () => (await import('/js/native-player.js')).NativePlayer.available === true);
   check('native player available', available);
+  // The window filmed from the press on « Lancer »: the player never vanishes while it starts.
+  const film = filmWindow(hwnd, 20);
+  await film.ready;
+  film.go();
   const native = available ? await page.evaluate(async id => (await import('/js/native-player.js')).NativePlayer.open(
     { id, filename: 'test.mp4' }, { type: 'movie', name: 'Test natif' }, 0, 'Test natif', null)
     .then(() => 'ok', error => String(error)), OFFLINE_ID) : 'unavailable';
+  const frames = await film.done;
+  const blank = frames.filter(f => f.spread < 4);
+  check('the player stays drawn while it starts', frames.length >= 15 && blank.length === 0,
+    JSON.stringify(frames.map(f => `${f.ms}ms:${f.mean}/${f.spread}`)));
   let playing = null;
   for (let i = 0; i < 60 && !(playing && playing.time > 1); i++) {
     await sleep(250);
