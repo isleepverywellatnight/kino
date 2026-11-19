@@ -22,8 +22,8 @@ function openLetterboxdModal() {
   letterboxdCsvName = '';
 
   const inp = document.getElementById('lbxUrlInput');
-  if (inp && !inp.value && window.savedLetterboxdUser) {
-    inp.value = window.savedLetterboxdUser;
+  if (inp && !inp.value && linkedAccounts.letterboxdUser) {
+    inp.value = linkedAccounts.letterboxdUser;
   }
 
   if (m) {
@@ -77,8 +77,6 @@ function updateListBadges() {
   const watchedList = getWatchedHistory();
   const watchedEl = document.getElementById('watchedCount');
   if (watchedEl) watchedEl.textContent = watchedList.length ? String(watchedList.length) : '';
-  const clEl = document.getElementById('customListsCount');
-  if (clEl && window.customLists) clEl.textContent = window.customLists.length ? String(window.customLists.length) : '';
   // The sidebar badge says what waits to be continued, not a total of everything.
   const libTotalEl = document.getElementById('libraryTotalBadge');
   if (libTotalEl) {
@@ -102,7 +100,7 @@ async function toggleCardWatched(ev, media) {
         imdbRating: media.imdbRating || ''
       })
     });
-    userHistory = res.history || [];
+    setUserHistory(res.history || []);
     updateListBadges();
     renderHomeResume();
     if (searchResultsShown) {
@@ -183,10 +181,10 @@ async function submitLetterboxdImport(options = {}) {
         restore_removed: restoreRemoved
       })
     });
-    userWatchlist = res.watchlist || [];
-    if (res.history) userHistory = res.history;
+    setUserWatchlist(res.watchlist || []);
+    if (res.history) setUserHistory(res.history);
     if (urlOrUser && !urlOrUser.startsWith('http') && !urlOrUser.includes('/')) {
-      window.savedLetterboxdUser = urlOrUser.replace(/^@/, '');
+      linkedAccounts.letterboxdUser = urlOrUser.replace(/^@/, '');
     }
     updateListBadges();
     renderHomeResume();
@@ -420,6 +418,7 @@ function renderCustomListsTab() {
 
 // --- Letterboxd lists: one shelf per list, then a full page with filters ---
 let openCustomListId = null;
+function setOpenCustomListId(value) { openCustomListId = value; return value; }
 const LIST_SHELF_SIZE = 12;
 
 function customListProgress(items) {

@@ -42,7 +42,7 @@ function load({ history = [], matches = {}, confirmAnswer = true } = {}) {
   const calls = [];
   const context = {
     document: { getElementById: element },
-    window: { activeDebridName: 'Real-Debrid', confirm: message => { calls.push(['confirm', message]); return confirmAnswer; } },
+    linkedAccounts: { debridName: 'Real-Debrid' }, window: { confirm: message => { calls.push(['confirm', message]); return confirmAnswer; } },
     activeTab: 'rdcloud', userHistory: history, Date,
     escapeHtml,     displayTitle: m => m.name_fr || m.name,
     titleAttrs: m => raw(` data-title-id="${m.id}"`),
@@ -206,12 +206,12 @@ test('a Cloud file never borrows the last opened fiche', async () => {
   const opened = [];
   const context = {
     currentMedia: { id: 'tt0000001', name: 'Autre fiche', type: 'movie' }, _isGlobalPlayLaunching: false,
-    navigator: { platform: 'MacIntel', userAgent: '' }, window: { kinoPlayerMode: 'integrated' }, setTimeout: () => 0,
+    navigator: { platform: 'MacIntel', userAgent: '' }, playerPrefs: { playerMode: 'integrated' }, window: {}, setTimeout: () => 0,
     userHistory: [{ id: BEAR.id, ep_positions: { s3e1: { position: 312 } } }, { id: 'tt0000001', position: 999 }],
     document: { getElementById: () => null }, refreshUserLists() {}, openInAppPlayer() {},
     openNativeStream: async options => { opened.push(JSON.parse(JSON.stringify(options))); return true; },
   };
-  vm.runInNewContext(`${launch}\nthis.openMpv = openMpv;`, context);
+  vm.runInNewContext(`function setIsGlobalPlayLaunching(value) { _isGlobalPlayLaunching = value; return value; } \n${launch}\nthis.openMpv = openMpv;`, context);
   await context.openMpv(null, 'https://cloud.example/b2', 'S03E01 · The Bear', { media: { ...BEAR, type: 'series' }, season: 3, episode: 1,
     files: [{ filename: 'S03E01 · The Bear', download: 'https://cloud.example/b2' }, { filename: 'S03E02 · The Bear', download: 'https://cloud.example/b3' }] });
   assert.deepEqual(opened[0].media, { ...BEAR, type: 'series', season: 3, episode: 1 });

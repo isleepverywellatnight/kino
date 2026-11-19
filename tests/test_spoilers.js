@@ -60,7 +60,7 @@ test('source and ready-file results contain no concealed filename in DOM attribu
     spoilerConcealed: () => true, spoilerSeriesId: () => 'tt12345', Spoilers, escapeHtml,
     lastReadyDebrid: null, window: {},
   };
-  vm.runInNewContext(`${source.slice(source.indexOf('// --- Sources: the best one first'), source.indexOf('async function copyTorrentMagnet('))}; ${functionSource('renderDebridState', 'openDebridFile')}; renderTorrents(); renderDebridState({ready:true,files:[{filename:'SECRET-FILE-S01E03.mkv',download:'https://test/SECRET-URL',is_target_ep:true}]},1,3,'SECRET-CHOSEN');`, context);
+  vm.runInNewContext(`function setLastReadyDebrid(value) { lastReadyDebrid = value; return value; } ${source.slice(source.indexOf('// --- Sources: the best one first'), source.indexOf('async function copyTorrentMagnet('))}; ${functionSource('renderDebridState', 'openDebridFile')}; renderTorrents(); renderDebridState({ready:true,files:[{filename:'SECRET-FILE-S01E03.mkv',download:'https://test/SECRET-URL',is_target_ep:true}]},1,3,'SECRET-CHOSEN');`, context);
   const html = elements.torrentsList.innerHTML + elements.debridResultPanel.innerHTML;
   assert.doesNotMatch(html, /SECRET-SOURCE|SECRET-META|SECRET-FILE|SECRET-URL|SECRET-CHOSEN/);
   assert.match(html, /Épisode 3/);

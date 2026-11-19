@@ -140,7 +140,7 @@ test('settings navigation follows manual scrolling without moving the page again
       addEventListener: (event, callback) => { listeners[`link-${index}-${event}`] = callback; },
     };
   });
-  vm.runInNewContext(`let refreshSettingsSectionNavigation = () => {}; ${settingsNavigationFunction}; initSettingsSectionNavigation();`, {
+  vm.runInNewContext(`let refreshSettingsSectionNavigation = () => {}; function setRefreshSettingsSectionNavigation(value) { refreshSettingsSectionNavigation = value; return value; } ${settingsNavigationFunction}; initSettingsSectionNavigation();`, {
     document: {
       body: { dataset: { activeTab: 'settings' } },
       documentElement: { scrollHeight: 2400 },

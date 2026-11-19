@@ -130,7 +130,7 @@ test('« Fichier prêt »: each file of a chosen source has « Sur la TV », fro
   const elements = { debridTvStatus: { textContent: '' } };
   const context = {
     document: { getElementById: id => elements[id] },
-    window: { lastDebridFiles: [{ filename: 'Lupin.S01E03.1080p.mkv', download: 'https://dl.example/d/AB/Lupin.S01E03.mkv' }] },
+    lastDebridFiles: [{ filename: 'Lupin.S01E03.1080p.mkv', download: 'https://dl.example/d/AB/Lupin.S01E03.mkv' }], window: {},
     lastReadyDebrid: [{}, '1', '2'], currentMedia: { id: 'tt2531336', name: 'Lupin', type: 'series', year: '2021', poster: 'p' },
     userHistory: [{ id: 'tt2531336', ep_positions: { s1e3: { position: 600 } } }],
     Spoilers: { episodeNumber: name => { const m = /S(\d+)E(\d+)/i.exec(name); return m ? { season: +m[1], episode: +m[2] } : null; } },

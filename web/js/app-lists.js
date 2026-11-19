@@ -6,6 +6,9 @@ let caseSoundEnabled = true;
 let caseSpinRaf = null;
 let caseSpinState = null;
 let caseNoiseBuffer = null;
+// The custom list being drawn from, and the last title the draw chose.
+let customListRouletteTitle = '';
+let lastCaseWinnerMedia = null;
 
 function ensureCaseAudio() {
   if (!caseSoundEnabled) return null;
@@ -235,7 +238,7 @@ function restoreCatalogView() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(CATALOG_VIEW_KEY) || '{}') || {}; } catch (e) { saved = {}; }
   hideWatchedInCatalog = saved.hideWatched === true;
-  if (CATALOG_SORTS.includes(saved.sort)) catalogSort = saved.sort;
+  if (CATALOG_SORTS.includes(saved.sort)) setCatalogSort(saved.sort);
   const chip = document.getElementById('hideWatchedChip');
   if (chip) chip.classList.toggle('active', hideWatchedInCatalog);
   const select = document.getElementById('catalogSortSelect');
@@ -460,13 +463,13 @@ async function surpriseMeMedia(poolArg = null) {
   if (typeof poolArg === 'object' && poolArg && poolArg.items) {
     poolMode = 'customlist';
     customListItems = poolArg.items;
-    window._customListRouletteTitle = poolArg.title || 'Liste Letterboxd';
+    customListRouletteTitle = poolArg.title || 'Liste Letterboxd';
   } else if (typeof poolArg === 'string' && poolArg.startsWith('customlist:')) {
     poolMode = 'customlist';
     const lid = poolArg.split(':')[1];
     const l = userCustomLists.find(x => x.id === lid);
     customListItems = l?.items || [];
-    window._customListRouletteTitle = l?.title || 'Liste Letterboxd';
+    customListRouletteTitle = l?.title || 'Liste Letterboxd';
   } else if (poolArg === true || poolArg === 'watchlist') {
     poolMode = 'watchlist';
   } else if (poolArg === 'watched' || poolArg === 'classics' || poolArg === 'prestige' || poolArg === 'catalog') {
@@ -499,7 +502,7 @@ async function surpriseMeMedia(poolArg = null) {
       if (!classicsCatalogCache || !classicsCatalogCache.length) {
         try {
           const data = await api('/api/catalog?type=classics&sort=top');
-          classicsCatalogCache = data.metas || [];
+          setClassicsCatalogCache(data.metas || []);
         } catch (e) {}
       }
       sourceItems = (classicsCatalogCache && classicsCatalogCache.length) ? classicsCatalogCache : catalogItems;
@@ -638,7 +641,7 @@ async function surpriseMeMedia(poolArg = null) {
     if (poolMode === 'watchlist') kickerEl.textContent = 'TIRAGE · MA LISTE';
     else if (poolMode === 'watched') kickerEl.textContent = 'TIRAGE · DÉJÀ VUS';
     else if (poolMode === 'classics') kickerEl.textContent = 'TIRAGE · CLASSIQUES À VOIR DANS SA VIE';
-    else if (poolMode === 'customlist') kickerEl.textContent = `TIRAGE · ${(window._customListRouletteTitle || 'LISTE LETTERBOXD').toUpperCase()}`;
+    else if (poolMode === 'customlist') kickerEl.textContent = `TIRAGE · ${(customListRouletteTitle || 'LISTE LETTERBOXD').toUpperCase()}`;
     else kickerEl.textContent = activeGenre ? `TIRAGE · ${activeGenre.toUpperCase()}` : (fallbackType === 'series' ? 'TIRAGE · SÉRIES' : 'TIRAGE · FILMS');
   }
   if (titleEl) titleEl.textContent = 'Sélection en cours...';
@@ -756,7 +759,7 @@ function finishCaseSpin(skipped = false) {
     imdbRating: rating,
     poolMode: poolMode || 'catalog'
   };
-  window._lastCaseWinnerMedia = mediaObj;
+  lastCaseWinnerMedia = mediaObj;
 
   if (winPanel) {
     winPanel.style.borderColor = '';
@@ -788,7 +791,7 @@ function finishCaseSpin(skipped = false) {
 }
 
 async function caseToggleWatchlist(btnEl) {
-  const m = window._lastCaseWinnerMedia;
+  const m = lastCaseWinnerMedia;
   if (!m || !m.id) return;
   await toggleWatchlist(null, m);
   if (btnEl) {
@@ -798,7 +801,7 @@ async function caseToggleWatchlist(btnEl) {
 }
 
 async function caseMarkWatchedAndRespin(btnEl) {
-  const m = window._lastCaseWinnerMedia;
+  const m = lastCaseWinnerMedia;
   if (!m || !m.id) return;
   if (btnEl) {
     btnEl.disabled = true;
@@ -817,7 +820,7 @@ async function caseMarkWatchedAndRespin(btnEl) {
         force_watched: true
       })
     });
-    userHistory = res.history || [];
+    setUserHistory(res.history || []);
     updateListBadges();
     renderHomeResume();
     if (activeTab === 'watchlist' || activeTab === 'watched') {
@@ -837,21 +840,21 @@ async function caseMarkWatchedAndRespin(btnEl) {
 }
 
 function casePlayOneClick(ev, btnEl) {
-  const m = window._lastCaseWinnerMedia;
+  const m = lastCaseWinnerMedia;
   if (!m) return;
   closeCaseModal();
   oneClickCard(ev, btnEl, m);
 }
 
 function caseOpenDetails() {
-  const m = window._lastCaseWinnerMedia;
+  const m = lastCaseWinnerMedia;
   if (!m) return;
   closeCaseModal();
   selectMedia(m);
 }
 
 function caseOpenTrailer() {
-  const m = window._lastCaseWinnerMedia;
+  const m = lastCaseWinnerMedia;
   if (!m) return;
   closeCaseModal();
   openTrailerModal('', m.name || 'KINO', m.year || '', 'vf');
@@ -947,7 +950,7 @@ function openMySeries(id) {
 async function playMySeries(id, btn) {
   const item = mySeriesData.find(entry => entry.id === id);
   if (!item?.next) return;
-  currentMedia = mySeriesMedia(item);
+  setCurrentMedia(mySeriesMedia(item));
   const { season, episode } = item.next;
   await oneClickPlay({
     imdb_id: item.id, type: 'series', season, episode,
@@ -1090,7 +1093,7 @@ function openCalendarSeries(id) {
 async function playCalendarEpisode(id, season, episode, btn) {
   const item = calendarEntry(id);
   if (!item || !Number(season) || !Number(episode)) return;
-  currentMedia = mySeriesMedia(item);
+  setCurrentMedia(mySeriesMedia(item));
   await oneClickPlay({
     imdb_id: item.id, type: 'series', season: Number(season), episode: Number(episode),
     title: `${item.name} — S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`,

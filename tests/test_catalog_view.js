@@ -27,10 +27,10 @@ test('the view is restored after a restart', () => {
   const store = new Map();
   const storage = { getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) };
   const first = context(storage);
-  vm.runInNewContext(`${block}; restoreCatalogView(); catalogSort = 'recent'; toggleHideWatchedCatalog();`, first);
+  vm.runInNewContext(`function setCatalogSort(value) { catalogSort = value; return value; } ${block}; restoreCatalogView(); catalogSort = 'recent'; toggleHideWatchedCatalog();`, first);
   assert.equal(first.renders.length, 1, 'the anime grid is refreshed too');
   const second = context(storage);
-  vm.runInNewContext(`${block}; restoreCatalogView(); result = [hideWatchedInCatalog, catalogSort];`, second);
+  vm.runInNewContext(`function setCatalogSort(value) { catalogSort = value; return value; } ${block}; restoreCatalogView(); result = [hideWatchedInCatalog, catalogSort];`, second);
   assert.deepEqual(Array.from(second.result), [true, 'recent']);
   assert.equal(second.chip.classList.active, true);
   assert.equal(second.select.value, 'recent');
@@ -42,7 +42,7 @@ test('unreadable or hostile storage falls back to defaults', () => {
     { getItem: () => '{"hideWatched":"yes","sort":"<img>"}', setItem: () => {} },
   ]) {
     const ctx = context(storage);
-    vm.runInNewContext(`${block}; restoreCatalogView(); toggleHideWatchedCatalog(); result = catalogSort;`, ctx);
+    vm.runInNewContext(`function setCatalogSort(value) { catalogSort = value; return value; } ${block}; restoreCatalogView(); toggleHideWatchedCatalog(); result = catalogSort;`, ctx);
     assert.equal(ctx.result, 'top');
   }
 });

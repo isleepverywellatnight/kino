@@ -38,10 +38,13 @@ function clearDiscordRpc() {
 
 let lastActiveLibraryTab = 'watchlist';
 let previousTab = 'movies';
+function setPreviousTab(value) { previousTab = value; return value; }
 let refreshSettingsSectionNavigation = () => {};
+function setRefreshSettingsSectionNavigation(value) { refreshSettingsSectionNavigation = value; return value; }
 
 // True while search results replace the tab's own content.
 let searchResultsShown = false;
+function setSearchResultsShown(value) { searchResultsShown = value; return value; }
 
 async function switchTab(tab) {
   searchResultsShown = false;
@@ -59,7 +62,7 @@ async function switchTab(tab) {
 
   noteTab(tab);
   const tabChanged = activeTab !== tab;
-  activeTab = tab;
+  setActiveTab(tab);
   document.body.dataset.activeTab = tab;
   if (tabChanged) window.scrollTo({ top: 0, behavior: 'auto' });
 
@@ -117,7 +120,7 @@ async function switchTab(tab) {
     const animePage = document.getElementById(id);
     if (animePage) animePage.style.display = 'none';
   }
-  if (tab !== 'anime') { clearInterval(animeWeekTimer); animeWeekTimer = null; }
+  if (tab !== 'anime') { clearInterval(animeWeekTimer); setAnimeWeekTimer(null); }
   const asNav = document.getElementById('animeSubNav');
   if (asNav) asNav.style.display = (tab === 'anime') ? 'flex' : 'none';
   const setP = document.getElementById('settingsPanel');
@@ -162,7 +165,7 @@ async function switchTab(tab) {
   await refreshUserLists();
   const listFiltersBox = document.getElementById('listFilters');
   if (listFiltersBox) listFiltersBox.hidden = !(tab === 'watchlist' || tab === 'watched');
-  if (tab === 'customlists') openCustomListId = null;
+  if (tab === 'customlists') setOpenCustomListId(null);
 
   if (tab === 'movies') {
     if (gf) gf.style.display = 'flex';
@@ -191,7 +194,7 @@ async function switchTab(tab) {
     // The catalogue loads behind every page of the tab: its first titles are
     // the banner of « À la une ».
     renderGenreChipsForTab('anime');
-    activeGenre = '';
+    setActiveGenre('');
     selectGenre('', document.querySelector('#genreFilters .chip'));
     await switchAnimeSubTab(currentAnimeSubTab);
   } else if (tab === 'watchlist') {
@@ -320,9 +323,9 @@ async function loadCatalog(type, genre = '', reset = true) {
   const grid = document.getElementById('postersGrid');
   const lm = document.getElementById('loadMoreWrap');
   if (reset) {
-    catalogSkip = 0;
-    catalogItems = [];
-    catalogHasMore = false;
+    setCatalogSkip(0);
+    setCatalogItems([]);
+    setCatalogHasMore(false);
     if (!networkOnline) {
       showOfflineCatalogue();
       return;
@@ -341,7 +344,7 @@ async function loadCatalog(type, genre = '', reset = true) {
       }
     }
     if (type === 'classics' && !genre) {
-      classicsCatalogCache = [...catalogItems];
+      setClassicsCatalogCache([...catalogItems]);
     }
     if (reset) {
       renderHeroSpotlight(catalogItems, type === 'classics' ? 'movie' : type);
@@ -350,7 +353,7 @@ async function loadCatalog(type, genre = '', reset = true) {
       updateClassicsStatsBadge();
     }
     renderPosterCards(catalogItems, type === 'classics' ? 'movie' : type);
-    catalogHasMore = type !== 'classics' && incoming.length >= 20;
+    setCatalogHasMore(type !== 'classics' && incoming.length >= 20);
     if (lm) lm.style.display = catalogHasMore ? 'flex' : 'none';
     // The banner and « Voir plus » belong to one page of the Anime tab each.
     if (activeTab === 'anime' && !searchResultsShown && !personView) applyAnimeSubTab();
@@ -367,7 +370,7 @@ async function loadMoreCatalog() {
   const btn = document.getElementById('loadMoreBtn');
   const orig = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Chargement...'; }
-  catalogSkip += 50;
+  setCatalogSkip(catalogSkip + (50));
   const type = activeTab === 'series' ? 'series' : (activeTab === 'classics' ? 'classics' : (activeTab === 'anime' ? 'anime' : 'movie'));
   try {
     await loadCatalog(type, activeGenre, false);
@@ -546,11 +549,11 @@ function renderPosterCards(metas, fallbackType) {
 
 async function loadRdCloud() {
   const list = document.getElementById('rdCloudList');
-  const pName = window.activeDebridName || 'votre débrideur';
+  const pName = linkedAccounts.debridName || 'votre débrideur';
   if (!cloudGroups.length) render(list, html`<p class="cloud-empty">Récupération de votre Cloud ${pName}…</p>`);
   try {
     const data = await api('/api/rd-history');
-    cloudGroups = Array.isArray(data.groups) ? data.groups : [];
+    setCloudGroups(Array.isArray(data.groups) ? data.groups : []);
     cloudAsked.clear();
     const noteEl = document.getElementById('rdCloudStatusNote');
     if (noteEl && data.cleaned && (data.cleaned.deleted_downloads > 0 || data.cleaned.deleted_torrents > 0)) {

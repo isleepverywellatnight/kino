@@ -38,7 +38,6 @@ test('counts are plain numbers; the sidebar badge counts what is in progress', (
   const start = source.indexOf('function updateListBadges() {');
   const context = {
     document: { getElementById: el },
-    window: { customLists: [1, 2] },
     userWatchlist: new Array(19).fill({}),
     getInProgressHistory: () => new Array(5).fill({}),
     getWatchedHistory: () => new Array(10).fill({}),
@@ -46,8 +45,8 @@ test('counts are plain numbers; the sidebar badge counts what is in progress', (
   };
   vm.runInNewContext(`${source.slice(start, source.indexOf('\n}\n', start) + 3)} this.run = updateListBadges;`, context);
   context.run();
-  assert.deepEqual([elements.wlCount.textContent, elements.histCount.textContent, elements.watchedCount.textContent, elements.customListsCount.textContent],
-    ['19', '5', '10', '2']);
+  assert.deepEqual([elements.wlCount.textContent, elements.histCount.textContent, elements.watchedCount.textContent],
+    ['19', '5', '10']);
   assert.equal(elements.libraryTotalBadge.textContent, '5', 'not the sum of three lists');
   assert.equal(elements.libraryTotalBadge.title, '5 lectures en cours');
   context.getInProgressHistory = () => [];

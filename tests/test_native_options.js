@@ -34,7 +34,7 @@ function loadNative(state, extra = {}) {
     activeElement: null,
   };
   const context = {
-    window: { addEventListener() {} }, document, localStorage: { getItem: () => null, setItem() {} },
+    window: { addEventListener() {} }, playerPrefs: {}, document, localStorage: { getItem: () => null, setItem() {} },
     api: async (url, options) => {
       const body = options?.body ? JSON.parse(options.body) : null;
       calls.push([url, body]);
