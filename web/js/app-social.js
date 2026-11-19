@@ -3,7 +3,7 @@
 // ==========================================
 
 import { registerActions } from './actions.js';
-import { CHECKED, act, actOn, attrJson, escapeHtml, html, render, safeUrl } from './html.js';
+import { CHECKED, act, actOn, attrJson, escapeHtml, html, render, safeUrl, tHtml } from './html.js';
 import {
   activeTab, api, catalogItems, currentMedia, getSeriesTargetEpisode, refreshSpoilerSurfaces,
   refreshUserLists, seriesMetaVideos, setUserHistory, userHistory,
@@ -60,7 +60,7 @@ export async function checkTraktStatus() {
     const authBox = document.getElementById('traktAuthBox');
     
     if (res && res.authenticated) {
-      if (statusEl) render(statusEl, html`<span style="color:#4ade80;">✓ Connecté (${res.username ? '@' + res.username : 'Actif'})</span>`);
+      if (statusEl) render(statusEl, html`<span style="color:#4ade80;">${tHtml('social.connecte_x', res.username ? '@' + res.username : 'Actif')}</span>`);
       if (connectBtn) { connectBtn.textContent = KINO_I18N.t('social.deconnecter'); connectBtn.style.color = '#ef4444'; }
       if (syncBtn) syncBtn.style.display = 'inline-block';
       if (authBox) authBox.style.display = 'none';
@@ -100,7 +100,7 @@ async function toggleTraktAuth(btn) {
       if (codeEl) codeEl.textContent = res.user_code;
       if (authBox) authBox.style.display = 'block';
       let expires = res.expires_in || 600;
-      if (cdEl) cdEl.textContent = `En attente de validation (expire dans ${Math.round(expires/60)} min)...`;
+      if (cdEl) cdEl.textContent = `${KINO_I18N.t('social.en_attente_de_validation_expire_dans_x', Math.round(expires/60))}`;
 
       if (traktAuthPollTimer) clearInterval(traktAuthPollTimer);
       traktAuthPollTimer = setInterval(async () => {
@@ -281,7 +281,7 @@ export function startRemotePolling() {
             playing: true,
             paused: v.paused,
             title: inAppCurrentTitle || (inAppCurrentMedia ? inAppCurrentMedia.name : 'Lecture KINO'),
-            sub_title: s && e ? `S${String(s).padStart(2, '0')}E${String(e).padStart(2, '0')}` : '',
+            sub_title: s && e ? `${KINO_I18N.t('settings.s_x_e_x', String(s).padStart(2, '0'), String(e).padStart(2, '0'))}` : '',
             media_type: (inAppCurrentMedia && inAppCurrentMedia.type) || 'movie',
             poster: (inAppCurrentMedia && inAppCurrentMedia.poster) || '',
             current_time: curT,
@@ -340,13 +340,13 @@ function handleRemoteCommand(cmd) {
         showInAppToast('Son coupé');
       } else {
         setInAppVolume(level, true);
-        showInAppToast(`Volume : ${Math.round(v.volume * 100)}%`);
+        showInAppToast(`${KINO_I18N.t('social.volume_x', Math.round(v.volume * 100))}`);
       }
       break;
     }
     case 'mute':
       toggleInAppMute();
-      showInAppToast(v.muted ? 'Son coupé' : `Volume : ${Math.round(v.volume * 100)}%`);
+      showInAppToast(v.muted ? 'Son coupé' : `${KINO_I18N.t('social.volume_x', Math.round(v.volume * 100))}`);
       break;
     case 'next': case 'next_ep': inAppNextTrack(); break;
     case 'prev': case 'prev_ep': inAppPrevTrack(); break;
@@ -421,7 +421,7 @@ function joinWatchPartyRoom() {
 function copyWpRoomCode() {
   if (!wpRoomCode) return;
   navigator.clipboard.writeText(wpRoomCode).then(() => {
-    alert(`Code de salle [ ${wpRoomCode} ] copié ! Partagez-le avec vos amis.`);
+    alert(`${KINO_I18N.t('social.code_de_salle_x_copie_partagez_le_avec', wpRoomCode)}`);
   }).catch(() => {});
 }
 
@@ -448,7 +448,7 @@ function watchPartyErrorMessage(err, online = true) {
   const type = err?.type || '';
   if (!online || WP_NETWORK_ERRORS.includes(type)) return WP_NEEDS_INTERNET;
   if (type === 'peer-unavailable') return 'Aucune Watch Party ne répond à ce code. Vérifiez-le avec la personne qui l’a créée.';
-  return `La Watch Party a rencontré un problème (${err?.message || type || 'erreur inconnue'}).`;
+  return `${KINO_I18N.t('social.la_watch_party_a_rencontre_un_probleme_x', err?.message || type || 'erreur inconnue')}`;
 }
 
 function initWpPeer(hostPeerId, joinHostPeerId) {
@@ -485,7 +485,7 @@ function initWpPeer(hostPeerId, joinHostPeerId) {
 
     wpPeer.on('open', (id) => {
       updateWpModalUI();
-      showInAppToast(`Watch Party prête ! Code : ${wpRoomCode}`);
+      showInAppToast(`${KINO_I18N.t('social.watch_party_prete_code_x', wpRoomCode)}`);
       if (joinHostPeerId) {
         const conn = wpPeer.connect(joinHostPeerId, { reliable: true });
         setupWpConnection(conn);
@@ -662,7 +662,7 @@ async function loadAddonsList() {
               <span class="badge" style="font-size:0.68rem; background:rgba(74,222,128,0.15); color:#4ade80;">${addon.type || 'scraper'}</span>
             </div>
             <p style="color:var(--muted); font-size:0.77rem; margin:4px 0 0; line-height:1.4;">${addon.description || 'Add-on de recherche'}</p>
-            ${addon.author ? html`<span style="font-size:0.7rem; color:var(--dim); margin-top:2px; display:block;">Par ${addon.author}</span>` : ''}
+            ${addon.author ? html`<span style="font-size:0.7rem; color:var(--dim); margin-top:2px; display:block;">${tHtml('social.par_x', addon.author)}</span>` : ''}
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
             <label style="position:relative; display:inline-block; width:38px; height:20px; cursor:pointer;">
@@ -675,7 +675,7 @@ async function loadAddonsList() {
       `;
     }));
   } catch(e) {
-    render(container, html`<div style="color:#ef4444; font-size:0.8rem; text-align:center; padding:20px;">Erreur : ${e.message}</div>`);
+    render(container, html`<div style="color:#ef4444; font-size:0.8rem; text-align:center; padding:20px;">${tHtml('settings.erreur_x', e.message)}</div>`);
   }
 }
 
@@ -706,7 +706,7 @@ async function uploadAddonFile(input) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({filename: file.name, data: base64})
       });
-      alert(`Add-on [ ${file.name} ] installé avec succès !`);
+      alert(`${KINO_I18N.t('social.add_on_x_installe_avec_succes', file.name)}`);
       await loadAddonsList();
     } catch(err) {
       alert("Erreur lors de l'installation de l'add-on : " + err.message);
@@ -755,7 +755,7 @@ export async function loadCommunityTab() {
     currentCommunityLists = curated;
     renderCommunityListsGrid(currentCommunityLists);
   } catch(e) {
-    render(grid, html`<p class="list-shelf-empty">Erreur : ${e.message}</p>`);
+    render(grid, html`<p class="list-shelf-empty">${tHtml('settings.erreur_x', e.message)}</p>`);
   }
 }
 
@@ -765,8 +765,8 @@ function communityShelfHtml(col) {
   const label = escapeHtml(col.title || 'Sélection');
   const id = attrJson(col.id);
   const open = act(col.imported ? 'openImportedList' : 'openCommunityList', col.id);
-  const meta = [`${progress.total} titre${progress.total > 1 ? 's' : ''}`, `${progress.watched} vu${progress.watched > 1 ? 's' : ''}`,
-    col.imported ? '' : (col.author ? `par ${col.author}` : '')].filter(Boolean).join(' · ');
+  const meta = [`${KINO_I18N.t('social.x_titre_x', progress.total, progress.total > 1 ? 's' : '')}`, `${KINO_I18N.t('settings.x_vu_x', progress.watched, progress.watched > 1 ? 's' : '')}`,
+    col.imported ? '' : (col.author ? `${KINO_I18N.t('social.par_x_2', col.author)}` : '')].filter(Boolean).join(' · ');
   return html`
     <section class="list-shelf" aria-label="${label}">
       <div class="list-shelf-head">
@@ -781,7 +781,7 @@ function communityShelfHtml(col) {
           <button type="button" class="btn-surprise" ${act('surpriseMeFromCommunityList', col.id)} title="${KINO_I18N.t('page.tirer_un_titre_non_vu_de_cette_selection')}">${KINO_I18N.t('page.roulette')}</button>
         </div>
       </div>
-      ${items.length ? html`<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie'))}${items.length > LIST_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${open}>Voir les ${items.length} titres</button>` : ''}</div>` : html`<p class="list-shelf-empty">${KINO_I18N.t('social.cette_selection_est_vide')}</p>`}
+      ${items.length ? html`<div class="list-shelf-row">${items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, 'movie'))}${items.length > LIST_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${open}>${tHtml('home.voir_les_x_titres', items.length)}</button>` : ''}</div>` : html`<p class="list-shelf-empty">${KINO_I18N.t('social.cette_selection_est_vide')}</p>`}
     </section>`;
 }
 
@@ -818,8 +818,8 @@ function renderCommunityPage() {
   items.forEach(m => { counts[listItemState(m) === 'watched' ? 'watched' : 'todo']++; });
   const shown = items.filter(m => communityStateFilter === 'all' || (listItemState(m) === 'watched') === (communityStateFilter === 'watched'));
   document.getElementById('communityActiveListTitle').textContent = col.title || 'Sélection';
-  document.getElementById('communityActiveListMeta').textContent = [`${progress.total} titre${progress.total > 1 ? 's' : ''}`,
-    `${progress.watched} vu${progress.watched > 1 ? 's' : ''}`, col.author ? `par ${col.author}` : ''].filter(Boolean).join(' · ');
+  document.getElementById('communityActiveListMeta').textContent = [`${KINO_I18N.t('social.x_titre_x', progress.total, progress.total > 1 ? 's' : '')}`,
+    `${KINO_I18N.t('settings.x_vu_x', progress.watched, progress.watched > 1 ? 's' : '')}`, col.author ? `${KINO_I18N.t('social.par_x_2', col.author)}` : ''].filter(Boolean).join(' · ');
   const desc = document.getElementById('communityActiveListDesc');
   desc.textContent = col.description || '';
   desc.hidden = !col.description;
@@ -944,8 +944,8 @@ async function toggleWatchedSeriesEp(seasonNum, epNum) {
   const mainPlayBtn = document.getElementById('detailMainPlayBtn');
   if (mainPlayBtn && histItem) {
     const targetEp = getSeriesTargetEpisode(histItem);
-    const epCode = `S${String(targetEp.season).padStart(2,'0')}E${String(targetEp.episode).padStart(2,'0')}`;
-    mainPlayBtn.textContent = targetEp.finished ? `Revoir (${epCode})` : (targetEp.isNext ? `Épisode suivant (${epCode})` : `Lancer ${epCode}`);
+    const epCode = `${KINO_I18N.t('settings.s_x_e_x', String(targetEp.season).padStart(2,'0'), String(targetEp.episode).padStart(2,'0'))}`;
+    mainPlayBtn.textContent = targetEp.finished ? `${KINO_I18N.t('fiche.revoir_x', epCode)}` : (targetEp.isNext ? `${KINO_I18N.t('fiche.episode_suivant_x', epCode)}` : `${KINO_I18N.t('settings.lancer_x', epCode)}`);
   }
 }
 
@@ -976,8 +976,8 @@ async function toggleWatchedWholeSeason(customSeason = null) {
   const mainPlayBtn = document.getElementById('detailMainPlayBtn');
   if (mainPlayBtn && histItem) {
     const targetEp = getSeriesTargetEpisode(histItem);
-    const epCode = `S${String(targetEp.season).padStart(2,'0')}E${String(targetEp.episode).padStart(2,'0')}`;
-    mainPlayBtn.textContent = targetEp.finished ? `Revoir (${epCode})` : (targetEp.isNext ? `Épisode suivant (${epCode})` : `Lancer ${epCode}`);
+    const epCode = `${KINO_I18N.t('settings.s_x_e_x', String(targetEp.season).padStart(2,'0'), String(targetEp.episode).padStart(2,'0'))}`;
+    mainPlayBtn.textContent = targetEp.finished ? `${KINO_I18N.t('fiche.revoir_x', epCode)}` : (targetEp.isNext ? `${KINO_I18N.t('fiche.episode_suivant_x', epCode)}` : `${KINO_I18N.t('settings.lancer_x', epCode)}`);
   }
 }
 

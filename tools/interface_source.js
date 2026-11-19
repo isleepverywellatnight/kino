@@ -39,8 +39,45 @@ const FRENCH_MONTHS = {
 // template « ${KINO_I18N.t('…')} » as the text itself, elsewhere as a string.
 const asMarkup = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/[`\\]|\$\{/g, m => `\\${m}`);
+// The arguments of a call, as written, from just after its « ( » to its « ) ».
+function callArguments(text, at) {
+  const args = [];
+  let depth = 0;
+  let start = at;
+  for (let i = at; i < text.length; i += 1) {
+    const c = text[i];
+    if (c === "'" || c === '"') { i += 1; while (i < text.length && text[i] !== c) i += text[i] === '\\' ? 2 : 1; continue; }
+    if (c === '`') { i += 1; let inner = 0; while (i < text.length && !(text[i] === '`' && inner === 0)) { if (text[i] === '\\') i += 1; else if (text[i] === '$' && text[i + 1] === '{') inner += 1; else if (text[i] === '}' && inner) inner -= 1; i += 1; } continue; }
+    if ('([{'.includes(c)) depth += 1;
+    else if (')]}'.includes(c)) {
+      if (depth === 0) { args.push(text.slice(start, i).trim()); return { args, end: i }; }
+      depth -= 1;
+    } else if (c === ',' && depth === 0) { args.push(text.slice(start, i).trim()); start = i + 1; }
+  }
+  return null;
+}
+
+// ${tHtml('key', a)} and ${KINO_I18N.t('key', a)} with values read back as the
+// French template they replaced: « ${a} épisodes ».
+function withValuesInFrench(text, french) {
+  const CALL = /\$\{(tHtml|KINO_I18N\.t)\('([\w.]+)', /g;
+  let out = '';
+  let last = 0;
+  for (const m of text.matchAll(CALL)) {
+    if (m.index < last || !Object.hasOwn(french, m[2])) continue;
+    const parsed = callArguments(text, m.index + m[0].length);
+    if (!parsed || text[parsed.end + 1] !== '}') continue;
+    let next = 0;
+    const words = m[1] === 'tHtml' ? asMarkup(french[m[2]]) : french[m[2]].replace(/[`\\]|\$\{/g, c => `\\${c}`);
+    out += text.slice(last, m.index) + words.replace(/\{\}/g, () => `\${${parsed.args[next++] ?? ''}}`);
+    last = parsed.end + 2;
+  }
+  return out + text.slice(last);
+}
+
 function inFrench(text) {
   const french = frenchTexts();
+  text = withValuesInFrench(text, french);
   return text.replace(/KINO_I18N\.months\('(long|short|narrow)'\)/g, (_, kind) => JSON.stringify(FRENCH_MONTHS[kind]))
     .replace(/\$\{KINO_I18N\.t\('([\w.]+)'\)\}/g, (all, key) => (Object.hasOwn(french, key) ? asMarkup(french[key]) : all))
     .replace(/KINO_I18N\.t\('([\w.]+)'\)/g, (all, key) => (Object.hasOwn(french, key) ? JSON.stringify(french[key]) : all))
@@ -117,8 +154,8 @@ let helpersOnce = null;
 function templateHelpers(root = ROOT) {
   if (helpersOnce) return helpersOnce;
   const code = scriptText('html.js', root);
-  const context = {};
-  require('node:vm').runInNewContext(`${code}; this.out = { act, actOn, THIS, EVENT, VALUE, CHECKED, escapeHtml, escapeText, attrJson, html, raw, render, replaceWith, renderAdjacent, safeUrl, SafeHtml };`, context);
+  const context = { KINO_I18N: frenchI18n() };
+  require('node:vm').runInNewContext(`${code}; this.out = { act, actOn, THIS, EVENT, VALUE, CHECKED, escapeHtml, escapeText, attrJson, html, raw, render, replaceWith, renderAdjacent, safeUrl, SafeHtml, tHtml };`, context);
   helpersOnce = context.out;
   return helpersOnce;
 }
