@@ -73,7 +73,7 @@ test('the tab: rows of the catalogue, and an invitation for the user\'s own file
     ['/api/manga/row?name=trending', '/api/manga/row?name=popular', '/api/manga/row?name=webtoon']);
   const home = lib.elements.mangaHome.innerHTML;
   assert.match(withCalls(home), /Tendances[\s\S]*class="manga-card" onclick="openMangaSeries\('anilist', '118586'\)"[\s\S]*Les plus populaires[\s\S]*Manhwa et webtoons/);
-  assert.match(withCalls(home), /Sur ce Mac[\s\S]*onclick="chooseMangaFolder\(\)">Choisir un dossier[\s\S]*Choisissez le dossier qui contient vos mangas\./);
+  assert.match(withCalls(home), /Sur cet ordinateur[\s\S]*onclick="chooseMangaFolder\(\)">Choisir un dossier[\s\S]*Choisissez le dossier qui contient vos mangas\./);
   assert.doesNotMatch(home, /Continuer la lecture/, 'nothing read yet');
   const hostile = lib.mangaCardHtml({ ...SERIES, title: '<img src=x onerror=alert(1)>' });
   assert.doesNotMatch(String(hostile), /<img src=x/);
