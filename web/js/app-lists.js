@@ -150,7 +150,7 @@ function playCaseTickSound(progress = 0, imdbRating = 0) {
     const pingOsc = ctx.createOscillator();
     const pingGain = ctx.createGain();
     pingOsc.type = 'sine';
-    const ratingVal = parseFloat(imdbRating || '0') || 0;
+    const ratingVal = parseFloat(String(imdbRating || '0')) || 0;
     const ratingBoost = ratingVal >= 8.5 ? 120 : (ratingVal >= 8.0 ? 60 : 0);
     const pingFreq = 380 + (progress * 260) + ratingBoost;
     pingOsc.frequency.setValueAtTime(pingFreq, now);
@@ -200,7 +200,7 @@ function playCaseWinSound(imdbRating = 0) {
     dropOsc.stop(now + 0.44);
 
     // 2. Accord arpégé de révélation
-    const rVal = parseFloat(imdbRating || '0') || 0;
+    const rVal = parseFloat(String(imdbRating || '0')) || 0;
     const notes = rVal >= 8.2
       ? [523.25, 659.25, 783.99, 987.77, 1174.66]
       : [440.0, 554.37, 659.25, 880.0];
@@ -262,7 +262,7 @@ export function restoreCatalogView() {
   if (CATALOG_SORTS.includes(saved.sort)) setCatalogSort(saved.sort);
   const chip = document.getElementById('hideWatchedChip');
   if (chip) chip.classList.toggle('active', hideWatchedInCatalog);
-  const select = document.getElementById('catalogSortSelect');
+  const select = /** @type {HTMLSelectElement} */ (document.getElementById('catalogSortSelect'));
   if (select) select.value = catalogSort;
 }
 
@@ -361,7 +361,7 @@ function resetListFilters() {
     view.state = 'all';
     saveListView();
   }
-  const input = document.getElementById('listFilterInput');
+  const input = /** @type {HTMLInputElement} */ (document.getElementById('listFilterInput'));
   if (input) input.value = '';
   renderActiveListTab();
 }
@@ -412,8 +412,8 @@ export function renderActiveListTab() {
   const rawList = activeListItems();
   if (!rawList) return;
   const view = listView[activeTab];
-  const q = foldSearchText((document.getElementById('listFilterInput')?.value || '').trim());
-  const sortSelect = document.getElementById('listSortSelect');
+  const q = foldSearchText((/** @type {HTMLInputElement} */ (document.getElementById('listFilterInput'))?.value || '').trim());
+  const sortSelect = /** @type {HTMLSelectElement} */ (document.getElementById('listSortSelect'));
   if (sortSelect) {
     sortSelect.value = view.sort;
     const added = sortSelect.querySelector?.('option[value="added"]');

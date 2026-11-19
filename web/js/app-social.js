@@ -153,8 +153,8 @@ export async function scrobbleTrakt(action, media, progressPct) {
     if (!/^tt\d+$/.test(String(media?.id || ''))) return false;
     const name = media.name || media.title || '';
     if (!name) return false;
-    const s = media.season || (document.getElementById('seasonSelect') ? parseInt(document.getElementById('seasonSelect').value) : null);
-    const e = media.episode || (document.getElementById('episodeSelect') ? parseInt(document.getElementById('episodeSelect').value) : null);
+    const s = media.season || (document.getElementById('seasonSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value) : null);
+    const e = media.episode || (document.getElementById('episodeSelect') ? parseInt(/** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value) : null);
     const result = await api('/api/trakt/scrobble', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -261,7 +261,7 @@ export function startRemotePolling() {
       } catch(e) {}
       return;
     }
-    const v = document.getElementById('inAppVideo');
+    const v = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
     const overlay = document.getElementById('inAppPlayerOverlay');
     const isPlayerActive = Boolean(overlay && overlay.classList.contains('active') && v && v.src);
 
@@ -308,7 +308,7 @@ export function startRemotePolling() {
 
 // Commands from the phone remote: remote_controller.py queues {action, value}.
 function handleRemoteCommand(cmd) {
-  const v = document.getElementById('inAppVideo');
+  const v = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!v || !cmd) return;
   const pick = (...candidates) => {
     for (const candidate of candidates) {
@@ -408,7 +408,7 @@ function showJoinWatchParty() {
 }
 
 function joinWatchPartyRoom() {
-  const inp = document.getElementById('wpJoinCodeInput');
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('wpJoinCodeInput'));
   const code = (inp ? inp.value.trim().toUpperCase() : '');
   if (!code || code.length < 4) {
     alert('Veuillez entrer un code de salle valide (ex: KINO9X).');
@@ -537,7 +537,7 @@ function setupWpConnection(conn) {
 function wpPlayerSnapshot() {
   const native = NativePlayer?.isOpen?.() ? NativePlayer.remoteState?.() : null;
   if (native) return { time: native.current_time || 0, paused: Boolean(native.paused), title: native.title || '' };
-  const v = document.getElementById('inAppVideo');
+  const v = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   return v ? { time: v.currentTime, paused: v.paused, title: inAppCurrentTitle || '' } : null;
 }
 
@@ -553,7 +553,7 @@ function handleWpIncomingData(data, fromConn) {
     else if (data.event === 'pause' || (data.type === 'sync' && data.paused === true)) showInAppToast('Pause synchronisée');
     return;
   }
-  const v = document.getElementById('inAppVideo');
+  const v = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
   if (!v) return;
 
   if (data.type === 'sync' || data.type === 'event') {
@@ -593,7 +593,7 @@ function toggleWpChat() {
 }
 
 function sendWpMessage() {
-  const inp = document.getElementById('inAppWpInput');
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('inAppWpInput'));
   if (!inp) return;
   const text = inp.value.trim();
   if (!text) return;
@@ -699,7 +699,7 @@ async function uploadAddonFile(input) {
   const reader = new FileReader();
   reader.onload = async (e) => {
     try {
-      const content = e.target.result;
+      const content = /** @type {ArrayBuffer} */ (e.target.result);
       const base64 = btoa(new Uint8Array(content).reduce((data, byte) => data + String.fromCharCode(byte), ''));
       await api('/api/addons/install', {
         method: 'POST',
@@ -872,7 +872,7 @@ function surpriseMeFromOpenCommunityList() {
 }
 
 async function importCustomLetterboxdFromInput() {
-  const inp = document.getElementById('communityLetterboxdInput');
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('communityLetterboxdInput'));
   const val = inp ? inp.value.trim() : '';
   if (!val) {
     alert("Veuillez coller l'URL d'une liste Letterboxd.");
@@ -880,7 +880,7 @@ async function importCustomLetterboxdFromInput() {
   }
   openLetterboxdModal();
   switchLbxModalTab('list');
-  const listInp = document.getElementById('lbxCustomListUrlInput');
+  const listInp = /** @type {HTMLInputElement} */ (document.getElementById('lbxCustomListUrlInput'));
   if (listInp) listInp.value = val;
   inp.value = '';
   submitLetterboxdCustomListImport();
@@ -889,9 +889,9 @@ async function importCustomLetterboxdFromInput() {
 function searchByPerson(name, mtype) {
   if (!name) return;
   const targetType = (mtype === 'series') ? 'series' : 'movie';
-  document.getElementById('searchType').value = targetType;
+  /** @type {HTMLSelectElement} */ (document.getElementById('searchType')).value = targetType;
   toggleSearchMode();
-  const inp = document.getElementById('searchInput');
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
   inp.value = name;
   runSearch();
   window.scrollTo({top: 0, behavior: 'smooth'});
@@ -951,7 +951,7 @@ async function toggleWatchedSeriesEp(seasonNum, epNum) {
 
 async function toggleWatchedWholeSeason(customSeason = null) {
   if (!currentMedia || !currentMedia.id) return;
-  const s = Number(customSeason || (document.getElementById('seasonSelect') ? document.getElementById('seasonSelect').value : 1) || 1);
+  const s = Number(customSeason || (document.getElementById('seasonSelect') ? /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value : 1) || 1);
   const eps = seriesMetaVideos.filter(v => v.season === s).map(v => Number(v.episode || v.number || 0)).filter(n => n > 0);
   const res = await api('/api/watched-toggle', {
     method: 'POST',

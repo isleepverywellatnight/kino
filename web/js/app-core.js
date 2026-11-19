@@ -257,9 +257,9 @@ export function scheduleSpoilerTarget(item) {
 }
 
 export function refreshSpoilerSurfaces() {
-  const global = document.getElementById('cfgSpoilerProtection');
+  const global = /** @type {HTMLSelectElement} */ (document.getElementById('cfgSpoilerProtection'));
   if (global) global.value = spoilerState.enabled ? 'on' : 'off';
-  const series = document.getElementById('detailSpoilerChoice');
+  const series = /** @type {HTMLSelectElement} */ (document.getElementById('detailSpoilerChoice'));
   if (series && currentMedia?.id) {
     const choice = spoilerState.overrides?.[spoilerSeriesId()];
     series.value = choice === true ? 'on' : choice === false ? 'off' : 'inherit';
@@ -267,12 +267,12 @@ export function refreshSpoilerSurfaces() {
   const offer = document.getElementById('detailSpoilerOffer');
   if (offer) offer.hidden = spoilerState.enabled || spoilerState.overrides?.[spoilerSeriesId()] === true;
   if (animeWeekData) renderAnimeWeek();
-  const season = Number(document.getElementById('seasonSelect')?.value || 1);
-  const selected = document.getElementById('episodeSelect')?.value;
+  const season = Number(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'))?.value || 1);
+  const selected = /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect'))?.value;
   if (currentMedia && document.getElementById('detailEpisodesList')) {
     onSeasonChange(false);
     if (selected && document.querySelector(`#episodeSelect option[value="${Number(selected)}"]`))
-      document.getElementById('episodeSelect').value = selected;
+      /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value = selected;
     renderDetailEpisodes(season);
   }
   refreshLatestAiredSpoiler();
@@ -294,8 +294,8 @@ function refreshLatestAiredSpoiler() {
 export function refreshPlayerSpoilerTitles() {
   if (!inAppCurrentMedia || !inAppSeriesId) return;
   const current = Spoilers.episodeNumber(inAppCurrentTitle);
-  const season = Number(current?.season || inAppCurrentMedia.season || document.getElementById('seasonSelect')?.value || 0);
-  const episode = Number(current?.episode || inAppCurrentMedia.episode || document.getElementById('episodeSelect')?.value || 0);
+  const season = Number(current?.season || inAppCurrentMedia.season || /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'))?.value || 0);
+  const episode = Number(current?.episode || inAppCurrentMedia.episode || /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect'))?.value || 0);
   const title = document.getElementById('inAppTitle');
   if (title) title.textContent = spoilerConcealed(inAppSeriesId, season, episode)
     ? Spoilers.neutralTitle(episode) : inAppCurrentTitle || 'Lecture';
@@ -319,11 +319,11 @@ export const PROVIDER_META = {
 };
 
 export function onConfigProviderChange() {
-  const prov = document.getElementById('cfgProvider') ? document.getElementById('cfgProvider').value : 'realdebrid';
+  const prov = document.getElementById('cfgProvider') ? /** @type {HTMLSelectElement} */ (document.getElementById('cfgProvider')).value : 'realdebrid';
   const meta = PROVIDER_META[prov] || PROVIDER_META.realdebrid;
-  const linkEl = document.getElementById('cfgProviderLink');
+  const linkEl = /** @type {HTMLAnchorElement} */ (document.getElementById('cfgProviderLink'));
   const lblEl = document.getElementById('cfgTokenLabel');
-  const inpEl = document.getElementById('cfgToken');
+  const inpEl = /** @type {HTMLInputElement} */ (document.getElementById('cfgToken'));
   if (linkEl) {
     linkEl.href = meta.url;
     linkEl.textContent = meta.label;
@@ -374,7 +374,7 @@ export async function api(path, opts) {
   const res = await fetch(path, opts);
   const data = await res.json();
   if (!res.ok || data.error) {
-    const error = new Error(data.error || 'Erreur serveur');
+    const error = /** @type {Error & { code?: string }} */ (new Error(data.error || 'Erreur serveur'));
     error.code = data.code || '';
     if (error.code === 'offline') noteNetworkOffline();
     throw error;
@@ -392,7 +392,7 @@ export async function checkConfig() {
     linkedAccounts.debridName = pmeta.name;
 
     if (document.getElementById('cfgProvider')) {
-      document.getElementById('cfgProvider').value = prov;
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgProvider')).value = prov;
     }
     onConfigProviderChange();
 
@@ -408,47 +408,47 @@ export async function checkConfig() {
       document.getElementById('rdCloudHeading').textContent = `Derniers fichiers débridés sur ${pmeta.name}`;
     }
 
-    document.getElementById('cfgDir').value = cfg.download_dir || '';
+    /** @type {HTMLInputElement} */ (document.getElementById('cfgDir')).value = cfg.download_dir || '';
     const isMacPlatform = /Mac/i.test(navigator.platform || navigator.userAgent);
     const effPlayerMode = (cfg.player_mode && cfg.player_mode !== 'kino') ? cfg.player_mode : (isMacPlatform ? 'integrated' : 'kino');
     if (document.getElementById('cfgPlayerMode')) {
-      document.getElementById('cfgPlayerMode').value = (effPlayerMode === 'external') ? 'external' : 'integrated';
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgPlayerMode')).value = (effPlayerMode === 'external') ? 'external' : 'integrated';
     }
     if (document.getElementById('cfgPrefLang')) {
-      document.getElementById('cfgPrefLang').value = cfg.pref_lang || 'vf';
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgPrefLang')).value = cfg.pref_lang || 'vf';
     }
     playerPrefs.prefLang = cfg.pref_lang || 'vf';
     if (typeof showTmdbStatus === 'function') showTmdbStatus(cfg.has_tmdb_key === true);
     playerPrefs.autoFrSubs = cfg.auto_fr_subs !== false;
     const notifyField = document.getElementById('cfgEpisodeNotificationsField');
     if (notifyField) notifyField.style.display = cfg.notifications_available === true ? 'flex' : 'none';
-    const notifyBox = document.getElementById('cfgEpisodeNotifications');
+    const notifyBox = /** @type {HTMLInputElement} */ (document.getElementById('cfgEpisodeNotifications'));
     if (notifyBox) notifyBox.checked = cfg.episode_notifications !== false;
-    const autoSubs = document.getElementById('cfgAutoFrSubs');
+    const autoSubs = /** @type {HTMLInputElement} */ (document.getElementById('cfgAutoFrSubs'));
     if (autoSubs) autoSubs.checked = playerPrefs.autoFrSubs;
     if (document.getElementById('cfgPrefQuality')) {
-      document.getElementById('cfgPrefQuality').value = cfg.pref_quality || '4k';
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgPrefQuality')).value = cfg.pref_quality || '4k';
     }
-    const priority = document.getElementById('cfgSourcePriority');
+    const priority = /** @type {HTMLSelectElement} */ (document.getElementById('cfgSourcePriority'));
     if (priority) priority.value = cfg.source_priority === 'quality' ? 'quality' : 'speed';
     if (document.getElementById('cfgHdrMode')) {
       const hMode = cfg.hdr_mode || 'sdr_pref';
-      document.getElementById('cfgHdrMode').value = (hMode === 'hdr_native') ? 'hdr_native' : 'sdr_pref';
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgHdrMode')).value = (hMode === 'hdr_native') ? 'hdr_native' : 'sdr_pref';
     }
     if (document.getElementById('cfgAudioMode')) {
-      document.getElementById('cfgAudioMode').value = cfg.audio_mode || 'voice_boost';
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgAudioMode')).value = cfg.audio_mode || 'voice_boost';
     }
     playerPrefs.hdrMode = cfg.hdr_mode || 'sdr_pref';
     playerPrefs.audioMode = cfg.audio_mode || 'voice_boost';
     const retVal = String(cfg.rd_retention_days || 0);
     if (document.getElementById('cfgRdRetention')) {
-      document.getElementById('cfgRdRetention').value = retVal;
+      /** @type {HTMLSelectElement} */ (document.getElementById('cfgRdRetention')).value = retVal;
     }
     if (document.getElementById('rdCloudRetentionSelect')) {
-      document.getElementById('rdCloudRetentionSelect').value = retVal;
+      /** @type {HTMLSelectElement} */ (document.getElementById('rdCloudRetentionSelect')).value = retVal;
     }
     if (document.getElementById('cfgDiscordRpc')) {
-      document.getElementById('cfgDiscordRpc').checked = cfg.discord_rpc !== false;
+      /** @type {HTMLInputElement} */ (document.getElementById('cfgDiscordRpc')).checked = cfg.discord_rpc !== false;
     }
     if (NativePlayer) {
       NativePlayer.available = cfg.native_player_available === true;
@@ -457,12 +457,12 @@ export async function checkConfig() {
     const nativeField = document.getElementById('cfgNativePlayerField');
     if (nativeField) nativeField.style.display = cfg.native_player_available === true ? 'flex' : 'none';
     if (document.getElementById('cfgNativePlayer')) {
-      document.getElementById('cfgNativePlayer').checked = cfg.native_player === true;
+      /** @type {HTMLInputElement} */ (document.getElementById('cfgNativePlayer')).checked = cfg.native_player === true;
     }
     const sharedDiscordId = '1556492442415398973';
     const currentCid = String(cfg.discord_client_id || sharedDiscordId).trim();
-    const presetEl = document.getElementById('cfgDiscordPreset');
-    const customInp = document.getElementById('cfgDiscordClientId');
+    const presetEl = /** @type {HTMLSelectElement} */ (document.getElementById('cfgDiscordPreset'));
+    const customInp = /** @type {HTMLInputElement} */ (document.getElementById('cfgDiscordClientId'));
     const customBox = document.getElementById('cfgDiscordCustomBox');
     if (presetEl) {
       if (currentCid === sharedDiscordId) {
@@ -597,7 +597,7 @@ export function openTonightModal() {
   const modal = document.getElementById('tonightModal');
   if (!modal) return;
   modal.style.display = 'flex';
-  const offline = document.getElementById('tonightOfflineOnly');
+  const offline = /** @type {HTMLInputElement} */ (document.getElementById('tonightOfflineOnly'));
   if (offline && !tonightOfflineInitialized) {
     offline.checked = !networkOnline || navigator.onLine === false;
     tonightOfflineInitialized = true;
@@ -610,7 +610,7 @@ export function closeTonightModal() {
   tonightRequestId++;
   const modal = document.getElementById('tonightModal');
   if (modal) modal.style.display = 'none';
-  const button = document.getElementById('tonightSearchButton');
+  const button = /** @type {HTMLButtonElement} */ (document.getElementById('tonightSearchButton'));
   if (button) button.disabled = false;
   document.getElementById('tonightOpenButton')?.focus();
 }
@@ -670,7 +670,7 @@ async function findTonightChoices() {
   const request = ++tonightRequestId;
   const status = document.getElementById('tonightStatus');
   const choices = document.getElementById('tonightChoices');
-  const button = document.getElementById('tonightSearchButton');
+  const button = /** @type {HTMLButtonElement} */ (document.getElementById('tonightSearchButton'));
   if (!status || !choices || !button) return;
   button.disabled = true;
   render(choices, '');
@@ -678,9 +678,9 @@ async function findTonightChoices() {
   try {
     const result = await api('/api/tonight', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({minutes: Number(document.getElementById('tonightMinutes').value),
-        mood: document.getElementById('tonightMood').value,
-        offline_only: document.getElementById('tonightOfflineOnly')?.checked === true}),
+      body: JSON.stringify({minutes: Number(/** @type {HTMLSelectElement} */ (document.getElementById('tonightMinutes')).value),
+        mood: /** @type {HTMLSelectElement} */ (document.getElementById('tonightMood')).value,
+        offline_only: /** @type {HTMLInputElement} */ (document.getElementById('tonightOfflineOnly'))?.checked === true}),
     });
     if (request !== tonightRequestId) return;
     renderTonightResult(result);
@@ -789,7 +789,7 @@ export async function toggleWatchlist(ev, media) {
   if (activeTab === 'watchlist') {
     renderActiveListTab();
   } else {
-    document.querySelectorAll(`[data-wl-id="${media.id}"]`).forEach(btn => {
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll(`[data-wl-id="${media.id}"]`)).forEach(btn => {
       const inList = isInWatchlist(media.id);
       btn.classList.toggle('in-list', inList);
       btn.textContent = inList ? '✓' : '+';

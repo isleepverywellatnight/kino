@@ -116,12 +116,12 @@ export function initSearchPlatformShortcuts() {
   const isMac = (navigator.platform && navigator.platform.toUpperCase().indexOf('MAC') >= 0) || (navigator.userAgent && navigator.userAgent.toUpperCase().indexOf('MAC') >= 0);
   const kbd = document.getElementById('searchKbdBadge');
   if (kbd) kbd.textContent = isMac ? '⌘K' : 'Ctrl+K';
-  const inp = document.getElementById('searchInput');
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
   if (inp && !inp.value) inp.placeholder = 'Rechercher un film, une série…';
 }
 
 export function updateSearchClearBtn() {
-  const inp = document.getElementById('searchInput');
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
   const btn = document.getElementById('searchClearBtn');
   if (btn && inp) {
     btn.style.display = inp.value.trim().length > 0 ? 'flex' : 'none';
@@ -129,7 +129,7 @@ export function updateSearchClearBtn() {
 }
 
 function clearSearchInput() {
-  const inp = document.getElementById('searchInput');
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
   if (inp) {
     inp.value = '';
     inp.focus();
@@ -142,8 +142,8 @@ function clearSearchInput() {
 }
 
 export function toggleSearchMode() {
-  const mode = document.getElementById('searchType').value;
-  const inp = document.getElementById('searchInput');
+  const mode = /** @type {HTMLSelectElement} */ (document.getElementById('searchType')).value;
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
   hideSearchDropdown();
   if (mode === 'magnet') inp.placeholder = 'Coller un lien magnet:?xt=urn:btih:…';
   else if (mode === 'raw') inp.placeholder = 'Recherche par mots-clés…';
@@ -154,8 +154,8 @@ export function toggleSearchMode() {
 function onSearchInput() {
   clearTimeout(searchDebounceTimer);
   updateSearchClearBtn();
-  const mode = document.getElementById('searchType').value;
-  const q = document.getElementById('searchInput').value.trim();
+  const mode = /** @type {HTMLSelectElement} */ (document.getElementById('searchType')).value;
+  const q = /** @type {HTMLInputElement} */ (document.getElementById('searchInput')).value.trim();
   if (mode === 'magnet' || mode === 'raw') {
     hideSearchDropdown();
     return;
@@ -183,7 +183,7 @@ async function fetchSearchSuggestions(q, mode) {
     const results = (res && res.results) || [];
     searchSuggestCache = { query: q, titles: results };
     // Only for what is still typed, and while the panel is wanted (not after Entrée).
-    if (!searchPanelWanted || document.getElementById('searchInput').value.trim() !== q) return;
+    if (!searchPanelWanted || /** @type {HTMLInputElement} */ (document.getElementById('searchInput')).value.trim() !== q) return;
     renderSearchDropdown(results, q);
   } catch (e) {}
 }
@@ -248,7 +248,7 @@ function rememberSearch(query, mode) {
 function forgetRecentSearches(event) {
   if (event) event.stopPropagation();
   try { localStorage.removeItem(RECENT_SEARCHES_KEY); } catch (e) {}
-  renderSearchPanel(document.getElementById('searchInput')?.value || '');
+  renderSearchPanel(/** @type {HTMLInputElement} */ (document.getElementById('searchInput'))?.value || '');
   document.getElementById('searchInput')?.focus();
 }
 
@@ -321,11 +321,11 @@ function renderSearchDropdown(items, query) {
 }
 
 export function openSearchPanel() {
-  const mode = document.getElementById('searchType')?.value;
+  const mode = /** @type {HTMLSelectElement} */ (document.getElementById('searchType'))?.value;
   if (mode === 'raw' || mode === 'magnet') return;
   if (document.getElementById('searchDropdown')?.style.display === 'block') return;  // already open: keep the choice
   searchPanelWanted = true;
-  const q = (document.getElementById('searchInput')?.value || '').trim();
+  const q = (/** @type {HTMLInputElement} */ (document.getElementById('searchInput'))?.value || '').trim();
   renderSearchPanel(q, searchSuggestCache.query === q ? searchSuggestCache.titles : []);
   if (q.length >= 2 && searchSuggestCache.query !== q && !/^magnet:/i.test(q)) fetchSearchSuggestions(q, mode);
 }
@@ -350,8 +350,8 @@ function selectSearchSuggest(idx) {
   const entry = searchSuggestItems[idx];
   hideSearchDropdown();
   if (!entry) return;
-  const inp = document.getElementById('searchInput');
-  const type = document.getElementById('searchType');
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
+  const type = /** @type {HTMLSelectElement} */ (document.getElementById('searchType'));
   if (entry.kind === 'place') {
     if (inp) { inp.value = ''; inp.blur(); }
     updateSearchClearBtn();
@@ -446,15 +446,15 @@ function updateSelectedSuggest() {
 }
 
 document.addEventListener('click', (e) => {
-  if (!e.target.closest('.search-box')) {
+  if (!/** @type {Element} */ (e.target).closest('.search-box')) {
     hideSearchDropdown();
   }
 });
 
 export async function runSearch() {
   clearTimeout(searchDebounceTimer);
-  const mode = document.getElementById('searchType').value;
-  const q = document.getElementById('searchInput').value.trim();
+  const mode = /** @type {HTMLSelectElement} */ (document.getElementById('searchType')).value;
+  const q = /** @type {HTMLInputElement} */ (document.getElementById('searchInput')).value.trim();
   if (!q) return;
 
   hideSearchDropdown();
@@ -603,8 +603,8 @@ export async function oneClickCard(ev, btn, media, options = {}) {
 
 async function oneClickSeriesEpisode(btn, customSeason = null, customEpisode = null) {
   if (!currentMedia) return;
-  const s = customSeason || document.getElementById('seasonSelect').value || 1;
-  const e = customEpisode || document.getElementById('episodeSelect').value || 1;
+  const s = customSeason || /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect')).value || 1;
+  const e = customEpisode || /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect')).value || 1;
   await oneClickPlay({
     imdb_id: currentMedia.id,
     type: 'series',
@@ -1097,6 +1097,7 @@ function buildDetailHtml(media, meta, isPreview) {
   const genres = (meta.genres_fr || rawGenres).slice(0, 5);
 
   // Synopsis text comes from external catalogs: escape it; only the skeleton is markup.
+  /** @type {ReturnType<typeof html> | string} */
   let desc = escapeHtml(meta.description_fr || meta.description || media.overview || media.description || '');
   if (!desc && isPreview) {
     desc = html`<div class="detail-skeleton-line" style="width:90%;"></div><div class="detail-skeleton-line" style="width:75%; margin-top:6px;"></div>`;
@@ -1160,6 +1161,7 @@ function buildDetailHtml(media, meta, isPreview) {
       </div>
     </section>` : '';
 
+  /** @type {ReturnType<typeof html> | string} */
   let episodesHtml = '';
   if (isSeries) {
     if (isPreview) {
@@ -1350,7 +1352,7 @@ function detailBackdropFallback(img, poster) {
 }
 
 async function loadDetailPeoplePhotos(mediaId) {
-  const buttons = [...document.querySelectorAll('#detailMore .detail-person[data-person]')];
+  const buttons = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#detailMore .detail-person[data-person]'))];
   if (!buttons.length) return;
   const names = buttons.map(button => button.dataset.person);
   let people = {};
@@ -1519,9 +1521,9 @@ async function playDetailTrailer(trailerId, title, year = '', lang = 'vf') {
   detailTrailerCtx = ctx;
   hero.classList.add('playing-trailer');
   box.hidden = false;
-  box.querySelectorAll('[data-trailer-lang]').forEach(button => button.classList.toggle('active', button.dataset.trailerLang === lang));
+  /** @type {NodeListOf<HTMLElement>} */ (box.querySelectorAll('[data-trailer-lang]')).forEach(button => button.classList.toggle('active', button.dataset.trailerLang === lang));
   render(frame, html`<div class="detail-trailer-message">Recherche de la bande-annonce…</div>`);
-  const link = document.getElementById('detailTrailerLink');
+  const link = /** @type {HTMLAnchorElement} */ (document.getElementById('detailTrailerLink'));
   if (link) link.hidden = true;
   try {
     const qs = new URLSearchParams({title: ctx.title, year: ctx.year, yt_id: ctx.trailerId, lang});
@@ -1565,7 +1567,7 @@ function applyMediaDetails(media, meta) {
   if (rendered.isSeries) {
     media.type = 'series';
     currentMedia.type = 'series';
-    const sSel = document.getElementById('seasonSelect');
+    const sSel = /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'));
     const seasons = [...new Set(seriesMetaVideos.map(v => Number(v.season)))].sort((a,b) => a - b);
     // The episode row of the fiche is the one season and episode chooser;
     // the menus above the sources stay for a series without its episode list.
@@ -1574,7 +1576,7 @@ function applyMediaDetails(media, meta) {
       render(sSel, seasons.map(s => html`<option value="${s}">Saison ${s}</option>`));
       sSel.value = String(rendered.targetSeason);
       onSeasonChange(false);
-      const eSel = document.getElementById('episodeSelect');
+      const eSel = /** @type {HTMLSelectElement} */ (document.getElementById('episodeSelect'));
       if (eSel && [...eSel.options].some(o => Number(o.value) === rendered.targetEpisode)) {
         eSel.value = String(rendered.targetEpisode);
       }
@@ -1687,7 +1689,7 @@ function selectDetailSeason(seasonNum) {
   document.querySelectorAll('[data-season-chip]').forEach(c => {
     c.classList.toggle('active', Number(c.getAttribute('data-season-chip')) === seasonNum);
   });
-  const sSel = document.getElementById('seasonSelect');
+  const sSel = /** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'));
   if (sSel) {
     sSel.value = String(seasonNum);
     onSeasonChange(false);

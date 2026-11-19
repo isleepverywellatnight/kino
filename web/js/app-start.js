@@ -38,6 +38,7 @@ import {
 } from './app-player.js';
 import { NativePlayer } from './native-player.js';
 
+/** @type {Array<[string, () => void]>} */
 const ESCAPE_DIALOGS = [
   ['shortcutsModal', () => toggleShortcutsModal()],
   ['remoteModal', () => closeRemoteModal()],
@@ -63,7 +64,7 @@ export function closeOpenDialogOnEscape() {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (document.getElementById('playbackHelp')?.open) return;
+  if (/** @type {HTMLDialogElement} */ (document.getElementById('playbackHelp'))?.open) return;
   const overlay = document.getElementById('inAppPlayerOverlay');
   const isPlayerActive = overlay && overlay.classList.contains('active');
   const isInput = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement ? document.activeElement.tagName : '');
@@ -72,7 +73,7 @@ window.addEventListener('keydown', (e) => {
     // Global macOS & keyboard shortcuts
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      const si = document.getElementById('searchInput');
+      const si = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
       if (si) { si.focus(); si.select(); openSearchPanel(); }
       return;
     }
@@ -83,7 +84,7 @@ window.addEventListener('keydown', (e) => {
     }
     if (e.key === '/' && !isInput) {
       e.preventDefault();
-      const si = document.getElementById('searchInput');
+      const si = /** @type {HTMLInputElement} */ (document.getElementById('searchInput'));
       if (si) { si.focus(); si.select(); openSearchPanel(); }
       return;
     }
@@ -148,7 +149,7 @@ window.addEventListener('keydown', (e) => {
         return;
       }
       if (isInput && document.activeElement) {
-        document.activeElement.blur();
+        /** @type {HTMLElement} */ (document.activeElement).blur();
         return;
       }
       const dp = document.getElementById('detailPanel');
@@ -190,11 +191,11 @@ window.addEventListener('keydown', (e) => {
     inAppSeekRel(10);
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
-    const v = document.getElementById('inAppVideo');
+    const v = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
     if (v) setInAppVolume(v.volume + 0.05, true);
   } else if (e.key === 'ArrowDown') {
     e.preventDefault();
-    const v = document.getElementById('inAppVideo');
+    const v = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));
     if (v) setInAppVolume(v.volume - 0.05, true);
   } else if (e.key === 'f' || e.key === 'F') {
     e.preventDefault();
@@ -369,7 +370,7 @@ function seasonEpisodesOut(season, today = new Date().toISOString().slice(0, 10)
 
 async function downloadSeasonOffline(button) {
   if (!currentMedia?.id) return;
-  const season = Number(document.getElementById('seasonSelect')?.value || 1);
+  const season = Number(/** @type {HTMLSelectElement} */ (document.getElementById('seasonSelect'))?.value || 1);
   const episodes = seasonEpisodesOut(season);
   const name = displayTitle(currentMedia) || currentMedia.name || 'cette série';
   if (!episodes.length) {
@@ -473,7 +474,7 @@ export async function pollDownloads() {
 }
 
 function initSettingsSectionNavigation() {
-  const links = [...document.querySelectorAll('.settings-index-item')];
+  const links = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.settings-index-item'))];
   const sections = links.map(link => document.getElementById(link.dataset.settingsTarget));
   if (!links.length || sections.some(section => !section)) return;
   const select = selected => {
@@ -532,7 +533,7 @@ function kinoUpdateMessage(message) {
 function renderKinoUpdate(state) {
   if (!state) return;
   document.getElementById('kinoUpdateVersion').textContent = state.version || '—';
-  const auto = document.getElementById('kinoUpdateAuto');
+  const auto = /** @type {HTMLInputElement} */ (document.getElementById('kinoUpdateAuto'));
   if (auto) auto.checked = state.auto_check !== false;
   const candidate = document.getElementById('kinoUpdateCandidate');
   candidate.hidden = !state.candidate;
@@ -543,7 +544,7 @@ function renderKinoUpdate(state) {
   document.getElementById('kinoUpdateChooseBtn').hidden = !state.local_packages;
   document.getElementById('kinoUpdatePageBtn').hidden = !state.latest;
   document.getElementById('kinoUpdateRollbackRow').hidden = !state.rollback_supported;
-  const rollback = document.getElementById('kinoUpdateRollbackBtn');
+  const rollback = /** @type {HTMLButtonElement} */ (document.getElementById('kinoUpdateRollbackBtn'));
   rollback.disabled = !state.rollback_available;
   document.getElementById('kinoUpdateRollbackDescription').textContent = state.rollback_available
     ? `KINO ${state.rollback_version || 'précédent'} est conservé sur ce Mac.`
@@ -663,7 +664,7 @@ async function openKinoReleasePage() {
 export function rollbackKinoUpdate() { return requestKinoUpdateAction('rollback'); }
 
 function initHeaderMenuKeyboard() {
-  document.querySelectorAll('#headerDropdownMenu .header-dropdown-item').forEach(item => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#headerDropdownMenu .header-dropdown-item')).forEach(item => {
     item.setAttribute('role', 'button');
     item.setAttribute('tabindex', '0');
     item.addEventListener('keydown', event => {
@@ -792,7 +793,7 @@ function initDialogFocus() {
       open = now;
       if (now) {
         opener = document.activeElement;
-        const target = backdrop.querySelector('.modal-close') || backdrop.querySelector(FOCUSABLE);
+        const target = /** @type {HTMLElement | null} */ (backdrop.querySelector('.modal-close') || backdrop.querySelector(FOCUSABLE));
         if (target && !backdrop.contains(document.activeElement)) target.focus({ preventScroll: true });
       } else if (opener && document.contains(opener)
         && (!document.activeElement || document.activeElement === document.body || backdrop.contains(document.activeElement))) {
@@ -896,8 +897,8 @@ function renderNavBack() {
 
 async function showNavBase(screen) {
   if (screen.kind === 'search') {
-    document.getElementById('searchType').value = screen.mode;
-    document.getElementById('searchInput').value = screen.query;
+    /** @type {HTMLSelectElement} */ (document.getElementById('searchType')).value = screen.mode;
+    /** @type {HTMLInputElement} */ (document.getElementById('searchInput')).value = screen.query;
     updateSearchClearBtn();
     await runSearch();
   } else if (screen.kind === 'person') {
@@ -1002,7 +1003,7 @@ function renderNetworkBanner(mode) {
 }
 
 async function retryNetwork() {
-  const button = document.getElementById('networkRetryButton');
+  const button = /** @type {HTMLButtonElement} */ (document.getElementById('networkRetryButton'));
   if (button) { button.disabled = true; button.textContent = 'Vérification…'; }
   try {
     const online = await refreshNetwork(true);
@@ -1054,7 +1055,7 @@ async function openFirstTab() {
 
 // Paramètres → Langue de l'interface: each language under its own name.
 function initUiLanguageSelect() {
-  const select = document.getElementById('cfgUiLanguage');
+  const select = /** @type {HTMLSelectElement} */ (document.getElementById('cfgUiLanguage'));
   if (!select || !window.KINO_LANGUAGES) return;
   for (const [code, name] of Object.entries(window.KINO_LANGUAGES)) select.add(new Option(name, code));
   select.value = window.KINO_LANG;

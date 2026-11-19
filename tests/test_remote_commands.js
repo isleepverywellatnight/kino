@@ -73,7 +73,7 @@ test('every action the phone page sends is handled', () => {
 test('the in-app player reports the fields the remote and the update guard read', () => {
   const polling = source.split('function startRemotePolling()', 2)[1].split('function handleRemoteCommand(cmd)', 1)[0];
   // The native player's branch comes first; the built-in player's report follows.
-  const inApp = polling.split("const v = document.getElementById('inAppVideo');", 2)[1];
+  const inApp = polling.split("const v = /** @type {HTMLVideoElement} */ (document.getElementById('inAppVideo'));", 2)[1];
   const body = inApp.split("fetch('/api/player/state'", 2)[1].split('JSON.stringify({', 2)[1].split('})', 1)[0];
   const sent = new Set([...body.matchAll(/^\s+([a-z_]+):/gm)].map(([, key]) => key));
   // The remote's state as the server keeps it (crates/kino/src/remote.rs).

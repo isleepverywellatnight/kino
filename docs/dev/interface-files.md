@@ -32,9 +32,12 @@ depuis internet.
 
 ## Règles
 
-- **Imports :** un fichier importe chaque nom qu'il prend à un autre.
-  `tools/names_check.js` le vérifie pour tous les fichiers, typés ou non (en
-  CI) : un import oublié ne se verrait sinon qu'au moment où la ligne s'exécute.
+- **Imports et types :** un fichier importe chaque nom qu'il prend à un autre.
+  TypeScript vérifie tous les fichiers de `web/js` (`jsconfig.json`, `checkJs`,
+  bloquant en CI) : un import oublié ne se verrait sinon qu'au moment où la
+  ligne s'exécute. Un élément de la page qui n'est pas un simple `HTMLElement`
+  reçoit son type là où on le prend :
+  `/** @type {HTMLInputElement} */ (document.getElementById('cfgToken'))`.
   Les imports ne visent que des fichiers voisins (`./app-core.js`), jamais une
   adresse (`test_no_remote_code.js`).
 - **État partagé :** un module ne peut pas affecter une variable qu'il importe.

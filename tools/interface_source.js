@@ -8,7 +8,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 
 // The parts are ES modules. On one page every top-level name is unique, and
-// tools/names_check.js makes sure each module imports what it uses; so tests
+// TypeScript (jsconfig.json) makes sure each module imports what it uses; so tests
 // run the parts as one script, without their import and export words. Each
 // line keeps its number.
 function asScript(text) {

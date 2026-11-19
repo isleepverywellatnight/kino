@@ -34,7 +34,7 @@ export function openLetterboxdModal() {
   letterboxdCsvContent = '';
   letterboxdCsvName = '';
 
-  const inp = document.getElementById('lbxUrlInput');
+  const inp = /** @type {HTMLInputElement} */ (document.getElementById('lbxUrlInput'));
   if (inp && !inp.value && linkedAccounts.letterboxdUser) {
     inp.value = linkedAccounts.letterboxdUser;
   }
@@ -73,7 +73,7 @@ function clearLetterboxdCsv(ev) {
   if (ev) ev.stopPropagation();
   letterboxdCsvContent = '';
   letterboxdCsvName = '';
-  const fileInp = document.getElementById('lbxCsvFileInput');
+  const fileInp = /** @type {HTMLInputElement} */ (document.getElementById('lbxCsvFileInput'));
   if (fileInp) fileInp.value = '';
   const fnEl = document.getElementById('lbxCsvFileName');
   const clrBtn = document.getElementById('lbxCsvClearBtn');
@@ -158,10 +158,10 @@ async function submitLetterboxdImport(options = {}) {
   const restoreRemoved = options.restoreRemoved === true;
   const restoreBtn = document.getElementById('lbxRestoreRemovedBtn');
   if (restoreBtn) restoreBtn.hidden = true;
-  const urlOrUser = (document.getElementById('lbxUrlInput')?.value || '').trim();
+  const urlOrUser = (/** @type {HTMLInputElement} */ (document.getElementById('lbxUrlInput'))?.value || '').trim();
   const csvText = (letterboxdCsvContent || '').trim();
   const st = document.getElementById('lbxImportStatus');
-  const btn = document.getElementById('lbxSubmitBtn');
+  const btn = /** @type {HTMLButtonElement} */ (document.getElementById('lbxSubmitBtn'));
 
   if (!urlOrUser && !csvText) {
     if (st) {
@@ -294,10 +294,10 @@ function renderSavedListsInModal() {
 }
 
 export async function submitLetterboxdCustomListImport() {
-  const urlInp = document.getElementById('lbxCustomListUrlInput');
+  const urlInp = /** @type {HTMLInputElement} */ (document.getElementById('lbxCustomListUrlInput'));
   const url = (urlInp?.value || '').trim();
   const st = document.getElementById('lbxCustomListStatus');
-  const btn = document.getElementById('lbxCustomListSubmitBtn');
+  const btn = /** @type {HTMLButtonElement} */ (document.getElementById('lbxCustomListSubmitBtn'));
 
   if (!url) {
     if (st) {
@@ -465,7 +465,7 @@ function customListShelfHtml(list) {
 
 export function openCustomList(listId) {
   openCustomListId = listId;
-  const input = document.getElementById('listFilterInput');
+  const input = /** @type {HTMLInputElement} */ (document.getElementById('listFilterInput'));
   if (input) input.value = '';
   renderCustomListsTab();
   window.scrollTo?.({ top: 0, behavior: 'auto' });
