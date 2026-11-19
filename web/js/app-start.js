@@ -643,12 +643,6 @@ function initHeaderMenuKeyboard() {
   });
 }
 
-initSettingsSectionNavigation();
-initSettingsAutosave();
-window.addEventListener('pywebviewready', refreshKinoUpdate);
-setTimeout(refreshKinoUpdate, 800);
-// KINO asks GitHub for a new version 20 s after start: show the answer in Settings.
-setTimeout(refreshKinoUpdate, 30000);
 // Clickable cards are <div onclick> in many templates: reach them with Tab and open
 // them with Enter or Space, including cards rendered later.
 const KEYBOARD_CARD_SELECTOR = '.poster-card, .card, .search-suggest-item';
@@ -1020,35 +1014,48 @@ async function openFirstTab() {
   switchTab(online ? 'movies' : 'offline');
 }
 
-window.addEventListener('online', () => refreshNetwork(true));
-window.addEventListener('offline', () => refreshNetwork(true));
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !networkOnline) refreshNetwork(true); });
-
-initHeaderMenuKeyboard();
-initKeyboardCards();
-initDialogFocus();
-initOriginalTitles();
-initPosterPreviews();
-initGenreStrip();
-initInAppMoreMenu();
-window.addEventListener("resize", updateEpisodeArrows);
-checkConfig();
-checkTraktStatus();
-startRemotePolling();
-pollDownloads();
-initSearchPlatformShortcuts();
-restoreCatalogView();
-loadSpoilerState().finally(openFirstTab);
-initResizeHandles();
-syncWindowState();
-
 // Paramètres → Langue de l'interface: each language under its own name.
-(function initUiLanguageSelect() {
+function initUiLanguageSelect() {
   const select = document.getElementById('cfgUiLanguage');
   if (!select || !window.KINO_LANGUAGES) return;
   for (const [code, name] of Object.entries(window.KINO_LANGUAGES)) select.add(new Option(name, code));
   select.value = window.KINO_LANG;
-})();
+}
+
+// KINO starts once every part of the page is loaded (web/js/main.js): nothing
+// above runs on its own but listeners, so no part depends on the order the
+// others load in.
+function startKino() {
+  initSettingsSectionNavigation();
+  initSettingsAutosave();
+  window.addEventListener('pywebviewready', refreshKinoUpdate);
+  setTimeout(refreshKinoUpdate, 800);
+  // KINO asks GitHub for a new version 20 s after start: show the answer in Settings.
+  setTimeout(refreshKinoUpdate, 30000);
+
+  window.addEventListener('online', () => refreshNetwork(true));
+  window.addEventListener('offline', () => refreshNetwork(true));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !networkOnline) refreshNetwork(true); });
+
+  initHeaderMenuKeyboard();
+  initKeyboardCards();
+  initDialogFocus();
+  initOriginalTitles();
+  initPosterPreviews();
+  initGenreStrip();
+  initInAppMoreMenu();
+  window.addEventListener('resize', updateEpisodeArrows);
+  checkConfig();
+  checkTraktStatus();
+  startRemotePolling();
+  pollDownloads();
+  initSearchPlatformShortcuts();
+  restoreCatalogView();
+  loadSpoilerState().finally(openFirstTab);
+  initResizeHandles();
+  syncWindowState();
+  initUiLanguageSelect();
+}
 
 // What the markup may run from this file (web/js/actions.js).
 registerActions({
