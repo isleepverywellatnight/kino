@@ -100,7 +100,7 @@ async fn play(State(s): State<Shared>, request: Request) -> Response {
     let Some(device) = tv.chosen().await else {
         return failure(
             StatusCode::NOT_FOUND,
-            "Aucune TV trouvée sur le réseau. Allumez-la, sur la même box que ce Mac.",
+            "Aucune TV trouvée sur le réseau. Allumez-la, sur la même box que cet ordinateur.",
         );
     };
     let media = body["media"].as_object().cloned().unwrap_or_default();

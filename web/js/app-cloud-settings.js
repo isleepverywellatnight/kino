@@ -760,8 +760,8 @@ export async function loadTvDevices(refresh = false, btn = null) {
       : html`<option value="">${KINO_I18N.t('page.aucune_tv_trouvee')}</option>`);
     if (chosen && devices.some(d => d.location === chosen)) select.value = chosen;
     if (status) status.textContent = devices.length
-      ? 'Le Mac envoie la vidéo à cette TV : il doit rester allumé pendant le film.'
-      : 'Aucune TV trouvée. Allumez-la, sur la même box que ce Mac, puis Rechercher.';
+      ? 'L’ordinateur envoie la vidéo à cette TV : il doit rester allumé pendant le film.'
+      : 'Aucune TV trouvée. Allumez-la, sur la même box que cet ordinateur, puis Rechercher.';
   } catch (e) {
     if (status) status.textContent = e.message;
   } finally {

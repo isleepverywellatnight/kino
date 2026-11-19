@@ -96,7 +96,7 @@ export async function renderMangaTab() {
       return mangaShelf(title, meta, data.error ? html`<p class="list-shelf-empty">${data.error}</p>`
         : mangaRow(data.series || [], 'Aucune série pour l’instant.'));
     }),
-    mangaShelf('Sur ce Mac', local.folder || 'Vos fichiers CBZ et dossiers d’images',
+    mangaShelf('Sur cet ordinateur', local.folder || 'Vos fichiers CBZ et dossiers d’images',
       mangaRow(local.series || [], local.folder ? 'Aucune série trouvée dans ce dossier.' : 'Choisissez le dossier qui contient vos mangas.',
         item => `${KINO_I18N.t('manga.x_chapitre_x', item.chapters, item.chapters > 1 ? 's' : '')}`), folderButton)]);
 }
