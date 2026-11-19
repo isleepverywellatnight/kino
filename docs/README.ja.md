@@ -35,12 +35,14 @@ KINO はコンテンツをホスト・提供・配布しません。ユーザー
 | **Windows** — Windows 10 または 11、64 ビット | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
 | **Windows on ARM** — ARM 搭載 PC（Snapdragon など）の Windows 11 | [**KINO-Windows-arm64.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows-arm64.exe) |
 | **Linux** — x86_64：Ubuntu 22.04、Debian 12、Fedora 36 以降 | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
+| **Linux (Flatpak)** — x86_64、Flatpak が使えるディストリビューション | [**KINO-Linux-x86_64.flatpak**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.flatpak) |
 
 KINO には必要なものがすべて入っています：ビデオプレーヤー、FFmpeg、インターフェース。ほかに何もインストールする必要はありません。あとは設定で Debrid サービスのキーを貼り付けるだけです。
 
 - **macOS**：`.dmg` ファイルを開き、KINO を「アプリケーション」にドラッグします。
 - **Windows**：`KINO-Windows.exe` を実行します。KINO は管理者権限なしでワンクリックでインストールされ、そのまま起動します。
 - **Linux**：`KINO-Linux-x86_64.AppImage` に実行権限を付けて（プロパティ → アクセス権、または `chmod +x`）開きます。動画は KINO のウィンドウで、mpv がインストールされていれば mpv で再生されます。以降のバージョンは、他のシステムと同じく KINO からインストールできます。
+- **Linux (Flatpak)**：`flatpak install --user KINO-Linux-x86_64.flatpak` を実行し、メニューから KINO を開きます。GNOME ランタイムは Flathub から取得されます。更新するには新しい `.flatpak` ファイルをインストールします。
 
 以降のバージョンは KINO からインストールできます：**設定 → アップデート**。
 

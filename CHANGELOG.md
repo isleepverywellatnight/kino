@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.3.0
+
+- Linux: KINO also comes as a Flatpak (KINO-Linux-x86_64.flatpak), on the
+  GNOME runtime from Flathub, with the codecs the page's player needs. It
+  shares its library and settings with the AppImage; install the new
+  .flatpak file to update.
+- The native player's line « décodage logiciel / matériel » is translated.
+
 ## 2.2.1
 
 - Fast scrolling no longer freezes KINO, and the page no longer lags. Each

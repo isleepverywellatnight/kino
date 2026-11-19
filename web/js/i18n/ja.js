@@ -1256,6 +1256,7 @@ KINO_I18N.load({
 "server.impossible_de_resoudre_s_x_e_x_x": "S{}E{} を解決できません（{}）。",
 "server.info_plist_du_paquet_illisible": "パッケージの Info.plist を読み取れません。",
 "server.installez_kino_avec_son_installateur": "アップデートを受け取るには、インストーラで KINO をインストールしてください。",
+"server.installez_le_fichier_flatpak_de_la": "KINO を更新するには、新しいバージョンの .flatpak ファイルをインストールしてください。",
 "server.kino_garde_x_addons_au_plus_retirez_en": "KINO に置けるアドオンは最大 {} 個です。先に 1 つ削除してください。",
 "server.kino_va_fermer_puis_redemarrer": "KINO は終了し、自動的に再起動します。",
 "server.kino_va_redemarrer_avec_la_nouvelle": "KINO は新しいバージョンで再起動します。",

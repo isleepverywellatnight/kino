@@ -1238,6 +1238,7 @@ KINO_I18N.load({
 "server.impossible_de_resoudre_s_x_e_x_x": "S{}E{} kann nicht aufgelöst werden ({}).",
 "server.info_plist_du_paquet_illisible": "Info.plist des Pakets nicht lesbar.",
 "server.installez_kino_avec_son_installateur": "Installiere KINO mit seinem Installationsprogramm, um Updates zu erhalten.",
+"server.installez_le_fichier_flatpak_de_la": "Installiere die .flatpak-Datei der neuen Version, um KINO zu aktualisieren.",
 "server.kino_garde_x_addons_au_plus_retirez_en": "KINO behält höchstens {} Add-ons: Entferne zuerst eines.",
 "server.kino_va_fermer_puis_redemarrer": "KINO wird geschlossen und dann automatisch neu gestartet.",
 "server.kino_va_redemarrer_avec_la_nouvelle": "KINO startet mit der neuen Version neu.",

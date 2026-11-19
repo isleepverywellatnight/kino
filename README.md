@@ -53,6 +53,7 @@ their country.
 | **Windows** — Windows 10 or 11, 64-bit | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
 | **Windows on ARM** — Windows 11 on an ARM PC (Snapdragon…) | [**KINO-Windows-arm64.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows-arm64.exe) |
 | **Linux** — x86_64: Ubuntu 22.04, Debian 12, Fedora 36 or later | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
+| **Linux (Flatpak)** — x86_64, any distribution with Flatpak | [**KINO-Linux-x86_64.flatpak**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.flatpak) |
 
 KINO contains everything it needs: video player, FFmpeg, interface. There is
 nothing else to install. Then paste your debrid service key in Settings.
@@ -64,6 +65,9 @@ nothing else to install. Then paste your debrid service key in Settings.
   Permissions, or `chmod +x`), then open it. Videos play in KINO's window, or
   in mpv if it is installed. Later versions install from KINO
   itself, like on the other systems.
+- **Linux (Flatpak)**: `flatpak install --user KINO-Linux-x86_64.flatpak`, then open KINO
+  from the menu. Flatpak fetches the GNOME runtime from Flathub. Install the
+  new `.flatpak` file to update.
 
 Later versions install from KINO itself: **Settings → Updates**.
 

@@ -1,0 +1,46 @@
+# KINO as a Flatpak (packaging/build_flatpak.sh builds it).
+# KINO's own build (target/release/kino-desktop, built on Ubuntu 22.04) runs on
+# the GNOME runtime, which has WebKitGTK 4.1 and GStreamer; the ffmpeg-full
+# extension gives the page's <video> its codecs (H.264, HEVC…).
+app-id: com.kino.desktop
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+command: kino
+finish-args:
+  # KINO's server (phone remote, TV) and the services it asks.
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --device=dri
+  # KINO's data (library, settings, offline files) is in the home folder, as
+  # for the AppImage: both see the same.
+  - --filesystem=home
+  # Keys in the system keychain, and notifications.
+  - --talk-name=org.freedesktop.secrets
+  - --talk-name=org.freedesktop.Notifications
+add-extensions:
+  org.freedesktop.Platform.ffmpeg-full:
+    directory: lib/ffmpeg
+    version: '25.08'
+    add-ld-path: .
+    autodelete: false
+cleanup-commands:
+  - mkdir -p /app/lib/ffmpeg
+modules:
+  - name: kino
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 kino /app/lib/kino/kino
+      - install -Dm755 ffmpeg /app/lib/kino/ffmpeg
+      - cp -R web /app/lib/kino/web
+      - install -Dm644 -t /app/lib/kino/assets kino.png update_public_key.hex
+      - mkdir -p /app/bin && ln -s ../lib/kino/kino /app/bin/kino
+      - install -Dm644 com.kino.desktop.desktop /app/share/applications/com.kino.desktop.desktop
+      - install -Dm644 kino.png /app/share/icons/hicolor/256x256/apps/com.kino.desktop.png
+      - install -Dm644 com.kino.desktop.metainfo.xml /app/share/metainfo/com.kino.desktop.metainfo.xml
+    sources:
+      - type: dir
+        path: ../../dist/flatpak-stage

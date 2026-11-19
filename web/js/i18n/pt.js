@@ -1243,6 +1243,7 @@ KINO_I18N.load({
 "server.impossible_de_resoudre_s_x_e_x_x": "Não foi possível resolver S{}E{} ({}).",
 "server.info_plist_du_paquet_illisible": "Info.plist do pacote ilegível.",
 "server.installez_kino_avec_son_installateur": "Instale o KINO com o instalador para receber atualizações.",
+"server.installez_le_fichier_flatpak_de_la": "Instale o arquivo .flatpak da nova versão para atualizar o KINO.",
 "server.kino_garde_x_addons_au_plus_retirez_en": "O KINO mantém no máximo {} complementos: remova um primeiro.",
 "server.kino_va_fermer_puis_redemarrer": "O KINO vai fechar e reiniciar automaticamente.",
 "server.kino_va_redemarrer_avec_la_nouvelle": "O KINO vai reiniciar com a nova versão.",

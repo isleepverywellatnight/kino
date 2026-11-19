@@ -1000,6 +1000,13 @@ impl Updater {
                 );
             }
         } else if cfg!(target_os = "linux") {
+            // Inside a Flatpak (its runtime sets FLATPAK_ID): the bundle is reinstalled.
+            if std::env::var_os("FLATPAK_ID").is_some() {
+                return Err(
+                    "Installez le fichier .flatpak de la nouvelle version pour mettre KINO à jour."
+                        .into(),
+                );
+            }
             if !self.is_installed() {
                 return Err(
                     "Ouvrez KINO depuis son AppImage pour recevoir les mises à jour.".into(),

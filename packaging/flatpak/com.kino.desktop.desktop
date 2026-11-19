@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=KINO
+Comment=Films, series, anime and manga
+Exec=kino
+Icon=com.kino.desktop
+Categories=AudioVideo;Video;Player;
+Terminal=false
+StartupWMClass=kino

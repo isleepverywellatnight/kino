@@ -38,12 +38,14 @@ O KINO não hospeda, fornece nem distribui nenhum conteúdo. Ele consulta as fon
 | **Windows** — Windows 10 ou 11, 64 bits | [**KINO-Windows.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows.exe) |
 | **Windows no ARM** — Windows 11 num PC ARM (Snapdragon…) | [**KINO-Windows-arm64.exe**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Windows-arm64.exe) |
 | **Linux** — x86_64: Ubuntu 22.04, Debian 12, Fedora 36 ou mais recente | [**KINO-Linux-x86_64.AppImage**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.AppImage) |
+| **Linux (Flatpak)** — x86_64, qualquer distribuição com Flatpak | [**KINO-Linux-x86_64.flatpak**](https://github.com/isleepverywellatnight/kino/releases/latest/download/KINO-Linux-x86_64.flatpak) |
 
 O KINO contém tudo de que precisa: player de vídeo, FFmpeg, interface. Não há mais nada para instalar. Depois, cole a chave do seu serviço de debrid em Configurações.
 
 - **macOS**: abra o arquivo `.dmg` e arraste o KINO para Aplicativos.
 - **Windows**: execute `KINO-Windows.exe`. O KINO se instala com um clique, sem direitos de administrador, e abre em seguida.
 - **Linux**: torne `KINO-Linux-x86_64.AppImage` executável (Propriedades → Permissões, ou `chmod +x`) e abra-o. Os vídeos tocam na janela do KINO, ou no mpv se estiver instalado. As próximas versões são instaladas pelo próprio KINO, como nos outros sistemas.
+- **Linux (Flatpak)**: `flatpak install --user KINO-Linux-x86_64.flatpak` e abra o KINO pelo menu. O Flatpak baixa o runtime do GNOME do Flathub. Para atualizar, instale o novo arquivo `.flatpak`.
 
 As próximas versões são instaladas pelo próprio KINO: **Configurações → Atualizações**.
 
