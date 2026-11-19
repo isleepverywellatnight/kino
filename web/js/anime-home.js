@@ -3,16 +3,25 @@
 // the week's planning in lines, and the catalogue. Every work opens KINO's own
 // fiche: the server pairs it with the fiche KINO can play (anime_home.py).
 
-let currentAnimeSubTab = 'home';
+import { registerActions } from './actions.js';
+import { THIS, act, actOn, escapeHtml, html, render } from './html.js';
+import {
+  META_CLIENT_CACHE, activeTab, api, catalogHasMore, revealSpoilerEpisode, scheduleSpoilerTarget,
+  spoilerConcealed, userHistory, userWatchlist,
+} from './app-core.js';
+import { heroSpotlightItems, renderHomeResume } from './app-home.js';
+import { frenchGenre, runSearch, selectMedia } from './app-fiche.js';
+
+export let currentAnimeSubTab = 'home';
 let animeHomeData = null;
 let animeHomeRequest = null;
 let animeLibraryIds = new Set();
-let animeWeekData = null;
+export let animeWeekData = null;
 let animeWeekRequest = null;
 let animeWeekDay = -1;
 let animeWeekFilter = 'popular';
-let animeWeekTimer = null;
-function setAnimeWeekTimer(value) { animeWeekTimer = value; return value; }
+export let animeWeekTimer = null;
+export function setAnimeWeekTimer(value) { animeWeekTimer = value; return value; }
 const animeWorks = new Map();
 
 const ANIME_PAGES = { home: 'animeSubTabHome', schedule: 'animeSubTabSchedule', catalog: 'animeSubTabCatalog' };
@@ -29,7 +38,7 @@ const ANIME_GENRES = { 'Slice of Life': 'Tranche de vie', 'Sports': 'Sport', 'Su
 
 // A title of the history or of Ma Liste that is an anime: the server names the
 // ones it knows (anime_home.library_ids).
-function isAnimeTitle(entry) {
+export function isAnimeTitle(entry) {
   return Boolean(entry && (entry.is_anime || entry.type === 'anime' || animeLibraryIds.has(entry.id)));
 }
 
@@ -50,7 +59,7 @@ function animeMineStates() {
 
 // What each page shows. Called again when the catalogue lands, since it brings
 // its own banner and « Voir plus ».
-function applyAnimeSubTab() {
+export function applyAnimeSubTab() {
   const page = currentAnimeSubTab;
   const set = (id, display) => { const el = document.getElementById(id); if (el) el.style.display = display; };
   set('animeHomePanel', page === 'home' ? 'block' : 'none');
@@ -68,7 +77,7 @@ function applyAnimeSubTab() {
   }
 }
 
-async function switchAnimeSubTab(page = currentAnimeSubTab) {
+export async function switchAnimeSubTab(page = currentAnimeSubTab) {
   currentAnimeSubTab = Object.prototype.hasOwnProperty.call(ANIME_PAGES, page) ? page : 'home';
   for (const [key, id] of Object.entries(ANIME_PAGES)) {
     const tab = document.getElementById(id);
@@ -337,7 +346,7 @@ function animeWeekRowHtml(episode, nowMs, mine) {
     </article>`;
 }
 
-function renderAnimeWeek() {
+export function renderAnimeWeek() {
   const list = document.getElementById('animeScheduleGrid');
   const daysBar = document.getElementById('animeScheduleDays');
   const summary = document.getElementById('animeScheduleSummary');

@@ -3,6 +3,15 @@
 // end of a playback, in the Home row « Vos derniers vus, à noter » and in the
 // fiche. They are Letterboxd values (ratings.py), so an imported note reads the
 // same way. A second click on the chosen gesture takes the rating back.
+
+import { registerActions } from './actions.js';
+import { EVENT, THIS, act, html, render, replaceWith } from './html.js';
+import { RELATED_CLIENT_CACHE, api, refreshUserLists, userHistory } from './app-core.js';
+import { FOR_YOU_CACHE, homeKind, onHomeTab, renderHomeForYou } from './app-home.js';
+import { posterCardHtml } from './app-tabs.js';
+import { displayTitle } from './app-fiche.js';
+import { networkOnline } from './app-start.js';
+
 const RATING_GESTURES = [
   { key: 'disliked', value: '1', label: 'Pas aimé', icon: 'thumb-down' },
   { key: 'liked', value: '4', label: 'Aimé', icon: 'thumb-up' },
@@ -74,7 +83,7 @@ function ratingGesturesHtml(id, current, { labels = true } = {}) {
 }
 
 // The small mark on a poster: the gesture, or the stars of an imported 3.
-function ratingBadgeHtml(value) {
+export function ratingBadgeHtml(value) {
   const gesture = RATING_GESTURES.find(g => g.key === ratingGesture(value));
   if (gesture) {
     return html`<span class="poster-user-rating is-${gesture.key}" title="Votre avis : ${gesture.label}"><svg class="ui-icon ui-icon-xs" aria-hidden="true"><use href="/icons.svg#${gesture.icon}-fill"></use></svg></span>`;
@@ -83,7 +92,7 @@ function ratingBadgeHtml(value) {
 }
 
 // « Votre avis » in the fiche, for a title of the history.
-function ficheRatingHtml(mediaId, entry, value) {
+export function ficheRatingHtml(mediaId, entry, value) {
   if (!entry) return value ? html`<span class="detail-chip detail-chip-strong">★ ${String(value)}/5 · Ma note</span>` : '';
   const stars = value && !ratingGesture(value) ? html`<span class="detail-chip">★ ${String(value)}/5</span>` : '';
   return html`<span class="fiche-rating" id="ficheRating" data-rating-id="${mediaId}"><span class="fiche-rating-label">Votre avis</span>${stars}${ratingGesturesHtml(mediaId, value)}<span class="rate-status" role="status"></span></span>`;
@@ -164,7 +173,7 @@ async function skipRating(event, button) {
 }
 
 // --- Home row ------------------------------------------------------------------
-function renderHomeRate() {
+export function renderHomeRate() {
   const sec = document.getElementById('homeRateSection');
   const row = document.getElementById('homeRateRow');
   if (!sec || !row) return;
@@ -194,7 +203,7 @@ function playbackOpen() {
 }
 
 // Called when a player closes: asks about the film, or the season, just finished.
-async function askRatingAfterPlayback(id) {
+export async function askRatingAfterPlayback(id) {
   if (!id) return;
   await new Promise(resolve => setTimeout(resolve, 700));  // the last position reaches the history
   try { await refreshUserLists(); } catch (error) {}

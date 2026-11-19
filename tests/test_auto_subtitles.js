@@ -8,8 +8,8 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const seriesSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/series-playback.js'), 'utf8'));
-const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+const seriesSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('series-playback.js'));
+const nativeSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
 const app = require('../tools/interface_source.js').appSource();
 const html = require('../tools/interface_source.js').indexHtml();
 
@@ -86,7 +86,7 @@ function loadNative({ tracks, subtitles = [], autoSetting = true, online = true 
     URLSearchParams, networkOnline: online,
   };
   vm.runInNewContext(`${seriesSource}\n${nativeSource}`, context);
-  return { NativePlayer: context.window.NativePlayer, elements, calls, state };
+  return { NativePlayer: vm.runInContext('NativePlayer', context), elements, calls, state };
 }
 
 const flush = async () => { for (let i = 0; i < 6; i++) await new Promise(resolve => setImmediate(resolve)); };

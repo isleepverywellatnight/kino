@@ -1,0 +1,4 @@
+{
+  "extends": "./jsconfig.json",
+  "compilerOptions": { "checkJs": true }
+}

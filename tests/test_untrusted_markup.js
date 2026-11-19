@@ -10,7 +10,7 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 const source = require('../tools/interface_source.js').appSource();
 const between = (start, end) => start + source.split(start, 2)[1].split(end, 1)[0];
 // The page's render helpers (web/js/html.js), then app-social's own.
-const helpers = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'web', 'js', 'html.js'), 'utf8')
+const helpers = require('../tools/interface_source.js').scriptText('html.js')
   + between('function listMediaArg(m)', 'async function checkTraktStatus()');
 
 const HOSTILE = `Tom & "Jerry's" <img src=x onerror="window.pwned=1">`;

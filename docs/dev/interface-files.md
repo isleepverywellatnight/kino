@@ -1,8 +1,11 @@
 # Fichiers de l'interface
 
-Le code principal de l'interface est découpé par thème en onze fichiers. `web/index.html` les
-charge dans cet ordre, comme des scripts classiques : ils partagent les mêmes
-variables et fonctions globales.
+Le code principal de l'interface est découpé par thème en onze fichiers. Ce sont
+des modules ES : chacun importe ce qu'il utilise des autres et exporte ce qu'ils
+lui prennent. `web/index.html` ne charge qu'un module, `web/js/main.js`, qui les
+importe dans cet ordre, avec les autres fichiers de la page, puis lance KINO.
+Seul `i18n.js` reste un script classique : il écrit ses dictionnaires avec
+`document.write` avant que la page ne s'affiche.
 
 | Fichier | Contenu |
 |---|---|
@@ -29,16 +32,28 @@ depuis internet.
 
 ## Règles
 
-- **Ordre :** il compte. Une instruction exécutée au chargement (hors d'une
-  fonction) ne peut appeler qu'une fonction d'un fichier déjà chargé. Les
-  appels faits plus tard (clic, minuterie, réponse du serveur) peuvent viser
-  n'importe quel fichier. `test_interface_split.js` le vérifie.
+- **Imports :** un fichier importe chaque nom qu'il prend à un autre.
+  `tools/names_check.js` le vérifie pour tous les fichiers, typés ou non (en
+  CI) : un import oublié ne se verrait sinon qu'au moment où la ligne s'exécute.
+  Les imports ne visent que des fichiers voisins (`./app-core.js`), jamais une
+  adresse (`test_no_remote_code.js`).
+- **État partagé :** un module ne peut pas affecter une variable qu'il importe.
+  Il appelle le setter déclaré à côté d'elle (`setCurrentMedia(media)`) ; les
+  réglages du lecteur et les comptes liés sont les champs de `playerPrefs` et
+  `linkedAccounts` (`app-core.js`).
+- **Chargement :** au chargement, un fichier ne fait que déclarer et poser des
+  écouteurs. Les modules sont évalués dans l'ordre de leurs imports, pas dans
+  celui de `main.js` : rien ne doit dépendre de cet ordre.
 - **Démarrage :** le code de démarrage (`checkConfig()`, `switchTab('movies')`…)
   est dans `startKino()` (`app-start.js`), que `main.js`, chargé en dernier,
   appelle une fois toutes les parties chargées.
-- **Tests :** ils lisent les fichiers recollés dans l'ordre de `index.html`
-  (`tools/interface_source.js`). Déplacer une
-  fonction d'un fichier à l'autre ne les dérange pas tant que l'ordre du texte
-  recollé reste le même.
-- **Nouveau fichier :** pour ajouter un thème, l'ajouter à `index.html` à sa
-  place, puis à ce tableau.
+- **Actions :** ce que le balisage déclare (`data-on-click="switchTab"`,
+  `act('switchTab')`) ne lance que ce qu'un fichier a enregistré : chaque fichier
+  finit par `registerActions({ … })` (`web/js/actions.js`).
+  `tools/frontend_check.js` vérifie que chaque nom déclaré est enregistré.
+- **Tests :** ils lisent les fichiers recollés dans l'ordre de `main.js`, sans
+  leurs mots `import` et `export` (`tools/interface_source.js`) : sur une page,
+  chaque nom est unique. Déplacer une fonction d'un fichier à l'autre ne les
+  dérange pas tant que l'ordre du texte recollé reste le même.
+- **Nouveau fichier :** pour ajouter un thème, l'importer dans `main.js` à sa
+  place, puis l'ajouter à ce tableau.

@@ -1,10 +1,31 @@
 /* ============================================================================
  * ROULETTE HORIZONTALE KINO (SÉLECTION ALÉATOIRE)
  * ============================================================================ */
+
+import { registerActions } from './actions.js';
+import { EVENT, THIS, act, actOn, escapeHtml, html, render } from './html.js';
+import {
+  activeGenre, activeTab, api, catalogItems, catalogSort, getWatchedHistory, isInWatchlist,
+  setCatalogSort, setCurrentMedia, setUserHistory, toggleWatchlist, userHistory, userWatchlist,
+} from './app-core.js';
+import {
+  classicsCatalogCache, renderHomeResume, setClassicsCatalogCache, updateClassicsStatsBadge,
+} from './app-home.js';
+import {
+  openCustomListId, surpriseMeFromCustomList, updateListBadges, userCustomLists,
+} from './app-letterboxd.js';
+import { renderPosterCards } from './app-tabs.js';
+import { openTrailerModal } from './app-cloud-settings.js';
+import {
+  displayTitle, frenchGenre, oneClickCard, oneClickPlay, selectMedia, titleAttrs,
+} from './app-fiche.js';
+import { episodeAirLabel } from './app-sources.js';
+import { needsInternetHtml } from './app-start.js';
+
 let caseAudioCtx = null;
 let caseSoundEnabled = true;
 let caseSpinRaf = null;
-let caseSpinState = null;
+export let caseSpinState = null;
 let caseNoiseBuffer = null;
 // The custom list being drawn from, and the last title the draw chose.
 let customListRouletteTitle = '';
@@ -214,7 +235,7 @@ function toggleCaseSound() {
   }
 }
 
-function closeCaseModal() {
+export function closeCaseModal() {
   if (caseSpinRaf) {
     cancelAnimationFrame(caseSpinRaf);
     caseSpinRaf = null;
@@ -227,14 +248,14 @@ function closeCaseModal() {
   }
 }
 
-let activeCasePoolMode = 'catalog';
-let hideWatchedInCatalog = false;
+export let activeCasePoolMode = 'catalog';
+export let hideWatchedInCatalog = false;
 
 // « Masquer déjà vus » and the catalog sort are remembered for this viewer (convenience only).
 const CATALOG_VIEW_KEY = 'kino_catalog_view';
-const CATALOG_SORTS = ['top', 'imdbRating', 'recent', 'oldest'];
+export const CATALOG_SORTS = ['top', 'imdbRating', 'recent', 'oldest'];
 
-function restoreCatalogView() {
+export function restoreCatalogView() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(CATALOG_VIEW_KEY) || '{}') || {}; } catch (e) { saved = {}; }
   hideWatchedInCatalog = saved.hideWatched === true;
@@ -245,7 +266,7 @@ function restoreCatalogView() {
   if (select) select.value = catalogSort;
 }
 
-function saveCatalogView() {
+export function saveCatalogView() {
   try {
     localStorage.setItem(CATALOG_VIEW_KEY, JSON.stringify({ hideWatched: hideWatchedInCatalog, sort: catalogSort }));
   } catch (e) {}
@@ -299,13 +320,13 @@ function saveListView() {
   try { localStorage.setItem(LIST_VIEW_KEY, JSON.stringify(listView)); } catch (e) {}
 }
 
-function listItemKind(m) {
+export function listItemKind(m) {
   return ['series', 'anime', 'tv'].includes(m?.type) || (m?.is_anime && m?.type !== 'movie') ? 'series' : 'movie';
 }
 
 // 'watched', 'started' or 'todo', from the history. A series counts as watched
 // once its last known episode was seen.
-function listItemState(m) {
+export function listItemState(m) {
   const h = (userHistory || []).find(x => x.id === m?.id);
   if (!h) return 'todo';
   const pct = Number(h.progress_pct || 0);
@@ -315,7 +336,7 @@ function listItemState(m) {
   return pct > 1 ? 'started' : 'todo';
 }
 
-function foldSearchText(value) {
+export function foldSearchText(value) {
   return String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
@@ -387,7 +408,7 @@ function activeListItems() {
   return null;
 }
 
-function renderActiveListTab() {
+export function renderActiveListTab() {
   const rawList = activeListItems();
   if (!rawList) return;
   const view = listView[activeTab];
@@ -456,7 +477,7 @@ function renderActiveListTab() {
   renderPosterCards(filtered, 'movie');
 }
 
-async function surpriseMeMedia(poolArg = null) {
+export async function surpriseMeMedia(poolArg = null) {
   let poolMode = 'catalog';
   let customListItems = null;
 
@@ -707,7 +728,7 @@ async function surpriseMeMedia(poolArg = null) {
   caseSpinRaf = requestAnimationFrame(stepSpin);
 }
 
-function skipCaseSpin() {
+export function skipCaseSpin() {
   if (!caseSpinState || caseSpinState.finished) return;
   if (caseSpinRaf) {
     cancelAnimationFrame(caseSpinRaf);
@@ -922,7 +943,7 @@ function renderMySeries() {
   }));
 }
 
-async function loadMySeries() {
+export async function loadMySeries() {
   const grid = document.getElementById('postersGrid');
   const request = ++mySeriesRequest;
   if (grid) render(grid, html`<p class="myseries-fact">Chargement de vos séries…</p>`);
@@ -1064,7 +1085,7 @@ function renderReleaseCalendar() {
     later]);
 }
 
-async function loadReleaseCalendar() {
+export async function loadReleaseCalendar() {
   const grid = document.getElementById('postersGrid');
   const request = ++releaseCalendarRequest;
   if (grid) render(grid, html`<p class="myseries-fact">Chargement du calendrier…</p>`);

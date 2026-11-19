@@ -19,7 +19,7 @@
 const pageActions = new Map();
 
 /** Makes these functions available to the markup, each under its key. */
-function registerActions(handlers) {
+export function registerActions(handlers) {
   for (const [name, fn] of Object.entries(handlers)) {
     if (typeof fn !== 'function') throw new TypeError(`KINO: action « ${name} » is not a function`);
     if (pageActions.has(name)) throw new Error(`KINO: action « ${name} » registered twice`);
@@ -28,7 +28,7 @@ function registerActions(handlers) {
 }
 
 /** Runs the action registered under this name; false when there is none. */
-function runAction(name, ...args) {
+export function runAction(name, ...args) {
   const fn = pageActions.get(name);
   if (!fn) {
     console.warn(`KINO: no action « ${name} »`);

@@ -10,7 +10,7 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..');
 // The scripts of web/index.html, in its order (the app parts among them).
-const { interfaceScripts } = require('./interface_source.js');
+const { interfaceScripts, scriptText } = require('./interface_source.js');
 
 function classList(initial) {
   const set = new Set(String(initial || '').split(/\s+/).filter(Boolean));
@@ -182,7 +182,7 @@ async function loadPage(answer = () => ({})) {
   context.globalThis = context;
   vm.createContext(context);
   for (const name of interfaceScripts(ROOT)) {
-    vm.runInContext(fs.readFileSync(path.join(ROOT, 'web', 'js', name), 'utf8'), context, { filename: name });
+    vm.runInContext(scriptText(name), context, { filename: name });
   }
   const inline = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
   if (inline) vm.runInContext(inline, context, { filename: 'index.html#script' });

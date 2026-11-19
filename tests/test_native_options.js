@@ -8,7 +8,7 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+const nativeSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
 const app = require('../tools/interface_source.js').appSource();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 
@@ -46,7 +46,7 @@ function loadNative(state, extra = {}) {
     ...extra.globals,
   };
   vm.runInNewContext(nativeSource, context);
-  return { NativePlayer: context.window.NativePlayer, elements, calls };
+  return { NativePlayer: vm.runInContext('NativePlayer', context), elements, calls };
 }
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -192,7 +192,7 @@ test('Escape closes the menu, then a dialog, then the player; the remote polls t
   assert.match(nativeSource, /if \(closeMenu\(true\)\) return;\n      if \(typeof closeOpenDialogOnEscape === 'function' && closeOpenDialogOnEscape\(\)\) return;/);
   assert.match(nativeSource, /if \(menuKey\(event\)\) \{\n      event\.stopImmediatePropagation\(\);/);
   const polling = app.slice(app.indexOf('function startRemotePolling()'));
-  assert.match(polling, /window\.NativePlayer\.isOpen\(\)[\s\S]*?body: JSON\.stringify\(window\.NativePlayer\.remoteState\(\)\)[\s\S]*?window\.NativePlayer\.handleRemoteCommand\(cmd\)/);
+  assert.match(polling, /NativePlayer\.isOpen\(\)[\s\S]*?body: JSON\.stringify\(NativePlayer\.remoteState\(\)\)[\s\S]*?NativePlayer\.handleRemoteCommand\(cmd\)/);
   assert.match(css, /html\.native-playing body > \*:not\(#nativePlayer\):not\(#remoteModal\):not\(#watchPartyModal\) \{ opacity: 0 !important;/);
   assert.match(css, /#remoteModal, #watchPartyModal \{ z-index: 10050; \}/, 'the QR code and the party open over either player');
 });
@@ -204,7 +204,7 @@ test('the built-in player also reports its poster for « À l’écoute »', () 
 
 test('both players give Discord the year and the IMDb id of the title', () => {
   const app = require('../tools/interface_source.js').appSource();
-  const native = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+  const native = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
   assert.match(app, /year: String\(inAppCurrentMedia\.year \|\| ''\),\n\s+imdb_id: inAppCurrentMedia\.id \|\| '',/);
   assert.match(native, /year: String\(media\.year \|\| ''\), imdb_id: media\.id \|\| '',/);
 });

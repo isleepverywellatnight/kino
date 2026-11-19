@@ -1,4 +1,40 @@
 // --- Glisser-Déposer (Drag & Drop) de fichiers .torrent et liens Magnet ---
+
+import { registerActions } from './actions.js';
+import {
+  EVENT, THIS, VALUE, act, actOn, escapeHtml, html, raw, render, renderAdjacent, replaceWith,
+  safeUrl,
+} from './html.js';
+import { Spoilers } from './spoilers.js';
+import {
+  META_CLIENT_CACHE, RELATED_CLIENT_CACHE, activeTab, animeJourneyRequestId, api, currentMedia,
+  currentSelectMediaId, getSeriesTargetEpisode, getWatchedHistory, isInWatchlist, loadAnimeJourney,
+  openTonightModal, playerPrefs, refreshSpoilerSurfaces, refreshUserLists, searchDebounceTimer,
+  seriesMetaVideos, setAllTorrents, setAnimeJourneyMatches, setAnimeJourneyRequestId,
+  setAnimeJourneyRevealed, setAnimeJourneyState, setCurrentMedia, setCurrentSelectMediaId,
+  setLastReadyDebrid, setSeriesMetaVideos, setTorrentRequestId, spoilerEpisodeLabel,
+  spoilerSeriesId, torrentRequestId, userHistory,
+} from './app-core.js';
+import { hideHomeRows } from './app-home.js';
+import {
+  posterCardHtml, posterSkeletons, renderPosterCards, searchResultsShown, setSearchResultsShown,
+  switchTab,
+} from './app-tabs.js';
+import { openDiagnostic, openTrailerModal } from './app-cloud-settings.js';
+import {
+  EPISODE_OVERVIEWS_FR, debridMagnet, episodeIsUpcoming, episodeTileHtml, episodeToWatch,
+  loadTorrents, onSeasonChange, reloadSeriesEpisode, renderDebridState, requestEpisodeOverviews,
+  revealEpisodeToWatch, setDetailEpisodeSeason, updateEpisodeArrows,
+} from './app-sources.js';
+import { openInAppPlayer } from './app-player.js';
+import { ficheRatingHtml } from './ratings.js';
+import { askP2PConsent } from './p2p-addons.js';
+import {
+  canGoBack, goBack, needsInternetHtml, networkOnline, noteFiche, notePerson, noteSearch,
+  offlineSearchHtml,
+} from './app-start.js';
+import { NativePlayer } from './native-player.js';
+
 async function handleTorrentFileSelect(files) {
   if (!files || !files.length) return;
   const file = files[0];
@@ -69,14 +105,14 @@ window.addEventListener('drop', async (e) => {
 let searchSuggestItems = [];
 let searchSuggestIndex = -1;
 
-function toggleShortcutsModal() {
+export function toggleShortcutsModal() {
   const m = document.getElementById('shortcutsModal');
   if (!m) return;
   const isOpen = m.style.display === 'flex';
   m.style.display = isOpen ? 'none' : 'flex';
 }
 
-function initSearchPlatformShortcuts() {
+export function initSearchPlatformShortcuts() {
   const isMac = (navigator.platform && navigator.platform.toUpperCase().indexOf('MAC') >= 0) || (navigator.userAgent && navigator.userAgent.toUpperCase().indexOf('MAC') >= 0);
   const kbd = document.getElementById('searchKbdBadge');
   if (kbd) kbd.textContent = isMac ? '⌘K' : 'Ctrl+K';
@@ -84,7 +120,7 @@ function initSearchPlatformShortcuts() {
   if (inp && !inp.value) inp.placeholder = 'Rechercher un film, une série…';
 }
 
-function updateSearchClearBtn() {
+export function updateSearchClearBtn() {
   const inp = document.getElementById('searchInput');
   const btn = document.getElementById('searchClearBtn');
   if (btn && inp) {
@@ -105,7 +141,7 @@ function clearSearchInput() {
   }
 }
 
-function toggleSearchMode() {
+export function toggleSearchMode() {
   const mode = document.getElementById('searchType').value;
   const inp = document.getElementById('searchInput');
   hideSearchDropdown();
@@ -284,7 +320,7 @@ function renderSearchDropdown(items, query) {
   renderSearchPanel(query, items || []);
 }
 
-function openSearchPanel() {
+export function openSearchPanel() {
   const mode = document.getElementById('searchType')?.value;
   if (mode === 'raw' || mode === 'magnet') return;
   if (document.getElementById('searchDropdown')?.style.display === 'block') return;  // already open: keep the choice
@@ -415,7 +451,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-async function runSearch() {
+export async function runSearch() {
   clearTimeout(searchDebounceTimer);
   const mode = document.getElementById('searchType').value;
   const q = document.getElementById('searchInput').value.trim();
@@ -530,7 +566,7 @@ function setSearchFilter(kind) {
   renderSearchResults();
 }
 
-async function oneClickCard(ev, btn, media, options = {}) {
+export async function oneClickCard(ev, btn, media, options = {}) {
   ev.stopPropagation();
   // « Sur la TV »: the same source, sent to the TV instead of a player.
   const target = options.target === 'tv' ? { target: 'tv' } : {};
@@ -583,8 +619,8 @@ async function oneClickSeriesEpisode(btn, customSeason = null, customEpisode = n
 
 // « Lecteur natif » (default on macOS) also plays Debrid sources: true when it took the
 // source. If the source never starts, `fallback` hands it to the built-in player.
-async function openNativeStream(options) {
-  const native = window.NativePlayer;
+export async function openNativeStream(options) {
+  const native = NativePlayer;
   if (!native?.available || !native.enabled || typeof native.openStream !== 'function') return false;
   try {
     await native.openStream(options);
@@ -594,9 +630,9 @@ async function openNativeStream(options) {
   }
 }
 
-let _isGlobalPlayLaunching = false;
-function setIsGlobalPlayLaunching(value) { _isGlobalPlayLaunching = value; return value; }
-async function oneClickPlay(params, btn) {
+export let _isGlobalPlayLaunching = false;
+export function setIsGlobalPlayLaunching(value) { _isGlobalPlayLaunching = value; return value; }
+export async function oneClickPlay(params, btn) {
   if (_isGlobalPlayLaunching) return;
   _isGlobalPlayLaunching = true;
   stopPreparation();  // a new play replaces a preparation being waited for
@@ -689,7 +725,7 @@ function tvSourceUrl(url) {
   return '';
 }
 
-function tvMediaPayload(media, season, episode) {
+export function tvMediaPayload(media, season, episode) {
   const base = media || {};
   const code = season && episode ? { season: Number(season), episode: Number(episode) } : {};
   const isSeries = base.type === 'series' || base.type === 'anime' || Boolean(code.season);
@@ -697,13 +733,13 @@ function tvMediaPayload(media, season, episode) {
     year: base.year || '', ...(isSeries ? code : {}) };
 }
 
-function tvTitle(media, fallback = '') {
+export function tvTitle(media, fallback = '') {
   if (!media?.name) return fallback || 'KINO';
   if (media.season && media.episode) return `${media.name} — S${String(media.season).padStart(2, '0')}E${String(media.episode).padStart(2, '0')}`;
   return `${media.name}${media.year ? ` (${media.year})` : ''}`;
 }
 
-async function castToTv({ stream_url, title = '', filename = '', media = null, resume_sec = 0 }) {
+export async function castToTv({ stream_url, title = '', filename = '', media = null, resume_sec = 0 }) {
   const source = tvSourceUrl(stream_url);
   if (!source) throw new Error('Aucune source à envoyer à la TV.');
   const status = await api('/api/tv/play', {
@@ -901,7 +937,7 @@ try {
 const originalTitleQueue = new Map();
 let originalTitleTimer = null;
 
-function titleAttrs(m, type) {
+export function titleAttrs(m, type) {
   const id = String(m?.id || '');
   if (!/^tt\d{1,12}$/.test(id)) return '';
   const year = String(m.year || m.releaseInfo || '').match(/\d{4}/)?.[0] || '';
@@ -909,7 +945,7 @@ function titleAttrs(m, type) {
   return html` data-title-id="${id}" data-title-name="${m.name || ''}" data-title-year="${year}" data-title-type="${kind}"`;
 }
 
-function displayTitle(m) {
+export function displayTitle(m) {
   return ORIGINAL_TITLES.get(String(m?.id || '')) || m?.name || '';
 }
 
@@ -964,7 +1000,7 @@ async function fetchOriginalTitles() {
   if (originalTitleQueue.size) originalTitleTimer = setTimeout(fetchOriginalTitles, 120);
 }
 
-function initOriginalTitles() {
+export function initOriginalTitles() {
   scanOriginalTitles(document.body);
   new MutationObserver(records => {
     for (const record of records) {
@@ -973,7 +1009,7 @@ function initOriginalTitles() {
   }).observe(document.body, { childList: true, subtree: true });
 }
 
-const GENRE_FR = {
+export const GENRE_FR = {
   'Action': 'Action', 'Adventure': 'Aventure', 'Animation': 'Animation', 'Biography': 'Biopic', 'Comedy': 'Comédie',
   'Crime': 'Policier', 'Documentary': 'Documentaire', 'Drama': 'Drame', 'Family': 'Famille', 'Fantasy': 'Fantastique',
   'History': 'Histoire', 'Horror': 'Horreur', 'Mystery': 'Mystère', 'Romance': 'Romance', 'Sci-Fi': 'Science-Fiction',
@@ -981,7 +1017,7 @@ const GENRE_FR = {
   'Sport': 'Sport', 'Film-Noir': 'Film noir', 'Short': 'Court métrage', 'Reality-TV': 'Téléréalité',
 };
 
-function frenchGenre(genre) {
+export function frenchGenre(genre) {
   return GENRE_FR[genre] || genre;
 }
 
@@ -1010,7 +1046,7 @@ function frenchCountries(value, max = 2) {
     .map(country => COUNTRY_FR[country] || country).join(', ');
 }
 
-function frenchRuntime(value) {
+export function frenchRuntime(value) {
   const match = String(value || '').match(/(\d+)\s*min/i);
   if (!match) return String(value || '');
   const minutes = Number(match[1]);
@@ -1338,7 +1374,7 @@ async function loadDetailPeoplePhotos(mediaId) {
 }
 
 // --- Page acteur: films and series confirmed by their credits (person_page.py) ---
-let personView = null;
+export let personView = null;
 const PERSON_HIDDEN = ['communityPanel', 'mangaPanel', 'animeSchedulePanel', 'animeHomePanel', 'librarySubNav', 'animeSubNav', 'watchlistActionsWrap',
   'listStatsBadge', 'rdCloudPanel', 'viewingStatsPanel', 'heroSpotlight', 'genreFilters', 'catalogSortWrap', 'loadMoreWrap',
   'settingsPanel'];
@@ -1364,7 +1400,7 @@ function showPersonScreen(name) {
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
-async function openPerson(name) {
+export async function openPerson(name) {
   name = String(name || '').trim();
   if (!name) return;
   const from = currentMedia && currentMedia.id ? { ...currentMedia } : null;
@@ -1421,7 +1457,7 @@ function personHeaderHtml(view) {
     </header>`;
 }
 
-function renderPersonPage() {
+export function renderPersonPage() {
   const view = personView;
   const grid = document.getElementById('postersGrid');
   if (!view?.data || !grid) return;
@@ -1508,7 +1544,7 @@ function switchDetailTrailer(lang) {
   if (detailTrailerCtx) playDetailTrailer(detailTrailerCtx.trailerId, detailTrailerCtx.title, detailTrailerCtx.year, lang);
 }
 
-function closeDetailTrailer() {
+export function closeDetailTrailer() {
   detailTrailerCtx = null;
   const frame = document.getElementById('detailTrailerFrame');
   if (frame) render(frame, '');
@@ -1565,7 +1601,7 @@ function applyMediaDetails(media, meta) {
   if (media.is_anime || activeTab === 'anime') loadAnimeJourney(media, meta);
 }
 
-async function selectMedia(media) {
+export async function selectMedia(media) {
   noteFiche(media);
   setAnimeJourneyRequestId(animeJourneyRequestId + 1);
   setAnimeJourneyState(null);
@@ -1629,11 +1665,11 @@ function showDetailMore(markup) {
   more.hidden = !markup;
 }
 
-function hideDetailMore() {
+export function hideDetailMore() {
   showDetailMore('');
 }
 
-function closeDetailPanel() {
+export function closeDetailPanel() {
   closeDetailTrailer();
   hideDetailMore();
   setAnimeJourneyRequestId(animeJourneyRequestId + 1);
@@ -1659,7 +1695,7 @@ function selectDetailSeason(seasonNum) {
   renderDetailEpisodes(seasonNum);
 }
 
-function renderDetailEpisodes(seasonNum) {
+export function renderDetailEpisodes(seasonNum) {
   const container = document.getElementById('detailEpisodesList');
   if (!container) return;
   setDetailEpisodeSeason(seasonNum);

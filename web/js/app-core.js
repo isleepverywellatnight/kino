@@ -1,60 +1,78 @@
 // The page's shared state. Another file changes one of these variables through
 // its setter (setCurrentMedia…): a file cannot assign a variable it imports.
-let allTorrents = [];
-function setAllTorrents(value) { allTorrents = value; return value; }
-let torrentRequestId = 0;
-function setTorrentRequestId(value) { torrentRequestId = value; return value; }
-let activeFilter = '';
-function setActiveFilter(value) { activeFilter = value; return value; }
-let activeGenre = '';
-function setActiveGenre(value) { activeGenre = value; return value; }
-let searchDebounceTimer = null;
-let currentMedia = null;
-function setCurrentMedia(value) { currentMedia = value; return value; }
-let seriesMetaVideos = [];
-function setSeriesMetaVideos(value) { seriesMetaVideos = value; return value; }
-let userWatchlist = [];
-function setUserWatchlist(value) { userWatchlist = value; return value; }
-let userHistory = [];
-function setUserHistory(value) { userHistory = value; return value; }
-let activeTab = 'movies';
-function setActiveTab(value) { activeTab = value; return value; }
-let configuredProviders = {};
-// Player settings and linked accounts read from /api/config, shared by every file.
-const playerPrefs = { prefLang: undefined, autoFrSubs: undefined, hdrMode: undefined, audioMode: undefined, playerMode: undefined };
-const linkedAccounts = { debridProvider: undefined, debridName: undefined, letterboxdUser: undefined };
-const META_CLIENT_CACHE = new Map();
-// Titles close to a title, from /api/related (TMDB with the user's key, else genres).
-const RELATED_CLIENT_CACHE = new Map();
-let spoilerState = Spoilers.empty();
-let lastReadyDebrid = null;
-function setLastReadyDebrid(value) { lastReadyDebrid = value; return value; }
-let currentSelectMediaId = null;
-function setCurrentSelectMediaId(value) { currentSelectMediaId = value; return value; }
-let animeJourneyState = null;
-function setAnimeJourneyState(value) { animeJourneyState = value; return value; }
-let animeJourneyMatches = new Map();
-function setAnimeJourneyMatches(value) { animeJourneyMatches = value; return value; }
-let animeJourneyRevealed = new Set();
-function setAnimeJourneyRevealed(value) { animeJourneyRevealed = value; return value; }
-let animeJourneyRequestId = 0;
-function setAnimeJourneyRequestId(value) { animeJourneyRequestId = value; return value; }
 
-function spoilerSeriesId(media = currentMedia) {
+import { registerActions } from './actions.js';
+import { EVENT, act, html, render } from './html.js';
+import { Spoilers } from './spoilers.js';
+import { AnimeJourneyView } from './anime-journey.js';
+import { renderHomeResume } from './app-home.js';
+import { renderActiveListTab } from './app-lists.js';
+import { fetchCustomLists, updateListBadges } from './app-letterboxd.js';
+import { showTmdbStatus, toggleDiscordRpcFields } from './app-cloud-settings.js';
+import { oneClickCard, oneClickPlay, renderDetailEpisodes, selectMedia } from './app-fiche.js';
+import { onSeasonChange, renderDebridState, renderTorrents } from './app-sources.js';
+import {
+  inAppCurrentMedia, inAppCurrentTitle, inAppPlaylist, inAppPlaylistIndex, inAppSeriesId,
+} from './app-player.js';
+import { animeWeekData, renderAnimeWeek } from './anime-home.js';
+import { networkOnline, noteNetworkOffline, playOfflineDownload, pollDownloads } from './app-start.js';
+import { NativePlayer } from './native-player.js';
+
+export let allTorrents = [];
+export function setAllTorrents(value) { allTorrents = value; return value; }
+export let torrentRequestId = 0;
+export function setTorrentRequestId(value) { torrentRequestId = value; return value; }
+export let activeFilter = '';
+export function setActiveFilter(value) { activeFilter = value; return value; }
+export let activeGenre = '';
+export function setActiveGenre(value) { activeGenre = value; return value; }
+export let searchDebounceTimer = null;
+export let currentMedia = null;
+export function setCurrentMedia(value) { currentMedia = value; return value; }
+export let seriesMetaVideos = [];
+export function setSeriesMetaVideos(value) { seriesMetaVideos = value; return value; }
+export let userWatchlist = [];
+export function setUserWatchlist(value) { userWatchlist = value; return value; }
+export let userHistory = [];
+export function setUserHistory(value) { userHistory = value; return value; }
+export let activeTab = 'movies';
+export function setActiveTab(value) { activeTab = value; return value; }
+export let configuredProviders = {};
+// Player settings and linked accounts read from /api/config, shared by every file.
+export const playerPrefs = { prefLang: undefined, autoFrSubs: undefined, hdrMode: undefined, audioMode: undefined, playerMode: undefined };
+export const linkedAccounts = { debridProvider: undefined, debridName: undefined, letterboxdUser: undefined };
+export const META_CLIENT_CACHE = new Map();
+// Titles close to a title, from /api/related (TMDB with the user's key, else genres).
+export const RELATED_CLIENT_CACHE = new Map();
+let spoilerState = Spoilers.empty();
+export let lastReadyDebrid = null;
+export function setLastReadyDebrid(value) { lastReadyDebrid = value; return value; }
+export let currentSelectMediaId = null;
+export function setCurrentSelectMediaId(value) { currentSelectMediaId = value; return value; }
+let animeJourneyState = null;
+export function setAnimeJourneyState(value) { animeJourneyState = value; return value; }
+let animeJourneyMatches = new Map();
+export function setAnimeJourneyMatches(value) { animeJourneyMatches = value; return value; }
+let animeJourneyRevealed = new Set();
+export function setAnimeJourneyRevealed(value) { animeJourneyRevealed = value; return value; }
+export let animeJourneyRequestId = 0;
+export function setAnimeJourneyRequestId(value) { animeJourneyRequestId = value; return value; }
+
+export function spoilerSeriesId(media = currentMedia) {
   return String(media?.id || '').toLowerCase();
 }
 
-function spoilerConcealed(seriesId, season, episode) {
+export function spoilerConcealed(seriesId, season, episode) {
   return Spoilers.concealed(spoilerState, seriesId, season, episode,
     Spoilers.watched(userHistory, seriesId, season, episode));
 }
 
-function spoilerEpisodeLabel(seriesId, season, episode, title) {
+export function spoilerEpisodeLabel(seriesId, season, episode, title) {
   return spoilerConcealed(seriesId, season, episode)
     ? Spoilers.neutralTitle(episode) : String(title || Spoilers.neutralTitle(episode));
 }
 
-async function loadSpoilerState() {
+export async function loadSpoilerState() {
   try { spoilerState = await api('/api/spoiler-protection'); }
   catch (error) { console.warn('Protection spoilers indisponible', error); }
   refreshSpoilerSurfaces();
@@ -87,7 +105,7 @@ async function setSeriesSpoilerProtection(value) {
   } catch (error) { refreshSpoilerSurfaces(); }
 }
 
-async function revealSpoilerEpisode(season, episode, seriesId = spoilerSeriesId()) {
+export async function revealSpoilerEpisode(season, episode, seriesId = spoilerSeriesId()) {
   try { await changeSpoilerState({action: 'reveal', series_id: seriesId, season, episode}); }
   catch (error) { console.warn('Révélation impossible', error); }
 }
@@ -131,7 +149,7 @@ async function resolveJourneyWork(id, requestId = animeJourneyRequestId) {
   }
 }
 
-async function loadAnimeJourney(media, meta) {
+export async function loadAnimeJourney(media, meta) {
   const panel = document.getElementById('animeJourneyPanel');
   if (!panel) return;
   const requestId = ++animeJourneyRequestId;
@@ -230,7 +248,7 @@ async function resetJourneyOrder() {
 
 // The planning hides the artwork of an episode the user has not reached, for a
 // series they follow only: the cover of any other series gives nothing away.
-function scheduleSpoilerTarget(item) {
+export function scheduleSpoilerTarget(item) {
   const id = item?.kino?.id;
   const known = id ? userHistory.find(h => String(h.id).toLowerCase() === String(id).toLowerCase()) : null;
   if (!known) return null;
@@ -238,7 +256,7 @@ function scheduleSpoilerTarget(item) {
   return { id: known.id, season: Number(item.kino.season) || (seasons.size === 1 ? [...seasons][0] : 0) };
 }
 
-function refreshSpoilerSurfaces() {
+export function refreshSpoilerSurfaces() {
   const global = document.getElementById('cfgSpoilerProtection');
   if (global) global.value = spoilerState.enabled ? 'on' : 'off';
   const series = document.getElementById('detailSpoilerChoice');
@@ -273,7 +291,7 @@ function refreshLatestAiredSpoiler() {
   label.textContent = `${watched ? '✓' : '●'} Dernier épisode diffusé${watched ? '' : ' (non vu)'} : ${latest.code} — ${hidden ? Spoilers.neutralTitle(latest.episode) : latest.title} (${latest.released})`;
 }
 
-function refreshPlayerSpoilerTitles() {
+export function refreshPlayerSpoilerTitles() {
   if (!inAppCurrentMedia || !inAppSeriesId) return;
   const current = Spoilers.episodeNumber(inAppCurrentTitle);
   const season = Number(current?.season || inAppCurrentMedia.season || document.getElementById('seasonSelect')?.value || 0);
@@ -291,7 +309,7 @@ function refreshPlayerSpoilerTitles() {
   }
 }
 
-const PROVIDER_META = {
+export const PROVIDER_META = {
   realdebrid: { name: 'Real-Debrid', short: 'RD', url: 'https://real-debrid.com/apitoken', label: 'real-debrid.com/apitoken', hint: 'Clé API Real-Debrid' },
   alldebrid:  { name: 'AllDebrid',   short: 'AD', url: 'https://alldebrid.fr/apikeys/',   label: 'alldebrid.fr/apikeys',   hint: 'Clé API AllDebrid' },
   torbox:     { name: 'TorBox',      short: 'TB', url: 'https://torbox.app/settings',     label: 'torbox.app/settings',     hint: 'Clé API TorBox' },
@@ -300,7 +318,7 @@ const PROVIDER_META = {
   megadebrid: { name: 'Mega-Debrid', short: 'MD', url: 'https://www.mega-debrid.eu/index.php?page=account', label: 'mega-debrid.eu', hint: 'Token API ou identifiant:motdepasse Mega-Debrid' }
 };
 
-function onConfigProviderChange() {
+export function onConfigProviderChange() {
   const prov = document.getElementById('cfgProvider') ? document.getElementById('cfgProvider').value : 'realdebrid';
   const meta = PROVIDER_META[prov] || PROVIDER_META.realdebrid;
   const linkEl = document.getElementById('cfgProviderLink');
@@ -352,7 +370,7 @@ function onConfigProviderChange() {
   });
 })();
 
-async function api(path, opts) {
+export async function api(path, opts) {
   const res = await fetch(path, opts);
   const data = await res.json();
   if (!res.ok || data.error) {
@@ -364,7 +382,7 @@ async function api(path, opts) {
   return data;
 }
 
-async function checkConfig() {
+export async function checkConfig() {
   try {
     const cfg = await api('/api/config');
     configuredProviders = cfg.configured_providers || {};
@@ -432,9 +450,9 @@ async function checkConfig() {
     if (document.getElementById('cfgDiscordRpc')) {
       document.getElementById('cfgDiscordRpc').checked = cfg.discord_rpc !== false;
     }
-    if (window.NativePlayer) {
-      window.NativePlayer.available = cfg.native_player_available === true;
-      window.NativePlayer.enabled = cfg.native_player === true;
+    if (NativePlayer) {
+      NativePlayer.available = cfg.native_player_available === true;
+      NativePlayer.enabled = cfg.native_player === true;
     }
     const nativeField = document.getElementById('cfgNativePlayerField');
     if (nativeField) nativeField.style.display = cfg.native_player_available === true ? 'flex' : 'none';
@@ -533,7 +551,7 @@ async function checkConfig() {
   }
 }
 
-function getInProgressHistory() {
+export function getInProgressHistory() {
   return (userHistory || []).filter(h => {
     if (h.imported_watched) return false;
     const pct = Number(h.progress_pct || 0);
@@ -544,14 +562,14 @@ function getInProgressHistory() {
   });
 }
 
-function getWatchedHistory() {
+export function getWatchedHistory() {
   return (userHistory || []).filter(h => {
     const pct = Number(h.progress_pct || 0);
     return Boolean(h.completed || pct >= 85 || h.imported_watched);
   });
 }
 
-async function refreshUserLists() {
+export async function refreshUserLists() {
   try {
     const data = await api('/api/user-lists');
     userWatchlist = data.watchlist || [];
@@ -575,7 +593,7 @@ let tonightUndoAction = null;
 let tonightRequestId = 0;
 let tonightOfflineInitialized = false;
 
-function openTonightModal() {
+export function openTonightModal() {
   const modal = document.getElementById('tonightModal');
   if (!modal) return;
   modal.style.display = 'flex';
@@ -588,7 +606,7 @@ function openTonightModal() {
   findTonightChoices();
 }
 
-function closeTonightModal() {
+export function closeTonightModal() {
   tonightRequestId++;
   const modal = document.getElementById('tonightModal');
   if (modal) modal.style.display = 'none';
@@ -755,11 +773,11 @@ async function resetTonightPreferences() {
   }
 }
 
-function isInWatchlist(id) {
+export function isInWatchlist(id) {
   return userWatchlist.some(x => x.id === id);
 }
 
-async function toggleWatchlist(ev, media) {
+export async function toggleWatchlist(ev, media) {
   if (ev) ev.stopPropagation();
   const res = await api('/api/watchlist', {
     method: 'POST',
@@ -796,19 +814,19 @@ function formatRemaining(pos, dur) {
   return `Il reste ${remMin} min`;
 }
 
-let catalogSort = 'top';
-function setCatalogSort(value) { catalogSort = value; return value; }
-let catalogSkip = 0;
-function setCatalogSkip(value) { catalogSkip = value; return value; }
-let catalogItems = [];
-function setCatalogItems(value) { catalogItems = value; return value; }
+export let catalogSort = 'top';
+export function setCatalogSort(value) { catalogSort = value; return value; }
+export let catalogSkip = 0;
+export function setCatalogSkip(value) { catalogSkip = value; return value; }
+export let catalogItems = [];
+export function setCatalogItems(value) { catalogItems = value; return value; }
 // The last page of the catalogue was full: « Voir plus » has more to bring.
-let catalogHasMore = false;
-function setCatalogHasMore(value) { catalogHasMore = value; return value; }
-let currentTrailerCtx = {trailerId: '', title: '', year: '', lang: 'vf'};
-function setCurrentTrailerCtx(value) { currentTrailerCtx = value; return value; }
+export let catalogHasMore = false;
+export function setCatalogHasMore(value) { catalogHasMore = value; return value; }
+export let currentTrailerCtx = {trailerId: '', title: '', year: '', lang: 'vf'};
+export function setCurrentTrailerCtx(value) { currentTrailerCtx = value; return value; }
 
-function getSeriesTargetEpisode(h) {
+export function getSeriesTargetEpisode(h) {
   if (!h || h.type !== 'series') return {season: 1, episode: 1, isNext: false};
   const s = Number(h.season || 1);
   const e = Number(h.episode || 1);
@@ -837,7 +855,7 @@ function getSeriesTargetEpisode(h) {
 
 const FRENCH_MONTHS = KINO_I18N.months('long');
 
-function episodeCode(season, episode) {
+export function episodeCode(season, episode) {
   return `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
 }
 
@@ -863,7 +881,7 @@ function resumeEpisodeInfo(meta, season, episode, todayIso) {
   return { name, still, released, upcoming: /^\d{4}-\d{2}-\d{2}$/.test(released) && released > todayIso };
 }
 
-function resumeBackdrop(h) {
+export function resumeBackdrop(h) {
   if (h.backdrop || h.background) return h.backdrop || h.background;
   if (/^tt\d{1,12}$/.test(String(h.id || ''))) return `https://images.metahub.space/background/medium/${encodeURIComponent(h.id)}/img`;
   return h.poster || '';
@@ -871,7 +889,7 @@ function resumeBackdrop(h) {
 
 // Everything a « À continuer » card shows, from a history entry and, for a
 // series, its cached meta (episode name, still, release date).
-function resumeCardView(h, meta, todayIso) {
+export function resumeCardView(h, meta, todayIso) {
   const isSeries = h.type === 'series';
   const pct = Math.min(100, Math.max(0, Number(h.progress_pct || 0)));
   const target = isSeries ? getSeriesTargetEpisode(h) : null;
@@ -936,7 +954,7 @@ function resumeImageFallback(img) {
 // Series metas (episode names and stills) are fetched once, then the section
 // is drawn again from the cache.
 const resumeMetaRequests = new Map();
-function requestResumeMetas(items) {
+export function requestResumeMetas(items) {
   const missing = items
     .filter(h => h.type === 'series' && h.id && !META_CLIENT_CACHE.has(h.id) && !resumeMetaRequests.has(h.id))
     .slice(0, 12);

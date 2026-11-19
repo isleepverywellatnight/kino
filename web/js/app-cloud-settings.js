@@ -1,13 +1,29 @@
 // --- Cloud: files gathered by work (cloud_titles.py), with the catalogue poster ---
-let cloudGroups = [];
-function setCloudGroups(value) { cloudGroups = value; return value; }
+
+import { registerActions, runAction } from './actions.js';
+import { THIS, VALUE, act, actOn, attrJson, escapeHtml, html, render, safeUrl } from './html.js';
+import { Spoilers } from './spoilers.js';
+import {
+  PROVIDER_META, RELATED_CLIENT_CACHE, activeTab, api, checkConfig, configuredProviders,
+  currentTrailerCtx, linkedAccounts, onConfigProviderChange, playerPrefs, refreshUserLists,
+  setCurrentTrailerCtx, userHistory,
+} from './app-core.js';
+import { FOR_YOU_CACHE } from './app-home.js';
+import { foldSearchText, listItemState } from './app-lists.js';
+import { loadRdCloud, previousTab, setPreviousTab, switchTab } from './app-tabs.js';
+import { displayTitle, selectMedia, titleAttrs } from './app-fiche.js';
+import { openMpv } from './app-sources.js';
+import { offlineSize } from './app-start.js';
+
+export let cloudGroups = [];
+export function setCloudGroups(value) { cloudGroups = value; return value; }
 let cloudFilter = 'all';
 let cloudQuery = '';
 const cloudOpen = new Set();
-const cloudAsked = new Set();
+export const cloudAsked = new Set();
 const CLOUD_MATCHES = new Map();
 const CLOUD_VIDEO = /\.(mkv|mp4|avi|m4v|mov|ts|m2ts|wmv|webm|mpe?g)$/i;
-const CLOUD_MONTHS = KINO_I18N.months('short');
+export const CLOUD_MONTHS = KINO_I18N.months('short');
 
 function cloudDate(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || ''));
@@ -158,7 +174,7 @@ function cloudVisibleGroups() {
     || foldSearchText([cloudName(group), cloudMedia(group)?.name || '', group.title, ...group.files.map(file => file.filename)].join(' ')).includes(query)));
 }
 
-function renderCloud() {
+export function renderCloud() {
   const tools = document.getElementById('rdCloudTools');
   const list = document.getElementById('rdCloudList');
   if (!cloudGroups.length) {
@@ -209,7 +225,7 @@ function toggleCloudGroup(key) {
 }
 
 // Posters and catalogue titles arrive after the list; a miss is asked again on the next visit.
-async function requestCloudMatches() {
+export async function requestCloudMatches() {
   const titles = cloudGroups.filter(group => group.kind !== 'other' && !CLOUD_MATCHES.has(group.key) && !cloudAsked.has(group.key))
     .slice(0, 40).map(group => ({ key: group.key, title: group.title, year: group.year, kind: group.kind }));
   if (!titles.length) return;
@@ -326,7 +342,7 @@ async function purgeRdCloud(mode, btn) {
   }
 }
 
-async function openTrailerModal(trailerId, title, year = '', lang = 'vf') {
+export async function openTrailerModal(trailerId, title, year = '', lang = 'vf') {
   setCurrentTrailerCtx({trailerId: trailerId || '', title: title || '', year: year || '', lang: lang || 'vf'});
   const modal = document.getElementById('trailerModal');
   const video = document.getElementById('trailerVideo');
@@ -380,7 +396,7 @@ function switchTrailerLang(lang) {
   openTrailerModal(currentTrailerCtx.trailerId, currentTrailerCtx.title, currentTrailerCtx.year, lang);
 }
 
-function closeTrailerModal() {
+export function closeTrailerModal() {
   const modal = document.getElementById('trailerModal');
   const video = document.getElementById('trailerVideo');
   const iframe = document.getElementById('trailerIframe');
@@ -407,7 +423,7 @@ function toggleHeaderMenu(e) {
   }
 }
 
-function closeHeaderMenu() {
+export function closeHeaderMenu() {
   const wrap = document.querySelector('.header-menu-wrap');
   const menu = document.getElementById('headerDropdownMenu');
   const button = document.getElementById('headerSettingsBtn');
@@ -423,7 +439,7 @@ window.addEventListener('click', (e) => {
   }
 });
 
-function openConfig() { 
+export function openConfig() { 
   if (activeTab && activeTab !== 'settings') {
     setPreviousTab(activeTab);
   }
@@ -507,7 +523,7 @@ async function copyDiagnosticReport() {
 }
 
 // From the « Outils » menu: Paramètres, at the diagnostic, already running.
-function openDiagnostic() {
+export function openDiagnostic() {
   openConfig();
   requestAnimationFrame(() => openSettingsSection('settings-diagnostic'));
   runDiagnostic();
@@ -549,7 +565,7 @@ function focusDebridKey() {
   document.getElementById('cfgToken')?.focus({ preventScroll: true });
 }
 
-function closeConfig() {
+export function closeConfig() {
   switchTab(previousTab || 'movies');
 }
 
@@ -565,7 +581,7 @@ function togglePasswordVisibility(inputId, btn) {
   }
 }
 
-async function triggerGdriveSync(btn) {
+export async function triggerGdriveSync(btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'En cours...'; }
   try {
     const res = await api('/api/sync/gdrive');
@@ -587,7 +603,7 @@ async function triggerGdriveSync(btn) {
 }
 
 // Settings → Application → Suggestions (recommender.py): the pool and the « Pas pour moi ».
-async function loadSuggestionStatus() {
+export async function loadSuggestionStatus() {
   const el = document.getElementById('suggestionsStatus');
   if (!el) return;
   try {
@@ -657,7 +673,7 @@ function renderBackups(items = []) {
   }));
 }
 
-async function loadBackups() {
+export async function loadBackups() {
   try {
     const res = await api('/api/backups');
     renderBackups(res.items || []);
@@ -698,7 +714,7 @@ async function restoreBackup(btn) {
 // --- fin des sauvegardes
 
 // Settings → Connexions → TMDB: the user's key for titles close to a film (tmdb.py).
-function showTmdbStatus(hasKey, message) {
+export function showTmdbStatus(hasKey, message) {
   const status = document.getElementById('cfgTmdbStatus');
   if (status) status.textContent = message || (hasKey
     ? 'Clé enregistrée : les titres proches viennent de TMDB.'
@@ -728,7 +744,7 @@ async function verifyTmdbKey(btn) {
 }
 
 // Settings → Connexions → Téléviseur: the TVs of the local network (tv_cast.py).
-async function loadTvDevices(refresh = false, btn = null) {
+export async function loadTvDevices(refresh = false, btn = null) {
   const select = document.getElementById('cfgTvDevice');
   const status = document.getElementById('cfgTvStatus');
   if (!select) return;
@@ -761,7 +777,7 @@ async function chooseTvDevice(location) {
   }
 }
 
-function toggleDiscordRpcFields() {
+export function toggleDiscordRpcFields() {
   const chk = document.getElementById('cfgDiscordRpc');
   const opt = document.getElementById('discordRpcOptions');
   if (opt) opt.hidden = !(chk && chk.checked);
@@ -796,7 +812,7 @@ function showSettingsStatus(text, state) {
   }
 }
 
-function initSettingsAutosave() {
+export function initSettingsAutosave() {
   for (const id of SETTINGS_AUTOSAVE_IDS) {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', scheduleSettingsSave);

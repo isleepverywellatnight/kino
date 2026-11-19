@@ -1,5 +1,5 @@
 // @ts-check
-const Spoilers = (() => {
+export const Spoilers = (() => {
   const empty = () => ({ enabled: false, overrides: {}, revealed: {} });
   const code = (season, episode) => `S${String(Number(season)).padStart(2, '0')}E${String(Number(episode)).padStart(2, '0')}`;
   const canonicalCode = value => {
@@ -42,4 +42,3 @@ const Spoilers = (() => {
   return { empty, code, watched, concealed, episodeNumber, neutralTitle, normalizeTitle };
 })();
 
-if (typeof module !== 'undefined') module.exports = Spoilers;

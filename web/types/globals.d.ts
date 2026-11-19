@@ -1,13 +1,6 @@
 // Names KINO's pages share between scripts, for the TypeScript check
 // (`npx typescript tsc -p jsconfig.json`). Nothing here is served or run.
 
-// Scripts that also hand themselves to the Node tests (`module.exports`) are
-// modules to TypeScript: their page-wide name is declared here, with the type
-// of what they export.
-declare const Spoilers: typeof import('../js/spoilers.js');
-declare const SeriesPlayback: typeof import('../js/series-playback.js');
-declare const AnimeJourneyView: typeof import('../js/anime-journey.js');
-
 // Set by web/js/i18n.js on window.
 declare const KINO_I18N: {
   lang: string;

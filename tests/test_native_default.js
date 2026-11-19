@@ -8,7 +8,7 @@ const test = require('node:test');
 const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
-const nativeSource = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+const nativeSource = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
 const html = require('../tools/interface_source.js').indexHtml();
 
 function loadNative(state, { intro = null, cues = null } = {}) {
@@ -56,7 +56,7 @@ function loadNative(state, { intro = null, cues = null } = {}) {
     downloadMediaContext: media => ({ id: media.id, name: media.name, type: media.type, season: media.season, episode: media.episode }),
   };
   vm.runInNewContext(nativeSource, context);
-  return { NativePlayer: context.window.NativePlayer, elements, calls, clock, onlineButtons };
+  return { NativePlayer: vm.runInContext('NativePlayer', context), elements, calls, clock, onlineButtons };
 }
 
 const flush = () => new Promise(resolve => setImmediate(resolve));

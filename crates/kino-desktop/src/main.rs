@@ -546,6 +546,7 @@ fn self_check() -> Result<Value, String> {
     for file in [
         "index.html",
         "remote.html",
+        "js/main.js",
         "js/vendor/qrcode.min.js",
         "js/playback-help.js",
         "js/vendor/peerjs.min.js",

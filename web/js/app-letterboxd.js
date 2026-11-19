@@ -1,6 +1,19 @@
 /* ============================================================================
  * IMPORTATION WATCHLIST & FILMS DÉJÀ VUS LETTERBOXD
  * ============================================================================ */
+
+import { registerActions } from './actions.js';
+import { act, escapeHtml, html, render, safeUrl } from './html.js';
+import {
+  activeTab, api, catalogItems, getInProgressHistory, getWatchedHistory, linkedAccounts,
+  setUserHistory, setUserWatchlist, userWatchlist,
+} from './app-core.js';
+import { renderHomeResume, updateClassicsStatsBadge } from './app-home.js';
+import { listItemState, renderActiveListTab, surpriseMeMedia } from './app-lists.js';
+import { posterCardHtml, renderPosterCards, searchResultsShown } from './app-tabs.js';
+import { loadCommunityTab } from './app-social.js';
+import { personView, renderPersonPage } from './app-fiche.js';
+
 let letterboxdCsvContent = '';
 let letterboxdCsvName = '';
 
@@ -10,7 +23,7 @@ function openLetterboxdListImport() {
   switchLbxModalTab('list');
 }
 
-function openLetterboxdModal() {
+export function openLetterboxdModal() {
   const m = document.getElementById('letterboxdModal');
   const st = document.getElementById('lbxImportStatus');
   if (st) { st.style.display = 'none'; st.textContent = ''; }
@@ -33,7 +46,7 @@ function openLetterboxdModal() {
   }
 }
 
-function closeLetterboxdModal() {
+export function closeLetterboxdModal() {
   const m = document.getElementById('letterboxdModal');
   if (m) {
     m.style.display = 'none';
@@ -68,7 +81,7 @@ function clearLetterboxdCsv(ev) {
   if (clrBtn) clrBtn.style.display = 'none';
 }
 
-function updateListBadges() {
+export function updateListBadges() {
   const wlEl = document.getElementById('wlCount');
   if (wlEl) wlEl.textContent = userWatchlist.length ? String(userWatchlist.length) : '';
   const inProg = getInProgressHistory();
@@ -227,9 +240,9 @@ async function submitLetterboxdImport(options = {}) {
   }
 }
 
-let userCustomLists = [];
+export let userCustomLists = [];
 
-function switchLbxModalTab(tab) {
+export function switchLbxModalTab(tab) {
   const btnProf = document.getElementById('lbxTabBtnProfile');
   const btnList = document.getElementById('lbxTabBtnList');
   const secProf = document.getElementById('lbxSectionProfile');
@@ -248,7 +261,7 @@ function switchLbxModalTab(tab) {
   }
 }
 
-async function fetchCustomLists() {
+export async function fetchCustomLists() {
   try {
     const data = await api('/api/letterboxd/custom-lists');
     userCustomLists = data.custom_lists || [];
@@ -280,7 +293,7 @@ function renderSavedListsInModal() {
   `));
 }
 
-async function submitLetterboxdCustomListImport() {
+export async function submitLetterboxdCustomListImport() {
   const urlInp = document.getElementById('lbxCustomListUrlInput');
   const url = (urlInp?.value || '').trim();
   const st = document.getElementById('lbxCustomListStatus');
@@ -363,7 +376,7 @@ async function deleteLetterboxdCustomList(listId) {
   }
 }
 
-function renderCustomListsTab() {
+export function renderCustomListsTab() {
   const grid = document.getElementById('postersGrid');
   const catTitle = document.getElementById('catalogTitle');
   const lm = document.getElementById('loadMoreWrap');
@@ -417,11 +430,11 @@ function renderCustomListsTab() {
 }
 
 // --- Letterboxd lists: one shelf per list, then a full page with filters ---
-let openCustomListId = null;
-function setOpenCustomListId(value) { openCustomListId = value; return value; }
-const LIST_SHELF_SIZE = 12;
+export let openCustomListId = null;
+export function setOpenCustomListId(value) { openCustomListId = value; return value; }
+export const LIST_SHELF_SIZE = 12;
 
-function customListProgress(items) {
+export function customListProgress(items) {
   const watched = items.filter(m => listItemState(m) === 'watched').length;
   return { watched, total: items.length, pct: items.length ? Math.round((watched / items.length) * 100) : 0 };
 }
@@ -450,7 +463,7 @@ function customListShelfHtml(list) {
     </section>`;
 }
 
-function openCustomList(listId) {
+export function openCustomList(listId) {
   openCustomListId = listId;
   const input = document.getElementById('listFilterInput');
   if (input) input.value = '';
@@ -480,7 +493,7 @@ function renderOpenCustomList(list) {
   renderActiveListTab();
 }
 
-function surpriseMeFromCustomList(listId) {
+export function surpriseMeFromCustomList(listId) {
   const l = userCustomLists.find(x => x.id === listId);
   if (!l || !l.items || !l.items.length) {
     alert('Cette liste ne contient aucun film.');

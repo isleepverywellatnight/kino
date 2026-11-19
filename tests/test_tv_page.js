@@ -151,7 +151,7 @@ test('« Fichier prêt »: each file of a chosen source has « Sur la TV », fro
 });
 
 test('both players offer « Sur la TV »: pause, send at this moment, then stop on the Mac', () => {
-  const native = require('../tools/interface_source.js').inFrench(fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/js/native-player.js'), 'utf8'));
+  const native = require('../tools/interface_source.js').inFrench(require('../tools/interface_source.js').scriptText('native-player.js'));
   const menu = html.slice(html.indexOf('id="inAppMoreMenu"'), html.indexOf('id="inAppWpChatBox"'));
   assert.match(withCalls(menu), /id="inAppTvBtn" onclick="sendInAppPlaybackToTv\(\)"[^>]*>Sur la TV<\/button>/);
   const inApp = source.slice(source.indexOf('async function sendInAppPlaybackToTv() {'), source.indexOf('function toggleInAppMoreMenu('));

@@ -10,7 +10,7 @@ const { withCalls } = require('../tools/interface_source.js');
 const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, context, ...rest) => real.runInNewContext(code, withHelpers(context), ...rest) }))(require('../tools/interface_source.js'), require('node:vm'));
 
 const ROOT = path.join(__dirname, '..');
-const actions = fs.readFileSync(path.join(ROOT, 'web/js/actions.js'), 'utf8');
+const actions = require('../tools/interface_source.js').scriptText('actions.js');
 const { convert, formerCall } = require('../tools/inline_handlers.js');
 const { registeredActions } = require('../tools/frontend_check.js');
 
@@ -106,7 +106,7 @@ test('the menu, the backdrop, Enter, a form and a file field', () => {
     p.context.registerActions({ [name]: () => p.calls.push(name) });
   }
   // The header menu's wrapper is the menu's own (app-cloud-settings.js).
-  const menu = fs.readFileSync(path.join(ROOT, 'web/js/app-cloud-settings.js'), 'utf8');
+  const menu = require('../tools/interface_source.js').scriptText('app-cloud-settings.js');
   const start = menu.indexOf('function kinoMenuAction(name) {');
   p.context.closeHeaderMenu = () => p.calls.push('closeHeaderMenu');
   vm.runInContext(`${menu.slice(start, menu.indexOf('\n}\n', start) + 3)} registerActions({ kinoMenuAction });`, p.context);
@@ -129,7 +129,11 @@ test('the menu, the backdrop, Enter, a form and a file field', () => {
 test('index.html has no inline code left, and each action is registered', () => {
   const html = fs.readFileSync(path.join(ROOT, 'web/index.html'), 'utf8');
   assert.doesNotMatch(html, /\son[a-z]+=["']/i);
-  assert.match(html, /<script src="\/js\/i18n\.js"><\/script>\s*<script src="\/js\/actions\.js"><\/script>/);
+  // i18n.js translates the page as it is drawn; KINO itself is one module.
+  assert.match(html, /<script src="\/js\/i18n\.js"><\/script>/);
+  assert.equal((html.match(/<script type="module"/g) || []).length, 1);
+  assert.match(html, /<script type="module" src="\/js\/main\.js"><\/script>/);
+  assert.equal(require('../tools/interface_source.js').interfaceScripts()[1], 'actions.js', 'the actions first');
   const scripts = fs.readdirSync(path.join(ROOT, 'web/js')).filter(f => f.endsWith('.js'))
     .map(f => fs.readFileSync(path.join(ROOT, 'web/js', f), 'utf8')).join('\n');
   const names = new Set([...html.matchAll(/data-on-[a-z]+="([^"]+)"/g)].map(m => m[1]));
@@ -177,5 +181,7 @@ test('the phone remote has no inline code either, and loads its code as files', 
   const remote = fs.readFileSync(path.join(ROOT, 'web/remote.html'), 'utf8');
   assert.doesNotMatch(remote, /\son[a-z]+=["']/i);
   assert.doesNotMatch(remote, /<script(?![^>]*\bsrc=)[^>]*>/, 'no inline script');
-  assert.match(remote, /<script src="\/js\/actions\.js"><\/script>\s*<script src="\/js\/html\.js"><\/script>\s*<script src="\/js\/remote\.js"><\/script>/);
+  assert.deepEqual([...remote.matchAll(/<script\b[^>]*>/g)].map(m => m[0]), ['<script type="module" src="/js/remote.js">']);
+  const imports = [...fs.readFileSync(path.join(ROOT, 'web/js/remote.js'), 'utf8').matchAll(/^import .* from '(\.\/[\w-]+\.js)';$/gm)].map(m => m[1]);
+  assert.deepEqual(imports, ['./actions.js', './html.js']);
 });

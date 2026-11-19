@@ -1,7 +1,18 @@
 // Native player overlay (« Lecteur natif », macOS): mpv draws the video
 // under the KINO window's web view; this page only shows the controls. The
 // page turns transparent while it plays (html.native-playing).
-(function () {
+
+import { html, raw, render } from './html.js';
+import { SeriesPlayback } from './series-playback.js';
+import { api, playerPrefs, refreshUserLists } from './app-core.js';
+import { broadcastWpEvent, openRemoteModal, openWatchPartyModal, scrobbleTrakt } from './app-social.js';
+import { castToTv, tvMediaPayload, tvTitle } from './app-fiche.js';
+import { downloadMediaContext } from './app-sources.js';
+import { SVG_ICONS } from './app-player.js';
+import { askRatingAfterPlayback } from './ratings.js';
+import { closeOpenDialogOnEscape, networkOnline, pollDownloads } from './app-start.js';
+
+export const NativePlayer = (function () {
   const LANGUAGES = {
     fre: 'Français', fra: 'Français', fr: 'Français', eng: 'Anglais', en: 'Anglais', jpn: 'Japonais', ja: 'Japonais',
     ger: 'Allemand', deu: 'Allemand', de: 'Allemand', spa: 'Espagnol', es: 'Espagnol', ita: 'Italien', it: 'Italien',
@@ -1037,7 +1048,7 @@
     }
   }, true);
 
-  window.NativePlayer = { available: false, enabled: false, open, openStream, close, isOpen: () => session.open,
+  return { available: false, enabled: false, open, openStream, close, isOpen: () => session.open,
     formatTime, trackLabel, keyAction, remoteState, handleRemoteCommand, episodeOf, introSkip, nearEnd, applySync, notify,
     nextSetting, speedLabel, onlineSubtitleChoices, nextSubtitleTrack };
 })();

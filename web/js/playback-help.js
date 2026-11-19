@@ -1,4 +1,14 @@
 // Player troubleshooting is local; reports contain only explicitly selected fields.
+
+import { registerActions } from './actions.js';
+import { api } from './app-core.js';
+import {
+  adjustInAppSubDelay, changeInAppAudioTrack, fixInAppAudio, inAppAbsoluteTime, inAppActiveCues,
+  inAppAudioTracks, inAppDuration, inAppIsRemux, inAppPlaybackGeneration, inAppRecovery,
+  inAppSelectedAudioIndex, inAppSubDelaySec, recoverInAppSource, resetInAppIdleTimer,
+  setInAppVolume,
+} from './app-player.js';
+
 function playbackHelpStatus(message) {
   document.getElementById('playbackHelpStatus').textContent = message;
 }
@@ -10,7 +20,7 @@ function openPlaybackHelp() {
   showPlaybackHelp('no_audio');
 }
 
-function closePlaybackHelp() {
+export function closePlaybackHelp() {
   document.getElementById('playbackHelp')?.close();
   resetInAppIdleTimer();
 }
