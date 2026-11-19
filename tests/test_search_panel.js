@@ -36,7 +36,7 @@ function load({ storage = {}, brokenStorage = false } = {}) {
       removeItem: key => { delete storage[key]; },
     },
     api: async url => { calls.asked.push(url); return answers.next || { results: [] }; },
-    escapeHtml: s => String(s), titleAttrs: () => '', displayTitle: it => it.name, rememberFrenchTitles: () => {},
+    titleAttrs: () => '', displayTitle: it => it.name, rememberFrenchTitles: () => {},
     switchTab: tab => calls.tabs.push(tab), selectMedia: it => calls.opened.push(it.name),
     debridMagnet: q => calls.magnets.push(q), openTonightModal: () => calls.tabs.push('tonight'),
     openDiagnostic: () => {}, toggleShortcutsModal: () => {}, noteSearch: () => {},

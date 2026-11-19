@@ -55,7 +55,7 @@ test('the hero uses the logo, the cast row and the inline trailer', () => {
   const builder = source.slice(start, source.indexOf('\nfunction ', start + 10));
   assert.match(withCalls(builder), /class="detail-hero-logo"[^>]*\$\{actOn\('load', 'kinoHeroLogo', THIS\)\} \$\{actOn\('error', 'kinoRemove', THIS\)\}/);
   assert.match(builder, /\$\{act\('playDetailTrailer', trailerId,/);
-  assert.match(builder, /class="detail-person" data-person="\$\{escapeHtml\(person\.name\)\}"/);
+  assert.match(builder, /class="detail-person" data-person="\$\{person\.name\}"/);
   assert.doesNotMatch(builder, /openTrailerModal\(/, 'the fiche no longer opens the separate window');
   assert.match(source, /loadDetailPeoplePhotos\(media\.id\);/);
 });

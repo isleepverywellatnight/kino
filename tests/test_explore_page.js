@@ -2,6 +2,7 @@
 // shelf (progress, first posters, Tout voir, Roulette); a selection opens in
 // full with a state filter.
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -15,7 +16,7 @@ const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/desig
 const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
 const exploreCode = slice('// --- Explorer: imported Letterboxd lists and curated selections, as shelves ---', 'async function importCustomLetterboxdFromInput() {');
 const progressCode = slice('function customListProgress(items) {', 'function customListShelfHtml(list) {');
-const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 const films = count => Array.from({ length: count }, (_, index) => ({ id: `tt${index + 1}`, name: `Film ${index + 1}`, type: 'movie' }));
 const curated = () => [
@@ -32,8 +33,7 @@ function load({ history = [], custom = imported(), failCurated = false } = {}) {
     document: { getElementById: element },
     window: { scrollTo: () => calls.push(['scroll']) },
     LIST_SHELF_SIZE: 12, userHistory: history,
-    escapeHtml, attrJson: value => escapeHtml(JSON.stringify(value)),
-    posterCardHtml: (m, type) => `<card ${m.id} ${type}>`,
+    escapeHtml,     posterCardHtml: (m, type) => raw(`<card ${m.id} ${type}>`),
     listItemState: m => (history.some(h => h.id === m.id) ? 'watched' : 'todo'),
     api: async route => {
       if (route === '/api/community/curated') {

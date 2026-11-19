@@ -42,7 +42,7 @@ function loadNative(state, { openFails = false } = {}) {
       if (url === '/api/native-player/open' && openFails) throw new Error('Adresse de lecture refusée.');
       return { ok: true, state };
     },
-    escapeHtml: value => String(value), setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {},
+    setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {},
     Date: FakeDate, URLSearchParams,
   };
   vm.runInNewContext(nativeSource, context);

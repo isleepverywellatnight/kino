@@ -50,8 +50,7 @@ function renderFor(activeTab, history) {
     document: { getElementById: id => elements[id] },
     META_CLIENT_CACHE: new Map(),
     api: async () => ({ meta: {} }),
-    attrJson: value => escapeHtml(JSON.stringify(value)),
-    Date,
+        Date,
     Promise,
     getInProgressHistory: () => history,
     formatRemaining: () => '25 min restantes',
@@ -210,8 +209,7 @@ test('the recommended source follows validated server ranking, not a second UI s
     allTorrents: streams,
     currentMedia: null,
     extractTorrentSeeders: item => item.seeders,
-    escapeHtml: value => String(value),
-  });
+      });
   const recommended = list.innerHTML.split('<div class="torrent-item is-recommended">')[1];
   assert.ok(recommended, 'a source should be marked recommended');
   assert.match(recommended.split('<div class="torrent-item ')[0], /A\.Monster\.Calls/);

@@ -17,7 +17,7 @@ const monthsCode = source.slice(source.indexOf('const EPISODE_MONTHS'), source.i
   + source.slice(source.indexOf('// « 12 déc. 2024 ».'), source.indexOf('// Where the row opens'));
 // « À continuer » and the new episodes go by tab: the row below is the Séries tab's.
 const kindCode = 'function listItemKind(m)' + source.split('function listItemKind(m)', 2)[1].split('\n}\n', 1)[0] + '\n}\n';
-const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 const NEW = [
   { id: 'tt2', name: 'Dexter: Resurrection', type: 'series', year: '2025', poster: 'https://p/2.jpg', season: 2, episode: 2,
@@ -35,7 +35,7 @@ function load({ tab = 'series', concealed = () => false, history = [], fresh = N
   const context = {
     activeTab: tab, networkOnline: true, document: { getElementById: id => elements[id] || null },
     META_CLIENT_CACHE: new Map(), escapeHtml, encodeURIComponent, Date, Promise,
-    attrJson: value => escapeHtml(JSON.stringify(value)), titleAttrs: () => '', displayTitle: m => m.name,
+    titleAttrs: () => '', displayTitle: m => m.name,
     spoilerConcealed: concealed, getInProgressHistory: () => history, formatRemaining: () => 'Il reste 5 min',
     api: url => { requests.push(url); return Promise.resolve({ episodes: fresh, today: '2026-11-10' }); },
   };
@@ -87,22 +87,22 @@ test('each card says which episode, when it came out, and how many are new', () 
   assert.doesNotMatch(doves, /Black <Doves>/);
   assert.match(doves, /src="https:\/\/images\.metahub\.space\/background\/medium\/tt1\/img"/, 'backdrop when no still');
   assert.match(card(out, 'tt3'), /2 nouveaux épisodes depuis votre dernier visionnage/);
-  const single = lib.newEpisodeCardHtml({ ...NEW[2], new_count: 1 }, '2026-11-10');
+  const single = String(lib.newEpisodeCardHtml({ ...NEW[2], new_count: 1 }, '2026-11-10'));
   assert.match(single, /1 nouvel épisode depuis votre dernier visionnage/);
 });
 
 test('Ma Liste: a new series plays its first episode, a new season opens the fiche', () => {
   const lib = load();
-  const premiere = lib.newEpisodeCardHtml({ id: 'tt20', name: 'Nocturne', season: 1, episode: 1, episode_name: 'Pilot', still: 'https://img/20.jpg',
-    released: '2026-10-30', new_count: 3, is_new: true, in_progress: false, kind: 'premiere' }, '2026-11-10');
+  const premiere = String(lib.newEpisodeCardHtml({ id: 'tt20', name: 'Nocturne', season: 1, episode: 1, episode_name: 'Pilot', still: 'https://img/20.jpg',
+    released: '2026-10-30', new_count: 3, is_new: true, in_progress: false, kind: 'premiere' }, '2026-11-10'));
   assert.match(premiere, /<article class="resume-card is-new" role="listitem">/);
   assert.match(premiere, /<span class="resume-new-badge">Nouvelle série<\/span>/);
   assert.match(premiere, /<span class="resume-kicker">S01E01 · Pilot<\/span>/);
   assert.match(premiere, /<span class="resume-subinfo">Sorti le 30 oct\. 2026 · 3 épisodes<\/span>/);
   assert.match(premiere, /aria-label="Lancer S01E01 : Nocturne"/);
   assert.match(premiere, /resume-play/);
-  const season = lib.newEpisodeCardHtml({ id: 'tt21', name: 'Old show', season: 3, episode: 1, episode_name: 'Retour', still: 'https://img/21.jpg',
-    released: '2026-11-09', new_count: 1, is_new: true, in_progress: false, kind: 'season' }, '2026-11-10');
+  const season = String(lib.newEpisodeCardHtml({ id: 'tt21', name: 'Old show', season: 3, episode: 1, episode_name: 'Retour', still: 'https://img/21.jpg',
+    released: '2026-11-09', new_count: 1, is_new: true, in_progress: false, kind: 'season' }, '2026-11-10'));
   assert.match(season, /<article class="resume-card is-new opens-fiche" role="listitem">/);
   assert.match(season, /<span class="resume-new-badge">Saison 3<\/span>/);
   assert.match(season, /<span class="resume-kicker">Saison 3 disponible<\/span>/);

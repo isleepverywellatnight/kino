@@ -1,6 +1,7 @@
 // « Tout »: one search for films and series, grouped by type (the group of the
 // closest title first), with a type filter; the tabs no longer narrow it.
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -18,7 +19,7 @@ function load(metas) {
   const grid = { innerHTML: '' };
   const context = {
     document: { getElementById: id => (id === 'postersGrid' ? grid : null) },
-    posterCardHtml: (m, kind) => `<card ${m.id} ${kind}>`,
+    posterCardHtml: (m, kind) => raw(`<card ${m.id} ${kind}>`),
   };
   vm.runInNewContext(`${resultsCode}\nlastSearch = ${JSON.stringify({ query: 'dune', metas, filter: 'all' })};\nthis.api_ = { renderSearchResults, setSearchFilter, state: () => lastSearch };`, context);
   return { ...context.api_, grid };

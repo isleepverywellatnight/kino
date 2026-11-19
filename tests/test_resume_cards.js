@@ -27,15 +27,14 @@ class FixedDate extends Date {
   static now() { return Date.UTC(2026, 10, 12); }
 }
 
-const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 function load(extra = {}) {
   const context = {
     networkOnline: true,
     META_CLIENT_CACHE: new Map(),
     escapeHtml,
-    attrJson: value => escapeHtml(JSON.stringify(value)),
-    titleAttrs: () => '',
+        titleAttrs: () => '',
     displayTitle: item => item?.name || '',
     encodeURIComponent,
     // « Today » is the fixtures' own day, not the day the tests run.

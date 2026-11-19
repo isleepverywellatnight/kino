@@ -1,6 +1,7 @@
 // Sources without a debrid service (p2p-addons.js): the add-ons in Paramètres,
 // the P2P consent asked once with what it means, and « Lancer » that waits for it.
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -13,7 +14,7 @@ const read = name => fs.readFileSync(path.join(ROOT, name), 'utf8');
 const html = require('../tools/interface_source.js').indexHtml();
 const code = read('web/js/p2p-addons.js');
 const source = require('../tools/interface_source.js').appSource();
-const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 function load(answers = {}) {
   const calls = [];
@@ -23,8 +24,7 @@ function load(answers = {}) {
     showModal() { this.open = true; }, close() { this.open = false; }, querySelector: () => null });
   const context = {
     document: { getElementById: element }, alerts, LIST_SHELF_SIZE: 12,
-    alert: text => alerts.push(text), confirm: () => true, offlineSize: bytes => `${Math.round(bytes / 1048576)} Mo`, escapeHtml, attrJson: value => escapeHtml(JSON.stringify(value)),
-    posterCardHtml: m => `<div class="poster-card">${escapeHtml(m.name)}</div>`, encodeURIComponent, Promise,
+    alert: text => alerts.push(text), confirm: () => true, offlineSize: bytes => `${Math.round(bytes / 1048576)} Mo`, escapeHtml,     posterCardHtml: m => raw(`<div class="poster-card">${escapeHtml(m.name)}</div>`), encodeURIComponent, Promise,
     api: async (url, options) => {
       calls.push([url, options?.body ? JSON.parse(options.body) : null]);
       const answer = answers[url];

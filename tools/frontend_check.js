@@ -219,7 +219,18 @@ function check(root) {
       if (!htmlIds.has(id) && !templateIds.has(id) && !missingIds.some(item => item.id === id)) missingIds.push({ file: file.name, id });
     }
   }
-  return { undefinedCalls, missingHandlers, missingIds };
+  // HTML reaches the page only through web/js/html.js (render, replaceWith,
+  // renderAdjacent), which escapes every value that is not a fragment.
+  const htmlWrites = [];
+  for (const file of parsed) {
+    if (file.name === 'html.js') continue;
+    for (const m of file.code.matchAll(/\.(innerHTML|outerHTML)\s*=(?!=)|\.insertAdjacentHTML\s*\(|document\.write\s*\(/g)) {
+      // i18n.js writes the <script> of a dictionary named in its own list, before the page is drawn.
+      if (file.name === 'i18n.js' && m[0].startsWith('document.write')) continue;
+      htmlWrites.push({ file: file.name, line: file.code.slice(0, m.index).split('\n').length, write: m[0].replace(/\s+/g, '') });
+    }
+  }
+  return { undefinedCalls, missingHandlers, missingIds, htmlWrites };
 }
 
 module.exports = { tokenize, definedNames, calledNames, handlerCalls, globalNames, check };

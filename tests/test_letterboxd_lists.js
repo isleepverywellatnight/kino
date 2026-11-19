@@ -1,6 +1,7 @@
 // Letterboxd lists: one shelf per list (progress, first posters), then a full
 // page with Ma Liste's tools (state filter, French search, list order).
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -12,7 +13,7 @@ const source = require('../tools/interface_source.js').appSource();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const listsCode = source.slice(source.indexOf('function renderCustomListsTab() {'), source.indexOf('// The Anime tab (rows, planning) lives in anime-home.js.'));
 const listToolsCode = source.slice(source.indexOf('function surpriseMeFromCurrentList() {'), source.indexOf('async function surpriseMeMedia(poolArg = null) {'));
-const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 const films = Array.from({ length: 15 }, (_, index) => ({ id: `tt${index + 1}`, name: `Film ${index + 1}`, type: 'movie', year: String(1990 + index) }));
 films[0].name = 'The Shawshank Redemption';
@@ -32,8 +33,7 @@ function load({ lists, history = [] } = {}) {
     document: { getElementById: element },
     window: { scrollTo() {} },
     localStorage: { getItem: () => null, setItem() {} },
-    escapeHtml, attrJson: value => escapeHtml(JSON.stringify(value)),
-    posterCardHtml: m => `<div class="poster-card" data-id="${m.id}">${escapeHtml(m.name)}</div>`,
+    escapeHtml,     posterCardHtml: m => raw(`<div class="poster-card" data-id="${m.id}">${escapeHtml(m.name)}</div>`),
     renderPosterCards: list => rendered.push(Array.from(list, m => m.id)),
     displayTitle: m => (m.id === 'tt1' ? 'Les Évadés' : m.name),
     getWatchedHistory: () => [],

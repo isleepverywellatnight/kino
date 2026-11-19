@@ -49,16 +49,16 @@ function newEpisodeCardHtml(item, today) {
     title: `${item.name} — ${code}`, name: item.name, poster: item.poster || '', year: item.year || '' };
   const media = { id: item.id, name: item.name, type: 'series', poster: item.poster || '', year: item.year || '' };
   const name = displayTitle(item);
-  return `
+  return html`
     <article class="resume-card is-new${kind === 'season' ? ' opens-fiche' : ''}" role="listitem">
       <button class="resume-main" ${act('openResumeCard', THIS, play, media)} aria-label="${kind === 'season' ? `Voir la fiche : ${escapeHtml(name)}, saison ${item.season} disponible` : `${item.in_progress ? 'Reprendre' : 'Lancer'} ${code} : ${escapeHtml(name)}`}">
-        <span class="resume-still">${image ? `<img class="resume-still-img" src="${escapeHtml(image)}" data-fallback="${escapeHtml(still && backdrop !== still ? backdrop : '')}" data-poster="${escapeHtml(item.poster || '')}" alt="" ${actOn('error', 'resumeImageFallback', THIS)}>` : ''}</span>
-        <span class="resume-new-badge">${escapeHtml(badge)}</span>
-        ${kind === 'season' ? '' : '<span class="resume-play" aria-hidden="true">▶</span>'}
+        <span class="resume-still">${image ? html`<img class="resume-still-img" src="${image}" data-fallback="${still && backdrop !== still ? backdrop : ''}" data-poster="${item.poster || ''}" alt="" ${actOn('error', 'resumeImageFallback', THIS)}>` : ''}</span>
+        <span class="resume-new-badge">${badge}</span>
+        ${kind === 'season' ? '' : html`<span class="resume-play" aria-hidden="true">▶</span>`}
         <span class="resume-info">
-          <span class="resume-kicker">${escapeHtml(kicker)}</span>
-          <span class="resume-title"${titleAttrs({ ...item, type: 'series' })}>${escapeHtml(name)}</span>
-          <span class="resume-subinfo">${escapeHtml(status)}</span>
+          <span class="resume-kicker">${kicker}</span>
+          <span class="resume-title"${titleAttrs({ ...item, type: 'series' })}>${name}</span>
+          <span class="resume-subinfo">${status}</span>
         </span>
       </button>
     </article>`;
@@ -72,7 +72,7 @@ function renderHomeNew() {
   // New episodes are series: the row belongs to the Séries tab.
   const items = activeTab === 'series' ? newEpisodes : [];
   sec.style.display = items.length ? 'block' : 'none';
-  grid.innerHTML = items.map(item => newEpisodeCardHtml(item, newEpisodesToday || new Date().toISOString().slice(0, 10))).join('');
+  render(grid, items.map(item => newEpisodeCardHtml(item, newEpisodesToday || new Date().toISOString().slice(0, 10))));
   return new Set(items.map(item => item.id));
 }
 
@@ -103,13 +103,13 @@ function renderHomeList() {
   const items = onHomeTab() ? homeListItems(kind) : [];
   sec.hidden = !items.length;
   if (!items.length) {
-    row.innerHTML = '';
+    render(row, '');
     return;
   }
   const count = document.getElementById('homeListCount');
   if (count) count.textContent = String(items.length);
-  row.innerHTML = items.slice(0, HOME_SHELF_SIZE).map(m => posterCardHtml(m, kind)).join('')
-    + (items.length > HOME_SHELF_SIZE ? `<button type="button" class="list-shelf-more" ${act('switchTab', 'watchlist')}>Voir les ${items.length} titres</button>` : '');
+  render(row, [items.slice(0, HOME_SHELF_SIZE).map(m => posterCardHtml(m, kind)),
+    (items.length > HOME_SHELF_SIZE ? html`<button type="button" class="list-shelf-more" ${act('switchTab', 'watchlist')}>Voir les ${items.length} titres</button>` : '')]);
 }
 
 // The last title of the tab's type seen to the end.
@@ -139,12 +139,12 @@ function renderHomeBecause() {
     .filter(m => m?.id && m.id !== source.id && !seen.has(m.id));
   sec.hidden = items.length < 4;
   if (sec.hidden) {
-    row.innerHTML = '';
+    render(row, '');
     return;
   }
   const title = document.getElementById('homeBecauseTitle');
-  if (title) title.innerHTML = `Si vous avez aimé <span${titleAttrs(source, kind)}>${escapeHtml(displayTitle(source))}</span>`;
-  row.innerHTML = items.slice(0, HOME_SHELF_SIZE).map(m => posterCardHtml(m, kind)).join('');
+  if (title) render(title, html`Si vous avez aimé <span${titleAttrs(source, kind)}>${displayTitle(source)}</span>`);
+  render(row, items.slice(0, HOME_SHELF_SIZE).map(m => posterCardHtml(m, kind)));
 }
 
 // « Pour vous »: KINO's own suggestions, each with its reason, and
@@ -169,10 +169,8 @@ function renderHomeForYou() {
   const seen = new Set(getWatchedHistory().map(h => h.id));
   const items = (data?.items || []).filter(m => m?.id && !seen.has(m.id)).slice(0, HOME_SHELF_SIZE);
   sec.hidden = items.length < 4;
-  if (sec.hidden) { row.innerHTML = ''; return; }
-  row.innerHTML = items.map(m => `<div class="foryou-item" data-foryou="${escapeHtml(m.id)}">${posterCardHtml(m, kind)}`
-    + `<p class="foryou-why">${escapeHtml(m.why || '')}</p>`
-    + `<button type="button" class="foryou-no" ${act('notForMe', EVENT, m.id)}>Pas pour moi</button></div>`).join('');
+  if (sec.hidden) { render(row, ''); return; }
+  render(row, items.map(m => html`<div class="foryou-item" data-foryou="${m.id}">${posterCardHtml(m, kind)}<p class="foryou-why">${m.why || ''}</p><button type="button" class="foryou-no" ${act('notForMe', EVENT, m.id)}>Pas pour moi</button></div>`));
 }
 
 async function notForMe(event, id) {
@@ -241,7 +239,7 @@ function renderHomeResume() {
   if (!items.length) {
     if (isHistoryPage) {
       sec.style.display = 'block';
-      grid.innerHTML = '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>Rien en cours de lecture</h3><p>Commencez un film ou une série, et retrouvez-le ici pour continuer plus tard.</p><button class="btn" ' + act('switchTab', 'movies') + '>Découvrir les films</button></div>';
+      render(grid, html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">▷</span><h3>Rien en cours de lecture</h3><p>Commencez un film ou une série, et retrouvez-le ici pour continuer plus tard.</p><button class="btn" ${act('switchTab', 'movies')}>Découvrir les films</button></div>`);
     } else {
       sec.style.display = 'none';
     }
@@ -249,25 +247,25 @@ function renderHomeResume() {
   }
   sec.style.display = 'block';
   const today = new Date().toISOString().slice(0, 10);
-  grid.innerHTML = items.map(h => {
+  render(grid, items.map(h => {
     const view = resumeCardView(h, META_CLIENT_CACHE.get(h.id), today);
     const name = displayTitle(h);
-    return `
+    return html`
       <article class="resume-card${view.upcoming ? ' is-upcoming' : ''}">
-        <button class="resume-main" ${act('openResumeCard', THIS, view.play, view.media)} aria-label="${escapeHtml(view.action)} : ${escapeHtml(name)}">
-          <span class="resume-still">${view.image ? `<img class="resume-still-img" src="${escapeHtml(view.image)}" data-fallback="${escapeHtml(view.fallback)}" data-poster="${escapeHtml(view.poster)}" alt=""${isHistoryPage ? ' loading="lazy"' : ''} ${actOn('error', 'resumeImageFallback', THIS)}>` : ''}</span>
+        <button class="resume-main" ${act('openResumeCard', THIS, view.play, view.media)} aria-label="${view.action} : ${name}">
+          <span class="resume-still">${view.image ? html`<img class="resume-still-img" src="${view.image}" data-fallback="${view.fallback}" data-poster="${view.poster}" alt=""${isHistoryPage ? html` loading="lazy"` : ''} ${actOn('error', 'resumeImageFallback', THIS)}>` : ''}</span>
           <span class="resume-play" aria-hidden="true">▶</span>
           <span class="resume-info">
-            <span class="resume-kicker">${escapeHtml(view.kicker)}</span>
-            <span class="resume-title"${titleAttrs(h)}>${escapeHtml(name)}</span>
-            <span class="resume-subinfo">${escapeHtml(view.status)}</span>
+            <span class="resume-kicker">${view.kicker}</span>
+            <span class="resume-title"${titleAttrs(h)}>${name}</span>
+            <span class="resume-subinfo">${view.status}</span>
           </span>
-          ${view.progress ? `<span class="resume-progress-bar"><span class="resume-progress-fill" style="width:${view.progress}%;"></span></span>` : ''}
+          ${view.progress ? html`<span class="resume-progress-bar"><span class="resume-progress-fill" style="width:${view.progress}%;"></span></span>` : ''}
         </button>
-        <button class="resume-dismiss-btn" ${act('removeHistoryItem', h.id)} title="Retirer des lectures en cours" aria-label="Retirer ${escapeHtml(name)} des lectures en cours">×</button>
+        <button class="resume-dismiss-btn" ${act('removeHistoryItem', h.id)} title="Retirer des lectures en cours" aria-label="Retirer ${name} des lectures en cours">×</button>
       </article>
     `;
-  }).join('');
+  }));
   requestResumeMetas(items);
 }
 
@@ -315,7 +313,7 @@ function renderGenreChipsForTab(tab) {
   const gf = document.getElementById('genreFilters');
   if (!gf) return;
   if (tab === 'anime') {
-    gf.innerHTML = `
+    render(gf, html`
       <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>Tous</span>
       <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>Action &amp; combats</span>
       <span class="chip" data-genre="Fantasy" ${act('selectGenre', 'Fantasy', THIS)}>Fantasy &amp; magie</span>
@@ -326,9 +324,9 @@ function renderGenreChipsForTab(tab) {
       <span class="chip" data-genre="Comedy" ${act('selectGenre', 'Comedy', THIS)}>Comédie</span>
       <span class="chip" data-genre="Sport" ${act('selectGenre', 'Sport', THIS)}>Sport</span>
       <span class="chip" data-genre="Films d'Animation" ${act('selectGenre', 'Films d\'Animation', THIS)}>Films anime</span>
-    `;
+    `);
   } else if (tab === 'series') {
-    gf.innerHTML = `
+    render(gf, html`
       <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>Toutes</span>
       <span class="chip" data-genre="Drama" ${act('selectGenre', 'Drama', THIS)}>Drame</span>
       <span class="chip" data-genre="Crime" ${act('selectGenre', 'Crime', THIS)}>Policier</span>
@@ -343,9 +341,9 @@ function renderGenreChipsForTab(tab) {
       <span class="chip" data-genre="War" ${act('selectGenre', 'War', THIS)}>Guerre</span>
       <span class="chip" data-genre="Western" ${act('selectGenre', 'Western', THIS)}>Western</span>
       <span class="chip" data-genre="Documentary" ${act('selectGenre', 'Documentary', THIS)}>Documentaire</span>
-    `;
+    `);
   } else {
-    gf.innerHTML = `
+    render(gf, html`
       <span class="chip active" data-genre="" ${act('selectGenre', '', THIS)}>Tous</span>
       <span class="chip" data-genre="Action" ${act('selectGenre', 'Action', THIS)}>Action</span>
       <span class="chip" data-genre="Sci-Fi" ${act('selectGenre', 'Sci-Fi', THIS)}>Sci-Fi</span>
@@ -360,7 +358,7 @@ function renderGenreChipsForTab(tab) {
       <span class="chip" data-genre="War" ${act('selectGenre', 'War', THIS)}>Guerre</span>
       <span class="chip" data-genre="Western" ${act('selectGenre', 'Western', THIS)}>Western</span>
       <span class="chip" data-genre="Documentary" ${act('selectGenre', 'Documentary', THIS)}>Documentaire</span>
-    `;
+    `);
   }
 }
 
@@ -576,16 +574,16 @@ function drawHeroSpotlightSlide() {
     };
     heroBgImg.src = bgCandidate;
   }
-  box.innerHTML = `
+  render(box, html`
     <div class="hero-content">
       <div class="hero-kicker">${kickerTxt}</div>
-      <div class="hero-title"${titleAttrs({...item, type: mtype})}>${escapeHtml(displayTitle(item))}</div>
+      <div class="hero-title"${titleAttrs({...item, type: mtype})}>${displayTitle(item)}</div>
       <div class="hero-meta">
-        ${year ? `<span>${year}</span>` : ''}
-        ${rating ? `<span class="hero-rating">★ ${rating} IMDb</span>` : ''}
-        ${genres.map(g => `<span class="badge">${escapeHtml(frenchGenre(g))}</span>`).join('')}
+        ${year ? html`<span>${year}</span>` : ''}
+        ${rating ? html`<span class="hero-rating">★ ${rating} IMDb</span>` : ''}
+        ${genres.map(g => html`<span class="badge">${frenchGenre(g)}</span>`)}
       </div>
-      ${desc ? `<div class="hero-desc">${escapeHtml(desc)}</div>` : ''}
+      ${desc ? html`<div class="hero-desc">${desc}</div>` : ''}
       <div class="hero-actions">
         <button class="btn" ${act('oneClickCard', EVENT, THIS, mediaObj)}>Regarder</button>
         <button class="btn btn-secondary" ${act('selectMedia', mediaObj)}>Voir la fiche</button>
@@ -593,9 +591,9 @@ function drawHeroSpotlightSlide() {
       </div>
     </div>
     <div class="hero-dots">
-      ${heroSpotlightItems.map((_, i) => `<button class="hero-dot ${i === heroSpotlightIdx ? 'active' : ''}" ${act('setHeroSpotlightIdx', i)} title="Titre ${i + 1}"></button>`).join('')}
+      ${heroSpotlightItems.map((_, i) => html`<button class="hero-dot ${i === heroSpotlightIdx ? 'active' : ''}" ${act('setHeroSpotlightIdx', i)} title="Titre ${i + 1}"></button>`)}
     </div>
-  `;
+  `);
   ensureHeroFrenchDescription(item);
 }
 

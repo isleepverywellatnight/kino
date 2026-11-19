@@ -140,21 +140,21 @@ function stremioAddonHtml(addon) {
   const offers = [addon.streams ? 'Sources' : '', addon.catalogs?.length ? `${addon.catalogs.length} catalogue${addon.catalogs.length > 1 ? 's' : ''}` : '']
     .filter(Boolean).join(' · ');
   const id = attrJson(addon.id);
-  return `<li class="addon-row${addon.enabled ? '' : ' is-off'}">
+  return html`<li class="addon-row${addon.enabled ? '' : ' is-off'}">
       <div class="addon-text">
-        <strong>${escapeHtml(addon.name)}</strong>
-        <span>${escapeHtml([offers, addon.version ? `v${addon.version}` : ''].filter(Boolean).join(' · '))}</span>
+        <strong>${addon.name}</strong>
+        <span>${[offers, addon.version ? `v${addon.version}` : ''].filter(Boolean).join(' · ')}</span>
       </div>
-      <label class="k-switch" title="${addon.enabled ? 'Désactiver cet addon' : 'Activer cet addon'}"><input type="checkbox" role="switch" aria-label="${escapeHtml(addon.name)} actif"${addon.enabled ? ' checked' : ''} ${actOn('change', 'toggleStremioAddon', addon.id, CHECKED)}><span aria-hidden="true"></span></label>
-      <button type="button" class="btn btn-secondary btn-small" ${act('removeStremioAddon', addon.id)} aria-label="Retirer ${escapeHtml(addon.name)}">Retirer</button>
+      <label class="k-switch" title="${addon.enabled ? 'Désactiver cet addon' : 'Activer cet addon'}"><input type="checkbox" role="switch" aria-label="${addon.name} actif"${addon.enabled ? ' checked' : ''} ${actOn('change', 'toggleStremioAddon', addon.id, CHECKED)}><span aria-hidden="true"></span></label>
+      <button type="button" class="btn btn-secondary btn-small" ${act('removeStremioAddon', addon.id)} aria-label="Retirer ${addon.name}">Retirer</button>
     </li>`;
 }
 
 function renderStremioAddons() {
   const list = document.getElementById('stremioAddonList');
   if (!list) return;
-  list.innerHTML = stremioAddons.length ? stremioAddons.map(stremioAddonHtml).join('')
-    : '<li class="addon-empty">Aucun addon pour l’instant. Collez l’adresse d’un addon : elle finit par manifest.json.</li>';
+  render(list, stremioAddons.length ? stremioAddons.map(stremioAddonHtml)
+    : html`<li class="addon-empty">Aucun addon pour l’instant. Collez l’adresse d’un addon : elle finit par manifest.json.</li>`);
 }
 
 async function changeStremioAddons(payload) {
@@ -205,28 +205,28 @@ async function renderAddonCatalogs() {
   }
   box.hidden = !stremioCatalogs.length;
   if (!stremioCatalogs.length) {
-    box.innerHTML = '';
+    render(box, '');
     return;
   }
-  box.innerHTML = stremioCatalogs.map((catalog, index) => `
-    <section class="list-shelf" aria-label="${escapeHtml(catalog.name)}">
+  render(box, stremioCatalogs.map((catalog, index) => html`
+    <section class="list-shelf" aria-label="${catalog.name}">
       <div class="list-shelf-head">
         <div class="list-shelf-info">
-          <h3 class="list-shelf-title">${escapeHtml(catalog.name)}</h3>
-          <div class="list-shelf-meta">${escapeHtml(catalog.addon_name)} · ${catalog.type === 'series' ? 'Séries' : 'Films'}</div>
+          <h3 class="list-shelf-title">${catalog.name}</h3>
+          <div class="list-shelf-meta">${catalog.addon_name} · ${catalog.type === 'series' ? 'Séries' : 'Films'}</div>
         </div>
       </div>
       <div class="list-shelf-row" data-addon-catalog="${index}"><p class="list-shelf-empty">Chargement…</p></div>
-    </section>`).join('');
+    </section>`));
   await Promise.all(stremioCatalogs.map(async (catalog, index) => {
     const row = box.querySelector(`[data-addon-catalog="${index}"]`);
     try {
       const data = await api(`/api/stremio-addons/catalog?addon=${encodeURIComponent(catalog.addon)}&type=${encodeURIComponent(catalog.type)}&id=${encodeURIComponent(catalog.id)}`);
       const items = data?.items || [];
-      if (row) row.innerHTML = items.length ? items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, catalog.type)).join('')
-        : '<p class="list-shelf-empty">Ce catalogue est vide.</p>';
+      if (row) render(row, items.length ? items.slice(0, LIST_SHELF_SIZE).map(m => posterCardHtml(m, catalog.type))
+        : html`<p class="list-shelf-empty">Ce catalogue est vide.</p>`);
     } catch (error) {
-      if (row) row.innerHTML = '<p class="list-shelf-empty">Ce catalogue ne répond pas pour le moment.</p>';
+      if (row) render(row, html`<p class="list-shelf-empty">Ce catalogue ne répond pas pour le moment.</p>`);
     }
   }));
 }

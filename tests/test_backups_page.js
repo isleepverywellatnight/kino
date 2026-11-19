@@ -20,8 +20,7 @@ function load({ answer = () => ({ items: [] }), confirm = () => true } = {}) {
   const context = {
     document: { getElementById: el },
     api: async (url, options) => { calls.push([url, options && JSON.parse(options.body || 'null')]); return answer(url); },
-    escapeHtml: s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'),
-    showSettingsStatus: (text, state) => statuses.push([text, state]),
+        showSettingsStatus: (text, state) => statuses.push([text, state]),
     window: { confirm: text => { asked.push(text); return confirm(); }, location: { reload: () => reloads.push(1) } },
     setTimeout: fn => fn(),
     Date, Math, Number, String,

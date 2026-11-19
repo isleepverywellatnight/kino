@@ -293,29 +293,29 @@ function renderOfflineLibraryData(data) {
   const available = items.filter(item => item.available).length;
   const badge = document.getElementById('offlineCount');
   if (badge) badge.textContent = available ? String(available) : '';
-  grid.innerHTML = `<div class="offline-summary"><strong>${available} fichier${available > 1 ? 's' : ''} prêt${available > 1 ? 's' : ''}</strong><span>Utilisé sur ce Mac : ${offlineSize(data.used_bytes)}${offlineFreeText(data.free_bytes)}</span></div>` +
+  render(grid, [html`<div class="offline-summary"><strong>${available} fichier${available > 1 ? 's' : ''} prêt${available > 1 ? 's' : ''}</strong><span>Utilisé sur ce Mac : ${offlineSize(data.used_bytes)}${offlineFreeText(data.free_bytes)}</span></div>`,
     (items.length ? items.map(item => {
       const id = item.id;
       const status = escapeHtml(offlineStatus(item));
       const actions = item.available
-        ? `<button class="btn" ${act('playOfflineDownload', String(id))}>Lancer</button>`
+        ? html`<button class="btn" ${act('playOfflineDownload', String(id))}>Lancer</button>`
         : ['queued', 'downloading', 'waiting'].includes(item.status)
-          ? `<button class="btn btn-secondary" ${act('downloadAction', String(id), 'pause')}>Pause</button>`
-          : `<button class="btn btn-secondary" ${act('downloadAction', String(id), 'resume')}>Reprendre</button><button class="btn btn-secondary" ${act('downloadAction', String(id), 'restart')}>Recommencer</button>`;
+          ? html`<button class="btn btn-secondary" ${act('downloadAction', String(id), 'pause')}>Pause</button>`
+          : html`<button class="btn btn-secondary" ${act('downloadAction', String(id), 'resume')}>Reprendre</button><button class="btn btn-secondary" ${act('downloadAction', String(id), 'restart')}>Recommencer</button>`;
       const canRemove = !['queued', 'downloading'].includes(item.status);
       const shown = offlineDisplay(item);
-      return `<article class="offline-item">
-        <div class="offline-poster">${shown.poster ? `<img src="${escapeHtml(shown.poster)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span aria-hidden="true">▷</span></div>
-        <div class="offline-info"><strong${shown.titleAttrs}>${escapeHtml(shown.title)}</strong><span class="offline-kind">${escapeHtml(shown.kind)}${shown.watch ? ` · ${escapeHtml(shown.watch)}` : ''}</span><span class="offline-file">${escapeHtml(shown.filename)}</span>
+      return html`<article class="offline-item">
+        <div class="offline-poster">${shown.poster ? html`<img src="${shown.poster}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : ''}<span aria-hidden="true">▷</span></div>
+        <div class="offline-info"><strong${shown.titleAttrs}>${shown.title}</strong><span class="offline-kind">${shown.kind}${shown.watch ? ` · ${escapeHtml(shown.watch)}` : ''}</span><span class="offline-file">${shown.filename}</span>
           <span class="offline-state">${status}${item.has_subtitles ? ' · Sous-titres sauvegardés' : ''}</span>
           <span>${offlineSize(item.bytes_done)}${item.bytes_total ? ' / ' + offlineSize(item.bytes_total) : ''}</span>
-          ${item.status === 'downloading' ? `<div class="progress-bar"><div class="progress-fill" style="width:${Math.max(0, Math.min(100, item.progress || 0))}%"></div></div>` : ''}
+          ${item.status === 'downloading' ? html`<div class="progress-bar"><div class="progress-fill" style="width:${Math.max(0, Math.min(100, item.progress || 0))}%"></div></div>` : ''}
         </div>
-        <div class="offline-actions">${actions}${canRemove ? `<button class="btn btn-secondary" ${act('removeOfflineDownload', String(id))}>Retirer</button>` : ''}</div>
+        <div class="offline-actions">${actions}${canRemove ? html`<button class="btn btn-secondary" ${act('removeOfflineDownload', String(id))}>Retirer</button>` : ''}</div>
       </article>`;
-    }).join('') : (networkOnline
-      ? '<div class="library-empty"><h3>Aucun fichier hors ligne</h3><p>Depuis une source prête à lire ou le lecteur, choisissez « Garder hors ligne ». Les fichiers terminés apparaîtront ici.</p></div>'
-      : '<div class="library-empty"><h3>Aucun fichier hors ligne sur ce Mac</h3><p>Sans internet, KINO ne peut rien lire pour le moment. Quand la connexion reviendra, choisissez « Garder hors ligne » sur une source prête à lire ou dans le lecteur.</p></div>'));
+    }) : (networkOnline
+      ? html`<div class="library-empty"><h3>Aucun fichier hors ligne</h3><p>Depuis une source prête à lire ou le lecteur, choisissez « Garder hors ligne ». Les fichiers terminés apparaîtront ici.</p></div>`
+      : html`<div class="library-empty"><h3>Aucun fichier hors ligne sur ce Mac</h3><p>Sans internet, KINO ne peut rien lire pour le moment. Quand la connexion reviendra, choisissez « Garder hors ligne » sur une source prête à lire ou dans le lecteur.</p></div>`))]);
 }
 
 // --- A whole season for offline: the episodes already out, one after another ---
@@ -429,7 +429,7 @@ async function pollDownloads() {
   const panel = document.getElementById('downloadsPanel');
   if (panel) panel.style.display = active.length && activeTab !== 'offline' ? 'block' : 'none';
   const list = document.getElementById('downloadsList');
-  if (list) list.innerHTML = active.map(item => `<div class="offline-active-row"><strong>${escapeHtml(item.title || item.filename)}</strong><span>${offlineSize(item.bytes_done)}${item.bytes_total ? ' / ' + offlineSize(item.bytes_total) : ''} · ${Math.round(item.progress || 0)}%</span><button class="btn btn-secondary" ${act('downloadAction', String(item.id), 'pause')}>Pause</button></div>`).join('');
+  if (list) render(list, active.map(item => html`<div class="offline-active-row"><strong>${item.title || item.filename}</strong><span>${offlineSize(item.bytes_done)}${item.bytes_total ? ' / ' + offlineSize(item.bytes_total) : ''} · ${Math.round(item.progress || 0)}%</span><button class="btn btn-secondary" ${act('downloadAction', String(item.id), 'pause')}>Pause</button></div>`));
   renderOfflineLibraryData(data);
   if (active.length) downloadPollTimer = setTimeout(pollDownloads, 1000);
 }
@@ -988,7 +988,7 @@ function networkCameBack() {
 }
 
 function needsInternetHtml(what) {
-  return `<div class="library-empty"><h3>${escapeHtml(what)} a besoin d’internet</h3><p>Vos fichiers hors ligne restent disponibles sur ce Mac.</p><button type="button" class="btn" ${act('switchTab', 'offline')}>Voir mes fichiers hors ligne</button></div>`;
+  return html`<div class="library-empty"><h3>${what} a besoin d’internet</h3><p>Vos fichiers hors ligne restent disponibles sur ce Mac.</p><button type="button" class="btn" ${act('switchTab', 'offline')}>Voir mes fichiers hors ligne</button></div>`;
 }
 
 function showOfflineCatalogue() {
@@ -998,7 +998,7 @@ function showOfflineCatalogue() {
     if (el) el.style.display = 'none';
   }
   const grid = document.getElementById('postersGrid');
-  if (grid) grid.innerHTML = needsInternetHtml('Le catalogue');
+  if (grid) render(grid, needsInternetHtml('Le catalogue'));
 }
 
 // Offline, a search looks in the files kept on this Mac.
@@ -1007,10 +1007,10 @@ function offlineSearchHtml(q) {
   const found = Object.entries(offlineDownloads).filter(([, item]) => item.available
     && foldSearchText(`${offlineDisplay(item).title} ${item.filename || ''}`).includes(wanted));
   if (!found.length) return needsInternetHtml('La recherche');
-  return `<div class="network-results"><h3>Sans internet : dans vos fichiers hors ligne</h3>${found.map(([id, item]) => {
+  return html`<div class="network-results"><h3>Sans internet : dans vos fichiers hors ligne</h3>${found.map(([id, item]) => {
     const shown = offlineDisplay(item);
-    return `<article class="offline-item"><div class="offline-info"><strong${shown.titleAttrs}>${escapeHtml(shown.title)}</strong><span class="offline-kind">${escapeHtml(shown.kind)}</span></div><div class="offline-actions"><button class="btn" ${act('playOfflineDownload', String(id))}>Lancer</button></div></article>`;
-  }).join('')}</div>`;
+    return html`<article class="offline-item"><div class="offline-info"><strong${shown.titleAttrs}>${shown.title}</strong><span class="offline-kind">${shown.kind}</span></div><div class="offline-actions"><button class="btn" ${act('playOfflineDownload', String(id))}>Lancer</button></div></article>`;
+  })}</div>`;
 }
 
 // The first tab: the catalogue, or the offline files when there is no internet.

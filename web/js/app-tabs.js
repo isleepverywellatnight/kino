@@ -327,7 +327,7 @@ async function loadCatalog(type, genre = '', reset = true) {
       showOfflineCatalogue();
       return;
     }
-    grid.innerHTML = posterSkeletons();
+    render(grid, posterSkeletons());
     if (lm) lm.style.display = 'none';
   }
   try {
@@ -358,7 +358,7 @@ async function loadCatalog(type, genre = '', reset = true) {
     if (reset && (e.code === 'offline' || !networkOnline)) {
       showOfflineCatalogue();
     } else if (reset) {
-      grid.innerHTML = `<p style="color:var(--muted); font-size:0.84rem;">Erreur : ${escapeHtml(e.message)}</p>`;
+      render(grid, html`<p style="color:var(--muted); font-size:0.84rem;">Erreur : ${e.message}</p>`);
     }
   }
 }
@@ -393,11 +393,11 @@ function handlePosterCardError(img, id) {
 
 // Grey cards while a grid loads: the page keeps its shape instead of jumping.
 function posterSkeletons(count = 12) {
-  return `<div class="poster-skeleton-status" role="status">Chargement…</div>` + Array.from({length: count}, () => `
+  return [html`<div class="poster-skeleton-status" role="status">Chargement…</div>`, Array.from({length: count}, () => html`
     <div class="poster-card is-skeleton" aria-hidden="true">
       <div class="poster-art"></div>
       <div class="poster-info"><span class="skeleton-line" style="width:82%"></span><span class="skeleton-line" style="width:44%"></span></div>
-    </div>`).join('');
+    </div>`)];
 }
 
 // The French synopsis of a hovered (or focused) card is fetched after a short
@@ -470,8 +470,8 @@ function posterCardHtml(m, fallbackType) {
     const isMovieWatched = Boolean(histItem && mtype !== 'series' && (histItem.completed || Number(histItem.progress_pct || 0) >= 85));
     const watchedEpsCount = (histItem && mtype === 'series' && Array.isArray(histItem.watched_episodes)) ? histItem.watched_episodes.length : 0;
     const watchedPill = isMovieWatched
-      ? `<button type="button" class="poster-watched" ${act('toggleCardWatched', EVENT, mediaObj)} title="Cliquer pour retirer des Déjà vus">✓ Vu</button>`
-      : (watchedEpsCount > 0 ? `<span class="poster-watched is-static">✓ ${watchedEpsCount} ép.</span>` : '');
+      ? html`<button type="button" class="poster-watched" ${act('toggleCardWatched', EVENT, mediaObj)} title="Cliquer pour retirer des Déjà vus">✓ Vu</button>`
+      : (watchedEpsCount > 0 ? html`<span class="poster-watched is-static">✓ ${watchedEpsCount} ép.</span>` : '');
     let btnLabel = 'Lancer';
     if (histItem && mtype === 'series' && histItem.season && histItem.episode) {
       const targetEp = getSeriesTargetEpisode(histItem);
@@ -483,18 +483,18 @@ function posterCardHtml(m, fallbackType) {
       btnLabel = 'Revoir';
     }
     const cardProg = (histItem && histItem.progress_pct > 0 && !isMovieWatched)
-      ? `<div class="poster-progress" aria-label="${Math.round(histItem.progress_pct)} % vus"><span style="width:${Math.min(100, Number(histItem.progress_pct))}%"></span></div>` : '';
+      ? html`<div class="poster-progress" aria-label="${Math.round(histItem.progress_pct)} % vus"><span style="width:${Math.min(100, Number(histItem.progress_pct))}%"></span></div>` : '';
     // Hover preview: genres, length and rating now; the French synopsis on demand.
     const previewGenres = (Array.isArray(m.genres) ? m.genres : []).slice(0, 2).map(frenchGenre);
     const previewMeta = [...previewGenres, m.runtime ? frenchRuntime(m.runtime) : '', ratingVal ? `★ ${ratingVal}` : '']
       .filter(Boolean).join(' · ');
-    const previewHtml = `
+    const previewHtml = html`
       <div class="poster-preview">
-        ${previewMeta ? `<div class="poster-preview-meta">${escapeHtml(previewMeta)}</div>` : ''}
-        <p class="poster-preview-desc" data-preview-id="${escapeHtml(m.id)}" data-preview-type="${mtype}"></p>
+        ${previewMeta ? html`<div class="poster-preview-meta">${previewMeta}</div>` : ''}
+        <p class="poster-preview-desc" data-preview-id="${m.id}" data-preview-type="${mtype}"></p>
         <div class="poster-preview-actions">
           <button type="button" class="poster-preview-play" ${act('oneClickCard', EVENT, THIS, mediaObj)}>▶ ${btnLabel}</button>
-          ${mtype !== 'series' ? `<button type="button" ${act('toggleCardWatched', EVENT, mediaObj)}>${isMovieWatched ? '✓ Vu' : 'Marquer vu'}</button>` : ''}
+          ${mtype !== 'series' ? html`<button type="button" ${act('toggleCardWatched', EVENT, mediaObj)}>${isMovieWatched ? '✓ Vu' : 'Marquer vu'}</button>` : ''}
         </div>
       </div>`;
     const ratingBadges = [];
@@ -505,18 +505,18 @@ function posterCardHtml(m, fallbackType) {
       ratingBadges.push(`★ ${ratingVal}`);
     }
     const ratingLine = ratingBadges.length ? ' • ' + ratingBadges.join(' ') : '';
-    return `
+    return html`
       <div class="poster-card" ${act('selectMedia', mediaObj)}>
         ${watchedPill}
-        <button class="wl-btn ${inList ? 'in-list' : ''}" data-wl-id="${escapeHtml(m.id)}" title="${inList ? 'Retirer de Ma Liste' : 'Ajouter à Ma Liste'}" ${act('toggleWatchlist', EVENT, mediaObj)}>${inList ? '✓' : '+'}</button>
+        <button class="wl-btn ${inList ? 'in-list' : ''}" data-wl-id="${m.id}" title="${inList ? 'Retirer de Ma Liste' : 'Ajouter à Ma Liste'}" ${act('toggleWatchlist', EVENT, mediaObj)}>${inList ? '✓' : '+'}</button>
         <div class="poster-art">
-          <img src="${escapeHtml(m.poster || '')}" alt="${escapeHtml(displayTitle(m))}" loading="lazy" ${actOn('load', 'kinoLoaded', THIS)} ${actOn('error', 'kinoPosterFailed', THIS, m.id)}>
+          <img src="${m.poster || ''}" alt="${displayTitle(m)}" loading="lazy" ${actOn('load', 'kinoLoaded', THIS)} ${actOn('error', 'kinoPosterFailed', THIS, m.id)}>
           ${cardProg}
           ${previewHtml}
         </div>
         <div class="poster-info">
-          <div class="poster-title"${titleAttrs(m)}>${escapeHtml(displayTitle(m))}</div>
-          <div class="poster-year">${escapeHtml(year)}${ratingLine}${(activeTab === 'anime' || m.is_anime) ? ' • <span class="poster-vostfr">VOSTFR</span>' : ''}</div>
+          <div class="poster-title"${titleAttrs(m)}>${displayTitle(m)}</div>
+          <div class="poster-year">${year}${ratingLine}${(activeTab === 'anime' || m.is_anime) ? html` • <span class="poster-vostfr">VOSTFR</span>` : ''}</div>
         </div>
       </div>
     `;
@@ -533,21 +533,21 @@ function renderPosterCards(metas, fallbackType) {
   }
   if (!displayList.length) {
     if (activeTab === 'watchlist') {
-      grid.innerHTML = '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">＋</span><h3>Votre liste commence ici</h3><p>Ajoutez un film ou une série depuis sa fiche pour le retrouver facilement.</p><button class="btn" ' + act('switchTab', 'movies') + '>Découvrir les films</button></div>';
+      render(grid, html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">＋</span><h3>Votre liste commence ici</h3><p>Ajoutez un film ou une série depuis sa fiche pour le retrouver facilement.</p><button class="btn" ${act('switchTab', 'movies')}>Découvrir les films</button></div>`);
     } else if (activeTab === 'watched') {
-      grid.innerHTML = '<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">✓</span><h3>Aucun titre terminé</h3><p>Les films et épisodes que vous avez vus apparaîtront ici.</p><button class="btn" ' + act('switchTab', 'movies') + '>Découvrir les films</button></div>';
+      render(grid, html`<div class="library-empty"><span class="library-empty-icon" aria-hidden="true">✓</span><h3>Aucun titre terminé</h3><p>Les films et épisodes que vous avez vus apparaîtront ici.</p><button class="btn" ${act('switchTab', 'movies')}>Découvrir les films</button></div>`);
     } else {
-      grid.innerHTML = '<div class="library-empty"><h3>Aucun résultat</h3><p>Essayez un autre filtre ou une autre recherche.</p></div>';
+      render(grid, html`<div class="library-empty"><h3>Aucun résultat</h3><p>Essayez un autre filtre ou une autre recherche.</p></div>`);
     }
     return;
   }
-  grid.innerHTML = displayList.map(m => posterCardHtml(m, fallbackType)).join('');
+  render(grid, displayList.map(m => posterCardHtml(m, fallbackType)));
 }
 
 async function loadRdCloud() {
   const list = document.getElementById('rdCloudList');
   const pName = window.activeDebridName || 'votre débrideur';
-  if (!cloudGroups.length) list.innerHTML = `<p class="cloud-empty">Récupération de votre Cloud ${escapeHtml(pName)}…</p>`;
+  if (!cloudGroups.length) render(list, html`<p class="cloud-empty">Récupération de votre Cloud ${pName}…</p>`);
   try {
     const data = await api('/api/rd-history');
     cloudGroups = Array.isArray(data.groups) ? data.groups : [];
@@ -559,7 +559,7 @@ async function loadRdCloud() {
     renderCloud();
     requestCloudMatches();
   } catch (e) {
-    list.innerHTML = `<p class="cloud-empty">Erreur : ${escapeHtml(e.message)}</p>`;
+    render(list, html`<p class="cloud-empty">Erreur : ${e.message}</p>`);
   }
 }
 

@@ -102,23 +102,23 @@ function cloudGroupHtml(group) {
   const open = cloudOpen.has(group.key);
   const name = cloudName(group);
   const year = group.kind === 'other' ? '' : (media?.year || group.year || '');
-  const initial = `<span aria-hidden="true">${escapeHtml((name || '?').trim().charAt(0).toUpperCase())}</span>`;
-  const image = media?.poster ? `<img src="${escapeHtml(media.poster)}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : '';
+  const initial = html`<span aria-hidden="true">${(name || '?').trim().charAt(0).toUpperCase()}</span>`;
+  const image = media?.poster ? html`<img src="${media.poster}" alt="" loading="lazy" ${actOn('error', 'kinoRemove', THIS)}>` : '';
   const poster = media
-    ? `<button type="button" class="cloud-poster" ${act('openCloudFiche', group.key)} aria-label="Ouvrir la fiche de ${escapeHtml(name)}">${initial}${image}</button>`
-    : `<div class="cloud-poster" aria-hidden="true">${initial}</div>`;
-  const title = media ? `<span${titleAttrs(media, group.kind)}>${escapeHtml(name)}</span>` : `<span>${escapeHtml(name)}</span>`;
+    ? html`<button type="button" class="cloud-poster" ${act('openCloudFiche', group.key)} aria-label="Ouvrir la fiche de ${name}">${initial}${image}</button>`
+    : html`<div class="cloud-poster" aria-hidden="true">${initial}</div>`;
+  const title = media ? html`<span${titleAttrs(media, group.kind)}>${name}</span>` : html`<span>${name}</span>`;
   const start = cloudStartIndex(group);
   const code = group.kind === 'series' ? cloudEpisodeCode(group.files[start]) : '';
   const play = group.kind === 'other' ? ''
-    : `<button type="button" class="btn" ${act('playCloudFile', group.key, start, THIS)}>${code ? `Lancer ${escapeHtml(code)}` : 'Lancer'}</button>`;
-  const files = !open ? '' : `<div class="cloud-files">${group.files.map((file, index) => cloudFileHtml(group, file, index)).join('')}${
-    group.count > 1 ? `<div class="cloud-files-foot"><button type="button" class="btn btn-secondary" ${act('deleteCloudGroup', group.key, THIS)}>Retirer les ${group.count} fichiers du Cloud</button></div>` : ''}</div>`;
-  return `<article class="cloud-group${open ? ' is-open' : ''}" aria-label="${escapeHtml(name)}">
+    : html`<button type="button" class="btn" ${act('playCloudFile', group.key, start, THIS)}>${code ? `Lancer ${escapeHtml(code)}` : 'Lancer'}</button>`;
+  const files = !open ? '' : html`<div class="cloud-files">${group.files.map((file, index) => cloudFileHtml(group, file, index))}${
+    group.count > 1 ? html`<div class="cloud-files-foot"><button type="button" class="btn btn-secondary" ${act('deleteCloudGroup', group.key, THIS)}>Retirer les ${group.count} fichiers du Cloud</button></div>` : ''}</div>`;
+  return html`<article class="cloud-group${open ? ' is-open' : ''}" aria-label="${name}">
     ${poster}
     <div class="cloud-group-main">
-      <h4 class="cloud-group-title">${title}${year ? ` <span class="cloud-group-year">${escapeHtml(year)}</span>` : ''}</h4>
-      <div class="cloud-group-meta">${escapeHtml(cloudGroupMeta(group))}</div>
+      <h4 class="cloud-group-title">${title}${year ? html` <span class="cloud-group-year">${year}</span>` : ''}</h4>
+      <div class="cloud-group-meta">${cloudGroupMeta(group)}</div>
     </div>
     <div class="cloud-group-actions">${play}<button type="button" class="btn btn-secondary cloud-toggle" ${act('toggleCloudGroup', group.key)} aria-expanded="${open}">${cloudToggleLabel(group)}<span class="cloud-chevron" aria-hidden="true"></span></button></div>
     ${files}
@@ -135,18 +135,18 @@ function cloudFileHtml(group, file, index) {
   // Only a web address is offered; « other » files play only when they are videos.
   const web = /^https?:\/\//i.test(String(file.download || ''));
   const playable = web && (group.kind !== 'other' || CLOUD_VIDEO.test(file.filename));
-  const play = playable ? `<button type="button" class="btn" ${act('playCloudFile', group.key, index, THIS)}>Lancer</button>` : '';
-  const save = web ? `<button type="button" class="btn btn-secondary" ${act('startPcDownload', file.download, file.filename)}>Télécharger</button>
-        <a class="btn btn-secondary" href="${escapeHtml(file.download)}" target="_blank" rel="noopener">Lien direct</a>` : '';
-  return `<div class="cloud-file">
+  const play = playable ? html`<button type="button" class="btn" ${act('playCloudFile', group.key, index, THIS)}>Lancer</button>` : '';
+  const save = web ? html`<button type="button" class="btn btn-secondary" ${act('startPcDownload', file.download, file.filename)}>Télécharger</button>
+        <a class="btn btn-secondary" href="${safeUrl(file.download)}" target="_blank" rel="noopener">Lien direct</a>` : '';
+  return html`<div class="cloud-file">
       <div class="cloud-file-main">
-        <div class="cloud-file-label">${escapeHtml(label)}${cloudFileWatched(group, file) ? ' <span class="cloud-seen">Vu</span>' : ''}</div>
-        <div class="cloud-file-name" title="${escapeHtml(file.filename)}">${escapeHtml(details)}</div>
+        <div class="cloud-file-label">${label}${cloudFileWatched(group, file) ? html` <span class="cloud-seen">Vu</span>` : ''}</div>
+        <div class="cloud-file-name" title="${file.filename}">${details}</div>
       </div>
       <div class="cloud-file-actions">
         ${play}
         ${save}
-        <button type="button" class="btn btn-secondary" ${act('deleteCloudFile', group.key, index, THIS)} aria-label="Retirer ${escapeHtml(file.filename)} du Cloud">Retirer</button>
+        <button type="button" class="btn btn-secondary" ${act('deleteCloudFile', group.key, index, THIS)} aria-label="Retirer ${file.filename} du Cloud">Retirer</button>
       </div>
     </div>`;
 }
@@ -161,8 +161,8 @@ function renderCloud() {
   const tools = document.getElementById('rdCloudTools');
   const list = document.getElementById('rdCloudList');
   if (!cloudGroups.length) {
-    if (tools) { tools.hidden = true; tools.innerHTML = ''; }
-    list.innerHTML = `<p class="cloud-empty">Aucun fichier récent sur votre compte ${escapeHtml(window.activeDebridName || 'Debrid')}.</p>`;
+    if (tools) { tools.hidden = true; render(tools, ''); }
+    render(list, html`<p class="cloud-empty">Aucun fichier récent sur votre compte ${window.activeDebridName || 'Debrid'}.</p>`);
     return;
   }
   const counts = { all: cloudGroups.length, movie: 0, series: 0, other: 0 };
@@ -171,15 +171,15 @@ function renderCloud() {
   if (tools) {
     const chips = [['all', 'Tout'], ['movie', 'Films'], ['series', 'Séries'], ['other', 'Autres']]
       .filter(([kind]) => kind === 'all' || counts[kind])
-      .map(([kind, label]) => `<button type="button" class="chip${cloudFilter === kind ? ' active' : ''}" aria-pressed="${cloudFilter === kind}" ${act('setCloudFilter', String(kind))}>${label} <span class="list-count">${counts[kind]}</span></button>`)
-      .join('');
+      .map(([kind, label]) => html`<button type="button" class="chip${cloudFilter === kind ? ' active' : ''}" aria-pressed="${cloudFilter === kind}" ${act('setCloudFilter', String(kind))}>${label} <span class="list-count">${counts[kind]}</span></button>`)
+      ;
     const files = cloudGroups.reduce((total, group) => total + group.count, 0);
     const bytes = cloudGroups.reduce((total, group) => total + (Number(group.bytes) || 0), 0);
     const summary = [cloudPlural(cloudGroups.length, 'titre'), cloudPlural(files, 'fichier'), bytes > 0 ? offlineSize(bytes) : ''].filter(Boolean).join(' · ');
     tools.hidden = false;
-    tools.innerHTML = `<div class="cloud-chips" role="group" aria-label="Type de titre">${chips}</div>
-      <input type="search" id="rdCloudSearch" class="cloud-search" placeholder="Rechercher un titre" aria-label="Rechercher dans le Cloud" value="${escapeHtml(cloudQuery)}" ${actOn('input', 'onCloudSearch', VALUE)}>
-      <span class="cloud-summary">${escapeHtml(summary)}</span>`;
+    render(tools, html`<div class="cloud-chips" role="group" aria-label="Type de titre">${chips}</div>
+      <input type="search" id="rdCloudSearch" class="cloud-search" placeholder="Rechercher un titre" aria-label="Rechercher dans le Cloud" value="${cloudQuery}" ${actOn('input', 'onCloudSearch', VALUE)}>
+      <span class="cloud-summary">${summary}</span>`);
   }
   renderCloudList();
 }
@@ -188,7 +188,7 @@ function renderCloudList() {
   const list = document.getElementById('rdCloudList');
   if (!list || !cloudGroups.length) return;
   const visible = cloudVisibleGroups();
-  list.innerHTML = visible.length ? visible.map(cloudGroupHtml).join('') : '<p class="cloud-empty">Aucun titre ne correspond.</p>';
+  render(list, visible.length ? visible.map(cloudGroupHtml) : html`<p class="cloud-empty">Aucun titre ne correspond.</p>`);
 }
 
 function setCloudFilter(kind) {
@@ -446,12 +446,10 @@ function diagnosticSummaryText(items) {
 
 function diagnosticItemHtml(item) {
   const state = DIAGNOSTIC_STATES[item.state] ? item.state : 'warning';
-  const advice = item.advice ? `<span class="diagnostic-advice">${escapeHtml(item.advice)}</span>` : '';
+  const advice = item.advice ? html`<span class="diagnostic-advice">${item.advice}</span>` : '';
   const section = /^settings-[a-z]+$/.test(item.section || '') ? item.section : '';
-  const open = section && state !== 'ok' ? `<button type="button" class="btn btn-secondary" ${act('openSettingsSection', String(section))}>Ouvrir</button>` : '';
-  return `<li class="diagnostic-item is-${state}"><span class="diagnostic-mark" aria-hidden="true">${DIAGNOSTIC_MARKS[state]}</span>`
-    + `<div><strong>${escapeHtml(item.label)}<span class="diagnostic-state">${DIAGNOSTIC_STATES[state]}</span></strong>`
-    + `<span>${escapeHtml(item.summary)}</span>${advice}</div>${open}</li>`;
+  const open = section && state !== 'ok' ? html`<button type="button" class="btn btn-secondary" ${act('openSettingsSection', String(section))}>Ouvrir</button>` : '';
+  return html`<li class="diagnostic-item is-${state}"><span class="diagnostic-mark" aria-hidden="true">${DIAGNOSTIC_MARKS[state]}</span><div><strong>${item.label}<span class="diagnostic-state">${DIAGNOSTIC_STATES[state]}</span></strong><span>${item.summary}</span>${advice}</div>${open}</li>`;
 }
 
 function openSettingsSection(id) {
@@ -473,7 +471,7 @@ async function runDiagnostic() {
     const result = await api('/api/diagnostic');
     const items = Array.isArray(result.items) ? result.items : [];
     diagnosticReport = String(result.report || '');
-    list.innerHTML = items.map(diagnosticItemHtml).join('');
+    render(list, items.map(diagnosticItemHtml));
     list.hidden = !items.length;
     summary.textContent = diagnosticSummaryText(items);
     if (report) { report.value = diagnosticReport; report.hidden = true; }
@@ -574,14 +572,14 @@ async function triggerGdriveSync(btn) {
     if (res && res.status === 'synced') {
       const d = new Date((res.updated_at || Date.now()/1000) * 1000);
       const timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      if (el) el.innerHTML = `<span style="color:#4ade80;">✓ Synchronisé (${res.history_count || 0} films, ${res.watchlist_count || 0} favoris) à ${timeStr}</span>`;
+      if (el) render(el, html`<span style="color:#4ade80;">✓ Synchronisé (${res.history_count || 0} films, ${res.watchlist_count || 0} favoris) à ${timeStr}</span>`);
       await refreshUserLists();
     } else {
-      if (el) el.innerHTML = `<span style="color:var(--muted);">${escapeHtml((res && res.message) ? res.message : 'Google Drive non détecté')}</span>`;
+      if (el) render(el, html`<span style="color:var(--muted);">${(res && res.message) ? res.message : 'Google Drive non détecté'}</span>`);
     }
   } catch(e) {
     const el = document.getElementById('gdriveSyncStatus');
-    if (el) el.innerHTML = `<span style="color:#ef4444;">Erreur : ${escapeHtml(e.message)}</span>`;
+    if (el) render(el, html`<span style="color:#ef4444;">Erreur : ${e.message}</span>`);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Synchroniser'; }
   }
@@ -647,15 +645,15 @@ function renderBackups(items = []) {
     ? `Dernière copie : ${backupWhen(items[0].created_at).replace(/^./, c => c.toLowerCase())}.`
     : 'Première copie quelques minutes après le lancement de KINO.';
   if (!list) return;
-  list.innerHTML = items.map(item => {
+  render(list, items.map(item => {
     const when = backupWhen(item.created_at);
     const label = item.kind === 'before_restore' ? `Avant restauration · ${when}` : when;
-    return `<div class="set-row backup-row">
-      <div class="set-text"><span class="settings-label">${escapeHtml(label)}</span><p class="settings-desc">${escapeHtml(backupCounts(item.counts))}</p></div>
-      <button type="button" class="btn btn-secondary btn-small" data-backup="${escapeHtml(item.id)}" data-label="${escapeHtml(label)}"
-        ${act('restoreBackup', THIS)}${item.restorable ? '' : ' disabled title="Sauvegarde d’une version trop différente de KINO"'}>Restaurer</button>
+    return html`<div class="set-row backup-row">
+      <div class="set-text"><span class="settings-label">${label}</span><p class="settings-desc">${backupCounts(item.counts)}</p></div>
+      <button type="button" class="btn btn-secondary btn-small" data-backup="${item.id}" data-label="${label}"
+        ${act('restoreBackup', THIS)}${item.restorable ? '' : html` disabled title="Sauvegarde d’une version trop différente de KINO"`}>Restaurer</button>
     </div>`;
-  }).join('');
+  }));
 }
 
 async function loadBackups() {
@@ -738,9 +736,9 @@ async function loadTvDevices(refresh = false, btn = null) {
     const res = await api(`/api/tv/devices${refresh ? '?refresh=1' : ''}`);
     const devices = res.devices || [];
     const chosen = (res.chosen && res.chosen.location) || '';
-    select.innerHTML = devices.length
-      ? devices.map(d => `<option value="${escapeHtml(d.location)}">${escapeHtml(d.name)}</option>`).join('')
-      : '<option value="">Aucune TV trouvée</option>';
+    render(select, devices.length
+      ? devices.map(d => html`<option value="${d.location}">${d.name}</option>`)
+      : html`<option value="">Aucune TV trouvée</option>`);
     if (chosen && devices.some(d => d.location === chosen)) select.value = chosen;
     if (status) status.textContent = devices.length
       ? 'Le Mac envoie la vidéo à cette TV : il doit rester allumé pendant le film.'

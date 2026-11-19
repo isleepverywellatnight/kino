@@ -164,5 +164,5 @@ test('the phone remote has no inline code either, and loads its code as files', 
   const remote = fs.readFileSync(path.join(ROOT, 'web/remote.html'), 'utf8');
   assert.doesNotMatch(remote, /\son[a-z]+=["']/i);
   assert.doesNotMatch(remote, /<script(?![^>]*\bsrc=)[^>]*>/, 'no inline script');
-  assert.match(remote, /<script src="\/js\/actions\.js"><\/script>\s*<script src="\/js\/remote\.js"><\/script>/);
+  assert.match(remote, /<script src="\/js\/actions\.js"><\/script>\s*<script src="\/js\/html\.js"><\/script>\s*<script src="\/js\/remote\.js"><\/script>/);
 });

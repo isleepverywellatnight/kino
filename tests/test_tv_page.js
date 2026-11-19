@@ -22,7 +22,7 @@ function load(answer = () => ({ active: true })) {
   const context = {
     document: { getElementById: el, querySelector: sel => (sel === '#tvBarToggle use' ? icon : null) },
     api: async (url, options) => { calls.push([url, options && JSON.parse(options.body || 'null')]); return answer(url); },
-    escapeHtml: s => String(s), currentMedia: { id: 'tt0903747', name: 'Breaking Bad', poster: 'https://p/bb.jpg', type: 'series' },
+    currentMedia: { id: 'tt0903747', name: 'Breaking Bad', poster: 'https://p/bb.jpg', type: 'series' },
     setInterval: () => 1, clearInterval: () => {},
   };
   vm.runInNewContext(`${tvCode}\nthis.api_ = { sendToTv, renderTvBar, tvControl };`, context);
@@ -94,7 +94,7 @@ function loadCast(answer = () => ({ active: true }), origin = 'http://127.0.0.1:
     document: { getElementById: el, querySelector: () => null },
     window: { location: { origin } },
     api: async (url, options) => { calls.push([url, JSON.parse(options.body)]); return answer(url); },
-    escapeHtml: s => String(s), currentMedia: null, setInterval: () => 1, clearInterval: () => {},
+    currentMedia: null, setInterval: () => 1, clearInterval: () => {},
   };
   vm.runInNewContext(`${tvCode}\nthis.api_ = { castToTv, tvSourceUrl, tvMediaPayload, tvTitle };`, context);
   return { ...context.api_, calls, el, context };

@@ -132,18 +132,18 @@ function updateInAppFsBtnUI() {
   const isFs = document.body.classList.contains('is-fullscreen') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
   if (isFs) {
     fsBtn.title = "Quitter le plein écran (F ou Échap)";
-    fsBtn.innerHTML = `
+    render(fsBtn, html`
       <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
       </svg>
-    `;
+    `);
   } else {
     fsBtn.title = "Plein écran (F)";
-    fsBtn.innerHTML = `
+    render(fsBtn, html`
       <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
       </svg>
-    `;
+    `);
   }
 }
 
@@ -214,11 +214,11 @@ setInterval(() => { if (!document.hidden) syncWindowState(); }, 1500);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncWindowState(); });
 
 const SVG_ICONS = {
-  play: '<svg class="svg-icon" viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>',
-  pause: '<svg class="svg-icon" viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>',
-  volHigh: '<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>',
-  volLow: '<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>',
-  volMute: '<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'
+  play: html`<svg class="svg-icon" viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>`,
+  pause: html`<svg class="svg-icon" viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`,
+  volHigh: html`<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`,
+  volLow: html`<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`,
+  volMute: html`<svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`
 };
 
 let inAppPlaylist = [];
@@ -522,7 +522,7 @@ function inAppPlaybackPlan(info, selectedAudio, videoElement) {
   const videoCodecs = { h264: 'avc1.42E01E', hevc: 'hvc1.1.6.L93.B0', av1: 'av01.0.04M.08' };
   const codec = videoCodecs[videoTrack?.codec];
   const highBitDepth = /(?:10|12|14|16)(?:le|be)?$/i.test(videoTrack?.pixel_format || '');
-  const videoSupported = Boolean(codec && !highBitDepth && videoElement.canPlayType(`video/mp4; codecs="${codec}"`));
+  const videoSupported = Boolean(codec && !highBitDepth && videoElement.canPlayType(html`video/mp4; codecs="${codec}"`));
   const audioSupported = Boolean(audio && ['aac', 'mp3'].includes(audio.codec));
   const defaultAudio = audioTracks.find(track => track.default) || audioTracks[0];
   const needsTrackSelection = Boolean(audio && defaultAudio && audio.index !== defaultAudio.index);
@@ -752,7 +752,7 @@ function showInAppToast(msg, duration = 3000) {
   const toast = document.getElementById('inAppStatusToast');
   if (!toast) return;
   clearTimeout(inAppToastTimer);
-  toast.innerHTML = msg;
+  render(toast, msg);
   toast.style.display = 'block';
   if (duration > 0) {
     inAppToastTimer = setTimeout(() => {
@@ -770,7 +770,7 @@ function hideInAppToast() {
 function updatePlayPauseBtn(isPlaying) {
   const btn = document.getElementById('inAppPlayPauseBtn');
   if (btn) {
-    btn.innerHTML = isPlaying ? SVG_ICONS.pause : SVG_ICONS.play;
+    render(btn, isPlaying ? SVG_ICONS.pause : SVG_ICONS.play);
   }
 }
 
@@ -804,11 +804,11 @@ function updateInAppVolUI() {
   if (txt) txt.textContent = displayPct + '%';
   if (icon) {
     if (isMuted) {
-      icon.innerHTML = SVG_ICONS.volMute;
+      render(icon, SVG_ICONS.volMute);
     } else if (video.volume < 0.5) {
-      icon.innerHTML = SVG_ICONS.volLow;
+      render(icon, SVG_ICONS.volLow);
     } else {
-      icon.innerHTML = SVG_ICONS.volHigh;
+      render(icon, SVG_ICONS.volHigh);
     }
   }
 }
@@ -908,7 +908,7 @@ function applyInAppClarity(idx, showToast = false) {
     btn.style.borderColor = inAppClarityIdx > 0 ? '#fafafa' : '';
   }
   if (showToast) {
-    showInAppToast(`<strong>${preset.label}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${preset.note}</span>`, 1800);
+    showInAppToast(html`<strong>${preset.label}</strong><br><span style="font-size:0.78rem; color:var(--muted);">${preset.note}</span>`, 1800);
   }
 }
 
@@ -931,7 +931,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
   inAppActiveCues = [];
   inAppSubDelaySec = 0;
   const subOverlay = document.getElementById('inAppSubOverlay');
-  if (subOverlay) { subOverlay.style.display = 'none'; subOverlay.innerHTML = ''; }
+  if (subOverlay) { subOverlay.style.display = 'none'; render(subOverlay, ''); }
   const btn = document.getElementById('inAppSubsBtn');
   if (btn) { btn.textContent = 'CC : Off'; btn.style.borderColor = ''; }
 
@@ -1014,7 +1014,7 @@ async function loadInAppSubtitlesForCurrentMedia() {
 async function cycleInAppSubtitles() {
   resetInAppIdleTimer();
   if (inAppAvailableSubs.length <= 1) {
-    showInAppToast(`<strong>Sous-titres</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucun sous-titre OpenSubtitles trouvé pour ce titre</span>`, 1800);
+    showInAppToast(html`<strong>Sous-titres</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucun sous-titre OpenSubtitles trouvé pour ce titre</span>`, 1800);
     return;
   }
   await activateInAppSubtitle((inAppActiveSubIdx + 1) % inAppAvailableSubs.length, true);
@@ -1045,7 +1045,7 @@ async function activateInAppSubtitle(index, rememberForSession = true) {
     return;
   }
   if (sub.lang === 'off' || !sub.url) {
-    if (subOverlay) { subOverlay.style.display = 'none'; subOverlay.innerHTML = ''; }
+    if (subOverlay) { subOverlay.style.display = 'none'; render(subOverlay, ''); }
     if (rememberForSession) showInAppToast('Sous-titres désactivés', 1400);
     updateInAppSeriesPreferenceUI();
     return;
@@ -1073,7 +1073,7 @@ async function activateInAppSubtitle(index, rememberForSession = true) {
     if (generation !== inAppPlaybackGeneration || inAppActiveSubIdx !== index) return;
     inAppActiveSubIdx = 0;
     if (btn) { btn.textContent = 'CC : Off'; btn.style.borderColor = ''; }
-    if (subOverlay) { subOverlay.style.display = 'none'; subOverlay.innerHTML = ''; }
+    if (subOverlay) { subOverlay.style.display = 'none'; render(subOverlay, ''); }
     showInAppToast('Sous-titres indisponibles pour ce fichier. Essayez une autre piste avec CC.', 5000);
   }
   updateInAppSeriesPreferenceUI();
@@ -1095,14 +1095,14 @@ function cycleInAppSubSize() {
   if (subOverlay) subOverlay.style.fontSize = cfg.size;
   const btn = document.getElementById('inAppSubSizeBtn');
   if (btn) btn.textContent = cfg.label;
-  showInAppToast(`<strong>Taille sous-titres : ${cfg.name}</strong>`, 1400);
+  showInAppToast(html`<strong>Taille sous-titres : ${cfg.name}</strong>`, 1400);
 }
 
 function adjustInAppSubDelay(deltaSec) {
   if (!inAppActiveCues.length) return;
   inAppSubDelaySec = Math.round((inAppSubDelaySec + deltaSec) * 100) / 100;
   const sign = inAppSubDelaySec >= 0 ? '+' : '';
-  showInAppToast(`<strong>Décalage sous-titres : ${sign}${inAppSubDelaySec}s</strong> (Z / X)`, 1400);
+  showInAppToast(html`<strong>Décalage sous-titres : ${sign}${inAppSubDelaySec}s</strong> (Z / X)`, 1400);
   const v = document.getElementById('inAppVideo');
   if (v) updateInAppSubtitleOverlay(inAppAbsoluteTime(v));
 }
@@ -1126,11 +1126,11 @@ function updateInAppSubtitleOverlay(currentTime) {
   }
   if (!active.length) {
     subOverlay.style.display = 'none';
-    subOverlay.innerHTML = '';
+    render(subOverlay, '');
     return;
   }
-  const escaped = active.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-  subOverlay.innerHTML = `<span class="sub-box">${escaped}</span>`;
+  // Each line as text, a line break between them.
+  render(subOverlay, html`<span class="sub-box">${active.map((line, i) => (i ? [html`<br>`, line] : line))}</span>`);
   subOverlay.style.display = 'block';
 }
 
@@ -1148,8 +1148,8 @@ function applyInAppAudioUI(mode, showToast = false) {
   if (showToast) {
     showInAppToast(
       isBoost
-        ? `<strong>Boost Voix / Audio Nuit activé</strong><br><span style="font-size:0.78rem; color:var(--muted);">Dialogues rehaussés & explosions adoucies (normalisation dynamique)</span>`
-        : `<strong>Audio : Standard</strong><br><span style="font-size:0.78rem; color:var(--muted);">Plage dynamique cinéma originale sans compression</span>`,
+        ? html`<strong>Boost Voix / Audio Nuit activé</strong><br><span style="font-size:0.78rem; color:var(--muted);">Dialogues rehaussés & explosions adoucies (normalisation dynamique)</span>`
+        : html`<strong>Audio : Standard</strong><br><span style="font-size:0.78rem; color:var(--muted);">Plage dynamique cinéma originale sans compression</span>`,
       1900
     );
   }
@@ -1187,7 +1187,7 @@ function applyInAppSpeed(idx, showToast = false) {
     btn.style.borderColor = spd !== 1.0 ? '#fafafa' : '';
   }
   if (showToast) {
-    showInAppToast(`<strong>Vitesse : ${spd}x</strong>`, 1300);
+    showInAppToast(html`<strong>Vitesse : ${spd}x</strong>`, 1300);
   }
 }
 
@@ -1200,7 +1200,7 @@ async function captureInAppScreenshot() {
   resetInAppIdleTimer();
   const video = document.getElementById('inAppVideo');
   if (!video || !video.videoWidth || !video.videoHeight) {
-    showInAppToast(`<strong>Capture impossible</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucune image vidéo active</span>`, 1600);
+    showInAppToast(html`<strong>Capture impossible</strong><br><span style="font-size:0.78rem; color:var(--muted);">Aucune image vidéo active</span>`, 1600);
     return;
   }
   try {
@@ -1221,10 +1221,10 @@ async function captureInAppScreenshot() {
       })
     });
     if (res && res.filename) {
-      showInAppToast(`<strong>Capture enregistrée</strong><br><span style="font-size:0.78rem; color:var(--muted);">${escapeHtml(res.filename)}</span>`, 2200);
+      showInAppToast(html`<strong>Capture enregistrée</strong><br><span style="font-size:0.78rem; color:var(--muted);">${res.filename}</span>`, 2200);
     }
   } catch (e) {
-    showInAppToast(`<strong>Capture protégée (CORS)</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez Shift+Cmd+4 / Win+Shift+S ou le Moteur KINO</span>`, 2200);
+    showInAppToast(html`<strong>Capture protégée (CORS)</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez Shift+Cmd+4 / Win+Shift+S ou le Moteur KINO</span>`, 2200);
   }
 }
 
@@ -1284,7 +1284,7 @@ function undoInAppSkip() {
   const video = document.getElementById('inAppVideo');
   if (video && inAppUndoTargetSec >= 0) {
     inAppSeekTo(inAppUndoTargetSec);
-    showInAppToast(`<strong>↩ Retour à ${formatTime(inAppUndoTargetSec)}</strong>`, 1400);
+    showInAppToast(html`<strong>↩ Retour à ${formatTime(inAppUndoTargetSec)}</strong>`, 1400);
   }
 }
 
@@ -1303,17 +1303,17 @@ function skipInAppIntro() {
   if (inAppIntroData && inAppIntroData.op && curT < inAppIntroData.op.end) {
     const targetT = inAppIntroData.op.end + 0.5;
     inAppSeekTo(targetT);
-    const prov = inAppIntroData.provider ? `<br><span style="font-size:0.75rem; color:var(--muted);">${inAppIntroData.provider}</span>` : '';
-    showInAppToast(`<strong>Intro passée (→ ${formatTime(inAppIntroData.op.end)})</strong>${prov}`, 2000);
+    const prov = inAppIntroData.provider ? html`<br><span style="font-size:0.75rem; color:var(--muted);">${inAppIntroData.provider}</span>` : '';
+    showInAppToast(html`<strong>Intro passée (→ ${formatTime(inAppIntroData.op.end)})</strong>${prov}`, 2000);
   } else if (inAppIntroData && inAppIntroData.recap && curT < inAppIntroData.recap.end) {
     const targetT = inAppIntroData.recap.end + 0.5;
     inAppSeekTo(targetT);
-    showInAppToast(`<strong>Récap passé (→ ${formatTime(inAppIntroData.recap.end)})</strong>`, 1800);
+    showInAppToast(html`<strong>Récap passé (→ ${formatTime(inAppIntroData.recap.end)})</strong>`, 1800);
   } else {
     const isAnime = Boolean(inAppCurrentMedia && inAppCurrentMedia.type === 'anime');
     const skipAmount = (inAppIntroData && inAppIntroData.default_skip) ? inAppIntroData.default_skip : (isAnime ? 90 : 60);
     inAppSeekRel(skipAmount);
-    showInAppToast(`<strong>Intro passée (+${skipAmount}s)</strong>`, 1600);
+    showInAppToast(html`<strong>Intro passée (+${skipAmount}s)</strong>`, 1600);
   }
 }
 
@@ -1340,7 +1340,7 @@ async function toggleInAppPiP() {
       const nextMode = video.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture';
       video.webkitSetPresentationMode(nextMode);
       if (btn) btn.style.borderColor = nextMode === 'picture-in-picture' ? '#fafafa' : '';
-      showInAppToast(nextMode === 'picture-in-picture' ? `<strong>⧉ Picture-in-Picture activé</strong>` : `<strong>⧉ Retour à la fenêtre KINO</strong>`, 1400);
+      showInAppToast(nextMode === 'picture-in-picture' ? html`<strong>⧉ Picture-in-Picture activé</strong>` : html`<strong>⧉ Retour à la fenêtre KINO</strong>`, 1400);
       return;
     }
     if (document.pictureInPictureElement) {
@@ -1349,10 +1349,10 @@ async function toggleInAppPiP() {
     } else if (video.requestPictureInPicture) {
       await video.requestPictureInPicture();
       if (btn) btn.style.borderColor = '#fafafa';
-      showInAppToast(`<strong>⧉ Picture-in-Picture activé</strong>`, 1400);
+      showInAppToast(html`<strong>⧉ Picture-in-Picture activé</strong>`, 1400);
     }
   } catch (e) {
-    showInAppToast(`<strong>⧉ PiP indisponible sur ce flux</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez « Moteur KINO » pour le mode flottant natif</span>`, 1800);
+    showInAppToast(html`<strong>⧉ PiP indisponible sur ce flux</strong><br><span style="font-size:0.78rem; color:var(--muted);">Utilisez « Moteur KINO » pour le mode flottant natif</span>`, 1800);
   }
 }
 
@@ -1503,7 +1503,7 @@ async function openInAppPlayer(streamUrl, title, playlist = null, media = null, 
   const audioFixBtn = document.getElementById('inAppAudioFixBtn');
   if (audioFixBtn) {
     audioFixBtn.style.display = needsCompatibleStream ? 'none' : 'inline-flex';
-    audioFixBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>Réparer le son';
+    render(audioFixBtn, html`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>Réparer le son`);
   }
   if (needsCompatibleStream) {
     setTimeout(() => {
@@ -1573,7 +1573,7 @@ async function openInAppPlayer(streamUrl, title, playlist = null, media = null, 
       return;
     }
     if (!inAppIsRemux) {
-      showInAppToast(`Format conteneur MKV/Audio non natif.<br><strong>Remuxing vidéo/audio instantané...</strong>`, 2200);
+      showInAppToast(html`Format conteneur MKV/Audio non natif.<br><strong>Remuxing vidéo/audio instantané...</strong>`, 2200);
       video.removeEventListener('playing', video._onPlayingHandler || (() => {}));
       video.removeEventListener('error', video._onErrorHandler || (() => {}));
       const remuxPlaying = () => {
@@ -1632,7 +1632,7 @@ async function openInAppPlayer(streamUrl, title, playlist = null, media = null, 
         video.muted = true;
         updateInAppVolUI();
         video.play().then(() => {
-          showInAppToast(`<strong>Cliquez sur l'écran ou appuyez sur M pour activer le son</strong>`, 3500);
+          showInAppToast(html`<strong>Cliquez sur l'écran ou appuyez sur M pour activer le son</strong>`, 3500);
         }).catch(() => {});
       } else if (video.error || video.readyState === 0) {
         onFallbackRequired('play_reject');
@@ -1672,7 +1672,7 @@ function closeInAppPlayer() {
   const overlay = document.getElementById('inAppPlayerOverlay');
   const video = document.getElementById('inAppVideo');
   const subOverlay = document.getElementById('inAppSubOverlay');
-  if (subOverlay) { subOverlay.style.display = 'none'; subOverlay.innerHTML = ''; }
+  if (subOverlay) { subOverlay.style.display = 'none'; render(subOverlay, ''); }
   const skipCard = document.getElementById('inAppSkipIntroCard');
   if (skipCard) skipCard.style.display = 'none';
   const nextCard = document.getElementById('inAppNextEpCard');
@@ -2026,7 +2026,7 @@ if (inAppVideoEl) {
           }
 
           if (shouldShow) {
-            if (skipBtn) skipBtn.innerHTML = btnText;
+            if (skipBtn) render(skipBtn, btnText);
             skipCard.style.display = 'flex';
           } else {
             skipCard.style.display = 'none';

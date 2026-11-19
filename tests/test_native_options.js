@@ -42,8 +42,7 @@ function loadNative(state, extra = {}) {
       if (url.startsWith('/api/subtitles')) return { subtitles: extra.subtitles || [] };
       return { ok: true, state };
     },
-    escapeHtml: value => String(value).replaceAll('<', '&lt;'),
-    setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {}, Date, URLSearchParams,
+        setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {}, Date, URLSearchParams,
     ...extra.globals,
   };
   vm.runInNewContext(nativeSource, context);

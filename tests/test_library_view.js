@@ -1,6 +1,7 @@
 // Library: type and state filters for Ma Liste and Déjà vus, search by French
 // title, remembered choices, and clearer offline files.
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -13,7 +14,7 @@ const html = require('../tools/interface_source.js').indexHtml();
 const css = fs.readFileSync(path.join(path.join(__dirname, '..'), 'web/css/design.css'), 'utf8');
 const listCode = source.slice(source.indexOf('const LIST_VIEW_KEY'), source.indexOf('async function surpriseMeMedia(poolArg = null) {'));
 const offlineCode = 'function offlineFreeText(bytes)' + source.split('function offlineFreeText(bytes)', 2)[1].split('async function playOfflineDownload(', 1)[0];
-const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const { escapeHtml } = require('../tools/interface_source.js').templateHelpers();
 
 const watchlist = [
   { id: 'tt1', name: 'The Shawshank Redemption', type: 'movie', year: '1994', imdbRating: '9.3' },
@@ -138,7 +139,7 @@ test('offline files show the French title, the episode, the real file name and t
     activeTab: 'offline', escapeHtml,
     document: { getElementById: id => (id === 'postersGrid' ? grid : null) },
     displayTitle: m => ({ tt1: 'Les Évadés' })[m.id] || m.name,
-    titleAttrs: m => ` data-title-id="${m.id}"`,
+    titleAttrs: m => raw(` data-title-id="${m.id}"`),
     userHistory: [{ id: 'tt1', completed: true }, { id: 'tt3', ep_positions: { S02E04: { pct: 40 } } }],
   };
   vm.runInNewContext(`${offlineCode}; renderOfflineLibraryData({downloads: {

@@ -82,7 +82,7 @@ function loadNative({ tracks, subtitles = [], autoSetting = true, online = true 
       if (url.startsWith('/api/subtitles')) return { subtitles };
       return { ok: true, state };
     },
-    escapeHtml: value => String(value), setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {},
+    setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {},
     URLSearchParams, networkOnline: online,
   };
   vm.runInNewContext(`${seriesSource}\n${nativeSource}`, context);

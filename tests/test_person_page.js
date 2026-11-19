@@ -36,7 +36,7 @@ async function open(answer = PAGE, { history = [] } = {}) {
 const grid = page => page.element('postersGrid').innerHTML;
 
 test('a click on a person in the fiche opens their page', () => {
-  assert.match(withCalls(source), /class="detail-person" data-person="\$\{escapeHtml\(person\.name\)\}" \$\{act\('openPerson', person\.name\)\} title="Films et séries de /);
+  assert.match(withCalls(source), /class="detail-person" data-person="\$\{person\.name\}" \$\{act\('openPerson', person\.name\)\} title="Films et séries de /);
 });
 
 test('the page: photo, description, short bio, what they do, and the way back', async () => {

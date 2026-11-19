@@ -1,6 +1,7 @@
 // Both players share one look; the built-in player's secondary settings and
 // actions live in an « Options » menu.
 const assert = require('node:assert/strict');
+const { raw } = require('../tools/interface_source.js').templateHelpers();
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -186,8 +187,7 @@ function loadNative(state) {
   };
   const context = {
     window: { addEventListener() {} }, document, localStorage: { getItem: () => '0.8', setItem() {} },
-    api: async () => ({ state }), escapeHtml: value => String(value).replaceAll('<', '&lt;'),
-    SVG_ICONS: { play: '<svg data-icon="play"/>', pause: '<svg data-icon="pause"/>', volHigh: '<svg data-icon="volHigh"/>', volLow: '<svg data-icon="volLow"/>', volMute: '<svg data-icon="volMute"/>' },
+    api: async () => ({ state }),     SVG_ICONS: { play: raw('<svg data-icon="play"/>'), pause: raw('<svg data-icon="pause"/>'), volHigh: raw('<svg data-icon="volHigh"/>'), volLow: raw('<svg data-icon="volLow"/>'), volMute: raw('<svg data-icon="volMute"/>') },
     setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, clearTimeout() {}, Date,
   };
   vm.runInNewContext(nativeSource, context);

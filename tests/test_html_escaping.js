@@ -10,7 +10,9 @@ const vm = (({ withHelpers }, real) => ({ ...real, runInNewContext: (code, conte
 
 const source = require('../tools/interface_source.js').appSource();
 const between = (start, end) => start + source.split(start, 2)[1].split(end, 1)[0];
-const helpers = between('function escapeHtml(s)', 'async function checkTraktStatus()');
+// The page's render helpers (web/js/html.js), then app-social's own.
+const helpers = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'web', 'js', 'html.js'), 'utf8')
+  + between('function listMediaArg(m)', 'async function checkTraktStatus()');
 // French display titles (titleAttrs, displayTitle, frenchGenre) are used by the
 // card and hero templates; load the real ones so their escaping is tested too.
 const frenchTitles = between('const ORIGINAL_TITLES = new Map();', '// --- Immersive fiche: French labels');
