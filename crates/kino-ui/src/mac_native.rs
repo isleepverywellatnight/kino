@@ -84,20 +84,26 @@ impl MpvView {
         frame: NSRect,
         frames: Arc<AtomicUsize>,
     ) -> Option<Retained<Self>> {
-        let attributes = [
-            NSOpenGLPFADoubleBuffer,
-            NSOpenGLPFAAccelerated,
-            NSOpenGLPFAOpenGLProfile,
-            NSOpenGLProfileVersion3_2Core,
-            0,
-        ];
-        // SAFETY: a zero-terminated attribute list.
-        let format = unsafe {
-            NSOpenGLPixelFormat::initWithAttributes(
-                <NSOpenGLPixelFormat as objc2::AllocAnyThread>::alloc(),
-                std::ptr::NonNull::from(&attributes[0]),
-            )
-        }?;
+        // A hardware-accelerated format first; the system's software
+        // renderer if none (virtual machines without a GPU).
+        let format = [true, false].into_iter().find_map(|accelerated| {
+            let mut attributes = vec![
+                NSOpenGLPFADoubleBuffer,
+                NSOpenGLPFAOpenGLProfile,
+                NSOpenGLProfileVersion3_2Core,
+            ];
+            if accelerated {
+                attributes.push(NSOpenGLPFAAccelerated);
+            }
+            attributes.push(0);
+            // SAFETY: a zero-terminated attribute list.
+            unsafe {
+                NSOpenGLPixelFormat::initWithAttributes(
+                    <NSOpenGLPixelFormat as objc2::AllocAnyThread>::alloc(),
+                    std::ptr::NonNull::from(&attributes[0]),
+                )
+            }
+        })?;
         let this = Self::alloc(mtm).set_ivars(ViewIvars {
             video: RefCell::new(None),
             frames,
@@ -129,14 +135,17 @@ pub fn attach(
     let gpui_view: &NSView = unsafe { &*(gpui_view as *const NSView) };
     let superview = unsafe { gpui_view.superview() }.ok_or("gpui's view has no superview")?;
     let frames = Arc::new(AtomicUsize::new(0));
-    let view = MpvView::create(mtm, gpui_view.frame(), frames.clone()).ok_or("OpenGL")?;
+    let view = MpvView::create(mtm, gpui_view.frame(), frames.clone())
+        .ok_or("no OpenGL pixel format or view")?;
     view.setAutoresizingMask(
         NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
     );
     view.setWantsLayer(true);
     superview.addSubview_positioned_relativeTo(&view, NSWindowOrderingMode::Below, Some(gpui_view));
     // The render context must exist before mpv opens its video output.
-    view.openGLContext().ok_or("OpenGL")?.makeCurrentContext();
+    view.openGLContext()
+        .ok_or("no OpenGL context for mpv's view")?
+        .makeCurrentContext();
     {
         let mut player = video.lock().map_err(|_| "player")?;
         player.create_gl_render(get_proc_address)?;
