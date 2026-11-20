@@ -85,4 +85,8 @@ serveur Rust ; le navigateur du téléphone n'a pas d'autre choix.
   demande un compositeur (X11) ou une sous-surface Wayland ; elle viendra en G3
   si la mesure sur une vraie machine le justifie.
 - **CPU au repos** (`--idle`) : la grille affichée, rien ne bouge, mesuré 10 s.
-  0,5 % d'un cœur en local (Vulkan logiciel) ; la CI vérifie < 1 % partout.
+  En CI : Windows 0,2–0,5 %, Linux 0,2 %, macOS 0,7–1,3 %. Sur macOS, gpui
+  laisse tourner son `CVDisplayLink` tant que la fenêtre est visible (60 réveils
+  par seconde sans rien dessiner) : c'est ce plancher. La CI vérifie < 1 % sur
+  Windows et Linux, < 2 % sur macOS. **À faire** : mettre gpui en pause quand
+  rien n'est à redessiner (version plus récente de gpui, ou correctif local).

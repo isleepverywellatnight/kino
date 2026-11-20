@@ -122,6 +122,8 @@ impl MpvView {
             video: RefCell::new(None),
             stats,
         });
+        // SAFETY: NSOpenGLView's designated initializer, on a fresh instance
+        // of this class, with a live pixel format.
         let view: Option<Retained<Self>> =
             unsafe { msg_send![super(this), initWithFrame: frame, pixelFormat: &*format] };
         let view = view?;
@@ -146,6 +148,7 @@ pub fn attach(
     let mtm = MainThreadMarker::new().ok_or("main thread")?;
     // SAFETY: gpui's live view, from its window handle.
     let gpui_view: &NSView = unsafe { &*(gpui_view as *const NSView) };
+    // SAFETY: a plain AppKit query on the main thread (checked above).
     let superview = unsafe { gpui_view.superview() }.ok_or("gpui's view has no superview")?;
     let stats = Arc::new(Stats::default());
     let view = MpvView::create(mtm, gpui_view.frame(), stats.clone())
@@ -178,7 +181,10 @@ pub fn attach(
             pumped.setNeedsDisplay(true);
         }
     });
+    // SAFETY: the block lives as long as the timer, which `Host` invalidates
+    // on drop; both run on the main thread.
     let timer = unsafe { NSTimer::timerWithTimeInterval_repeats_block(1.0 / 120.0, true, &block) };
+    // SAFETY: the main run loop, on the main thread.
     unsafe { NSRunLoop::mainRunLoop().addTimer_forMode(&timer, NSRunLoopCommonModes) };
     Ok(Host { view, timer, stats })
 }

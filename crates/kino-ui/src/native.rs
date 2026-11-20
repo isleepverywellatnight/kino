@@ -103,12 +103,14 @@ pub fn click(parent: isize, x: i32, y: i32) {
             let sent = unsafe { SendInput(&[button(flags)], std::mem::size_of::<INPUT>() as i32) };
             (
                 sent,
+                // SAFETY: reads this thread's last error, nothing else.
                 unsafe { windows::Win32::Foundation::GetLastError() }.0,
             )
         };
         // SAFETY: moves the cursor, then reads where it is.
         let moved = unsafe { SetCursorPos(point.x, point.y) };
         let mut at = POINT::default();
+        // SAFETY: fills the POINT it is given.
         let _ = unsafe { GetCursorPos(&mut at) };
         std::thread::sleep(std::time::Duration::from_millis(150));
         let down = send(MOUSEEVENTF_LEFTDOWN);
