@@ -108,7 +108,7 @@ jobs:
           assert r['spanish_loading'] == 'Cargando\u2026', ascii(r['spanish_loading'])
           assert r['back_loading'] == 'Chargement\u2026', ascii(r['back_loading'])
           # KINO's catalogs from the network, through the kino crate.
-          for name in ('movies', 'series'):
+          for name in ('movies', 'series', 'anime'):
               c = r[name]
               assert c['count'] > 0 and c['with_poster'] > 0, (name, c)
           "

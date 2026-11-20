@@ -18,6 +18,7 @@ use crate::title::Title;
 pub enum Catalog {
     Movies,
     Series,
+    Anime,
 }
 
 impl Catalog {
@@ -25,6 +26,7 @@ impl Catalog {
         match self {
             Catalog::Movies => "movie",
             Catalog::Series => "series",
+            Catalog::Anime => "anime",
         }
     }
 }
@@ -72,15 +74,18 @@ impl Core {
     ) -> impl Future<Output = Result<Vec<Title>, String>> + use<> {
         let meta = self.meta.clone();
         let task = self.runtime.spawn(async move {
-            meta.catalog_top(catalog.kind(), "", skip, "top")
-                .await
-                .map(|metas| {
-                    metas
-                        .iter()
-                        .filter_map(Title::from_meta)
-                        .collect::<Vec<_>>()
-                })
-                .map_err(|e| e.to_string())
+            let page = match catalog {
+                // KINO's own anime catalog (AniList and Kitsu), not Cinemeta's.
+                Catalog::Anime => meta.anime_catalog_page("", skip, "top").await,
+                _ => meta.catalog_top(catalog.kind(), "", skip, "top").await,
+            };
+            page.map(|metas| {
+                metas
+                    .iter()
+                    .filter_map(Title::from_meta)
+                    .collect::<Vec<_>>()
+            })
+            .map_err(|e| e.to_string())
         });
         async move { task.await.map_err(|e| format!("catalog task: {e}"))? }
     }
