@@ -105,3 +105,17 @@ change de langue.
 
 Reporté à G2, avec le crate `kino` : la source réseau du cache d'images et le
 choix de langue enregistré (aujourd'hui `KINO_LANG` ou la langue du système).
+
+## État de G2 (en cours)
+
+Fait (PR #41 à #44 et suivante) : le cœur de KINO tourne dans l'application
+(base, réseau, métadonnées, sur son propre runtime tokio), les catalogues Films,
+Séries et Anime en grille virtuelle avec pages chargées au défilement, la
+recherche (la même que la route web, `kino::catalog::search`), la fiche d'un
+titre (fond, affiche, genres, synopsis, réalisation, distribution, « Vous
+aimerez aussi ») et, au-dessus de chaque grille, les genres du catalogue (ceux
+de la version web) et le tri (tendances, mieux notés, plus récents, plus
+anciens). La CI vérifie tout cela sur les 3 systèmes avec les vraies données.
+
+Reste : les rangées de l'accueil, Ce soir, Explorer, et le choix de langue
+enregistré.

@@ -119,6 +119,10 @@ jobs:
           assert page and page['page'] and page['page'].get('name'), page
           assert page['page']['description'] is True, page
           assert page['closed_by_back'] is True, page
+          # The Films grid by genre and rating, as its chips pick them.
+          f = r['filtered']
+          assert f and f['genre'] == 'Action' and f['sort'] == 'imdbRating', f
+          assert f['count'] > 0 and not f['error'], f
           "
       - name: Processor at rest
         working-directory: crates/kino-ui

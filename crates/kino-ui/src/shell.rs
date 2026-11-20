@@ -11,7 +11,7 @@ use gpui::{
     prelude::*, px,
 };
 
-use crate::core::{Catalog, Core};
+use crate::core::{Catalog, Core, Filter, Sort};
 use crate::discover::{Discover, OpenTitle};
 use crate::i18n::Language;
 use crate::image_cache::{DEFAULT_BUDGET, ImageCache};
@@ -532,7 +532,8 @@ impl Render for Shell {
 /// `--shell-check`: every screen in turn, then Back to the start, one step
 /// every 150 ms; then real keystrokes: the search shortcut, "matrix" typed into
 /// the field, Escape; then Spanish from Settings (shared state) and back;
-/// then KINO's catalogs. Prints what was drawn, typed, translated and loaded,
+/// then KINO's catalogs, a title's page and the Films grid by genre and
+/// rating. Prints what was drawn, typed, translated and loaded,
 /// then quits.
 fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
     cx.spawn_in(window, async move |shell, cx| {
@@ -675,6 +676,42 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                 })
                 .unwrap_or_default();
         }
+        // A genre and an order, as the chips above the Films grid pick them.
+        let filter = Filter {
+            genre: "Action",
+            sort: Sort::Rating,
+        };
+        let _ = shell.update(cx, |s, cx| {
+            if let Ok(movies) = &s.movies {
+                movies.update(cx, |d, cx| d.set_filter(filter, cx));
+            }
+        });
+        for _ in 0..200 {
+            let loading = shell
+                .update(cx, |s, cx| {
+                    s.movies.as_ref().is_ok_and(|d| d.read(cx).loading())
+                })
+                .unwrap_or(false);
+            if !loading {
+                break;
+            }
+            step().await;
+        }
+        let filtered = shell
+            .update(cx, |s, cx| {
+                s.movies.as_ref().ok().map(|d| {
+                    let d = d.read(cx);
+                    serde_json::json!({
+                        "genre": d.filter().genre,
+                        "sort": d.filter().sort.param(),
+                        "count": d.titles().len(),
+                        "first": d.titles().first().map(|t| t.name.to_string()),
+                        "error": d.error().map(|e| e.to_string()),
+                    })
+                })
+            })
+            .ok()
+            .flatten();
         let _ = shell.update(cx, |s, cx| {
             let catalog = |c: &Result<Entity<Discover>, SharedString>| match c {
                 Ok(d) => {
@@ -711,6 +748,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                     "series": series,
                     "anime": anime,
                     "title_page": page,
+                    "filtered": filtered,
                 })
             );
             cx.quit();
