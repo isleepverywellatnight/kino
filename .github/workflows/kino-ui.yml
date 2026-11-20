@@ -8,10 +8,10 @@ name: Native UI (gpui)
 on:
   push:
     branches: ["**"]
-    paths: ["crates/kino-ui/**", "web/js/i18n/**", ".github/workflows/kino-ui.yml"]
+    paths: ["crates/kino-ui/**", "crates/kino/**", "web/js/i18n/**", ".github/workflows/kino-ui.yml"]
   pull_request:
     branches: [main]
-    paths: ["crates/kino-ui/**", "web/js/i18n/**", ".github/workflows/kino-ui.yml"]
+    paths: ["crates/kino-ui/**", "crates/kino/**", "web/js/i18n/**", ".github/workflows/kino-ui.yml"]
   workflow_dispatch:
 
 permissions:
@@ -39,7 +39,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libxkbcommon-x11-dev libxcb1-dev libfontconfig1-dev libfreetype-dev \
-            libwayland-dev libvulkan1 mesa-vulkan-drivers xvfb openbox libmpv2 imagemagick
+            libwayland-dev libvulkan1 mesa-vulkan-drivers xvfb openbox libmpv2 imagemagick \
+            libdbus-1-dev pkg-config
       - name: libmpv (the builds KINO ships)
         if: runner.os != 'Linux'
         run: |
@@ -85,7 +86,8 @@ jobs:
         run: |
           # The shell opens every screen, then Back returns to the first; then
           # real keys: Ctrl/⌘+K, "kino" typed in the search field, Escape;
-          # then Spanish from Settings (shared state: titles and the grid) and back.
+          # then Spanish from Settings (shared state) and back; then KINO's Films
+          # and Series catalogs, loaded through the kino crate.
           if [ "$RUNNER_OS" = Linux ]; then export DISPLAY=:99; fi
           exe=target/release/kino-ui
           [ "$RUNNER_OS" = Windows ] && exe=target/release/kino-ui.exe
@@ -103,8 +105,12 @@ jobs:
           assert r['typed'] == 'kino', r['typed']
           assert r['cleared'] is True
           assert r['spanish_settings'] == 'Ajustes', r['spanish_settings']
-          assert r['spanish_poster'] == 'Pel\u00edcula 1', ascii(r['spanish_poster'])
-          assert r['back_poster'] == 'Film 1', r['back_poster']
+          assert r['spanish_loading'] == 'Cargando\u2026', ascii(r['spanish_loading'])
+          assert r['back_loading'] == 'Chargement\u2026', ascii(r['back_loading'])
+          # KINO's catalogs from the network, through the kino crate.
+          for name in ('movies', 'series'):
+              c = r[name]
+              assert c['count'] > 0 and c['with_poster'] > 0, (name, c)
           "
       - name: Processor at rest
         working-directory: crates/kino-ui
