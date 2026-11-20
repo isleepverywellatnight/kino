@@ -377,24 +377,7 @@ async fn watched_toggle(State(s): State<Shared>, JsonBody(body): JsonBody) -> Re
 async fn search(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
     let q = p.get("q").cloned().unwrap_or_default();
     let kind = p.get("type").cloned().unwrap_or_else(|| "movie".into());
-    let (catalogue, french) = tokio::join!(
-        s.meta.search(&q, &kind),
-        crate::french::search(&s.meta, &q, &kind)
-    );
-    let known: Vec<Value> = french.iter().map(|m| m["id"].clone()).collect();
-    let mut metas = french;
-    metas.extend(
-        catalogue
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|m| !known.contains(&m["id"])),
-    );
-    if metas.is_empty() {
-        let only = ["movie", "series"]
-            .contains(&kind.as_str())
-            .then_some(kind.as_str());
-        metas = catalog::search_fast(&s.db, &q, only, 20);
-    }
+    let metas = catalog::search(&s.meta, &s.db, &q, &kind).await;
     Json(json!({"metas": metas})).into_response()
 }
 
