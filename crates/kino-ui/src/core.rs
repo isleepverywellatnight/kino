@@ -31,6 +31,40 @@ impl Catalog {
     }
 }
 
+/// The order of a catalog, as the web's sort menu offers it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Sort {
+    /// What is popular now.
+    #[default]
+    Top,
+    /// Best rated first.
+    Rating,
+    Recent,
+    Oldest,
+}
+
+impl Sort {
+    pub const ALL: [Sort; 4] = [Sort::Top, Sort::Rating, Sort::Recent, Sort::Oldest];
+
+    /// The value KINO's catalogs take (`CATALOG_SORTS` on the web).
+    pub fn param(self) -> &'static str {
+        match self {
+            Sort::Top => "top",
+            Sort::Rating => "imdbRating",
+            Sort::Recent => "recent",
+            Sort::Oldest => "oldest",
+        }
+    }
+}
+
+/// Which part of a catalog to show: a genre ("" for all) in an order.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Filter {
+    /// The catalog's genre value ("Action", "Slice of Life"…), "" for all.
+    pub genre: &'static str,
+    pub sort: Sort,
+}
+
 #[derive(Clone)]
 pub struct Core {
     runtime: Arc<tokio::runtime::Runtime>,
@@ -67,19 +101,21 @@ impl Core {
         })
     }
 
-    /// A page of `catalog`, `skip` items in, best first. Runs on KINO's
+    /// A page of `catalog` in `filter`'s genre and order, `skip` items in. Runs on KINO's
     /// runtime; the returned future can be awaited from gpui.
     pub fn catalog(
         &self,
         catalog: Catalog,
+        filter: Filter,
         skip: u64,
     ) -> impl Future<Output = Result<Vec<Title>, String>> + use<> {
         let meta = self.meta.clone();
+        let (genre, sort) = (filter.genre, filter.sort.param());
         let task = self.runtime.spawn(async move {
             let page = match catalog {
                 // KINO's own anime catalog (AniList and Kitsu), not Cinemeta's.
-                Catalog::Anime => meta.anime_catalog_page("", skip, "top").await,
-                _ => meta.catalog_top(catalog.kind(), "", skip, "top").await,
+                Catalog::Anime => meta.anime_catalog_page(genre, skip, sort).await,
+                _ => meta.catalog_top(catalog.kind(), genre, skip, sort).await,
             };
             page.map(|metas| {
                 metas
