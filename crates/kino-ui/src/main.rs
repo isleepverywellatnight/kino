@@ -466,10 +466,8 @@ impl Player {
                 Some((before, None)) if elapsed >= Duration::from_millis(4500) => {
                     self.click = Some((before, Some(paused != before)));
                     // The run goes on playing.
-                    if paused {
-                        if let Ok(video) = self.video.lock() {
-                            video.set_paused(false);
-                        }
+                    if paused && let Ok(video) = self.video.lock() {
+                        video.set_paused(false);
                     }
                 }
                 _ => {}
