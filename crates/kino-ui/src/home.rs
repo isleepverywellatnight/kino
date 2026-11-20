@@ -1,7 +1,8 @@
 //! The rows above a catalog (phase G2), from the user's own lists as the web's
 //! home shows them: « À continuer » (what is in progress) and « Ma Liste »
 //! (what is still to see), each for the catalog's kind only: films under
-//! Films, series under Series, the anime titles under Anime.
+//! Films, series under Series, the anime titles under Anime; then « Pour
+//! vous », KINO's own suggestions, under Films and Series.
 
 use gpui::SharedString;
 use serde_json::Value;
@@ -35,18 +36,36 @@ impl InProgress {
     }
 }
 
+/// A suggestion and why KINO makes it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Suggested {
+    pub title: Title,
+    /// "Parce que vous avez aimé …", as KINO's recommender writes it.
+    pub why: SharedString,
+}
+
+/// Fewer suggestions than this and « Pour vous » is not shown (as on the web).
+const FOR_YOU_MIN: usize = 4;
+
 /// The rows of one catalog; an empty one is not shown.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Shelves {
     pub resume: Vec<InProgress>,
     pub list: Vec<Title>,
+    pub for_you: Vec<Suggested>,
 }
 
 impl Shelves {
     /// `history` newest first, as `kino::library::history` reads it, and
     /// `watchlist` as `kino::library::watchlist` does, anime marked
-    /// (`kino::anime_home::mark_anime`).
-    pub fn new(catalog: Catalog, history: &[Value], watchlist: &[Value]) -> Self {
+    /// (`kino::anime_home::mark_anime`); `for_you` as
+    /// `kino::recommender::for_you_page` gives it.
+    pub fn new(
+        catalog: Catalog,
+        history: &[Value],
+        watchlist: &[Value],
+        for_you: &[Value],
+    ) -> Self {
         let in_progress: Vec<&Value> = history.iter().filter(|h| is_in_progress(h)).collect();
         let resume = in_progress
             .iter()
@@ -72,7 +91,34 @@ impl Shelves {
             .filter_map(Title::from_meta)
             .take(SHELF_SIZE)
             .collect();
-        Self { resume, list }
+        // Not what was seen already, nor anime (the anime page has its own).
+        let seen: std::collections::HashSet<&str> = history
+            .iter()
+            .filter(|h| is_done(h) || truthy(&h["imported_watched"]))
+            .filter_map(|h| h["id"].as_str())
+            .collect();
+        let for_you: Vec<Suggested> = for_you
+            .iter()
+            .filter(|m| !is_anime(m))
+            .filter(|m| !m["id"].as_str().is_some_and(|id| seen.contains(id)))
+            .filter_map(|m| {
+                Some(Suggested {
+                    title: Title::from_meta(m)?,
+                    why: m["why"].as_str().unwrap_or_default().to_string().into(),
+                })
+            })
+            .take(SHELF_SIZE)
+            .collect();
+        let for_you = if for_you.len() < FOR_YOU_MIN {
+            Vec::new()
+        } else {
+            for_you
+        };
+        Self {
+            resume,
+            list,
+            for_you,
+        }
     }
 }
 
@@ -194,7 +240,7 @@ mod tests {
 
     #[test]
     fn films_continue_films_and_list_what_is_left() {
-        let shelves = Shelves::new(Catalog::Movies, &history(), &watchlist());
+        let shelves = Shelves::new(Catalog::Movies, &history(), &watchlist(), &[]);
         let resume: Vec<_> = shelves.resume.iter().map(|r| r.title.clone()).collect();
         assert_eq!(names(resume), ["Half Seen"]);
         assert_eq!(shelves.resume[0].note().as_ref(), "42 %");
@@ -204,7 +250,7 @@ mod tests {
 
     #[test]
     fn series_show_the_episode_reached() {
-        let shelves = Shelves::new(Catalog::Series, &history(), &watchlist());
+        let shelves = Shelves::new(Catalog::Series, &history(), &watchlist(), &[]);
         assert_eq!(shelves.resume.len(), 1);
         assert_eq!(shelves.resume[0].episode, Some((2, 5)));
         assert!(shelves.resume[0].note().contains("10 %"));
@@ -213,7 +259,7 @@ mod tests {
 
     #[test]
     fn anime_stay_under_anime() {
-        let shelves = Shelves::new(Catalog::Anime, &history(), &watchlist());
+        let shelves = Shelves::new(Catalog::Anime, &history(), &watchlist(), &[]);
         let resume: Vec<_> = shelves.resume.iter().map(|r| r.title.clone()).collect();
         assert_eq!(names(resume), ["An Anime"]);
         assert_eq!(names(shelves.list), ["Anime To See"]);
@@ -221,6 +267,26 @@ mod tests {
 
     #[test]
     fn nothing_saved_shows_no_row() {
-        assert_eq!(Shelves::new(Catalog::Movies, &[], &[]), Shelves::default());
+        assert_eq!(
+            Shelves::new(Catalog::Movies, &[], &[], &[]),
+            Shelves::default()
+        );
+    }
+
+    #[test]
+    fn for_you_leaves_out_what_was_seen_and_anime() {
+        let suggestion = |id: &str, name: &str| json!({"id": id, "name": name, "type": "movie", "why": format!("close to {name}")});
+        let mut items: Vec<Value> = (10..15)
+            .map(|i| suggestion(&format!("tt{i}"), &format!("Film {i}")))
+            .collect();
+        items.push(suggestion("tt2", "Seen"));
+        items.push(json!({"id": "tt99", "name": "An Anime", "type": "movie", "is_anime": true}));
+        let shelves = Shelves::new(Catalog::Movies, &history(), &[], &items);
+        assert_eq!(shelves.for_you.len(), 5);
+        assert_eq!(shelves.for_you[0].why.as_ref(), "close to Film 10");
+        assert!(shelves.for_you.iter().all(|s| s.title.id.as_ref() != "tt2"));
+        // Fewer than four: no row.
+        let shelves = Shelves::new(Catalog::Movies, &[], &[], &items[..3]);
+        assert!(shelves.for_you.is_empty());
     }
 }

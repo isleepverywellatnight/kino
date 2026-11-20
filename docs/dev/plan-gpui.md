@@ -118,8 +118,10 @@ de la version web) et le tri (tendances, mieux notés, plus récents, plus
 anciens). Au-dessus de chaque catalogue, les rangées de l'utilisateur lues
 dans sa base : « À continuer » (avec l'épisode atteint et la progression) et
 « Ma Liste » (ce qui reste à voir), chacune pour le seul type du catalogue,
-avec les règles de la version web. La CI vérifie tout cela sur les 3 systèmes
+avec les règles de la version web, puis « Pour vous » sous Films et Séries
+(les suggestions de KINO et leur raison, la même fonction que la route web ;
+le pool est préparé au lancement comme le fait le serveur). La CI vérifie tout cela sur les 3 systèmes
 avec les vraies données.
 
-Reste : « Pour vous », « Si vous avez aimé », « Nouveaux épisodes », Ce soir,
+Reste : « Si vous avez aimé », « Nouveaux épisodes », Ce soir,
 Explorer, et le choix de langue enregistré.

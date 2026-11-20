@@ -9,6 +9,7 @@ use std::time::Duration;
 use kino::db::Db;
 use kino::meta::Meta;
 use kino::net::Net;
+use kino::recommender::Store;
 use serde_json::Value;
 
 use crate::image_cache::Loader;
@@ -71,6 +72,8 @@ pub struct Core {
     runtime: Arc<tokio::runtime::Runtime>,
     db: Arc<Db>,
     meta: Meta,
+    /// KINO's suggestion pool (« Pour vous »), read again when it changes.
+    suggestions: Arc<Store>,
 }
 
 impl Core {
@@ -95,10 +98,21 @@ impl Core {
             cinemeta: kino::meta::CINEMETA.into(),
             translate: true,
         };
+        let suggestions = Arc::new(Store::default());
+        // As the server does at launch: the pool read and measured ahead, then
+        // read again from the catalogs when empty or a month old.
+        let (warm_db, warm, net) = (db.clone(), suggestions.clone(), meta.net.clone());
+        runtime.spawn(async move {
+            let (db, store) = (warm_db.clone(), warm.clone());
+            let _ = tokio::task::spawn_blocking(move || store.warm(&db)).await;
+            warm.refresh_pool(&warm_db, &net, kino::meta::CINEMETA, false)
+                .await;
+        });
         Ok(Self {
             runtime: Arc::new(runtime),
             db,
             meta,
+            suggestions,
         })
     }
 
@@ -146,6 +160,23 @@ impl Core {
             kino::anime_home::mark_anime(&db, &mut history);
             kino::anime_home::mark_anime(&db, &mut watchlist);
             (history, watchlist)
+        });
+        async move { task.await.unwrap_or_default() }
+    }
+
+    /// « Pour vous » for `catalog` (films or series; none for anime, as on the
+    /// web): KINO's own suggestions, each with its reason, anime marked.
+    pub fn for_you(&self, catalog: Catalog) -> impl Future<Output = Vec<Value>> + use<> {
+        let (meta, db, store) = (self.meta.clone(), self.db.clone(), self.suggestions.clone());
+        let task = self.runtime.spawn(async move {
+            let kind = match catalog {
+                Catalog::Movies => "movie",
+                Catalog::Series => "series",
+                Catalog::Anime => return Vec::new(),
+            };
+            kino::recommender::for_you_page(&meta, &db, &store, kind)
+                .await
+                .items
         });
         async move { task.await.unwrap_or_default() }
     }
