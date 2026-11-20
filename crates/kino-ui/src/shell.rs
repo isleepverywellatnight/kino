@@ -10,6 +10,8 @@ use gpui::{
     prelude::*, px,
 };
 
+use crate::i18n::Language;
+use crate::state::AppState;
 use crate::text_input::{self, TextInput};
 use crate::{Kino, bar, theme};
 
@@ -292,7 +294,7 @@ impl Shell {
             )
     }
 
-    fn content(&self) -> gpui::AnyElement {
+    fn content(&self, cx: &App) -> gpui::AnyElement {
         // A query takes the content until results come (G2: Search).
         if !self.query.trim().is_empty() {
             return div()
@@ -311,6 +313,7 @@ impl Shell {
                 .size_full()
                 .child(self.grid.clone())
                 .into_any_element(),
+            Screen::Settings => settings(cx),
             screen => div()
                 .size_full()
                 .p(theme::SPACE_6)
@@ -326,6 +329,53 @@ impl Shell {
                 .into_any_element(),
         }
     }
+}
+
+/// Settings: for now the interface's language, the first of KINO's settings
+/// in the native interface.
+fn settings(cx: &App) -> gpui::AnyElement {
+    let current = AppState::language(cx);
+    let mut languages = div().flex().flex_wrap().gap(theme::SPACE_2);
+    for language in Language::ALL {
+        let item = div()
+            .id(language.native_name())
+            .px(theme::SPACE_4)
+            .py(theme::SPACE_2)
+            .rounded(theme::RADIUS_SM)
+            .border_1()
+            .text_size(theme::FS_MD)
+            .child(language.native_name())
+            .on_click(move |_, _, cx| AppState::set_language(language, cx));
+        languages = languages.child(if language == current {
+            item.bg(theme::text())
+                .text_color(theme::on_light())
+                .border_color(theme::text())
+        } else {
+            item.border_color(theme::line_strong())
+                .text_color(theme::text_2())
+                .hover(|style| style.bg(theme::surface_2()).text_color(theme::text()))
+        });
+    }
+    div()
+        .size_full()
+        .p(theme::SPACE_6)
+        .flex()
+        .flex_col()
+        .gap(theme::SPACE_4)
+        .child(
+            div()
+                .text_size(theme::FS_XL)
+                .font_weight(gpui::FontWeight::BOLD)
+                .child(t!("page.parametres")),
+        )
+        .child(
+            div()
+                .text_size(theme::FS_SM)
+                .text_color(theme::text_3())
+                .child(t!("page.langue")),
+        )
+        .child(languages)
+        .into_any_element()
 }
 
 impl Focusable for Shell {
@@ -378,7 +428,7 @@ impl Render for Shell {
                             .flex_grow()
                             .min_w_0()
                             .child(self.header(cx))
-                            .child(div().flex_grow().min_h_0().child(self.content())),
+                            .child(div().flex_grow().min_h_0().child(self.content(cx))),
                     ),
             )
     }
@@ -386,7 +436,8 @@ impl Render for Shell {
 
 /// `--shell-check`: every screen in turn, then Back to the start, one step
 /// every 150 ms; then real keystrokes: the search shortcut, "kino" typed into
-/// the field, Escape. Prints what was drawn and typed, then quits.
+/// the field, Escape; then Spanish from Settings (shared state) and back.
+/// Prints what was drawn, typed and translated, then quits.
 fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
     cx.spawn_in(window, async move |shell, cx| {
         let executor = cx.background_executor().clone();
@@ -432,6 +483,24 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
             }
         });
         step().await;
+        // The shared state: Spanish from Settings, then back.
+        let _ = shell.update(cx, |s, cx| s.go(Screen::Settings, cx));
+        step().await;
+        let start = cx.update(|_, cx| AppState::language(cx)).ok();
+        let _ = cx.update(|_, cx| AppState::set_language(Language::Spanish, cx));
+        step().await;
+        let switched = shell
+            .update(cx, |s, cx| {
+                (
+                    Screen::Settings.title().to_string(),
+                    s.grid.read(cx).titles[0].to_string(),
+                )
+            })
+            .unwrap_or_default();
+        if let Some(start) = start {
+            let _ = cx.update(|_, cx| AppState::set_language(start, cx));
+        }
+        step().await;
         let _ = shell.update(cx, |s, cx| {
             let drawn: Vec<String> = s
                 .drawn
@@ -446,6 +515,9 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                     "can_go_back": s.navigation.can_go_back(),
                     "typed": typed,
                     "cleared": s.query.is_empty(),
+                    "spanish_settings": switched.0,
+                    "spanish_poster": switched.1,
+                    "back_poster": s.grid.read(cx).titles[0].to_string(),
                 })
             );
             cx.quit();

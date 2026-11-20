@@ -84,7 +84,8 @@ jobs:
         working-directory: crates/kino-ui
         run: |
           # The shell opens every screen, then Back returns to the first; then
-          # real keys: Ctrl/⌘+K, "kino" typed in the search field, Escape.
+          # real keys: Ctrl/⌘+K, "kino" typed in the search field, Escape;
+          # then Spanish from Settings (shared state: titles and the grid) and back.
           if [ "$RUNNER_OS" = Linux ]; then export DISPLAY=:99; fi
           exe=target/release/kino-ui
           [ "$RUNNER_OS" = Windows ] && exe=target/release/kino-ui.exe
@@ -95,10 +96,13 @@ jobs:
           import json, sys
           r = json.load(sys.stdin)
           screens = ['Movies', 'Series', 'Anime', 'Manga', 'Tonight', 'Explore', 'Library', 'Settings']
-          assert r['drawn'] == screens + screens[-2::-1], r['drawn']
+          assert r['drawn'] == screens + screens[-2::-1] + ['Settings'], r['drawn']
           assert r['can_go_back'] is False
           assert r['typed'] == 'kino', r['typed']
           assert r['cleared'] is True
+          assert r['spanish_settings'] == 'Ajustes', r['spanish_settings']
+          assert r['spanish_poster'] == 'Película 1', r['spanish_poster']
+          assert r['back_poster'] == 'Film 1', r['back_poster']
           "
       - name: Processor at rest
         working-directory: crates/kino-ui

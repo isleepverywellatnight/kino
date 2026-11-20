@@ -90,3 +90,18 @@ serveur Rust ; le navigateur du téléphone n'a pas d'autre choix.
   par seconde sans rien dessiner) : c'est ce plancher. La CI vérifie < 1 % sur
   Windows et Linux, < 2 % sur macOS. **À faire** : mettre gpui en pause quand
   rien n'est à redessiner (version plus récente de gpui, ou correctif local).
+
+## État de G1
+
+Fait (PR #37 à #40) : `t!` et les 9 langues (une clé inconnue ne compile pas),
+le thème de `design.css` (vérifié par un test), la coquille (barre latérale,
+en-tête, Retour, navigation testée), la saisie dans la recherche (méthodes de
+saisie du système, sélection, copier-coller, Échap), le cache d'images (budget
+mémoire, le moins récemment vu sort en premier, libéré aussi côté GPU), l'état
+partagé typé (`AppState` : la langue, changée depuis Paramètres, suivie par
+toutes les fenêtres et la grille) et les raccourcis (Alt+← Retour, Ctrl/⌘+1…8,
+Ctrl/⌘+K). La CI ouvre la coquille sur les 3 systèmes, tape au clavier et
+change de langue.
+
+Reporté à G2, avec le crate `kino` : la source réseau du cache d'images et le
+choix de langue enregistré (aujourd'hui `KINO_LANG` ou la langue du système).

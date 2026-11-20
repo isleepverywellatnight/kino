@@ -37,6 +37,21 @@ impl Language {
         Language::Chinese,
     ];
 
+    /// The language's name in itself, as the web version shows it.
+    pub fn native_name(self) -> &'static str {
+        match self {
+            Language::French => "Français",
+            Language::English => "English",
+            Language::German => "Deutsch",
+            Language::Spanish => "Español",
+            Language::Italian => "Italiano",
+            Language::Portuguese => "Português",
+            Language::Russian => "Русский",
+            Language::Japanese => "日本語",
+            Language::Chinese => "中文",
+        }
+    }
+
     /// The language of a code like "fr", "pt-BR" or "zh_CN.UTF-8".
     pub fn from_code(code: &str) -> Option<Self> {
         let short = code.get(..2)?.to_ascii_lowercase();
