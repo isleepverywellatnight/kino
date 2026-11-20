@@ -208,6 +208,29 @@ fn query(
 }
 
 /// The instant search: the local catalogue and the French titles, ranked.
+/// The search the interfaces show (the web's `/api/search`, the native
+/// interface's field): titles in French first, then Cinemeta's, and KINO's own
+/// index when neither finds anything.
+pub async fn search(meta: &crate::meta::Meta, db: &Db, query: &str, kind: &str) -> Vec<Value> {
+    let (catalogue, french) = tokio::join!(
+        meta.search(query, kind),
+        crate::french::search(meta, query, kind)
+    );
+    let known: Vec<Value> = french.iter().map(|m| m["id"].clone()).collect();
+    let mut metas = french;
+    metas.extend(
+        catalogue
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|m| !known.contains(&m["id"])),
+    );
+    if metas.is_empty() {
+        let only = ["movie", "series"].contains(&kind).then_some(kind);
+        metas = search_fast(db, query, only, 20);
+    }
+    metas
+}
+
 pub fn search_fast(db: &Db, query_text: &str, kind: Option<&str>, limit: usize) -> Vec<Value> {
     // Punctuation separates words, as in the FTS index: « Spider-Man » is « spider » + « man ».
     let clean: String = query_text

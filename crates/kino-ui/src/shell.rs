@@ -15,6 +15,7 @@ use crate::core::{Catalog, Core};
 use crate::discover::Discover;
 use crate::i18n::Language;
 use crate::image_cache::{DEFAULT_BUDGET, ImageCache};
+use crate::search::SearchView;
 use crate::state::AppState;
 use crate::text_input::{self, TextInput};
 use crate::{bar, theme};
@@ -161,6 +162,8 @@ pub struct Shell {
     movies: Result<Entity<Discover>, SharedString>,
     series: Result<Entity<Discover>, SharedString>,
     anime: Result<Entity<Discover>, SharedString>,
+    /// Search results; `None` when KINO's core could not start.
+    results: Option<Entity<SearchView>>,
     search: Entity<TextInput>,
     /// What the search field holds, as of its last change.
     query: gpui::SharedString,
@@ -172,9 +175,13 @@ pub struct Shell {
 impl Shell {
     pub fn new(check: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         // KINO's core: its database, network and metadata, as the server's.
-        let (movies, series, anime) = match Core::start() {
+        let (movies, series, anime, results) = match Core::start() {
             Ok(core) => {
                 let images = cx.new(|_| ImageCache::new(core.image_loader(), DEFAULT_BUDGET));
+                let results = {
+                    let (core, images) = (core.clone(), images.clone());
+                    Some(cx.new(|cx| SearchView::new(core, images, cx)))
+                };
                 let open = |catalog, cx: &mut Context<Self>| {
                     let (core, images) = (core.clone(), images.clone());
                     Ok(cx.new(|cx| Discover::new(catalog, core, images, cx)))
@@ -183,12 +190,14 @@ impl Shell {
                     open(Catalog::Movies, cx),
                     open(Catalog::Series, cx),
                     open(Catalog::Anime, cx),
+                    results,
                 )
             }
             Err(error) => (
                 Err(error.clone().into()),
                 Err(error.clone().into()),
                 Err(error.into()),
+                None,
             ),
         };
         let focus = cx.focus_handle();
@@ -196,6 +205,10 @@ impl Shell {
         let search = cx.new(|cx| TextInput::new(t!("page.rechercher_un_film_une_serie"), cx));
         cx.subscribe(&search, |shell, search, _: &text_input::Changed, cx| {
             shell.query = search.read(cx).text().clone();
+            if let Some(results) = &shell.results {
+                let query = shell.query.clone();
+                results.update(cx, |results, cx| results.set_query(&query, cx));
+            }
             cx.notify();
         })
         .detach();
@@ -207,6 +220,7 @@ impl Shell {
             movies,
             series,
             anime,
+            results,
             search,
             query: gpui::SharedString::default(),
             focus,
@@ -319,8 +333,11 @@ impl Shell {
     }
 
     fn content(&self, cx: &App) -> gpui::AnyElement {
-        // A query takes the content until results come (G2: Search).
+        // A query takes the content: its results.
         if !self.query.trim().is_empty() {
+            if let Some(results) = &self.results {
+                return div().size_full().child(results.clone()).into_any_element();
+            }
             return div()
                 .size_full()
                 .p(theme::SPACE_6)
@@ -471,7 +488,7 @@ impl Render for Shell {
 }
 
 /// `--shell-check`: every screen in turn, then Back to the start, one step
-/// every 150 ms; then real keystrokes: the search shortcut, "kino" typed into
+/// every 150 ms; then real keystrokes: the search shortcut, "matrix" typed into
 /// the field, Escape; then Spanish from Settings (shared state) and back;
 /// then KINO's catalogs. Prints what was drawn, typed, translated and loaded,
 /// then quits.
@@ -498,7 +515,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
         } else {
             "ctrl-k"
         };
-        let keys = [shortcut, "k", "i", "n", "o"];
+        let keys = [shortcut, "m", "a", "t", "r", "i", "x"];
         for key in keys {
             // Through the window, not the shell: its actions update it.
             let pressed = cx.update(|window, cx| {
@@ -514,6 +531,30 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
         let typed = shell
             .update(cx, |s, _| s.query.to_string())
             .unwrap_or_default();
+        // The search those keys started: up to 30 s for KINO's answer.
+        for _ in 0..200 {
+            let searching = shell
+                .update(cx, |s, cx| {
+                    s.results.as_ref().is_some_and(|r| r.read(cx).results().1)
+                })
+                .unwrap_or(false);
+            if !searching {
+                break;
+            }
+            step().await;
+        }
+        let found = shell
+            .update(cx, |s, cx| {
+                s.results.as_ref().map(|r| {
+                    let (titles, _) = r.read(cx).results();
+                    serde_json::json!({
+                        "count": titles.len(),
+                        "first": titles.first().map(|t| t.name.to_string()),
+                    })
+                })
+            })
+            .ok()
+            .flatten();
         let _ = cx.update(|window, cx| {
             if let Ok(escape) = gpui::Keystroke::parse("escape") {
                 window.dispatch_keystroke(escape, cx);
@@ -576,6 +617,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                     "drawn": drawn,
                     "can_go_back": s.navigation.can_go_back(),
                     "typed": typed,
+                    "search": found,
                     "cleared": s.query.is_empty(),
                     "spanish_settings": switched.0,
                     "spanish_loading": switched.1,
