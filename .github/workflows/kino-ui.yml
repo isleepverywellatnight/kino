@@ -94,7 +94,8 @@ jobs:
           echo "::notice title=shell ${{ matrix.os }}::${out#KINO-UI SHELL }"
           echo "${out#KINO-UI SHELL }" | $(command -v python3 || command -v python) -c "
           import json, sys
-          r = json.load(sys.stdin)
+          # UTF-8 whatever the system's code page (Windows reads cp1252).
+          r = json.loads(sys.stdin.buffer.read().decode('utf-8'))
           screens = ['Movies', 'Series', 'Anime', 'Manga', 'Tonight', 'Explore', 'Library', 'Settings']
           assert r['drawn'] == screens + screens[-2::-1] + ['Settings'], r['drawn']
           # It ends on Settings, opened from Films: Back leads there.
@@ -102,7 +103,7 @@ jobs:
           assert r['typed'] == 'kino', r['typed']
           assert r['cleared'] is True
           assert r['spanish_settings'] == 'Ajustes', r['spanish_settings']
-          assert r['spanish_poster'] == 'Película 1', r['spanish_poster']
+          assert r['spanish_poster'] == 'Pel\u00edcula 1', ascii(r['spanish_poster'])
           assert r['back_poster'] == 'Film 1', r['back_poster']
           "
       - name: Processor at rest
