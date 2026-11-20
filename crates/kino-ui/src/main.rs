@@ -27,6 +27,7 @@ mod discover;
 mod explore;
 mod home;
 mod image_cache;
+mod library;
 #[cfg(target_os = "macos")]
 mod mac_native;
 #[cfg(windows)]

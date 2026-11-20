@@ -16,6 +16,7 @@ use crate::discover::{Discover, OpenTitle};
 use crate::explore::Explore;
 use crate::i18n::Language;
 use crate::image_cache::{DEFAULT_BUDGET, ImageCache};
+use crate::library::{Library, Tab as LibraryTab};
 use crate::search::SearchView;
 use crate::state::AppState;
 use crate::text_input::{self, TextInput};
@@ -172,6 +173,8 @@ pub struct Shell {
     tonight: Option<Entity<Tonight>>,
     /// Explorer; `None` when KINO's core could not start.
     explore: Option<Entity<Explore>>,
+    /// The library; `None` when KINO's core could not start.
+    library: Option<Entity<Library>>,
     /// KINO's core and the shared image cache, to open pages.
     core: Option<(Core, Entity<ImageCache>)>,
     /// The title page on top of the screen, if one is open.
@@ -187,7 +190,8 @@ pub struct Shell {
 impl Shell {
     pub fn new(check: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         // KINO's core: its database, network and metadata, as the server's.
-        let (movies, series, anime, results, tonight, explore, core) = match Core::start() {
+        let (movies, series, anime, results, tonight, explore, library, core) = match Core::start()
+        {
             Ok(core) => {
                 let images = cx.new(|_| ImageCache::new(core.image_loader(), DEFAULT_BUDGET));
 
@@ -206,6 +210,11 @@ impl Shell {
                     cx.new(|cx| Explore::new(core, images, cx))
                 };
                 open_from(&explore, cx);
+                let library = {
+                    let (core, images) = (core.clone(), images.clone());
+                    cx.new(|cx| Library::new(core, images, cx))
+                };
+                open_from(&library, cx);
                 let open = |catalog, cx: &mut Context<Self>| {
                     let (core, images) = (core.clone(), images.clone());
                     let view = cx.new(|cx| Discover::new(catalog, core, images, cx));
@@ -219,6 +228,7 @@ impl Shell {
                     Some(results),
                     Some(tonight),
                     Some(explore),
+                    Some(library),
                     Some((core, images)),
                 )
             }
@@ -226,6 +236,7 @@ impl Shell {
                 Err(error.clone().into()),
                 Err(error.clone().into()),
                 Err(error.into()),
+                None,
                 None,
                 None,
                 None,
@@ -255,6 +266,7 @@ impl Shell {
             results,
             tonight,
             explore,
+            library,
             core,
             page: None,
             search,
@@ -278,6 +290,11 @@ impl Shell {
             && let Some(explore) = &self.explore
         {
             explore.update(cx, |explore, cx| explore.refresh(cx));
+        }
+        if screen == Screen::Library
+            && let Some(library) = &self.library
+        {
+            library.update(cx, |library, cx| library.refresh(cx));
         }
         cx.notify();
     }
@@ -438,6 +455,10 @@ impl Shell {
             },
             Screen::Explore => match &self.explore {
                 Some(explore) => div().size_full().child(explore.clone()).into_any_element(),
+                None => catalog_view(&self.movies),
+            },
+            Screen::Library => match &self.library {
+                Some(library) => div().size_full().child(library.clone()).into_any_element(),
                 None => catalog_view(&self.movies),
             },
             Screen::Settings => settings(cx),
@@ -858,6 +879,54 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
             })
             .ok()
             .flatten();
+        // The library: the lists from KINO's database, then the statistics.
+        let _ = shell.update(cx, |s, cx| s.go(Screen::Library, cx));
+        step().await;
+        for _ in 0..200 {
+            let loading = shell
+                .update(cx, |s, cx| {
+                    s.library
+                        .as_ref()
+                        .is_some_and(|l| l.read(cx).lists().is_none())
+                })
+                .unwrap_or(false);
+            if !loading {
+                break;
+            }
+            step().await;
+        }
+        let _ = shell.update(cx, |s, cx| {
+            if let Some(library) = &s.library {
+                library.update(cx, |library, cx| library.show(LibraryTab::Stats, cx));
+            }
+        });
+        for _ in 0..200 {
+            let loading = shell
+                .update(cx, |s, cx| {
+                    s.library
+                        .as_ref()
+                        .is_some_and(|l| l.read(cx).stats().is_none())
+                })
+                .unwrap_or(false);
+            if !loading {
+                break;
+            }
+            step().await;
+        }
+        let library = shell
+            .update(cx, |s, cx| {
+                s.library.as_ref().map(|l| {
+                    let l = l.read(cx);
+                    serde_json::json!({
+                        "my_list": l.lists().map(|x| x.my_list.len()),
+                        "in_progress": l.lists().map(|x| x.in_progress.len()),
+                        "watched": l.lists().map(|x| x.watched.len()),
+                        "stats": l.stats().map(|x| x.len()),
+                    })
+                })
+            })
+            .ok()
+            .flatten();
         let _ = shell.update(cx, |s, cx| {
             let catalog = |c: &Result<Entity<Discover>, SharedString>| match c {
                 Ok(d) => {
@@ -900,6 +969,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                     "filtered": filtered,
                     "tonight": tonight,
                     "explore": explore,
+                    "library": library,
                 })
             );
             cx.quit();
