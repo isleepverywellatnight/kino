@@ -26,6 +26,7 @@ mod mac_native;
 #[cfg(windows)]
 mod native;
 mod shell;
+mod text_input;
 mod theme;
 
 /// Where mpv draws on the native path: on Windows, KINO's window and the
@@ -686,6 +687,7 @@ fn main() {
     }
     Application::new().run(move |cx: &mut App| {
         shell::bind_keys(cx);
+        text_input::bind_keys(cx);
         // 1180×760, or less on a smaller screen: the whole window stays on it.
         let screen = cx
             .primary_display()

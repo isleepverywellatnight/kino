@@ -2,19 +2,30 @@
 //! sections, a header with Back and the search field, and the screen's content.
 //! Screens are still empty but Films, which shows the trial poster grid.
 //!
-//! Shortcuts: Alt+← goes back; Ctrl+1…8 (⌘ on macOS) opens a screen.
+//! Shortcuts: Alt+← goes back; Ctrl+1…8 (⌘ on macOS) opens a screen;
+//! Ctrl/⌘+K goes to the search field, Escape empties it.
 
 use gpui::{
     App, Context, Entity, FocusHandle, Focusable, KeyBinding, SharedString, Window, actions, div,
     prelude::*, px,
 };
 
+use crate::text_input::{self, TextInput};
 use crate::{Kino, bar, theme};
 
 actions!(
     kino,
     [
-        Back, Screen1, Screen2, Screen3, Screen4, Screen5, Screen6, Screen7, Screen8
+        Back,
+        FocusSearch,
+        Screen1,
+        Screen2,
+        Screen3,
+        Screen4,
+        Screen5,
+        Screen6,
+        Screen7,
+        Screen8,
     ]
 );
 
@@ -126,6 +137,7 @@ impl Navigation {
 pub fn bind_keys(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("alt-left", Back, Some("Shell")),
+        KeyBinding::new("secondary-k", FocusSearch, Some("Shell")),
         KeyBinding::new("secondary-1", Screen1, Some("Shell")),
         KeyBinding::new("secondary-2", Screen2, Some("Shell")),
         KeyBinding::new("secondary-3", Screen3, Some("Shell")),
@@ -140,6 +152,9 @@ pub fn bind_keys(cx: &mut App) {
 pub struct Shell {
     navigation: Navigation,
     grid: Entity<Kino>,
+    search: Entity<TextInput>,
+    /// What the search field holds, as of its last change.
+    query: gpui::SharedString,
     focus: FocusHandle,
     /// `--shell-check`: each screen drawn, in order.
     drawn: Option<Vec<Screen>>,
@@ -154,12 +169,20 @@ impl Shell {
         });
         let focus = cx.focus_handle();
         window.focus(&focus);
+        let search = cx.new(|cx| TextInput::new(t!("page.rechercher_un_film_une_serie"), cx));
+        cx.subscribe(&search, |shell, search, _: &text_input::Changed, cx| {
+            shell.query = search.read(cx).text().clone();
+            cx.notify();
+        })
+        .detach();
         if check {
-            run_check(cx);
+            run_check(window, cx);
         }
         Self {
             navigation: Navigation::new(Screen::Movies),
             grid,
+            search,
+            query: gpui::SharedString::default(),
             focus,
             drawn: check.then(Vec::new),
         }
@@ -254,7 +277,6 @@ impl Shell {
             .border_color(theme::line())
             .child(back)
             .child(
-                // The search field; typing comes with the text input (G1).
                 div()
                     .id("search")
                     .h(px(38.0))
@@ -266,13 +288,24 @@ impl Shell {
                     .bg(theme::surface_2())
                     .border_1()
                     .border_color(theme::line())
-                    .text_size(theme::FS_MD)
-                    .text_color(theme::text_3())
-                    .child(t!("page.rechercher_un_film_une_serie")),
+                    .child(self.search.clone()),
             )
     }
 
     fn content(&self) -> gpui::AnyElement {
+        // A query takes the content until results come (G2: Search).
+        if !self.query.trim().is_empty() {
+            return div()
+                .size_full()
+                .p(theme::SPACE_6)
+                .text_size(theme::FS_XL)
+                .font_weight(gpui::FontWeight::BOLD)
+                .child(SharedString::from(t!(
+                    "fiche.resultats_pour_x",
+                    self.query.trim()
+                )))
+                .into_any_element();
+        }
         match self.navigation.current() {
             Screen::Movies => div()
                 .size_full()
@@ -313,7 +346,10 @@ impl Render for Shell {
             .id("shell")
             .key_context("Shell")
             .track_focus(&self.focus)
-            .on_action(cx.listener(|shell, _: &Back, _, cx| shell.back(cx)));
+            .on_action(cx.listener(|shell, _: &Back, _, cx| shell.back(cx)))
+            .on_action(cx.listener(|shell, _: &FocusSearch, window, cx| {
+                window.focus(&shell.search.focus_handle(cx));
+            }));
         macro_rules! screen_keys {
             ($($action:ident => $index:expr),*) => {
                 $(root = root.on_action(cx.listener(|shell, _: &$action, _, cx| {
@@ -349,9 +385,10 @@ impl Render for Shell {
 }
 
 /// `--shell-check`: every screen in turn, then Back to the start, one step
-/// every 150 ms; prints each screen as drawn, then quits.
-fn run_check(cx: &mut Context<Shell>) {
-    cx.spawn(async move |shell, cx| {
+/// every 150 ms; then real keystrokes: the search shortcut, "kino" typed into
+/// the field, Escape. Prints what was drawn and typed, then quits.
+fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
+    cx.spawn_in(window, async move |shell, cx| {
         let executor = cx.background_executor().clone();
         let step = || executor.timer(std::time::Duration::from_millis(150));
         step().await;
@@ -367,6 +404,34 @@ fn run_check(cx: &mut Context<Shell>) {
             }
             step().await;
         }
+        // Keys as a user presses them: bindings first, then the field.
+        let shortcut = if cfg!(target_os = "macos") {
+            "cmd-k"
+        } else {
+            "ctrl-k"
+        };
+        let keys = [shortcut, "k", "i", "n", "o"];
+        for key in keys {
+            // Through the window, not the shell: its actions update it.
+            let pressed = cx.update(|window, cx| {
+                if let Ok(keystroke) = gpui::Keystroke::parse(key) {
+                    window.dispatch_keystroke(keystroke, cx);
+                }
+            });
+            if pressed.is_err() {
+                return;
+            }
+            step().await;
+        }
+        let typed = shell
+            .update(cx, |s, _| s.query.to_string())
+            .unwrap_or_default();
+        let _ = cx.update(|window, cx| {
+            if let Ok(escape) = gpui::Keystroke::parse("escape") {
+                window.dispatch_keystroke(escape, cx);
+            }
+        });
+        step().await;
         let _ = shell.update(cx, |s, cx| {
             let drawn: Vec<String> = s
                 .drawn
@@ -376,7 +441,12 @@ fn run_check(cx: &mut Context<Shell>) {
                 .collect();
             println!(
                 "KINO-UI SHELL {}",
-                serde_json::json!({ "drawn": drawn, "can_go_back": s.navigation.can_go_back() })
+                serde_json::json!({
+                    "drawn": drawn,
+                    "can_go_back": s.navigation.can_go_back(),
+                    "typed": typed,
+                    "cleared": s.query.is_empty(),
+                })
             );
             cx.quit();
         });
