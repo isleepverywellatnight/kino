@@ -657,6 +657,7 @@ impl Render for Player {
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let bench = args.iter().any(|a| a == "--bench");
+    let idle = args.iter().any(|a| a == "--idle");
     let video = args.iter().position(|a| a == "--video").map(|at| {
         args.get(at + 1)
             .filter(|a| !a.starts_with("--"))
@@ -719,6 +720,9 @@ fn main() {
             None => cx
                 .open_window(options, |window, cx| {
                     window.set_window_title("KINO");
+                    if idle {
+                        measure_idle(cx);
+                    }
                     cx.new(|cx| Kino::new(bench, cx))
                 })
                 .map(|_| ()),
@@ -786,4 +790,22 @@ fn open_player(
         let _ = window;
         Err("no native video path on this system".into())
     }
+}
+
+/// `--idle`: the grid on screen, nothing moving. After 5 s (posters loaded),
+/// the processor time used over 10 s, as a share of one core, then quit.
+fn measure_idle(cx: &mut App) {
+    cx.spawn(async move |cx| {
+        let timer = |s| cx.background_executor().timer(Duration::from_secs(s));
+        timer(5).await;
+        let (start, at) = (cpu_ms(), Instant::now());
+        timer(10).await;
+        let pct = (cpu_ms() - start) / (at.elapsed().as_secs_f64() * 1000.0) * 100.0;
+        println!(
+            "KINO-UI IDLE {}",
+            serde_json::json!({ "cpu_pct": (pct * 10.0).round() / 10.0 })
+        );
+        let _ = cx.update(|cx| cx.quit());
+    })
+    .detach();
 }
