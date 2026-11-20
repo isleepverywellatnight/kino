@@ -14,6 +14,8 @@
 
 use std::sync::{Arc, Mutex};
 
+#[macro_use]
+mod i18n;
 #[cfg(target_os = "macos")]
 mod mac_native;
 #[cfg(windows)]
@@ -276,7 +278,11 @@ fn poster_card(index: usize, image: Option<Arc<Image>>) -> impl IntoElement {
             div()
                 .text_sm()
                 .text_color(rgb(TEXT))
-                .child(SharedString::from(format!("Film {}", index + 1))),
+                .child(SharedString::from(format!(
+                    "{} {}",
+                    t!("anime.film"),
+                    index + 1
+                ))),
         )
         .child(
             div()
@@ -656,6 +662,13 @@ impl Render for Player {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    // KINO_LANG (fr, en, …) wins over the system's language.
+    i18n::set_language(
+        std::env::var("KINO_LANG")
+            .ok()
+            .and_then(|code| i18n::Language::from_code(&code))
+            .unwrap_or_else(i18n::system_language),
+    );
     let bench = args.iter().any(|a| a == "--bench");
     let idle = args.iter().any(|a| a == "--idle");
     let video = args.iter().position(|a| a == "--video").map(|at| {
