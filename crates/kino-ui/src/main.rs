@@ -29,6 +29,7 @@ mod image_cache;
 mod mac_native;
 #[cfg(windows)]
 mod native;
+mod search;
 mod shell;
 mod state;
 mod text_input;

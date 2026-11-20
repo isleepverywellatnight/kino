@@ -34,6 +34,7 @@ impl Catalog {
 #[derive(Clone)]
 pub struct Core {
     runtime: Arc<tokio::runtime::Runtime>,
+    db: Arc<Db>,
     meta: Meta,
 }
 
@@ -55,12 +56,13 @@ impl Core {
                 .map_err(|e| format!("cannot open KINO's database: {e:#}"))?,
         );
         let meta = Meta {
-            net: Arc::new(Net::new(db)),
+            net: Arc::new(Net::new(db.clone())),
             cinemeta: kino::meta::CINEMETA.into(),
             translate: true,
         };
         Ok(Self {
             runtime: Arc::new(runtime),
+            db,
             meta,
         })
     }
@@ -88,6 +90,26 @@ impl Core {
             .map_err(|e| e.to_string())
         });
         async move { task.await.map_err(|e| format!("catalog task: {e}"))? }
+    }
+
+    /// Films and series matching `query`, films first, as the web's search
+    /// shows them (`kino::catalog::search`, both kinds at once).
+    pub fn search(&self, query: &str) -> impl Future<Output = Vec<Title>> + use<> {
+        let (meta, db, query) = (self.meta.clone(), self.db.clone(), query.to_string());
+        let task = self.runtime.spawn(async move {
+            let (movies, series) = tokio::join!(
+                kino::catalog::search(&meta, &db, &query, "movie"),
+                kino::catalog::search(&meta, &db, &query, "series")
+            );
+            let mut seen = std::collections::HashSet::new();
+            movies
+                .iter()
+                .chain(&series)
+                .filter_map(Title::from_meta)
+                .filter(|title| seen.insert(title.id.clone()))
+                .collect::<Vec<_>>()
+        });
+        async move { task.await.unwrap_or_default() }
     }
 
     /// Images over HTTP(S) with KINO's client, for the image cache.

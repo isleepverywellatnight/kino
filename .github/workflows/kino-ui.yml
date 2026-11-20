@@ -85,7 +85,8 @@ jobs:
         working-directory: crates/kino-ui
         run: |
           # The shell opens every screen, then Back returns to the first; then
-          # real keys: Ctrl/⌘+K, "kino" typed in the search field, Escape;
+          # real keys: Ctrl/⌘+K, "matrix" typed in the search field (KINO's
+          # search answers), Escape;
           # then Spanish from Settings (shared state) and back; then KINO's Films
           # and Series catalogs, loaded through the kino crate.
           if [ "$RUNNER_OS" = Linux ]; then export DISPLAY=:99; fi
@@ -102,7 +103,9 @@ jobs:
           assert r['drawn'] == screens + screens[-2::-1] + ['Settings'], r['drawn']
           # It ends on Settings, opened from Films: Back leads there.
           assert r['can_go_back'] is True
-          assert r['typed'] == 'kino', r['typed']
+          assert r['typed'] == 'matrix', r['typed']
+          # The search those keys started, through kino::catalog::search.
+          assert r['search'] and r['search']['count'] > 0, r['search']
           assert r['cleared'] is True
           assert r['spanish_settings'] == 'Ajustes', r['spanish_settings']
           assert r['spanish_loading'] == 'Cargando\u2026', ascii(r['spanish_loading'])

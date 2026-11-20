@@ -100,31 +100,43 @@ impl Discover {
         if range.end + PREFETCH_ROWS >= rows {
             self.load_more(cx);
         }
-        range
-            .map(|row| {
-                let start = row * COLUMNS;
-                let end = (start + COLUMNS).min(self.titles.len());
-                let cards: Vec<_> = self.titles[start..end]
-                    .iter()
-                    .map(|title| {
-                        let image = title.poster.as_ref().and_then(|url| {
-                            self.images.update(cx, |images, cx| images.get(url, cx))
-                        });
-                        poster_card(title.name.clone(), title.subtitle(), image)
-                    })
-                    .collect();
-                div()
-                    .id(row)
-                    .h(px(ROW_H))
-                    .px_6()
-                    .pt_4()
-                    .flex()
-                    .gap_4()
-                    .children(cards)
-                    .into_any_element()
-            })
-            .collect()
+        title_rows(&self.titles, range, &self.images, cx)
     }
+}
+
+/// Rows of title cards, posters through the image cache: the grid of every
+/// screen that lists titles (catalogs, search).
+pub fn title_rows(
+    titles: &[Title],
+    range: Range<usize>,
+    images: &Entity<ImageCache>,
+    cx: &mut gpui::App,
+) -> Vec<gpui::AnyElement> {
+    range
+        .map(|row| {
+            let start = row * COLUMNS;
+            let end = (start + COLUMNS).min(titles.len());
+            let cards: Vec<_> = titles[start..end]
+                .iter()
+                .map(|title| {
+                    let image = title
+                        .poster
+                        .as_ref()
+                        .and_then(|url| images.update(cx, |images, cx| images.get(url, cx)));
+                    poster_card(title.name.clone(), title.subtitle(), image)
+                })
+                .collect();
+            div()
+                .id(row)
+                .h(px(ROW_H))
+                .px_6()
+                .pt_4()
+                .flex()
+                .gap_4()
+                .children(cards)
+                .into_any_element()
+        })
+        .collect()
 }
 
 impl Render for Discover {
