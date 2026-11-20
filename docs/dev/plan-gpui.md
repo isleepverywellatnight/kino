@@ -115,7 +115,11 @@ recherche (la même que la route web, `kino::catalog::search`), la fiche d'un
 titre (fond, affiche, genres, synopsis, réalisation, distribution, « Vous
 aimerez aussi ») et, au-dessus de chaque grille, les genres du catalogue (ceux
 de la version web) et le tri (tendances, mieux notés, plus récents, plus
-anciens). La CI vérifie tout cela sur les 3 systèmes avec les vraies données.
+anciens). Au-dessus de chaque catalogue, les rangées de l'utilisateur lues
+dans sa base : « À continuer » (avec l'épisode atteint et la progression) et
+« Ma Liste » (ce qui reste à voir), chacune pour le seul type du catalogue,
+avec les règles de la version web. La CI vérifie tout cela sur les 3 systèmes
+avec les vraies données.
 
-Reste : les rangées de l'accueil, Ce soir, Explorer, et le choix de langue
-enregistré.
+Reste : « Pour vous », « Si vous avez aimé », « Nouveaux épisodes », Ce soir,
+Explorer, et le choix de langue enregistré.

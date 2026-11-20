@@ -24,6 +24,7 @@ use std::sync::{Arc, Mutex};
 mod i18n;
 mod core;
 mod discover;
+mod home;
 mod image_cache;
 #[cfg(target_os = "macos")]
 mod mac_native;
