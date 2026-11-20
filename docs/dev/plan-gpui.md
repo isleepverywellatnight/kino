@@ -73,7 +73,16 @@ serveur Rust ; le navigateur du téléphone n'a pas d'autre choix.
   lit une mire 1080p avec les libmpv publiées par KINO et garde une capture.
 - **Voie native Windows** (`--video --native`, `native.rs`) : mpv dessine au
   GPU dans une fenêtre enfant désactivée, sous la surface gpui transparente ;
-  les clics sur les contrôles au-dessus de la vidéo arrivent à gpui (vérifié en
-  CI par un vrai clic). Chaque mesure donne aussi `cpu_pct`.
-- **Reste** : voie native macOS (vue OpenGL de mpv sous la vue Metal de gpui),
-  Linux (X11 `wid`), CPU au repos.
+  un vrai clic sur le bouton lecture au-dessus de la vidéo arrive à gpui
+  (vérifié en CI). Chaque mesure donne aussi `cpu_pct`.
+- **Voie native macOS** (`mac_native.rs`) : la vue OpenGL de mpv sous la vue
+  de gpui, comme le lecteur de la version web. Elle fonctionne en CI, mais les
+  machines virtuelles macOS de GitHub n'accélèrent pas OpenGL (Metal oui) :
+  ~600 ms par image en rendu logiciel, la vitesse se mesure sur un vrai Mac.
+  À faire : dessiner hors du fil principal (contexte OpenGL partagé, comme
+  IINA), pour qu'un dessin lent ne fige jamais l'interface.
+- **Linux** : la voie universelle (`video.rs`) suffit pour G0. Une voie native
+  demande un compositeur (X11) ou une sous-surface Wayland ; elle viendra en G3
+  si la mesure sur une vraie machine le justifie.
+- **CPU au repos** (`--idle`) : la grille affichée, rien ne bouge, mesuré 10 s.
+  0,5 % d'un cœur en local (Vulkan logiciel) ; la CI vérifie < 1 % partout.
