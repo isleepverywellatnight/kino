@@ -721,6 +721,8 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                         "first": d.titles().first().map(|t| t.name.to_string()),
                         "with_poster": d.titles().iter().filter(|t| t.poster.is_some()).count(),
                         "error": d.error().map(|e| e.to_string()),
+                        "resume": d.shelves().resume.len(),
+                        "my_list": d.shelves().list.len(),
                     })
                 }
                 Err(e) => serde_json::json!({ "count": 0, "error": e.to_string() }),

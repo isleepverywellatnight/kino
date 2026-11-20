@@ -9,6 +9,7 @@ use std::time::Duration;
 use kino::db::Db;
 use kino::meta::Meta;
 use kino::net::Net;
+use serde_json::Value;
 
 use crate::image_cache::Loader;
 use crate::title::{Details, Title};
@@ -133,6 +134,20 @@ impl Core {
             .map_err(|e| e.to_string())
         });
         async move { task.await.map_err(|e| format!("catalog task: {e}"))? }
+    }
+
+    /// The user's history (newest first) and Ma Liste, anime marked, as the
+    /// web's `/api/user-lists` reads them: from KINO's database, off the UI.
+    pub fn library(&self) -> impl Future<Output = (Vec<Value>, Vec<Value>)> + use<> {
+        let db = self.db.clone();
+        let task = self.runtime.spawn_blocking(move || {
+            let (mut history, mut watchlist) =
+                (kino::library::history(&db), kino::library::watchlist(&db));
+            kino::anime_home::mark_anime(&db, &mut history);
+            kino::anime_home::mark_anime(&db, &mut watchlist);
+            (history, watchlist)
+        });
+        async move { task.await.unwrap_or_default() }
     }
 
     /// Films and series matching `query`, films first, as the web's search
