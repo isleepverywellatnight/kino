@@ -3722,7 +3722,9 @@ dependencies = [
  "objc2-app-kit",
  "objc2-foundation",
  "raw-window-handle",
+ "reqwest 0.12.28",
  "serde_json",
+ "tokio",
  "unicode-segmentation",
  "windows 0.61.3",
 ]

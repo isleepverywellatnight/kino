@@ -22,6 +22,8 @@ use std::sync::{Arc, Mutex};
 
 #[macro_use]
 mod i18n;
+mod core;
+mod discover;
 mod image_cache;
 #[cfg(target_os = "macos")]
 mod mac_native;
@@ -31,6 +33,7 @@ mod shell;
 mod state;
 mod text_input;
 mod theme;
+mod title;
 
 /// Where mpv draws on the native path: on Windows, KINO's window and the
 /// child window inside it; on macOS, mpv's OpenGL view under gpui's.
@@ -280,7 +283,11 @@ fn poster_titles() -> Vec<SharedString> {
         .collect()
 }
 
-fn poster_card(title: SharedString, image: Option<Arc<RenderImage>>) -> impl IntoElement {
+fn poster_card(
+    title: SharedString,
+    subtitle: SharedString,
+    image: Option<Arc<RenderImage>>,
+) -> impl IntoElement {
     let art = div()
         .w(px(POSTER_W))
         .h(px(POSTER_H))
@@ -298,12 +305,7 @@ fn poster_card(title: SharedString, image: Option<Arc<RenderImage>>) -> impl Int
         .gap_2()
         .child(art)
         .child(div().text_sm().text_color(theme::text()).child(title))
-        .child(
-            div()
-                .text_xs()
-                .text_color(theme::text_2())
-                .child("2026 • ★ 7.5"),
-        )
+        .child(div().text_xs().text_color(theme::text_2()).child(subtitle))
 }
 
 impl Render for Kino {
@@ -338,6 +340,7 @@ impl Render for Kino {
                                     |i| {
                                         poster_card(
                                             kino.titles[i].clone(),
+                                            SharedString::from("2026 • ★ 7.5"),
                                             kino.images.update(cx, |images, cx| {
                                                 images.get(&kino.keys[i], cx)
                                             }),

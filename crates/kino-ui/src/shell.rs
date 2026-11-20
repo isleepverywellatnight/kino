@@ -1,6 +1,7 @@
 //! KINO's shell (phase G1): the window bar, the sidebar with the web version's
 //! sections, a header with Back and the search field, and the screen's content.
-//! Screens are still empty but Films, which shows the trial poster grid.
+//! Films and Series show KINO's catalogs (`discover.rs`); the other screens
+//! are still empty.
 //!
 //! Shortcuts: Alt+← goes back; Ctrl+1…8 (⌘ on macOS) opens a screen;
 //! Ctrl/⌘+K goes to the search field, Escape empties it.
@@ -10,10 +11,13 @@ use gpui::{
     prelude::*, px,
 };
 
+use crate::core::{Catalog, Core};
+use crate::discover::Discover;
 use crate::i18n::Language;
+use crate::image_cache::{DEFAULT_BUDGET, ImageCache};
 use crate::state::AppState;
 use crate::text_input::{self, TextInput};
-use crate::{Kino, bar, theme};
+use crate::{bar, theme};
 
 actions!(
     kino,
@@ -153,7 +157,9 @@ pub fn bind_keys(cx: &mut App) {
 
 pub struct Shell {
     navigation: Navigation,
-    grid: Entity<Kino>,
+    /// The Discover catalogs, or why KINO's core could not start.
+    movies: Result<Entity<Discover>, SharedString>,
+    series: Result<Entity<Discover>, SharedString>,
     search: Entity<TextInput>,
     /// What the search field holds, as of its last change.
     query: gpui::SharedString,
@@ -164,11 +170,18 @@ pub struct Shell {
 
 impl Shell {
     pub fn new(check: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let grid = cx.new(|cx| {
-            let mut grid = Kino::new(false, cx);
-            grid.framed = false;
-            grid
-        });
+        // KINO's core: its database, network and metadata, as the server's.
+        let (movies, series) = match Core::start() {
+            Ok(core) => {
+                let images = cx.new(|_| ImageCache::new(core.image_loader(), DEFAULT_BUDGET));
+                let open = |catalog, cx: &mut Context<Self>| {
+                    let (core, images) = (core.clone(), images.clone());
+                    Ok(cx.new(|cx| Discover::new(catalog, core, images, cx)))
+                };
+                (open(Catalog::Movies, cx), open(Catalog::Series, cx))
+            }
+            Err(error) => (Err(error.clone().into()), Err(error.into())),
+        };
         let focus = cx.focus_handle();
         window.focus(&focus);
         let search = cx.new(|cx| TextInput::new(t!("page.rechercher_un_film_une_serie"), cx));
@@ -182,7 +195,8 @@ impl Shell {
         }
         Self {
             navigation: Navigation::new(Screen::Movies),
-            grid,
+            movies,
+            series,
             search,
             query: gpui::SharedString::default(),
             focus,
@@ -309,10 +323,8 @@ impl Shell {
                 .into_any_element();
         }
         match self.navigation.current() {
-            Screen::Movies => div()
-                .size_full()
-                .child(self.grid.clone())
-                .into_any_element(),
+            Screen::Movies => catalog_view(&self.movies),
+            Screen::Series => catalog_view(&self.series),
             Screen::Settings => settings(cx),
             screen => div()
                 .size_full()
@@ -378,6 +390,19 @@ fn settings(cx: &App) -> gpui::AnyElement {
         .into_any_element()
 }
 
+/// A Discover catalog, or why it cannot show.
+fn catalog_view(catalog: &Result<Entity<Discover>, SharedString>) -> gpui::AnyElement {
+    match catalog {
+        Ok(discover) => div().size_full().child(discover.clone()).into_any_element(),
+        Err(error) => div()
+            .size_full()
+            .p(theme::SPACE_6)
+            .text_color(theme::text_3())
+            .child(error.clone())
+            .into_any_element(),
+    }
+}
+
 impl Focusable for Shell {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus.clone()
@@ -436,8 +461,9 @@ impl Render for Shell {
 
 /// `--shell-check`: every screen in turn, then Back to the start, one step
 /// every 150 ms; then real keystrokes: the search shortcut, "kino" typed into
-/// the field, Escape; then Spanish from Settings (shared state) and back.
-/// Prints what was drawn, typed and translated, then quits.
+/// the field, Escape; then Spanish from Settings (shared state) and back;
+/// then KINO's catalogs. Prints what was drawn, typed, translated and loaded,
+/// then quits.
 fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
     cx.spawn_in(window, async move |shell, cx| {
         let executor = cx.background_executor().clone();
@@ -489,19 +515,43 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
         let start = cx.update(|_, cx| AppState::language(cx)).ok();
         let _ = cx.update(|_, cx| AppState::set_language(Language::Spanish, cx));
         step().await;
-        let switched = shell
-            .update(cx, |s, cx| {
-                (
-                    Screen::Settings.title().to_string(),
-                    s.grid.read(cx).titles[0].to_string(),
-                )
-            })
-            .unwrap_or_default();
+        let switched = (
+            Screen::Settings.title().to_string(),
+            t!("anime.chargement").to_string(),
+        );
         if let Some(start) = start {
             let _ = cx.update(|_, cx| AppState::set_language(start, cx));
         }
         step().await;
+        // KINO's catalogs, from the network: up to 30 s for the first page.
+        for _ in 0..200 {
+            let loaded = shell
+                .update(cx, |s, cx| {
+                    [&s.movies, &s.series].iter().all(|c| match c {
+                        Ok(d) => !d.read(cx).titles().is_empty() || d.read(cx).error().is_some(),
+                        Err(_) => true,
+                    })
+                })
+                .unwrap_or(true);
+            if loaded {
+                break;
+            }
+            step().await;
+        }
         let _ = shell.update(cx, |s, cx| {
+            let catalog = |c: &Result<Entity<Discover>, SharedString>| match c {
+                Ok(d) => {
+                    let d = d.read(cx);
+                    serde_json::json!({
+                        "count": d.titles().len(),
+                        "first": d.titles().first().map(|t| t.name.to_string()),
+                        "with_poster": d.titles().iter().filter(|t| t.poster.is_some()).count(),
+                        "error": d.error().map(|e| e.to_string()),
+                    })
+                }
+                Err(e) => serde_json::json!({ "count": 0, "error": e.to_string() }),
+            };
+            let (movies, series) = (catalog(&s.movies), catalog(&s.series));
             let drawn: Vec<String> = s
                 .drawn
                 .iter()
@@ -516,8 +566,10 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                     "typed": typed,
                     "cleared": s.query.is_empty(),
                     "spanish_settings": switched.0,
-                    "spanish_poster": switched.1,
-                    "back_poster": s.grid.read(cx).titles[0].to_string(),
+                    "spanish_loading": switched.1,
+                    "back_loading": t!("anime.chargement"),
+                    "movies": movies,
+                    "series": series,
                 })
             );
             cx.quit();
