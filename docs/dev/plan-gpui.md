@@ -84,5 +84,5 @@ serveur Rust ; le navigateur du téléphone n'a pas d'autre choix.
 - **Linux** : la voie universelle (`video.rs`) suffit pour G0. Une voie native
   demande un compositeur (X11) ou une sous-surface Wayland ; elle viendra en G3
   si la mesure sur une vraie machine le justifie.
-- **CPU au repos** (`--idle`) : la grille affichée, rien ne bouge, mesuré 5 s.
+- **CPU au repos** (`--idle`) : la grille affichée, rien ne bouge, mesuré 10 s.
   0,5 % d'un cœur en local (Vulkan logiciel) ; la CI vérifie < 1 % partout.

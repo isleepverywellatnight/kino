@@ -792,14 +792,14 @@ fn open_player(
     }
 }
 
-/// `--idle`: the grid on screen, nothing moving. After 3 s (posters loaded),
-/// the processor time used over 5 s, as a share of one core, then quit.
+/// `--idle`: the grid on screen, nothing moving. After 5 s (posters loaded),
+/// the processor time used over 10 s, as a share of one core, then quit.
 fn measure_idle(cx: &mut App) {
     cx.spawn(async move |cx| {
         let timer = |s| cx.background_executor().timer(Duration::from_secs(s));
-        timer(3).await;
-        let (start, at) = (cpu_ms(), Instant::now());
         timer(5).await;
+        let (start, at) = (cpu_ms(), Instant::now());
+        timer(10).await;
         let pct = (cpu_ms() - start) / (at.elapsed().as_secs_f64() * 1000.0) * 100.0;
         println!(
             "KINO-UI IDLE {}",
