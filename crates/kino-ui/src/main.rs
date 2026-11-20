@@ -35,6 +35,7 @@ mod state;
 mod text_input;
 mod theme;
 mod title;
+mod title_page;
 
 /// Where mpv draws on the native path: on Windows, KINO's window and the
 /// child window inside it; on macOS, mpv's OpenGL view under gpui's.

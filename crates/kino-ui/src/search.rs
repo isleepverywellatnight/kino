@@ -6,11 +6,12 @@ use std::ops::Range;
 use std::time::Duration;
 
 use gpui::{
-    Context, Entity, SharedString, UniformListScrollHandle, Window, div, prelude::*, uniform_list,
+    Context, Entity, EventEmitter, SharedString, UniformListScrollHandle, Window, div, prelude::*,
+    uniform_list,
 };
 
 use crate::core::Core;
-use crate::discover::title_rows;
+use crate::discover::{OpenTitle, title_rows};
 use crate::image_cache::ImageCache;
 use crate::title::Title;
 use crate::{COLUMNS, theme};
@@ -28,6 +29,8 @@ pub struct SearchView {
     results: Vec<Title>,
     list: UniformListScrollHandle,
 }
+
+impl EventEmitter<OpenTitle> for SearchView {}
 
 impl SearchView {
     pub fn new(core: Core, images: Entity<ImageCache>, cx: &mut Context<Self>) -> Self {
@@ -114,7 +117,8 @@ impl Render for SearchView {
                 "search",
                 rows,
                 cx.processor(|view, range: Range<usize>, _, cx| {
-                    title_rows(&view.results, range, &view.images, cx)
+                    let open = OpenTitle::emitter(cx.entity());
+                    title_rows(&view.results, range, &view.images, open, cx)
                 }),
             )
             .track_scroll(self.list.clone())

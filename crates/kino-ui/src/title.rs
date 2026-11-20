@@ -16,6 +16,8 @@ pub struct Title {
     pub poster: Option<SharedString>,
     /// IMDb's rating, 0–10.
     pub rating: Option<f32>,
+    /// "movie", "series" or "anime": how KINO looks it up.
+    pub kind: SharedString,
 }
 
 impl Title {
@@ -42,8 +44,10 @@ impl Title {
             _ => None,
         });
         let rating = rating.filter(|r| (0.0..=10.0).contains(r) && *r > 0.0);
+        let kind = text("type").unwrap_or_else(|| SharedString::from("movie"));
         Some(Self {
             id,
+            kind,
             name,
             year,
             poster: text("poster").filter(|p| p.starts_with("https://")),
@@ -62,10 +66,120 @@ impl Title {
     }
 }
 
+/// A title's page: what KINO knows of it, in the interface's language where
+/// KINO has it (`description_fr`, `genres_fr`).
+#[derive(Clone, Debug)]
+pub struct Details {
+    pub title: Title,
+    pub description: Option<SharedString>,
+    pub genres: Vec<SharedString>,
+    /// The wide picture behind the page.
+    pub background: Option<SharedString>,
+    /// "142 min".
+    pub runtime: Option<SharedString>,
+    pub director: Vec<SharedString>,
+    pub cast: Vec<SharedString>,
+    pub similar: Vec<Title>,
+}
+
+impl Details {
+    /// `french`: the interface is in French, so KINO's French texts come first.
+    pub fn from_meta(meta: &Value, french: bool) -> Option<Self> {
+        let title = Title::from_meta(meta)?;
+        let text = |key: &str| {
+            meta.get(key)
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(|s| SharedString::from(s.to_string()))
+        };
+        let list = |key: &str| -> Vec<SharedString> {
+            meta.get(key)
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(|s| SharedString::from(s.to_string()))
+                .collect()
+        };
+        let (description, genres) = if french {
+            (
+                text("description_fr").or_else(|| text("description")),
+                Some(list("genres_fr"))
+                    .filter(|g| !g.is_empty())
+                    .unwrap_or_else(|| list("genres")),
+            )
+        } else {
+            (text("description"), list("genres"))
+        };
+        let similar = meta
+            .get("similar")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(Title::from_meta)
+            .filter(|t| t.id != title.id)
+            .collect();
+        Some(Self {
+            description,
+            genres,
+            background: text("background").filter(|b| b.starts_with("https://")),
+            runtime: text("runtime"),
+            director: list("director"),
+            cast: list("cast").into_iter().take(8).collect(),
+            similar,
+            title,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    fn page() -> Value {
+        json!({
+            "id": "tt0133093", "type": "movie", "name": "The Matrix", "releaseInfo": "1999",
+            "imdbRating": "8.7", "runtime": "136 min",
+            "description": "A hacker learns the truth.", "description_fr": "Un pirate découvre la vérité.",
+            "genres": ["Action", "Sci-Fi"], "genres_fr": ["Action", "Science-fiction"],
+            "background": "https://images.metahub.space/background/medium/tt0133093/img",
+            "director": ["Lana Wachowski", "Lilly Wachowski"], "cast": ["Keanu Reeves"],
+            "similar": [{"id": "tt0234215", "name": "The Matrix Reloaded", "type": "movie"},
+                        {"id": "tt0133093", "name": "The Matrix"}]
+        })
+    }
+
+    #[test]
+    fn a_page_in_french_uses_kino_s_french_texts() {
+        let details = Details::from_meta(&page(), true).unwrap();
+        assert_eq!(
+            details.description.as_ref().map(|d| d.as_ref()),
+            Some("Un pirate découvre la vérité.")
+        );
+        assert_eq!(details.genres[1].as_ref(), "Science-fiction");
+        assert_eq!(details.title.kind.as_ref(), "movie");
+    }
+
+    #[test]
+    fn a_page_in_another_language_keeps_the_originals() {
+        let details = Details::from_meta(&page(), false).unwrap();
+        assert_eq!(
+            details.description.as_ref().map(|d| d.as_ref()),
+            Some("A hacker learns the truth.")
+        );
+        assert_eq!(details.genres[1].as_ref(), "Sci-Fi");
+    }
+
+    #[test]
+    fn the_title_itself_is_not_among_the_similar_ones() {
+        let details = Details::from_meta(&page(), true).unwrap();
+        let names: Vec<_> = details.similar.iter().map(|t| t.name.to_string()).collect();
+        assert_eq!(names, ["The Matrix Reloaded"]);
+    }
 
     #[test]
     fn a_cinemeta_film_becomes_a_title() {
