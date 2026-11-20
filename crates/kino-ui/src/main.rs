@@ -6,7 +6,8 @@
 //! - KINO's window: no system frame, its own bar (drag, double press to
 //!   maximize, minimize, maximize, close).
 //! - A grid of 300 posters in a virtual list: only the rows on screen are
-//!   built; the posters arrive as they are made, off the main thread, like
+//!   built; the posters come through the image cache (`image_cache.rs`) as
+//!   their rows appear, decoded off the main thread, like
 //!   images from the network.
 //! - `--bench`: the grid scrolls by itself (fast, down then up), each frame's
 //!   time is measured, and the figures are printed as JSON before quitting.
@@ -21,6 +22,7 @@ use std::sync::{Arc, Mutex};
 
 #[macro_use]
 mod i18n;
+mod image_cache;
 #[cfg(target_os = "macos")]
 mod mac_native;
 #[cfg(windows)]
@@ -58,10 +60,10 @@ fn cpu_ms() -> f64 {
 use std::time::{Duration, Instant};
 
 use gpui::{
-    App, Application, Bounds, Context, Image, ImageFormat, MouseButton, MouseDownEvent, ObjectFit,
-    RenderImage, SharedString, StyledImage, UniformListScrollHandle, Window,
-    WindowBackgroundAppearance, WindowBounds, WindowDecorations, WindowOptions, div, img, point,
-    prelude::*, px, size, uniform_list,
+    App, Application, Bounds, Context, Entity, MouseButton, MouseDownEvent, ObjectFit, RenderImage,
+    SharedString, StyledImage, UniformListScrollHandle, Window, WindowBackgroundAppearance,
+    WindowBounds, WindowDecorations, WindowOptions, div, img, point, prelude::*, px, size,
+    uniform_list,
 };
 
 const POSTERS: usize = 300;
@@ -126,7 +128,9 @@ impl Bench {
 }
 
 struct Kino {
-    posters: Vec<Option<Arc<Image>>>,
+    images: Entity<image_cache::ImageCache>,
+    /// Each poster's key in the cache, made once.
+    keys: Vec<SharedString>,
     /// Each poster's title, made once: a scroll redraws many cards a second.
     titles: Vec<SharedString>,
     list: UniformListScrollHandle,
@@ -156,31 +160,23 @@ fn poster(index: usize) -> Vec<u8> {
 
 impl Kino {
     fn new(bench: bool, cx: &mut Context<Self>) -> Self {
-        // The posters arrive in batches, made off the main thread.
-        cx.spawn(async move |this, cx| {
-            for start in (0..POSTERS).step_by(25) {
-                let batch = cx
-                    .background_executor()
-                    .spawn(async move {
-                        (start..(start + 25).min(POSTERS))
-                            .map(|i| Arc::new(Image::from_bytes(ImageFormat::Jpeg, poster(i))))
-                            .collect::<Vec<_>>()
-                    })
-                    .await;
-                let done = this.update(cx, |kino, cx| {
-                    for (offset, image) in batch.into_iter().enumerate() {
-                        kino.posters[start + offset] = Some(image);
-                    }
-                    cx.notify();
-                });
-                if done.is_err() {
-                    return;
-                }
-            }
-        })
-        .detach();
+        // The posters come through KINO's image cache, asked for as their rows
+        // appear and decoded off the main thread, like images from the
+        // network. Here the "network" makes each one (`poster`).
+        let loader: image_cache::Loader = Arc::new(|key: &str| {
+            let index = key
+                .strip_prefix("poster:")
+                .and_then(|n| n.parse::<usize>().ok())
+                .ok_or_else(|| format!("unknown poster {key}"))?;
+            Ok(poster(index))
+        });
+        let images = cx.new(|_| image_cache::ImageCache::new(loader, image_cache::DEFAULT_BUDGET));
+        cx.observe(&images, |_, _, cx| cx.notify()).detach();
         Self {
-            posters: vec![None; POSTERS],
+            images,
+            keys: (0..POSTERS)
+                .map(|i| SharedString::from(format!("poster:{i}")))
+                .collect(),
             titles: (1..=POSTERS)
                 .map(|n| SharedString::from(format!("{} {n}", t!("anime.film"))))
                 .collect(),
@@ -197,7 +193,12 @@ impl Kino {
         };
         let elapsed = bench.tick();
         if elapsed >= BENCH_LEG * 2 {
-            println!("KINO-UI BENCH {}", bench.report());
+            let mut report: serde_json::Value =
+                serde_json::from_str(&bench.report()).unwrap_or_default();
+            let images = self.images.read(cx);
+            report["cache_images"] = images.len().into();
+            report["cache_mb"] = (images.used() / (1024 * 1024)).into();
+            println!("KINO-UI BENCH {report}");
             cx.quit();
             return;
         }
@@ -266,7 +267,7 @@ pub(crate) fn bar() -> impl IntoElement {
     }
 }
 
-fn poster_card(title: SharedString, image: Option<Arc<Image>>) -> impl IntoElement {
+fn poster_card(title: SharedString, image: Option<Arc<RenderImage>>) -> impl IntoElement {
     let art = div()
         .w(px(POSTER_W))
         .h(px(POSTER_H))
@@ -310,7 +311,7 @@ impl Render for Kino {
             uniform_list(
                 "posters",
                 rows,
-                cx.processor(|kino, range: std::ops::Range<usize>, _, _| {
+                cx.processor(|kino, range: std::ops::Range<usize>, _, cx| {
                     range
                         .map(|row| {
                             div()
@@ -322,7 +323,12 @@ impl Render for Kino {
                                 .gap_4()
                                 .children((row * COLUMNS..((row + 1) * COLUMNS).min(POSTERS)).map(
                                     |i| {
-                                        poster_card(kino.titles[i].clone(), kino.posters[i].clone())
+                                        poster_card(
+                                            kino.titles[i].clone(),
+                                            kino.images.update(cx, |images, cx| {
+                                                images.get(&kino.keys[i], cx)
+                                            }),
+                                        )
                                     },
                                 ))
                         })
