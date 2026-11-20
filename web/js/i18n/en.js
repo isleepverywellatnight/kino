@@ -1370,6 +1370,7 @@ KINO_I18N.load({
 "settings.en_cours": "In progress...",
 "settings.enregistre": "Saved",
 "settings.enregistrement": "Saving…",
+"settings.enregistrer_la_cle": "Save the key",
 "settings.envoi": "Sending…",
 "settings.episode": "episode",
 "settings.episode_x": "Episode {}",

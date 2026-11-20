@@ -100,8 +100,8 @@ jobs:
           # UTF-8 whatever the system's code page (Windows reads cp1252).
           r = json.loads(sys.stdin.buffer.read().decode('utf-8'))
           screens = ['Movies', 'Series', 'Anime', 'Manga', 'Tonight', 'Explore', 'Library', 'Settings']
-          assert r['drawn'] == screens + screens[-2::-1] + ['Settings', 'Tonight', 'Explore'], r['drawn']
-          # It ends on Explorer, opened from « Ce soir »: Back leads there.
+          assert r['drawn'] == screens + screens[-2::-1] + ['Settings', 'Tonight', 'Explore', 'Manga', 'Library'], r['drawn']
+          # It ends on the library, opened from Manga: Back leads there.
           assert r['can_go_back'] is True
           assert r['typed'] == 'matrix', r['typed']
           # The search those keys started, through kino::catalog::search.
@@ -119,6 +119,9 @@ jobs:
           assert page and page['page'] and page['page'].get('name'), page
           assert page['page']['description'] is True, page
           assert page['closed_by_back'] is True, page
+          # « Regarder » went through KINO's routes in this process and came back.
+          play = page['page'].get('play', '')
+          assert play and play not in ('idle', 'launching'), page
           # The Films grid by genre and rating, as its chips pick them.
           f = r['filtered']
           assert f and f['genre'] == 'Action' and f['sort'] == 'imdbRating', f
@@ -131,6 +134,15 @@ jobs:
           e = r['explore']
           assert e and e['selections'] >= 6 and e['imported'] == 0 and e['titles'] > 0, e
           assert e['first'] == 'Letterboxd Official Top 250', e
+          # Manga's three rows, from AniList through KINO's manga routes.
+          m = r['manga']
+          assert m and len(m) == 3 and sum(m) > 0, m
+          # The library from KINO's database (empty on CI) and its statistics.
+          lib = r['library']
+          assert lib and lib['my_list'] == 0 and lib['stats'] and lib['stats'] >= 4, lib
+          # The settings, read through /api/config.
+          st = r['settings']
+          assert st and st['provider'] == 'realdebrid', st
           "
       - name: Processor at rest
         working-directory: crates/kino-ui

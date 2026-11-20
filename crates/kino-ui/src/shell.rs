@@ -17,7 +17,9 @@ use crate::explore::Explore;
 use crate::i18n::Language;
 use crate::image_cache::{DEFAULT_BUDGET, ImageCache};
 use crate::library::{Library, Tab as LibraryTab};
+use crate::manga::Manga;
 use crate::search::SearchView;
+use crate::settings::Settings;
 use crate::state::AppState;
 use crate::text_input::{self, TextInput};
 use crate::title::Title;
@@ -175,6 +177,10 @@ pub struct Shell {
     explore: Option<Entity<Explore>>,
     /// The library; `None` when KINO's core could not start.
     library: Option<Entity<Library>>,
+    /// Manga; `None` when KINO's core could not start.
+    manga: Option<Entity<Manga>>,
+    /// Settings; `None` when KINO's core could not start (the language only).
+    settings: Option<Entity<Settings>>,
     /// KINO's core and the shared image cache, to open pages.
     core: Option<(Core, Entity<ImageCache>)>,
     /// The title page on top of the screen, if one is open.
@@ -190,59 +196,71 @@ pub struct Shell {
 impl Shell {
     pub fn new(check: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         // KINO's core: its database, network and metadata, as the server's.
-        let (movies, series, anime, results, tonight, explore, library, core) = match Core::start()
-        {
-            Ok(core) => {
-                let images = cx.new(|_| ImageCache::new(core.image_loader(), DEFAULT_BUDGET));
+        let (movies, series, anime, results, tonight, explore, library, manga, settings, core) =
+            match Core::start() {
+                Ok(core) => {
+                    let images = cx.new(|_| ImageCache::new(core.image_loader(), DEFAULT_BUDGET));
 
-                let results = {
-                    let (core, images) = (core.clone(), images.clone());
-                    cx.new(|cx| SearchView::new(core, images, cx))
-                };
-                open_from(&results, cx);
-                let tonight = {
-                    let (core, images) = (core.clone(), images.clone());
-                    cx.new(|cx| Tonight::new(core, images, cx))
-                };
-                open_from(&tonight, cx);
-                let explore = {
-                    let (core, images) = (core.clone(), images.clone());
-                    cx.new(|cx| Explore::new(core, images, cx))
-                };
-                open_from(&explore, cx);
-                let library = {
-                    let (core, images) = (core.clone(), images.clone());
-                    cx.new(|cx| Library::new(core, images, cx))
-                };
-                open_from(&library, cx);
-                let open = |catalog, cx: &mut Context<Self>| {
-                    let (core, images) = (core.clone(), images.clone());
-                    let view = cx.new(|cx| Discover::new(catalog, core, images, cx));
-                    open_from(&view, cx);
-                    Ok(view)
-                };
-                (
-                    open(Catalog::Movies, cx),
-                    open(Catalog::Series, cx),
-                    open(Catalog::Anime, cx),
-                    Some(results),
-                    Some(tonight),
-                    Some(explore),
-                    Some(library),
-                    Some((core, images)),
-                )
-            }
-            Err(error) => (
-                Err(error.clone().into()),
-                Err(error.clone().into()),
-                Err(error.into()),
-                None,
-                None,
-                None,
-                None,
-                None,
-            ),
-        };
+                    let results = {
+                        let (core, images) = (core.clone(), images.clone());
+                        cx.new(|cx| SearchView::new(core, images, cx))
+                    };
+                    open_from(&results, cx);
+                    let tonight = {
+                        let (core, images) = (core.clone(), images.clone());
+                        cx.new(|cx| Tonight::new(core, images, cx))
+                    };
+                    open_from(&tonight, cx);
+                    let explore = {
+                        let (core, images) = (core.clone(), images.clone());
+                        cx.new(|cx| Explore::new(core, images, cx))
+                    };
+                    open_from(&explore, cx);
+                    let library = {
+                        let (core, images) = (core.clone(), images.clone());
+                        cx.new(|cx| Library::new(core, images, cx))
+                    };
+                    open_from(&library, cx);
+                    let manga = {
+                        let (core, images) = (core.clone(), images.clone());
+                        cx.new(|cx| Manga::new(core, images, cx))
+                    };
+                    let settings = {
+                        let core = core.clone();
+                        cx.new(|cx| Settings::new(core, cx))
+                    };
+                    let open = |catalog, cx: &mut Context<Self>| {
+                        let (core, images) = (core.clone(), images.clone());
+                        let view = cx.new(|cx| Discover::new(catalog, core, images, cx));
+                        open_from(&view, cx);
+                        Ok(view)
+                    };
+                    (
+                        open(Catalog::Movies, cx),
+                        open(Catalog::Series, cx),
+                        open(Catalog::Anime, cx),
+                        Some(results),
+                        Some(tonight),
+                        Some(explore),
+                        Some(library),
+                        Some(manga),
+                        Some(settings),
+                        Some((core, images)),
+                    )
+                }
+                Err(error) => (
+                    Err(error.clone().into()),
+                    Err(error.clone().into()),
+                    Err(error.into()),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ),
+            };
         let focus = cx.focus_handle();
         window.focus(&focus);
         let search = cx.new(|cx| TextInput::new(t!("page.rechercher_un_film_une_serie"), cx));
@@ -267,6 +285,8 @@ impl Shell {
             tonight,
             explore,
             library,
+            manga,
+            settings,
             core,
             page: None,
             search,
@@ -291,6 +311,16 @@ impl Shell {
         {
             explore.update(cx, |explore, cx| explore.refresh(cx));
         }
+        if screen == Screen::Manga
+            && let Some(manga) = &self.manga
+        {
+            manga.update(cx, |manga, cx| manga.open(cx));
+        }
+        if screen == Screen::Settings
+            && let Some(settings) = &self.settings
+        {
+            settings.update(cx, |settings, cx| settings.refresh(cx));
+        }
         if screen == Screen::Library
             && let Some(library) = &self.library
         {
@@ -309,6 +339,12 @@ impl Shell {
         if self.navigation.current() == Screen::Explore
             && let Some(explore) = &self.explore
             && explore.update(cx, |explore, cx| explore.close(cx))
+        {
+            return;
+        }
+        if self.navigation.current() == Screen::Manga
+            && let Some(manga) = &self.manga
+            && manga.update(cx, |manga, cx| manga.back(cx))
         {
             return;
         }
@@ -457,30 +493,23 @@ impl Shell {
                 Some(explore) => div().size_full().child(explore.clone()).into_any_element(),
                 None => catalog_view(&self.movies),
             },
+            Screen::Manga => match &self.manga {
+                Some(manga) => div().size_full().child(manga.clone()).into_any_element(),
+                None => catalog_view(&self.movies),
+            },
             Screen::Library => match &self.library {
                 Some(library) => div().size_full().child(library.clone()).into_any_element(),
                 None => catalog_view(&self.movies),
             },
-            Screen::Settings => settings(cx),
-            screen => div()
-                .size_full()
-                .p(theme::SPACE_6)
-                .flex()
-                .flex_col()
-                .gap(theme::SPACE_2)
-                .child(
-                    div()
-                        .text_size(theme::FS_XL)
-                        .font_weight(gpui::FontWeight::BOLD)
-                        .child(SharedString::from(screen.title())),
-                )
-                .into_any_element(),
+            Screen::Settings => match &self.settings {
+                Some(settings) => div().size_full().child(settings.clone()).into_any_element(),
+                None => settings(cx),
+            },
         }
     }
 }
 
-/// Settings: for now the interface's language, the first of KINO's settings
-/// in the native interface.
+/// Settings when KINO's core could not start: the interface's language.
 fn settings(cx: &App) -> gpui::AnyElement {
     let current = AppState::language(cx);
     let mut languages = div().flex().flex_wrap().gap(theme::SPACE_2);
@@ -879,6 +908,28 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
             })
             .ok()
             .flatten();
+        // Manga: the web's three rows, from AniList through KINO's routes.
+        let _ = shell.update(cx, |s, cx| s.go(Screen::Manga, cx));
+        step().await;
+        for _ in 0..200 {
+            let loading = shell
+                .update(cx, |s, cx| {
+                    s.manga
+                        .as_ref()
+                        .is_some_and(|m| m.read(cx).row_counts().is_none())
+                })
+                .unwrap_or(false);
+            if !loading {
+                break;
+            }
+            step().await;
+        }
+        let manga = shell
+            .update(cx, |s, cx| {
+                s.manga.as_ref().and_then(|m| m.read(cx).row_counts())
+            })
+            .ok()
+            .flatten();
         // The library: the lists from KINO's database, then the statistics.
         let _ = shell.update(cx, |s, cx| s.go(Screen::Library, cx));
         step().await;
@@ -970,6 +1021,13 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                     "tonight": tonight,
                     "explore": explore,
                     "library": library,
+                    "manga": manga,
+                    "settings": s.settings.as_ref().and_then(|x| x.read(cx).config()).map(|c| {
+                        serde_json::json!({
+                            "provider": c.provider.to_string(),
+                            "pref_lang": c.pref_lang.to_string(),
+                        })
+                    }),
                 })
             );
             cx.quit();

@@ -131,3 +131,29 @@ avec les vraies données.
 Reste : « Si vous avez aimé », « Nouveaux épisodes », Ce soir hors ligne et
 « Mes choix », la roulette et l'import Letterboxd d'Explorer, et le choix de
 langue enregistré.
+
+## État de G3 à G5 (première passe)
+
+Le serveur KINO tourne dans l'application native (`kino::launch::state` puis
+`serve_state`) : télécommande, TV, lecteur et tâches de lancement comme
+l'application de bureau. L'interface appelle les routes de KINO dans le même
+processus (`Core::api`, une requête locale passée au routeur, sans réseau) :
+toute la logique des routes web est réutilisée telle quelle.
+
+- **G3 Fiche et lecture** : « Regarder » (le film, ou l'épisode où la série
+  reprend) par `/api/one-click-play` avec la fenêtre de lecteur de KINO (mpv),
+  la source préparée par le service de débridage suivie jusqu'au lancement,
+  l'accord P2P demandé sans clé de débridage ; Ma Liste depuis la fiche ;
+  saisons et épisodes d'une série, chacun jouable. Reste : le lecteur intégré
+  sous l'interface (G0 l'a validé), pistes et sous-titres, TV.
+- **G4 Bibliothèque** : Ma Liste, En cours, Mes séries (prochain épisode,
+  épisodes vus, prochain à sortir), Calendrier, Déjà vus, Statistiques. Reste :
+  Hors ligne, Listes, Cloud.
+- **G5** : Manga (rangées, fiche d'une série et ses chapitres, lecteur page à
+  page, chapitre suivant) ; Réglages (langue enregistrée et reprise au
+  lancement, service de débridage et clé, langue audio, qualité). Reste : les
+  volumes HD et le dossier local du manga, le reste des réglages, Watch Party,
+  mises à jour.
+
+La CI ouvre chaque écran avec les vraies données, appuie sur « Regarder » et
+vérifie la réponse de la chaîne complète.

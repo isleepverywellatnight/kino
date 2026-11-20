@@ -52,6 +52,11 @@ impl Language {
         }
     }
 
+    /// The language's code, as KINO's settings keep it (`ui_language`).
+    pub fn code(self) -> &'static str {
+        ["fr", "en", "de", "es", "it", "pt", "ru", "ja", "zh"][self as usize]
+    }
+
     /// The language of a code like "fr", "pt-BR" or "zh_CN.UTF-8".
     pub fn from_code(code: &str) -> Option<Self> {
         let short = code.get(..2)?.to_ascii_lowercase();

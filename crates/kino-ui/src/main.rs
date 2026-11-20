@@ -30,9 +30,11 @@ mod image_cache;
 mod library;
 #[cfg(target_os = "macos")]
 mod mac_native;
+mod manga;
 #[cfg(windows)]
 mod native;
 mod search;
+mod settings;
 mod shell;
 mod state;
 mod text_input;
@@ -705,10 +707,12 @@ impl Render for Player {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    // KINO_LANG (fr, en, …) wins over the system's language.
+    // KINO_LANG (fr, en, …), else the language chosen in KINO's settings,
+    // else the system's.
     let language = std::env::var("KINO_LANG")
         .ok()
         .and_then(|code| i18n::Language::from_code(&code))
+        .or_else(|| kino::config::ui_language().and_then(|c| i18n::Language::from_code(&c)))
         .unwrap_or_else(i18n::system_language);
     let bench = args.iter().any(|a| a == "--bench");
     let idle = args.iter().any(|a| a == "--idle");

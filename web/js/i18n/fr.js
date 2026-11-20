@@ -1855,6 +1855,7 @@ KINO_I18N.source({
 "settings.en_cours": "En cours...",
 "settings.enregistre": "Enregistré",
 "settings.enregistrement": "Enregistrement…",
+"settings.enregistrer_la_cle": "Enregistrer la clé",
 "settings.envoi": "Envoi…",
 "settings.episode": "épisode",
 "settings.episode_x": "Épisode {}",
