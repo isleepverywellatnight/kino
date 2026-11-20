@@ -1,4 +1,7 @@
-//! KINO's native interface, phase G0 (docs/dev/plan-gpui.md): a go/no-go trial.
+//! KINO's native interface (docs/dev/plan-gpui.md).
+//!
+//! Launched without options, it opens KINO's shell (`shell.rs`, phase G1).
+//! The options run the trials of phase G0 and the CI's checks:
 //!
 //! - KINO's window: no system frame, its own bar (drag, double press to
 //!   maximize, minimize, maximize, close).
@@ -11,6 +14,8 @@
 //! - `--video [source]`: the player screen instead, a video drawn by libmpv
 //!   under gpui's own controls (`video.rs`). With `--bench`, it plays a 1080p
 //!   test pattern and prints how long each frame took to reach the screen.
+//! - `--idle`: the grid at rest; prints the processor's use.
+//! - `--shell-check`: the shell visits every screen and comes back.
 
 use std::sync::{Arc, Mutex};
 
@@ -20,6 +25,7 @@ mod i18n;
 mod mac_native;
 #[cfg(windows)]
 mod native;
+mod shell;
 mod theme;
 
 /// Where mpv draws on the native path: on Windows, KINO's window and the
@@ -121,6 +127,8 @@ struct Kino {
     posters: Vec<Option<Arc<Image>>>,
     list: UniformListScrollHandle,
     bench: Option<Bench>,
+    /// Alone in its window, with KINO's bar; else inside the shell.
+    framed: bool,
 }
 
 /// A poster (171×256 JPEG): a gradient of its own, like a real one, so that
@@ -171,6 +179,7 @@ impl Kino {
             posters: vec![None; POSTERS],
             list: UniformListScrollHandle::new(),
             bench: bench.then(Bench::new),
+            framed: true,
         }
     }
 
@@ -200,7 +209,7 @@ impl Kino {
 }
 
 /// KINO's bar: a press moves the window, a double press maximizes it.
-fn bar() -> impl IntoElement {
+pub(crate) fn bar() -> impl IntoElement {
     {
         let button = |id: &'static str, label: &'static str| {
             div()
@@ -289,38 +298,41 @@ impl Render for Kino {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.bench_frame(window, cx);
         let rows = POSTERS.div_ceil(COLUMNS);
-        div()
+        let root = div()
             .size_full()
             .flex()
             .flex_col()
-            .bg(theme::bg())
-            .text_color(theme::text())
-            .child(bar())
-            .child(
-                uniform_list(
-                    "posters",
-                    rows,
-                    cx.processor(|kino, range: std::ops::Range<usize>, _, _| {
-                        range
-                            .map(|row| {
-                                div()
-                                    .id(row)
-                                    .h(px(ROW_H))
-                                    .px_6()
-                                    .pt_4()
-                                    .flex()
-                                    .gap_4()
-                                    .children(
-                                        (row * COLUMNS..((row + 1) * COLUMNS).min(POSTERS))
-                                            .map(|i| poster_card(i, kino.posters[i].clone())),
-                                    )
-                            })
-                            .collect::<Vec<_>>()
-                    }),
-                )
-                .track_scroll(self.list.clone())
-                .flex_grow(),
+            .text_color(theme::text());
+        let root = if self.framed {
+            root.bg(theme::bg()).child(bar())
+        } else {
+            root
+        };
+        root.child(
+            uniform_list(
+                "posters",
+                rows,
+                cx.processor(|kino, range: std::ops::Range<usize>, _, _| {
+                    range
+                        .map(|row| {
+                            div()
+                                .id(row)
+                                .h(px(ROW_H))
+                                .px_6()
+                                .pt_4()
+                                .flex()
+                                .gap_4()
+                                .children(
+                                    (row * COLUMNS..((row + 1) * COLUMNS).min(POSTERS))
+                                        .map(|i| poster_card(i, kino.posters[i].clone())),
+                                )
+                        })
+                        .collect::<Vec<_>>()
+                }),
             )
+            .track_scroll(self.list.clone())
+            .flex_grow(),
+        )
     }
 }
 
@@ -664,6 +676,7 @@ fn main() {
     );
     let bench = args.iter().any(|a| a == "--bench");
     let idle = args.iter().any(|a| a == "--idle");
+    let shell_check = args.iter().any(|a| a == "--shell-check");
     let video = args.iter().position(|a| a == "--video").map(|at| {
         args.get(at + 1)
             .filter(|a| !a.starts_with("--"))
@@ -676,6 +689,7 @@ fn main() {
         std::process::exit(2);
     }
     Application::new().run(move |cx: &mut App| {
+        shell::bind_keys(cx);
         // 1180×760, or less on a smaller screen: the whole window stays on it.
         let screen = cx
             .primary_display()
@@ -721,6 +735,12 @@ fn main() {
                         player.parent = parent;
                         player
                     })
+                })
+                .map(|_| ()),
+            None if !(bench || idle) => cx
+                .open_window(options, |window, cx| {
+                    window.set_window_title("KINO");
+                    cx.new(|cx| shell::Shell::new(shell_check, window, cx))
                 })
                 .map(|_| ()),
             None => cx

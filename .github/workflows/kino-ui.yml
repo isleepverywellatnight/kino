@@ -73,6 +73,23 @@ jobs:
           out=$("$exe" --bench | tee /dev/stderr | grep "KINO-UI BENCH" || true)
           [ -n "$out" ] || { echo "::error::The bench printed nothing (the window did not run)"; exit 1; }
           echo "::notice title=${{ matrix.os }}::${out#KINO-UI BENCH }"
+      - name: Shell
+        working-directory: crates/kino-ui
+        run: |
+          # The shell opens every screen, then Back returns to the first.
+          if [ "$RUNNER_OS" = Linux ]; then export DISPLAY=:99; fi
+          exe=target/release/kino-ui
+          [ "$RUNNER_OS" = Windows ] && exe=target/release/kino-ui.exe
+          out=$(KINO_LANG=fr "$exe" --shell-check 2>/dev/null | grep "KINO-UI SHELL" || true)
+          [ -n "$out" ] || { echo "::error::The shell check printed nothing"; exit 1; }
+          echo "::notice title=shell ${{ matrix.os }}::${out#KINO-UI SHELL }"
+          echo "${out#KINO-UI SHELL }" | $(command -v python3 || command -v python) -c "
+          import json, sys
+          r = json.load(sys.stdin)
+          screens = ['Movies', 'Series', 'Anime', 'Manga', 'Tonight', 'Explore', 'Library', 'Settings']
+          assert r['drawn'] == screens + screens[-2::-1], r['drawn']
+          assert r['can_go_back'] is False
+          "
       - name: Processor at rest
         working-directory: crates/kino-ui
         run: |
