@@ -723,6 +723,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                         "error": d.error().map(|e| e.to_string()),
                         "resume": d.shelves().resume.len(),
                         "my_list": d.shelves().list.len(),
+                        "for_you": d.shelves().for_you.len(),
                     })
                 }
                 Err(e) => serde_json::json!({ "count": 0, "error": e.to_string() }),

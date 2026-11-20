@@ -140,25 +140,28 @@ impl EventEmitter<OpenTitle> for Discover {}
 enum Item {
     Resume,
     List,
+    ForYou,
     Filters,
     /// The message shown while the grid is empty.
     Empty,
     Row(usize),
 }
 
-/// The list's shape: the user's rows above (if any), the filters, then the
+/// The list's shape: the user's rows above (if any: À continuer, Ma Liste,
+/// Pour vous), the filters, then the
 /// grid's rows (or its message while empty).
 #[derive(Clone, Copy, Debug)]
 struct Layout {
     resume: bool,
     list: bool,
+    for_you: bool,
     titles: usize,
 }
 
 impl Layout {
     /// Where the grid starts in the list.
     fn grid_start(self) -> usize {
-        usize::from(self.resume) + usize::from(self.list) + 1
+        usize::from(self.resume) + usize::from(self.list) + usize::from(self.for_you) + 1
     }
 
     fn count(self) -> usize {
@@ -169,6 +172,7 @@ impl Layout {
         let above = [
             self.resume.then_some(Item::Resume),
             self.list.then_some(Item::List),
+            self.for_you.then_some(Item::ForYou),
             Some(Item::Filters),
         ];
         if let Some(item) = above.into_iter().flatten().nth(index) {
@@ -239,6 +243,7 @@ impl Discover {
         Layout {
             resume: !self.shelves.resume.is_empty(),
             list: !self.shelves.list.is_empty(),
+            for_you: !self.shelves.for_you.is_empty(),
             titles: self.titles.len(),
         }
     }
@@ -256,10 +261,13 @@ impl Discover {
 
     /// Re-reads the user's lists (a title watched or added elsewhere).
     pub fn load_shelves(&mut self, cx: &mut Context<Self>) {
-        let (catalog, library) = (self.catalog, self.core.library());
+        let catalog = self.catalog;
+        // Both asked at once, on KINO's runtime.
+        let (library, for_you) = (self.core.library(), self.core.for_you(catalog));
         cx.spawn(async move |this, cx| {
             let (history, watchlist) = library.await;
-            let shelves = Shelves::new(catalog, &history, &watchlist);
+            let for_you = for_you.await;
+            let shelves = Shelves::new(catalog, &history, &watchlist, &for_you);
             let _ = this.update(cx, |discover, cx| {
                 if discover.shelves != shelves {
                     discover.shelves = shelves;
@@ -345,6 +353,25 @@ impl Discover {
                     .map(|t| card(t, t.subtitle(), &self.images, open.clone(), cx))
                     .collect();
                 shelf("my-list", t!("page.ma_liste_2"), cards)
+            }
+            Some(Item::ForYou) => {
+                let cards: Vec<_> = self
+                    .shelves
+                    .for_you
+                    .iter()
+                    .map(|s| {
+                        card(&s.title, s.title.subtitle(), &self.images, open.clone(), cx).child(
+                            div()
+                                .w(px(crate::POSTER_W))
+                                .pt(theme::SPACE_1)
+                                .text_xs()
+                                .text_color(theme::text_3())
+                                .line_clamp(3)
+                                .child(s.why.clone()),
+                        )
+                    })
+                    .collect();
+                shelf("for-you", t!("page.pour_vous"), cards)
             }
             Some(Item::Filters) => self.filters(cx).into_any_element(),
             Some(Item::Empty) => {
@@ -565,6 +592,7 @@ mod tests {
         let layout = Layout {
             resume: true,
             list: false,
+            for_you: true,
             titles: COLUMNS + 1,
         };
         let items: Vec<_> = (0..layout.count()).map(|i| layout.item(i)).collect();
@@ -572,6 +600,7 @@ mod tests {
             items,
             [
                 Some(Item::Resume),
+                Some(Item::ForYou),
                 Some(Item::Filters),
                 Some(Item::Row(0)),
                 Some(Item::Row(1))
@@ -585,6 +614,7 @@ mod tests {
         let layout = Layout {
             resume: false,
             list: false,
+            for_you: false,
             titles: 0,
         };
         assert_eq!(layout.count(), 2);
@@ -592,6 +622,7 @@ mod tests {
         let layout = Layout {
             resume: true,
             list: true,
+            for_you: false,
             titles: 0,
         };
         assert_eq!(layout.item(2), Some(Item::Filters));

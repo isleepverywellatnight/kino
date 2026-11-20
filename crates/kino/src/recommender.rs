@@ -20,7 +20,9 @@ use serde_json::{Value, json};
 use unicode_normalization::UnicodeNormalization;
 
 use crate::db::Db;
+use crate::meta::Meta;
 use crate::sources::stream::py_round;
+use futures_util::StreamExt;
 
 pub const POOL_READY: usize = 500;
 const DESCRIPTION_WORDS: usize = 25;
@@ -707,6 +709,139 @@ pub fn for_you(
     cards
 }
 
+/// "series" for a series or an anime, else "movie".
+pub fn kind_of(media_type: &str) -> &'static str {
+    if media_type == "series" || media_type == "anime" {
+        "series"
+    } else {
+        "movie"
+    }
+}
+
+/// The user's titles as pool entries; those missing (40 at most) are read once.
+pub async fn known_titles(
+    meta: &Meta,
+    db: &Db,
+    store: &Store,
+    space: &Space,
+    ids: &[String],
+    kinds: &HashMap<String, &'static str>,
+) -> IndexMap<String, Value> {
+    let mut known: IndexMap<String, Value> = ids
+        .iter()
+        .filter_map(|i| space.entries.get(i).map(|e| (i.clone(), e.clone())))
+        .collect();
+    let missing: Vec<(String, bool)> = ids
+        .iter()
+        .filter(|i| !known.contains_key(*i))
+        .take(40)
+        .map(|i| (i.clone(), kinds.get(i).copied() == Some("series")))
+        .collect();
+    if missing.is_empty() {
+        return known;
+    }
+    let fetched: Vec<Value> =
+        futures_util::stream::iter(missing.into_iter().map(|(id, is_series)| {
+            let meta: Meta = meta.clone();
+            async move {
+                let kind = if is_series { "series" } else { "movie" };
+                let found = meta.media(&id, kind).await.ok()?;
+                if matches!(&found["name"], Value::Null | Value::Bool(false))
+                    || found["name"] == ""
+                    || found["name"] == 0
+                {
+                    return None;
+                }
+                let mut record = found.as_object().cloned().unwrap_or_default();
+                record.insert("imdb_id".into(), json!(id));
+                compact(&Value::Object(record), kind)
+            }
+        }))
+        .buffered(6)
+        .filter_map(|e| async move { e })
+        .collect()
+        .await;
+    if !fetched.is_empty() {
+        store.add_known(db, &fetched, crate::db::now());
+        known.extend(fetched.into_iter().map(|e| (text(&e["id"]), e)));
+    }
+    known
+}
+
+pub fn user_kinds(history: &[Value], watchlist: &[Value]) -> HashMap<String, &'static str> {
+    history
+        .iter()
+        .chain(watchlist)
+        .map(|e| (text(&e["id"]), kind_of(e["type"].as_str().unwrap_or(""))))
+        .collect()
+}
+
+/// The pool, read on a blocking thread: its first read parses thousands of titles.
+pub async fn pool(db: &Arc<Db>, store: &Arc<Store>) -> Option<Arc<Space>> {
+    let (db, store) = (db.clone(), store.clone());
+    crate::db::spawn_blocking(move || store.space(&db))
+        .await
+        .ok()
+}
+
+/// What « Pour vous » shows: whether the pool is read, the titles, its size.
+#[derive(Debug, Default)]
+pub struct ForYou {
+    pub ready: bool,
+    pub items: Vec<Value>,
+    pub pool: usize,
+}
+
+/// « Pour vous » for `kind` ("movie" or "series"), anime marked: as
+/// `/api/for-you` answers, for the server and the native interface alike.
+pub async fn for_you_page(
+    meta: &Meta,
+    db: &Arc<Db>,
+    store: &Arc<Store>,
+    kind: &'static str,
+) -> ForYou {
+    let Some(space) = pool(db, store).await else {
+        return ForYou::default();
+    };
+    if space.entries.len() < POOL_READY {
+        return ForYou {
+            pool: space.entries.len(),
+            ..ForYou::default()
+        };
+    }
+    let (history, watchlist) = (crate::library::history(db), crate::library::watchlist(db));
+    let signals = taste_signals(
+        &history,
+        &watchlist,
+        &Store::not_for_me(db),
+        crate::db::now(),
+    );
+    let ids: Vec<String> = signals.keys().cloned().collect();
+    let known = known_titles(
+        meta,
+        db,
+        store,
+        &space,
+        &ids,
+        &user_kinds(&history, &watchlist),
+    )
+    .await;
+    let Some(space) = pool(db, store).await else {
+        return ForYou::default();
+    };
+    let count = space.entries.len();
+    // The ranking takes milliseconds of computing: off the threads that answer requests.
+    let mut items = crate::db::spawn_blocking(move || for_you(&space, &signals, &known, kind, 20))
+        .await
+        .unwrap_or_default();
+    crate::anime_home::mark_anime(db, &mut items);
+    ForYou {
+        ready: true,
+        items,
+        pool: count,
+    }
+}
+
 // ---------- Storage (the tables the Python version uses) ----------
 
 fn tables(c: &Connection) -> rusqlite::Result<()> {
@@ -979,6 +1114,24 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn for_you_waits_for_the_pool() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Arc::new(Db::open(&dir.path().join("kino.db")).unwrap());
+        let meta = Meta {
+            net: Arc::new(crate::net::Net::new(db.clone())),
+            cinemeta: crate::meta::CINEMETA.into(),
+            translate: false,
+        };
+        let page = for_you_page(&meta, &db, &Arc::new(Store::default()), "movie").await;
+        assert!(
+            !page.ready && page.items.is_empty() && page.pool == 0,
+            "{page:?}"
+        );
+        assert_eq!(kind_of("anime"), "series");
+        assert_eq!(kind_of(""), "movie");
+    }
 
     #[test]
     fn weights_reasons_and_words() {

@@ -31,7 +31,7 @@ pub struct AppState {
     /// The offline library and its downloads.
     pub offline: Arc<crate::offline::Library>,
     /// The suggestion pool, read again when it changes.
-    pub suggestions: crate::recommender::Store,
+    pub suggestions: Arc<crate::recommender::Store>,
     /// What the window offers (set by the desktop app): the native player, notifications.
     pub native_player: bool,
     pub notifications: bool,

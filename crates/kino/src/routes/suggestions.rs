@@ -3,7 +3,7 @@
 //! still read from Cinemeta by the Python side at startup.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use axum::extract::{Query, State};
@@ -12,14 +12,13 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use futures_util::StreamExt;
-use indexmap::IndexMap;
 use regex::Regex;
 use serde_json::{Value, json};
 
 use crate::body::JsonBody;
 use crate::db::now;
 use crate::meta::Meta;
-use crate::recommender::{self, POOL_READY, Space, Store};
+use crate::recommender::{self, POOL_READY, Store};
 use crate::server::Shared;
 
 static IMDB: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^tt\d{1,12}$").unwrap());
@@ -41,118 +40,30 @@ fn text(value: &Value) -> String {
     }
 }
 
-fn kind_of(media_type: &str) -> &'static str {
-    if media_type == "series" || media_type == "anime" {
-        "series"
-    } else {
-        "movie"
-    }
-}
-
-/// The user's titles as pool entries; those missing (40 at most) are read once.
-async fn known_titles(
-    s: &Shared,
-    space: &Space,
-    ids: &[String],
-    kinds: &HashMap<String, &'static str>,
-) -> IndexMap<String, Value> {
-    let mut known: IndexMap<String, Value> = ids
-        .iter()
-        .filter_map(|i| space.entries.get(i).map(|e| (i.clone(), e.clone())))
-        .collect();
-    let missing: Vec<(String, bool)> = ids
-        .iter()
-        .filter(|i| !known.contains_key(*i))
-        .take(40)
-        .map(|i| (i.clone(), kinds.get(i).copied() == Some("series")))
-        .collect();
-    if missing.is_empty() {
-        return known;
-    }
-    let fetched: Vec<Value> =
-        futures_util::stream::iter(missing.into_iter().map(|(id, is_series)| {
-            let meta: Meta = s.meta.clone();
-            async move {
-                let kind = if is_series { "series" } else { "movie" };
-                let found = meta.media(&id, kind).await.ok()?;
-                if matches!(&found["name"], Value::Null | Value::Bool(false))
-                    || found["name"] == ""
-                    || found["name"] == 0
-                {
-                    return None;
-                }
-                let mut record = found.as_object().cloned().unwrap_or_default();
-                record.insert("imdb_id".into(), json!(id));
-                recommender::compact(&Value::Object(record), kind)
-            }
-        }))
-        .buffered(6)
-        .filter_map(|e| async move { e })
-        .collect()
-        .await;
-    if !fetched.is_empty() {
-        s.suggestions.add_known(&s.db, &fetched, now());
-        known.extend(fetched.into_iter().map(|e| (text(&e["id"]), e)));
-    }
-    known
-}
-
-fn user_kinds(history: &[Value], watchlist: &[Value]) -> HashMap<String, &'static str> {
-    history
-        .iter()
-        .chain(watchlist)
-        .map(|e| (text(&e["id"]), kind_of(e["type"].as_str().unwrap_or(""))))
-        .collect()
-}
-
-/// The pool, read on a blocking thread: its first read parses thousands of titles.
-async fn pool(s: &Shared) -> Option<Arc<Space>> {
-    let s = s.clone();
-    crate::db::spawn_blocking(move || s.suggestions.space(&s.db))
-        .await
-        .ok()
-}
-
 async fn for_you(State(s): State<Shared>, Query(p): Query<HashMap<String, String>>) -> Response {
-    let kind = kind_of(p.get("type").map(String::as_str).unwrap_or(""));
-    let Some(space) = pool(&s).await else {
-        return Json(json!({"ready": false, "items": [], "pool": 0})).into_response();
-    };
-    if space.entries.len() < POOL_READY {
-        return Json(json!({"ready": false, "items": [], "pool": space.entries.len()}))
-            .into_response();
-    }
-    let (history, watchlist) = (
-        crate::library::history(&s.db),
-        crate::library::watchlist(&s.db),
-    );
-    let signals =
-        recommender::taste_signals(&history, &watchlist, &Store::not_for_me(&s.db), now());
-    let ids: Vec<String> = signals.keys().cloned().collect();
-    let known = known_titles(&s, &space, &ids, &user_kinds(&history, &watchlist)).await;
-    let Some(space) = pool(&s).await else {
-        return Json(json!({"ready": false, "items": [], "pool": 0})).into_response();
-    };
-    let count = space.entries.len();
-    // The ranking takes milliseconds of computing: off the threads that answer requests.
-    let mut items =
-        crate::db::spawn_blocking(move || recommender::for_you(&space, &signals, &known, kind, 20))
-            .await
-            .unwrap_or_default();
-    crate::anime_home::mark_anime(&s.db, &mut items);
-    Json(json!({"ready": true, "items": items, "pool": count})).into_response()
+    let kind = recommender::kind_of(p.get("type").map(String::as_str).unwrap_or(""));
+    let page = recommender::for_you_page(&s.meta, &s.db, &s.suggestions, kind).await;
+    Json(json!({"ready": page.ready, "items": page.items, "pool": page.pool})).into_response()
 }
 
 /// Titles close to one title by KINO's own traits; none until the pool is ready.
 async fn kino_related(s: &Shared, imdb_id: &str, kind: &'static str) -> Vec<Value> {
-    let Some(space) = pool(s).await else {
+    let Some(space) = recommender::pool(&s.db, &s.suggestions).await else {
         return vec![];
     };
     if space.entries.len() < POOL_READY {
         return vec![];
     }
     let kinds = HashMap::from([(imdb_id.to_string(), kind)]);
-    let known = known_titles(s, &space, &[imdb_id.to_string()], &kinds).await;
+    let known = recommender::known_titles(
+        &s.meta,
+        &s.db,
+        &s.suggestions,
+        &space,
+        &[imdb_id.to_string()],
+        &kinds,
+    )
+    .await;
     let history = crate::library::history(&s.db);
     let truthy = |v: &Value| {
         !matches!(v, Value::Null | Value::Bool(false)) && v != &json!(0) && v != &json!("")
@@ -163,7 +74,7 @@ async fn kino_related(s: &Shared, imdb_id: &str, kind: &'static str) -> Vec<Valu
         .map(|e| text(&e["id"]))
         .collect();
     exclude.extend(Store::not_for_me(&s.db));
-    let Some(space) = pool(s).await else {
+    let Some(space) = recommender::pool(&s.db, &s.suggestions).await else {
         return vec![];
     };
     let source = known.get(imdb_id).cloned();
@@ -186,7 +97,7 @@ async fn related(State(s): State<Shared>, Query(p): Query<HashMap<String, String
         )
             .into_response();
     }
-    let kind = kind_of(p.get("type").map(String::as_str).unwrap_or(""));
+    let kind = recommender::kind_of(p.get("type").map(String::as_str).unwrap_or(""));
     let cfg = crate::db::spawn_blocking(crate::config::load)
         .await
         .unwrap_or_default();
