@@ -87,7 +87,8 @@ pub fn genres(catalog: Catalog) -> &'static [Genre] {
         genre("Romance", || t!("fiche.romance")),
         genre("Comedy", || t!("page.comedie")),
         genre("Sport", || t!("anime.sport")),
-        genre("Films d'Animation", || t!("home.films_anime")),
+        // The anime films ("Films d'Animation" on the web; the core takes both).
+        genre("movie", || t!("home.films_anime")),
     ];
     match catalog {
         Catalog::Movies => MOVIES,
