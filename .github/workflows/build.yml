@@ -271,12 +271,19 @@ jobs:
     # The oldest supported Ubuntu: the AppImage runs on systems with its glibc
     # (2.35) or a newer one.
     runs-on: ubuntu-22.04
+    # A normal run takes about 10 minutes; a stalled runner stops here
+    # instead of GitHub's 6-hour default.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - name: System packages
+        # An Ubuntu mirror that stops answering held this step for over an hour:
+        # apt gives up on a silent connection after 30 s and tries again.
+        timeout-minutes: 15
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev patchelf ffmpeg \
+          apt_opts="-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
+          sudo apt-get $apt_opts update
+          sudo apt-get $apt_opts install -y libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev patchelf ffmpeg \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav \
             xvfb imagemagick
       - name: linuxdeploy
