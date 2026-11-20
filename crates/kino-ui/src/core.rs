@@ -11,7 +11,7 @@ use kino::meta::Meta;
 use kino::net::Net;
 
 use crate::image_cache::Loader;
-use crate::title::Title;
+use crate::title::{Details, Title};
 
 /// The catalogs the Discover screens show.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,6 +85,13 @@ impl Core {
                 metas
                     .iter()
                     .filter_map(Title::from_meta)
+                    .map(|mut title| {
+                        // Anime pages come from KINO's anime sources.
+                        if catalog == Catalog::Anime {
+                            title.kind = "anime".into();
+                        }
+                        title
+                    })
                     .collect::<Vec<_>>()
             })
             .map_err(|e| e.to_string())
@@ -110,6 +117,24 @@ impl Core {
                 .collect::<Vec<_>>()
         });
         async move { task.await.unwrap_or_default() }
+    }
+
+    /// What KINO knows of `title` (its page), in French when `french`.
+    pub fn details(
+        &self,
+        title: &Title,
+        french: bool,
+    ) -> impl Future<Output = Result<Details, String>> + use<> {
+        let (meta, id, kind) = (
+            self.meta.clone(),
+            title.id.to_string(),
+            title.kind.to_string(),
+        );
+        let task = self.runtime.spawn(async move {
+            let page = meta.media(&id, &kind).await.map_err(|e| e.to_string())?;
+            Details::from_meta(&page, french).ok_or_else(|| format!("{id}: no page"))
+        });
+        async move { task.await.map_err(|e| format!("details task: {e}"))? }
     }
 
     /// Images over HTTP(S) with KINO's client, for the image cache.

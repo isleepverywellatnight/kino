@@ -12,12 +12,14 @@ use gpui::{
 };
 
 use crate::core::{Catalog, Core};
-use crate::discover::Discover;
+use crate::discover::{Discover, OpenTitle};
 use crate::i18n::Language;
 use crate::image_cache::{DEFAULT_BUDGET, ImageCache};
 use crate::search::SearchView;
 use crate::state::AppState;
 use crate::text_input::{self, TextInput};
+use crate::title::Title;
+use crate::title_page::TitlePage;
 use crate::{bar, theme};
 
 actions!(
@@ -164,6 +166,10 @@ pub struct Shell {
     anime: Result<Entity<Discover>, SharedString>,
     /// Search results; `None` when KINO's core could not start.
     results: Option<Entity<SearchView>>,
+    /// KINO's core and the shared image cache, to open pages.
+    core: Option<(Core, Entity<ImageCache>)>,
+    /// The title page on top of the screen, if one is open.
+    page: Option<Entity<TitlePage>>,
     search: Entity<TextInput>,
     /// What the search field holds, as of its last change.
     query: gpui::SharedString,
@@ -175,28 +181,34 @@ pub struct Shell {
 impl Shell {
     pub fn new(check: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         // KINO's core: its database, network and metadata, as the server's.
-        let (movies, series, anime, results) = match Core::start() {
+        let (movies, series, anime, results, core) = match Core::start() {
             Ok(core) => {
                 let images = cx.new(|_| ImageCache::new(core.image_loader(), DEFAULT_BUDGET));
+
                 let results = {
                     let (core, images) = (core.clone(), images.clone());
-                    Some(cx.new(|cx| SearchView::new(core, images, cx)))
+                    cx.new(|cx| SearchView::new(core, images, cx))
                 };
+                open_from(&results, cx);
                 let open = |catalog, cx: &mut Context<Self>| {
                     let (core, images) = (core.clone(), images.clone());
-                    Ok(cx.new(|cx| Discover::new(catalog, core, images, cx)))
+                    let view = cx.new(|cx| Discover::new(catalog, core, images, cx));
+                    open_from(&view, cx);
+                    Ok(view)
                 };
                 (
                     open(Catalog::Movies, cx),
                     open(Catalog::Series, cx),
                     open(Catalog::Anime, cx),
-                    results,
+                    Some(results),
+                    Some((core, images)),
                 )
             }
             Err(error) => (
                 Err(error.clone().into()),
                 Err(error.clone().into()),
                 Err(error.into()),
+                None,
                 None,
             ),
         };
@@ -221,6 +233,8 @@ impl Shell {
             series,
             anime,
             results,
+            core,
+            page: None,
             search,
             query: gpui::SharedString::default(),
             focus,
@@ -229,14 +243,31 @@ impl Shell {
     }
 
     fn go(&mut self, screen: Screen, cx: &mut Context<Self>) {
+        self.page = None;
         self.navigation.go(screen);
         cx.notify();
     }
 
+    /// Back closes an open page first, then returns through the screens.
     fn back(&mut self, cx: &mut Context<Self>) {
-        if self.navigation.back() {
+        if self.page.take().is_some() || self.navigation.back() {
             cx.notify();
         }
+    }
+
+    /// Opens `title`'s page over the current screen; Back closes it.
+    fn open_title(&mut self, title: Title, cx: &mut Context<Self>) {
+        let Some((core, images)) = &self.core else {
+            return;
+        };
+        let (core, images) = (core.clone(), images.clone());
+        let page = cx.new(|cx| TitlePage::new(&core, images, title, cx));
+        cx.subscribe(&page, |shell, _, open: &OpenTitle, cx| {
+            shell.open_title(open.0.clone(), cx)
+        })
+        .detach();
+        self.page = Some(page);
+        cx.notify();
     }
 
     fn nav_item(&self, screen: Screen, cx: &mut Context<Self>) -> impl IntoElement {
@@ -289,7 +320,7 @@ impl Shell {
     }
 
     fn header(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let can_go_back = self.navigation.can_go_back();
+        let can_go_back = self.page.is_some() || self.navigation.can_go_back();
         let back = div()
             .id("back")
             .w(px(36.0))
@@ -333,7 +364,10 @@ impl Shell {
     }
 
     fn content(&self, cx: &App) -> gpui::AnyElement {
-        // A query takes the content: its results.
+        // An open page comes first, then a query's results.
+        if let Some(page) = &self.page {
+            return div().size_full().child(page.clone()).into_any_element();
+        }
         if !self.query.trim().is_empty() {
             if let Some(results) = &self.results {
                 return div().size_full().child(results.clone()).into_any_element();
@@ -416,6 +450,14 @@ fn settings(cx: &App) -> gpui::AnyElement {
         )
         .child(languages)
         .into_any_element()
+}
+
+/// Any grid's card opens its title's page in the shell.
+fn open_from<V: gpui::EventEmitter<OpenTitle>>(view: &Entity<V>, cx: &mut Context<Shell>) {
+    cx.subscribe(view, |shell: &mut Shell, _, open: &OpenTitle, cx| {
+        shell.open_title(open.0.clone(), cx)
+    })
+    .detach();
 }
 
 /// A Discover catalog, or why it cannot show.
@@ -590,6 +632,49 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
             }
             step().await;
         }
+        // The first film's page, as a click on its card opens it; then Back.
+        let first = shell
+            .update(cx, |s, cx| {
+                s.movies
+                    .as_ref()
+                    .ok()
+                    .and_then(|d| d.read(cx).titles().first().cloned())
+            })
+            .ok()
+            .flatten();
+        let mut page = serde_json::Value::Null;
+        if let Some(first) = first {
+            let _ = shell.update(cx, |s, cx| s.open_title(first, cx));
+            for _ in 0..200 {
+                let loaded = shell
+                    .update(cx, |s, cx| {
+                        s.page
+                            .as_ref()
+                            .is_none_or(|p| p.read(cx).details().is_some())
+                    })
+                    .unwrap_or(true);
+                if loaded {
+                    break;
+                }
+                step().await;
+            }
+            page = shell
+                .update(cx, |s, cx| {
+                    let read = s.page.as_ref().and_then(|p| match p.read(cx).details() {
+                        Some(Ok(d)) => Some(serde_json::json!({
+                            "name": d.title.name.to_string(),
+                            "description": d.description.is_some(),
+                            "genres": d.genres.len(),
+                            "similar": d.similar.len(),
+                        })),
+                        Some(Err(e)) => Some(serde_json::json!({ "error": e.to_string() })),
+                        None => None,
+                    });
+                    s.back(cx);
+                    serde_json::json!({ "page": read, "closed_by_back": s.page.is_none() })
+                })
+                .unwrap_or_default();
+        }
         let _ = shell.update(cx, |s, cx| {
             let catalog = |c: &Result<Entity<Discover>, SharedString>| match c {
                 Ok(d) => {
@@ -625,6 +710,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                     "movies": movies,
                     "series": series,
                     "anime": anime,
+                    "title_page": page,
                 })
             );
             cx.quit();

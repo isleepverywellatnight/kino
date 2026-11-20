@@ -114,6 +114,11 @@ jobs:
           for name in ('movies', 'series', 'anime'):
               c = r[name]
               assert c['count'] > 0 and c['with_poster'] > 0, (name, c)
+          # The first film's page, from KINO's metadata, then Back closes it.
+          page = r['title_page']
+          assert page and page['page'] and page['page'].get('name'), page
+          assert page['page']['description'] is True, page
+          assert page['closed_by_back'] is True, page
           "
       - name: Processor at rest
         working-directory: crates/kino-ui
