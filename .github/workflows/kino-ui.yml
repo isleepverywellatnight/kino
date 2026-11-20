@@ -60,6 +60,13 @@ jobs:
       - name: Tests
         working-directory: crates/kino-ui
         run: cargo test --release --locked
+      - name: Format and lints
+        working-directory: crates/kino-ui
+        # Each system checks its own code (native.rs, mac_native.rs): rustfmt,
+        # then Clippy with warnings as errors (rust-skills: lint-*).
+        run: |
+          cargo fmt --check
+          cargo clippy --release --locked --all-targets -- -D warnings
       - name: Fast-scroll bench
         working-directory: crates/kino-ui
         run: |

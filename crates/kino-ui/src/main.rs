@@ -46,8 +46,9 @@ fn cpu_ms() -> f64 {
     }
     #[cfg(unix)]
     {
-        // SAFETY: getrusage fills the struct it is given.
+        // SAFETY: `rusage` is plain integers, for which all-zero is valid.
         let mut usage: libc::rusage = unsafe { std::mem::zeroed() };
+        // SAFETY: getrusage fills the struct it is given and keeps no pointer.
         unsafe { libc::getrusage(libc::RUSAGE_SELF, &mut usage) };
         let ms = |t: libc::timeval| t.tv_sec as f64 * 1000.0 + t.tv_usec as f64 / 1000.0;
         ms(usage.ru_utime) + ms(usage.ru_stime)
@@ -125,6 +126,8 @@ impl Bench {
 
 struct Kino {
     posters: Vec<Option<Arc<Image>>>,
+    /// Each poster's title, made once: a scroll redraws many cards a second.
+    titles: Vec<SharedString>,
     list: UniformListScrollHandle,
     bench: Option<Bench>,
     /// Alone in its window, with KINO's bar; else inside the shell.
@@ -177,6 +180,9 @@ impl Kino {
         .detach();
         Self {
             posters: vec![None; POSTERS],
+            titles: (1..=POSTERS)
+                .map(|n| SharedString::from(format!("{} {n}", t!("anime.film"))))
+                .collect(),
             list: UniformListScrollHandle::new(),
             bench: bench.then(Bench::new),
             framed: true,
@@ -259,7 +265,7 @@ pub(crate) fn bar() -> impl IntoElement {
     }
 }
 
-fn poster_card(index: usize, image: Option<Arc<Image>>) -> impl IntoElement {
+fn poster_card(title: SharedString, image: Option<Arc<Image>>) -> impl IntoElement {
     let art = div()
         .w(px(POSTER_W))
         .h(px(POSTER_H))
@@ -276,16 +282,7 @@ fn poster_card(index: usize, image: Option<Arc<Image>>) -> impl IntoElement {
         .flex_col()
         .gap_2()
         .child(art)
-        .child(
-            div()
-                .text_sm()
-                .text_color(theme::text())
-                .child(SharedString::from(format!(
-                    "{} {}",
-                    t!("anime.film"),
-                    index + 1
-                ))),
-        )
+        .child(div().text_sm().text_color(theme::text()).child(title))
         .child(
             div()
                 .text_xs()
@@ -322,10 +319,11 @@ impl Render for Kino {
                                 .pt_4()
                                 .flex()
                                 .gap_4()
-                                .children(
-                                    (row * COLUMNS..((row + 1) * COLUMNS).min(POSTERS))
-                                        .map(|i| poster_card(i, kino.posters[i].clone())),
-                                )
+                                .children((row * COLUMNS..((row + 1) * COLUMNS).min(POSTERS)).map(
+                                    |i| {
+                                        poster_card(kino.titles[i].clone(), kino.posters[i].clone())
+                                    },
+                                ))
                         })
                         .collect::<Vec<_>>()
                 }),
@@ -753,7 +751,11 @@ fn main() {
                 })
                 .map(|_| ()),
         };
-        opened.expect("KINO's window");
+        if let Err(error) = opened {
+            // No display, or the GPU refused the window: say so and stop.
+            eprintln!("KINO-UI ERROR cannot open KINO's window: {error:#}");
+            std::process::exit(1);
+        }
         cx.activate(true);
     });
 }
