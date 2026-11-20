@@ -43,7 +43,18 @@ extern "C" fn get_proc_address(_ctx: *mut c_void, name: *const c_char) -> *mut c
 
 pub struct ViewIvars {
     video: RefCell<Option<Arc<Mutex<Video>>>>,
-    frames: Arc<AtomicUsize>,
+    stats: Arc<Stats>,
+}
+
+/// What `--bench` reports of the native path on macOS.
+#[derive(Default)]
+pub struct Stats {
+    /// Frames mpv has drawn.
+    pub frames: AtomicUsize,
+    /// Time spent drawing them, in µs (on the main thread).
+    pub draw_us: AtomicUsize,
+    /// Whether the OpenGL format is hardware-accelerated.
+    pub accelerated: std::sync::atomic::AtomicBool,
 }
 
 define_class!(
@@ -56,6 +67,7 @@ define_class!(
     impl MpvView {
         #[unsafe(method(drawRect:))]
         fn draw_rect(&self, _rect: NSRect) {
+            let started = std::time::Instant::now();
             let Some(video) = self.ivars().video.borrow().clone() else { return };
             let Some(context) = self.openGLContext() else { return };
             context.makeCurrentContext();
@@ -73,20 +85,20 @@ define_class!(
                 video.gl_render(binding, size.width as c_int, size.height as c_int);
             }
             context.flushBuffer();
-            self.ivars().frames.fetch_add(1, Ordering::Relaxed);
+            let stats = &self.ivars().stats;
+            stats.frames.fetch_add(1, Ordering::Relaxed);
+            stats
+                .draw_us
+                .fetch_add(started.elapsed().as_micros() as usize, Ordering::Relaxed);
         }
     }
 );
 
 impl MpvView {
-    fn create(
-        mtm: MainThreadMarker,
-        frame: NSRect,
-        frames: Arc<AtomicUsize>,
-    ) -> Option<Retained<Self>> {
+    fn create(mtm: MainThreadMarker, frame: NSRect, stats: Arc<Stats>) -> Option<Retained<Self>> {
         // A hardware-accelerated format first; the system's software
         // renderer if none (virtual machines without a GPU).
-        let format = [true, false].into_iter().find_map(|accelerated| {
+        let (format, accelerated) = [true, false].into_iter().find_map(|accelerated| {
             let mut attributes = vec![
                 NSOpenGLPFADoubleBuffer,
                 NSOpenGLPFAOpenGLProfile,
@@ -103,10 +115,12 @@ impl MpvView {
                     std::ptr::NonNull::from(&attributes[0]),
                 )
             }
+            .map(|format| (format, accelerated))
         })?;
+        stats.accelerated.store(accelerated, Ordering::Relaxed);
         let this = Self::alloc(mtm).set_ivars(ViewIvars {
             video: RefCell::new(None),
-            frames,
+            stats,
         });
         let view: Option<Retained<Self>> =
             unsafe { msg_send![super(this), initWithFrame: frame, pixelFormat: &*format] };
@@ -120,8 +134,7 @@ impl MpvView {
 pub struct Host {
     view: Retained<MpvView>,
     timer: Retained<NSTimer>,
-    /// Frames mpv has drawn (`--bench`).
-    pub frames: Arc<AtomicUsize>,
+    pub stats: Arc<Stats>,
 }
 
 /// Puts mpv's view under `gpui_view` (an `NSView` pointer) and opens `source`.
@@ -134,8 +147,8 @@ pub fn attach(
     // SAFETY: gpui's live view, from its window handle.
     let gpui_view: &NSView = unsafe { &*(gpui_view as *const NSView) };
     let superview = unsafe { gpui_view.superview() }.ok_or("gpui's view has no superview")?;
-    let frames = Arc::new(AtomicUsize::new(0));
-    let view = MpvView::create(mtm, gpui_view.frame(), frames.clone())
+    let stats = Arc::new(Stats::default());
+    let view = MpvView::create(mtm, gpui_view.frame(), stats.clone())
         .ok_or("no OpenGL pixel format or view")?;
     view.setAutoresizingMask(
         NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
@@ -167,11 +180,7 @@ pub fn attach(
     });
     let timer = unsafe { NSTimer::timerWithTimeInterval_repeats_block(1.0 / 120.0, true, &block) };
     unsafe { NSRunLoop::mainRunLoop().addTimer_forMode(&timer, NSRunLoopCommonModes) };
-    Ok(Host {
-        view,
-        timer,
-        frames,
-    })
+    Ok(Host { view, timer, stats })
 }
 
 impl Drop for Host {

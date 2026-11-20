@@ -494,10 +494,13 @@ impl Player {
                 report["decoder_dropped"] = count("decoder-frame-drop-count").into();
                 #[cfg(target_os = "macos")]
                 if let Some(host) = &self.host {
-                    report["video_frames"] = host
-                        .frames
-                        .load(std::sync::atomic::Ordering::Relaxed)
-                        .into();
+                    use std::sync::atomic::Ordering::Relaxed;
+                    let frames = host.stats.frames.load(Relaxed);
+                    report["video_frames"] = frames.into();
+                    report["gl_accelerated"] = host.stats.accelerated.load(Relaxed).into();
+                    // Mean time to draw a frame, in ms to one decimal.
+                    let mean_us = host.stats.draw_us.load(Relaxed) as f64 / frames.max(1) as f64;
+                    report["draw_avg_ms"] = ((mean_us / 100.0).round() / 10.0).into();
                 }
             } else {
                 report["path"] = "software".into();
