@@ -129,53 +129,13 @@ async fn tonight(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response 
         other => other.to_string(),
     };
     let offline_only = body["offline_only"] == true;
-    let Some(minutes) = minutes.filter(|m| {
-        (15..=600).contains(m) && ["light", "intense", "discovery"].contains(&mood.as_str())
-    }) else {
+    let Some(minutes) = minutes else {
         return refused("Choisissez une durée et une ambiance valides.");
     };
-    let (watchlist, coverage) = tonight::enrich(
-        &s.meta,
-        library::watchlist(&s.db),
-        if offline_only { 0 } else { 36 },
-    )
-    .await;
-    let downloads = tonight::offline_downloads(&s.db);
-    let feedback = tonight::feedback_state(&s.db);
-    let history = library::history(&s.db);
-    let at = crate::db::now();
-    let choices = tonight::choose(
-        &watchlist,
-        &history,
-        minutes,
-        &mood,
-        &feedback,
-        at,
-        &downloads,
-        offline_only,
-    );
-    let reason = tonight::empty_reason(
-        &watchlist,
-        &history,
-        &feedback,
-        &downloads,
-        offline_only,
-        &choices,
-        at,
-    );
-    tonight::record_impressions(&s.db, &choices);
-    let review: Vec<Value> = watchlist
-        .iter()
-        .filter_map(|item| {
-            let id = item["id"].as_str()?;
-            let f = feedback.get(id)?;
-            let decision = f["decision"].as_str().unwrap_or("");
-            let keep = decision == "excluded" || decision == "seen" || (decision == "deferred" && f["until_ts"].as_f64().unwrap_or(0.0) > crate::db::now());
-            let name = if f["name"].as_str().is_some_and(|n| !n.is_empty()) { f["name"].clone() } else { item["name"].clone() };
-            keep.then(|| json!({"id": id, "name": name, "decision": decision, "until_ts": f["until_ts"], "undo_token": f["last_action_id"]}))
-        })
-        .collect();
-    Json(json!({"ok": true, "choices": choices, "coverage": coverage, "offline_only": offline_only, "empty_reason": reason, "review": review})).into_response()
+    match tonight::page(&s.meta, &s.db, minutes, &mood, offline_only).await {
+        Ok(page) => Json(json!({"ok": true, "choices": page.choices, "coverage": page.coverage, "offline_only": offline_only, "empty_reason": page.empty_reason, "review": page.review})).into_response(),
+        Err(tonight::Refused) => refused("Choisissez une durée et une ambiance valides."),
+    }
 }
 
 async fn tonight_feedback(State(s): State<Shared>, JsonBody(body): JsonBody) -> Response {
