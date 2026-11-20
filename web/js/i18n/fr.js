@@ -406,6 +406,7 @@ KINO_I18N.source({
 "fiche.vitesse_x": "Vitesse : {}",
 "fiche.voir_la_fiche_sur_imdb": "Voir la fiche sur IMDb",
 "fiche.voir_sur_letterboxd": "Voir sur Letterboxd",
+"fiche.vous_aimerez_aussi": "Vous aimerez aussi",
 "fiche.vous_n_attendez_plus_debrid_continue_la": "Vous n’attendez plus : Debrid continue la préparation, et la source sera prête plus tard dans votre Cloud.",
 "fiche.war": "War",
 "fiche.west_germany": "West Germany",

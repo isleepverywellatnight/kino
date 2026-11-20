@@ -3,10 +3,11 @@
 //! come into view (phase G2).
 
 use std::ops::Range;
+use std::rc::Rc;
 
 use gpui::{
-    Context, Entity, SharedString, UniformListScrollHandle, Window, div, prelude::*, px,
-    uniform_list,
+    App, Context, Entity, EventEmitter, SharedString, UniformListScrollHandle, Window, div,
+    prelude::*, px, uniform_list,
 };
 
 use crate::core::{Catalog, Core};
@@ -16,6 +17,20 @@ use crate::{COLUMNS, ROW_H, poster_card, theme};
 
 /// How many rows before the end the next page is asked for.
 const PREFETCH_ROWS: usize = 2;
+
+/// A card was clicked: its title's page should open.
+#[derive(Clone, Debug)]
+pub struct OpenTitle(pub Title);
+
+/// What a card does when clicked: send `OpenTitle` from a view.
+pub type Opener = Rc<dyn Fn(Title, &mut App)>;
+
+impl OpenTitle {
+    /// An `Opener` that makes `view` emit `OpenTitle`.
+    pub fn emitter<T: EventEmitter<OpenTitle>>(view: Entity<T>) -> Opener {
+        Rc::new(move |title, cx| view.update(cx, |_, cx| cx.emit(OpenTitle(title))))
+    }
+}
 
 enum Load {
     Idle,
@@ -33,6 +48,8 @@ pub struct Discover {
     load: Load,
     list: UniformListScrollHandle,
 }
+
+impl EventEmitter<OpenTitle> for Discover {}
 
 impl Discover {
     pub fn new(
@@ -100,7 +117,8 @@ impl Discover {
         if range.end + PREFETCH_ROWS >= rows {
             self.load_more(cx);
         }
-        title_rows(&self.titles, range, &self.images, cx)
+        let open = OpenTitle::emitter(cx.entity());
+        title_rows(&self.titles, range, &self.images, open, cx)
     }
 }
 
@@ -110,6 +128,7 @@ pub fn title_rows(
     titles: &[Title],
     range: Range<usize>,
     images: &Entity<ImageCache>,
+    open: Opener,
     cx: &mut gpui::App,
 ) -> Vec<gpui::AnyElement> {
     range
@@ -123,7 +142,12 @@ pub fn title_rows(
                         .poster
                         .as_ref()
                         .and_then(|url| images.update(cx, |images, cx| images.get(url, cx)));
-                    poster_card(title.name.clone(), title.subtitle(), image)
+                    let (open, clicked) = (open.clone(), title.clone());
+                    div()
+                        .id(SharedString::from(format!("card-{}", title.id)))
+                        .cursor_pointer()
+                        .on_click(move |_, _, cx| open(clicked.clone(), cx))
+                        .child(poster_card(title.name.clone(), title.subtitle(), image))
                 })
                 .collect();
             div()

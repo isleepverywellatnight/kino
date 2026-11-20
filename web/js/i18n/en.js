@@ -257,6 +257,7 @@ KINO_I18N.load({
 "fiche.union_sovietique": "Soviet Union",
 "fiche.viet_nam": "Vietnam",
 "fiche.vitesse_x": "Speed: {}",
+"fiche.vous_aimerez_aussi": "You may also like",
 "fiche.vous_n_attendez_plus_debrid_continue_la": "You no longer wait: Debrid keeps preparing, and the source will be ready later in your Cloud.",
 "fiche.x_au_total": "{} in total",
 "fiche.x_bande_annonce_x": "{} Trailer {}",
