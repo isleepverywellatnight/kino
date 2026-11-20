@@ -28,6 +28,7 @@ mod mac_native;
 #[cfg(windows)]
 mod native;
 mod shell;
+mod state;
 mod text_input;
 mod theme;
 
@@ -172,14 +173,18 @@ impl Kino {
         });
         let images = cx.new(|_| image_cache::ImageCache::new(loader, image_cache::DEFAULT_BUDGET));
         cx.observe(&images, |_, _, cx| cx.notify()).detach();
+        // The titles follow the interface's language.
+        cx.observe_global::<state::AppState>(|kino, cx| {
+            kino.titles = poster_titles();
+            cx.notify();
+        })
+        .detach();
         Self {
             images,
             keys: (0..POSTERS)
                 .map(|i| SharedString::from(format!("poster:{i}")))
                 .collect(),
-            titles: (1..=POSTERS)
-                .map(|n| SharedString::from(format!("{} {n}", t!("anime.film"))))
-                .collect(),
+            titles: poster_titles(),
             list: UniformListScrollHandle::new(),
             bench: bench.then(Bench::new),
             framed: true,
@@ -265,6 +270,14 @@ pub(crate) fn bar() -> impl IntoElement {
                     .on_click(|_, _, cx| cx.quit()),
             )
     }
+}
+
+/// Each poster's title in the current language, made once per language: a
+/// scroll redraws many cards a second.
+fn poster_titles() -> Vec<SharedString> {
+    (1..=POSTERS)
+        .map(|n| SharedString::from(format!("{} {n}", t!("anime.film"))))
+        .collect()
 }
 
 fn poster_card(title: SharedString, image: Option<Arc<RenderImage>>) -> impl IntoElement {
@@ -671,12 +684,10 @@ impl Render for Player {
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     // KINO_LANG (fr, en, …) wins over the system's language.
-    i18n::set_language(
-        std::env::var("KINO_LANG")
-            .ok()
-            .and_then(|code| i18n::Language::from_code(&code))
-            .unwrap_or_else(i18n::system_language),
-    );
+    let language = std::env::var("KINO_LANG")
+        .ok()
+        .and_then(|code| i18n::Language::from_code(&code))
+        .unwrap_or_else(i18n::system_language);
     let bench = args.iter().any(|a| a == "--bench");
     let idle = args.iter().any(|a| a == "--idle");
     let shell_check = args.iter().any(|a| a == "--shell-check");
@@ -692,6 +703,7 @@ fn main() {
         std::process::exit(2);
     }
     Application::new().run(move |cx: &mut App| {
+        state::AppState::init(language, cx);
         shell::bind_keys(cx);
         text_input::bind_keys(cx);
         // 1180×760, or less on a smaller screen: the whole window stays on it.
