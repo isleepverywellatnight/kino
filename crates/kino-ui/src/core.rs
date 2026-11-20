@@ -212,6 +212,25 @@ impl Core {
         async move { task.await.unwrap_or(false) }
     }
 
+    /// Explorer's selections: the user's imported Letterboxd lists, KINO's
+    /// own selections, and the history (to count what was seen), as
+    /// `/api/letterboxd/custom-lists` and `/api/community/curated` give them.
+    pub fn explore(&self) -> impl Future<Output = (Vec<Value>, Vec<Value>, Vec<Value>)> + use<> {
+        let db = self.db.clone();
+        let task = self.runtime.spawn_blocking(move || {
+            let curated = kino::letterboxd::curated()
+                .as_array()
+                .cloned()
+                .unwrap_or_default();
+            (
+                kino::letterboxd::lists(),
+                curated,
+                kino::library::history(&db),
+            )
+        });
+        async move { task.await.unwrap_or_default() }
+    }
+
     /// Films and series matching `query`, films first, as the web's search
     /// shows them (`kino::catalog::search`, both kinds at once).
     pub fn search(&self, query: &str) -> impl Future<Output = Vec<Title>> + use<> {

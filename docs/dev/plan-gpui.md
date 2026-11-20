@@ -123,8 +123,11 @@ avec les règles de la version web, puis « Pour vous » sous Films et Séries
 le pool est préparé au lancement comme le fait le serveur). L'écran Ce soir :
 jusqu'à trois idées de Ma Liste selon le temps et l'envie, leurs raisons,
 « Voir la fiche » et les retours (Pas ce soir, Déjà vu, Ça ne m'intéresse pas),
-par la même fonction que la route web. La CI vérifie tout cela sur les 3 systèmes
+par la même fonction que la route web. Explorer : les listes Letterboxd
+importées puis les sélections de KINO, en rangées (titres, vus, auteur,
+description), « Tout voir » en grille. La CI vérifie tout cela sur les 3 systèmes
 avec les vraies données.
 
 Reste : « Si vous avez aimé », « Nouveaux épisodes », Ce soir hors ligne et
-« Mes choix », Explorer, et le choix de langue enregistré.
+« Mes choix », la roulette et l'import Letterboxd d'Explorer, et le choix de
+langue enregistré.

@@ -181,7 +181,7 @@ fn is_in_progress(entry: &Value) -> bool {
 }
 
 /// As the web's `listItemState(…) === 'watched'`.
-fn is_watched(item: &Value, history: &[Value]) -> bool {
+pub(crate) fn is_watched(item: &Value, history: &[Value]) -> bool {
     let Some(entry) = history.iter().find(|h| h["id"] == item["id"]) else {
         return false;
     };

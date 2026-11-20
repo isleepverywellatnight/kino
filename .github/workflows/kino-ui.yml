@@ -100,8 +100,8 @@ jobs:
           # UTF-8 whatever the system's code page (Windows reads cp1252).
           r = json.loads(sys.stdin.buffer.read().decode('utf-8'))
           screens = ['Movies', 'Series', 'Anime', 'Manga', 'Tonight', 'Explore', 'Library', 'Settings']
-          assert r['drawn'] == screens + screens[-2::-1] + ['Settings', 'Tonight'], r['drawn']
-          # It ends on « Ce soir », opened from Settings: Back leads there.
+          assert r['drawn'] == screens + screens[-2::-1] + ['Settings', 'Tonight', 'Explore'], r['drawn']
+          # It ends on Explorer, opened from « Ce soir »: Back leads there.
           assert r['can_go_back'] is True
           assert r['typed'] == 'matrix', r['typed']
           # The search those keys started, through kino::catalog::search.
@@ -127,6 +127,10 @@ jobs:
           t = r['tonight']
           assert t and t['choices'] == 0 and t['empty_reason'] == 'empty_watchlist', t
           assert t['status'].startswith('Ajoutez des titres'), ascii(t['status'])
+          # Explorer: KINO's six selections (no list imported on CI), with titles.
+          e = r['explore']
+          assert e and e['selections'] >= 6 and e['imported'] == 0 and e['titles'] > 0, e
+          assert e['first'] == 'Letterboxd Official Top 250', e
           "
       - name: Processor at rest
         working-directory: crates/kino-ui

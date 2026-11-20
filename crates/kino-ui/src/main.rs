@@ -24,6 +24,7 @@ use std::sync::{Arc, Mutex};
 mod i18n;
 mod core;
 mod discover;
+mod explore;
 mod home;
 mod image_cache;
 #[cfg(target_os = "macos")]
@@ -308,8 +309,21 @@ fn poster_card(
         .flex_col()
         .gap_2()
         .child(art)
-        .child(div().text_sm().text_color(theme::text()).child(title))
-        .child(div().text_xs().text_color(theme::text_2()).child(subtitle))
+        // One line each, cut with « … »: a grid row has room for no more.
+        .child(
+            div()
+                .text_sm()
+                .truncate()
+                .text_color(theme::text())
+                .child(title),
+        )
+        .child(
+            div()
+                .text_xs()
+                .truncate()
+                .text_color(theme::text_2())
+                .child(subtitle),
+        )
 }
 
 impl Render for Kino {

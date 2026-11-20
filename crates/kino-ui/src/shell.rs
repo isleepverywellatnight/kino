@@ -13,6 +13,7 @@ use gpui::{
 
 use crate::core::{Catalog, Core, Filter, Sort};
 use crate::discover::{Discover, OpenTitle};
+use crate::explore::Explore;
 use crate::i18n::Language;
 use crate::image_cache::{DEFAULT_BUDGET, ImageCache};
 use crate::search::SearchView;
@@ -169,6 +170,8 @@ pub struct Shell {
     results: Option<Entity<SearchView>>,
     /// « Ce soir »; `None` when KINO's core could not start.
     tonight: Option<Entity<Tonight>>,
+    /// Explorer; `None` when KINO's core could not start.
+    explore: Option<Entity<Explore>>,
     /// KINO's core and the shared image cache, to open pages.
     core: Option<(Core, Entity<ImageCache>)>,
     /// The title page on top of the screen, if one is open.
@@ -184,7 +187,7 @@ pub struct Shell {
 impl Shell {
     pub fn new(check: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         // KINO's core: its database, network and metadata, as the server's.
-        let (movies, series, anime, results, tonight, core) = match Core::start() {
+        let (movies, series, anime, results, tonight, explore, core) = match Core::start() {
             Ok(core) => {
                 let images = cx.new(|_| ImageCache::new(core.image_loader(), DEFAULT_BUDGET));
 
@@ -198,6 +201,11 @@ impl Shell {
                     cx.new(|cx| Tonight::new(core, images, cx))
                 };
                 open_from(&tonight, cx);
+                let explore = {
+                    let (core, images) = (core.clone(), images.clone());
+                    cx.new(|cx| Explore::new(core, images, cx))
+                };
+                open_from(&explore, cx);
                 let open = |catalog, cx: &mut Context<Self>| {
                     let (core, images) = (core.clone(), images.clone());
                     let view = cx.new(|cx| Discover::new(catalog, core, images, cx));
@@ -210,6 +218,7 @@ impl Shell {
                     open(Catalog::Anime, cx),
                     Some(results),
                     Some(tonight),
+                    Some(explore),
                     Some((core, images)),
                 )
             }
@@ -217,6 +226,7 @@ impl Shell {
                 Err(error.clone().into()),
                 Err(error.clone().into()),
                 Err(error.into()),
+                None,
                 None,
                 None,
                 None,
@@ -244,6 +254,7 @@ impl Shell {
             anime,
             results,
             tonight,
+            explore,
             core,
             page: None,
             search,
@@ -262,12 +273,29 @@ impl Shell {
         {
             tonight.update(cx, |tonight, cx| tonight.refresh(cx));
         }
+        // Explorer too: titles may have been seen since.
+        if screen == Screen::Explore
+            && let Some(explore) = &self.explore
+        {
+            explore.update(cx, |explore, cx| explore.refresh(cx));
+        }
         cx.notify();
     }
 
-    /// Back closes an open page first, then returns through the screens.
+    /// Back closes an open page first, then a selection open in Explorer,
+    /// then returns through the screens.
     fn back(&mut self, cx: &mut Context<Self>) {
-        if self.page.take().is_some() || self.navigation.back() {
+        if self.page.take().is_some() {
+            cx.notify();
+            return;
+        }
+        if self.navigation.current() == Screen::Explore
+            && let Some(explore) = &self.explore
+            && explore.update(cx, |explore, cx| explore.close(cx))
+        {
+            return;
+        }
+        if self.navigation.back() {
             cx.notify();
         }
     }
@@ -406,6 +434,10 @@ impl Shell {
             Screen::Anime => catalog_view(&self.anime),
             Screen::Tonight => match &self.tonight {
                 Some(tonight) => div().size_full().child(tonight.clone()).into_any_element(),
+                None => catalog_view(&self.movies),
+            },
+            Screen::Explore => match &self.explore {
+                Some(explore) => div().size_full().child(explore.clone()).into_any_element(),
                 None => catalog_view(&self.movies),
             },
             Screen::Settings => settings(cx),
@@ -762,6 +794,37 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
             })
             .ok()
             .flatten();
+        // Explorer: the user's lists (none on CI) and KINO's selections.
+        let _ = shell.update(cx, |s, cx| s.go(Screen::Explore, cx));
+        step().await;
+        for _ in 0..200 {
+            let loading = shell
+                .update(cx, |s, cx| {
+                    s.explore
+                        .as_ref()
+                        .is_some_and(|e| e.read(cx).selections().is_none())
+                })
+                .unwrap_or(false);
+            if !loading {
+                break;
+            }
+            step().await;
+        }
+        let explore = shell
+            .update(cx, |s, cx| {
+                s.explore.as_ref().and_then(|e| {
+                    e.read(cx).selections().map(|found| {
+                        serde_json::json!({
+                            "selections": found.len(),
+                            "imported": found.iter().filter(|s| s.imported).count(),
+                            "first": found.first().map(|s| s.name.to_string()),
+                            "titles": found.iter().map(|s| s.titles.len()).sum::<usize>(),
+                        })
+                    })
+                })
+            })
+            .ok()
+            .flatten();
         let _ = shell.update(cx, |s, cx| {
             let catalog = |c: &Result<Entity<Discover>, SharedString>| match c {
                 Ok(d) => {
@@ -803,6 +866,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                     "title_page": page,
                     "filtered": filtered,
                     "tonight": tonight,
+                    "explore": explore,
                 })
             );
             cx.quit();

@@ -425,7 +425,7 @@ fn shelf(
 }
 
 /// A title's card, its poster through the image cache; a click opens it.
-fn card(
+pub(crate) fn card(
     title: &Title,
     subtitle: SharedString,
     images: &Entity<ImageCache>,
