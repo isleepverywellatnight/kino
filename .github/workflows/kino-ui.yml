@@ -70,6 +70,18 @@ jobs:
           out=$("$exe" --bench | tee /dev/stderr | grep "KINO-UI BENCH" || true)
           [ -n "$out" ] || { echo "::error::The bench printed nothing (the window did not run)"; exit 1; }
           echo "::notice title=${{ matrix.os }}::${out#KINO-UI BENCH }"
+      - name: Processor at rest
+        working-directory: crates/kino-ui
+        run: |
+          # The grid on screen, nothing moving: under 1 % of a core (plan-gpui.md).
+          if [ "$RUNNER_OS" = Linux ]; then export DISPLAY=:99; fi
+          exe=target/release/kino-ui
+          [ "$RUNNER_OS" = Windows ] && exe=target/release/kino-ui.exe
+          out=$("$exe" --idle 2>/dev/null | grep "KINO-UI IDLE" || true)
+          [ -n "$out" ] || { echo "::error::The idle run printed nothing"; exit 1; }
+          echo "::notice title=idle ${{ matrix.os }}::${out#KINO-UI IDLE }"
+          pct=$(echo "${out#KINO-UI IDLE }" | $(command -v python3 || command -v python) -c "import json,sys; print(json.load(sys.stdin)['cpu_pct'])")
+          awk -v p="$pct" 'BEGIN { exit !(p < 1.0) }' || { echo "::error::$pct % of a core at rest (budget: 1 %)"; exit 1; }
       - name: Video under gpui's controls
         working-directory: crates/kino-ui
         run: |
