@@ -97,7 +97,8 @@ jobs:
           r = json.load(sys.stdin)
           screens = ['Movies', 'Series', 'Anime', 'Manga', 'Tonight', 'Explore', 'Library', 'Settings']
           assert r['drawn'] == screens + screens[-2::-1] + ['Settings'], r['drawn']
-          assert r['can_go_back'] is False
+          # It ends on Settings, opened from Films: Back leads there.
+          assert r['can_go_back'] is True
           assert r['typed'] == 'kino', r['typed']
           assert r['cleared'] is True
           assert r['spanish_settings'] == 'Ajustes', r['spanish_settings']
