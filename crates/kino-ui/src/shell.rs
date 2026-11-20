@@ -20,7 +20,7 @@ use crate::search::SearchView;
 use crate::state::AppState;
 use crate::text_input::{self, TextInput};
 use crate::title::Title;
-use crate::title_page::TitlePage;
+use crate::title_page::{Playing, TitlePage};
 use crate::tonight::Tonight;
 use crate::{bar, theme};
 
@@ -712,6 +712,29 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                 }
                 step().await;
             }
+            // « Regarder », through KINO's routes in this process: any answer
+            // (a player, a source, the P2P agreement, an error) is the chain at work.
+            let _ = shell.update(cx, |s, cx| {
+                if let Some(page) = &s.page {
+                    page.update(cx, |page, cx| page.play(None, cx));
+                }
+            });
+            for _ in 0..400 {
+                let waiting = shell
+                    .update(cx, |s, cx| {
+                        s.page.as_ref().is_some_and(|p| {
+                            matches!(
+                                p.read(cx).playing(),
+                                Playing::Launching | Playing::Preparing(_)
+                            )
+                        })
+                    })
+                    .unwrap_or(false);
+                if !waiting {
+                    break;
+                }
+                step().await;
+            }
             page = shell
                 .update(cx, |s, cx| {
                     let read = s.page.as_ref().and_then(|p| match p.read(cx).details() {
@@ -720,6 +743,16 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                             "description": d.description.is_some(),
                             "genres": d.genres.len(),
                             "similar": d.similar.len(),
+                            "episodes": d.episodes.len(),
+                            "in_list": p.read(cx).in_list(),
+                            "play": match p.read(cx).playing() {
+                                Playing::Idle => "idle".to_string(),
+                                Playing::Launching => "launching".to_string(),
+                                Playing::Preparing(n) => format!("preparing {n}"),
+                                Playing::Started(s) => format!("started {s}"),
+                                Playing::NeedsConsent(m, _) => format!("consent: {m}"),
+                                Playing::Failed(e) => format!("failed: {e}"),
+                            },
                         })),
                         Some(Err(e)) => Some(serde_json::json!({ "error": e.to_string() })),
                         None => None,

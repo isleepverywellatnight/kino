@@ -55,6 +55,18 @@ impl Title {
         })
     }
 
+    /// The title as Ma Liste keeps it (`kino::library::toggle_watchlist`).
+    pub fn to_item(&self) -> Value {
+        serde_json::json!({
+            "id": self.id.as_ref(),
+            "name": self.name.as_ref(),
+            "type": if self.kind == "anime" { "series" } else { self.kind.as_ref() },
+            "year": self.year.as_ref().map_or("", |y| y.as_ref()),
+            "poster": self.poster.as_ref().map_or("", |p| p.as_ref()),
+            "imdbRating": self.rating.map(|r| format!("{r:.1}")).unwrap_or_default(),
+        })
+    }
+
     /// "2024 • ★ 7.8", what the card shows under the title.
     pub fn subtitle(&self) -> SharedString {
         match (&self.year, self.rating) {
@@ -63,6 +75,23 @@ impl Title {
             (None, Some(rating)) => format!("★ {rating:.1}").into(),
             (None, None) => SharedString::default(),
         }
+    }
+}
+
+/// One episode of a series, as KINO's metadata lists it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Episode {
+    pub season: u32,
+    pub episode: u32,
+    pub name: SharedString,
+    /// "2024-03-01".
+    pub released: SharedString,
+}
+
+impl Episode {
+    /// "S01E03".
+    pub fn code(&self) -> SharedString {
+        format!("S{:02}E{:02}", self.season, self.episode).into()
     }
 }
 
@@ -80,6 +109,8 @@ pub struct Details {
     pub director: Vec<SharedString>,
     pub cast: Vec<SharedString>,
     pub similar: Vec<Title>,
+    /// A series' episodes in order (specials and undated ones left out).
+    pub episodes: Vec<Episode>,
 }
 
 impl Details {
@@ -130,6 +161,22 @@ impl Details {
             director: list("director"),
             cast: list("cast").into_iter().take(8).collect(),
             similar,
+            episodes: meta["videos"]
+                .as_array()
+                .map(|videos| {
+                    kino::series::aired_episodes(videos)
+                        .into_iter()
+                        .filter_map(|aired| {
+                            Some(Episode {
+                                season: u32::try_from(aired.season).ok()?,
+                                episode: u32::try_from(aired.episode).ok()?,
+                                name: aired.name.into(),
+                                released: aired.released.into(),
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
             title,
         })
     }
@@ -151,6 +198,25 @@ mod tests {
             "similar": [{"id": "tt0234215", "name": "The Matrix Reloaded", "type": "movie"},
                         {"id": "tt0133093", "name": "The Matrix"}]
         })
+    }
+
+    #[test]
+    fn a_series_lists_its_dated_episodes_in_order() {
+        let mut meta = page();
+        meta["videos"] = json!([
+            {"season": 1, "episode": 2, "name": "Two", "released": "2020-01-08T00:00:00.000Z"},
+            {"season": 1, "episode": 1, "name": "One", "released": "2020-01-01T00:00:00.000Z"},
+            {"season": 0, "episode": 1, "name": "Special", "released": "2019-12-01"},
+            {"season": 2, "episode": 1, "name": "Undated"}
+        ]);
+        let details = Details::from_meta(&meta, false).unwrap();
+        let codes: Vec<_> = details
+            .episodes
+            .iter()
+            .map(|e| e.code().to_string())
+            .collect();
+        assert_eq!(codes, ["S01E01", "S01E02"]);
+        assert_eq!(details.episodes[0].released.as_ref(), "2020-01-01");
     }
 
     #[test]

@@ -47,7 +47,21 @@ pub async fn bind(port: u16) -> Result<tokio::net::TcpListener> {
 }
 
 /// Serves KINO on `listener` until the process ends.
+///
+/// # Errors
+/// When the database cannot open or the listener fails.
 pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Result<()> {
+    let state = state(options)?;
+    serve_state(listener, state).await
+}
+
+/// KINO's server state, its launch work started: what [`serve`] serves, and
+/// what the native interface calls in the same process (`server::router`).
+/// Must run inside a tokio runtime.
+///
+/// # Errors
+/// When the database cannot open or the HTTP client cannot be built.
+pub fn state(options: Options) -> Result<server::Shared> {
     let db = Arc::new(Db::open(&paths::database())?);
     let net = Arc::new(crate::net::Net::new(db.clone()));
     let meta = crate::meta::Meta {
@@ -109,6 +123,14 @@ pub async fn serve(listener: tokio::net::TcpListener, options: Options) -> Resul
     if options.startup_tasks {
         crate::startup::run(state.clone());
     }
+    Ok(state)
+}
+
+/// Serves `state` on `listener` until the process ends.
+///
+/// # Errors
+/// When the listener fails.
+pub async fn serve_state(listener: tokio::net::TcpListener, state: server::Shared) -> Result<()> {
     eprintln!("KINO listening on {}", listener.local_addr()?);
     axum::serve(
         listener,

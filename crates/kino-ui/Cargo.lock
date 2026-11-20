@@ -3712,6 +3712,7 @@ dependencies = [
 name = "kino-ui"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "block2",
  "gpui",
  "image",
@@ -3725,6 +3726,7 @@ dependencies = [
  "reqwest 0.12.28",
  "serde_json",
  "tokio",
+ "tower",
  "unicode-segmentation",
  "windows 0.61.3",
 ]
