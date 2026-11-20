@@ -20,6 +20,7 @@ use crate::state::AppState;
 use crate::text_input::{self, TextInput};
 use crate::title::Title;
 use crate::title_page::TitlePage;
+use crate::tonight::Tonight;
 use crate::{bar, theme};
 
 actions!(
@@ -166,6 +167,8 @@ pub struct Shell {
     anime: Result<Entity<Discover>, SharedString>,
     /// Search results; `None` when KINO's core could not start.
     results: Option<Entity<SearchView>>,
+    /// « Ce soir »; `None` when KINO's core could not start.
+    tonight: Option<Entity<Tonight>>,
     /// KINO's core and the shared image cache, to open pages.
     core: Option<(Core, Entity<ImageCache>)>,
     /// The title page on top of the screen, if one is open.
@@ -181,7 +184,7 @@ pub struct Shell {
 impl Shell {
     pub fn new(check: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         // KINO's core: its database, network and metadata, as the server's.
-        let (movies, series, anime, results, core) = match Core::start() {
+        let (movies, series, anime, results, tonight, core) = match Core::start() {
             Ok(core) => {
                 let images = cx.new(|_| ImageCache::new(core.image_loader(), DEFAULT_BUDGET));
 
@@ -190,6 +193,11 @@ impl Shell {
                     cx.new(|cx| SearchView::new(core, images, cx))
                 };
                 open_from(&results, cx);
+                let tonight = {
+                    let (core, images) = (core.clone(), images.clone());
+                    cx.new(|cx| Tonight::new(core, images, cx))
+                };
+                open_from(&tonight, cx);
                 let open = |catalog, cx: &mut Context<Self>| {
                     let (core, images) = (core.clone(), images.clone());
                     let view = cx.new(|cx| Discover::new(catalog, core, images, cx));
@@ -201,6 +209,7 @@ impl Shell {
                     open(Catalog::Series, cx),
                     open(Catalog::Anime, cx),
                     Some(results),
+                    Some(tonight),
                     Some((core, images)),
                 )
             }
@@ -208,6 +217,7 @@ impl Shell {
                 Err(error.clone().into()),
                 Err(error.clone().into()),
                 Err(error.into()),
+                None,
                 None,
                 None,
             ),
@@ -233,6 +243,7 @@ impl Shell {
             series,
             anime,
             results,
+            tonight,
             core,
             page: None,
             search,
@@ -245,6 +256,12 @@ impl Shell {
     fn go(&mut self, screen: Screen, cx: &mut Context<Self>) {
         self.page = None;
         self.navigation.go(screen);
+        // « Ce soir » asks again each time it opens, as the web's dialog does.
+        if screen == Screen::Tonight
+            && let Some(tonight) = &self.tonight
+        {
+            tonight.update(cx, |tonight, cx| tonight.refresh(cx));
+        }
         cx.notify();
     }
 
@@ -387,6 +404,10 @@ impl Shell {
             Screen::Movies => catalog_view(&self.movies),
             Screen::Series => catalog_view(&self.series),
             Screen::Anime => catalog_view(&self.anime),
+            Screen::Tonight => match &self.tonight {
+                Some(tonight) => div().size_full().child(tonight.clone()).into_any_element(),
+                None => catalog_view(&self.movies),
+            },
             Screen::Settings => settings(cx),
             screen => div()
                 .size_full()
@@ -712,6 +733,35 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
             })
             .ok()
             .flatten();
+        // « Ce soir », from KINO's database (empty on CI: it says why).
+        let _ = shell.update(cx, |s, cx| s.go(Screen::Tonight, cx));
+        for _ in 0..200 {
+            let loading = shell
+                .update(cx, |s, cx| {
+                    s.tonight
+                        .as_ref()
+                        .is_some_and(|t| t.read(cx).answer().is_none())
+                })
+                .unwrap_or(false);
+            if !loading {
+                break;
+            }
+            step().await;
+        }
+        let tonight = shell
+            .update(cx, |s, cx| {
+                s.tonight.as_ref().map(|t| match t.read(cx).answer() {
+                    Some(Ok(a)) => serde_json::json!({
+                        "choices": a.choices.len(),
+                        "empty_reason": a.empty_reason,
+                        "status": a.status().to_string(),
+                    }),
+                    Some(Err(e)) => serde_json::json!({ "error": e.to_string() }),
+                    None => serde_json::Value::Null,
+                })
+            })
+            .ok()
+            .flatten();
         let _ = shell.update(cx, |s, cx| {
             let catalog = |c: &Result<Entity<Discover>, SharedString>| match c {
                 Ok(d) => {
@@ -752,6 +802,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                     "anime": anime,
                     "title_page": page,
                     "filtered": filtered,
+                    "tonight": tonight,
                 })
             );
             cx.quit();

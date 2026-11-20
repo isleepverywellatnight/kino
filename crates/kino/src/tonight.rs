@@ -343,6 +343,81 @@ async fn fetch_metadata(meta: &Meta, id: &str, series: bool) -> Value {
     found
 }
 
+/// What « Ce soir » answers: up to three choices, how complete the titles'
+/// data was, why nothing came (when nothing did), and the titles set aside.
+#[derive(Debug, Default)]
+pub struct Page {
+    pub choices: Vec<Value>,
+    pub coverage: Value,
+    pub empty_reason: &'static str,
+    pub review: Vec<Value>,
+}
+
+/// The durations and moods a page can ask for.
+pub const MOODS: [&str; 3] = ["light", "intense", "discovery"];
+
+/// « Ce soir » for `minutes` (15 to 600) and `mood` (one of `MOODS`): as
+/// `/api/tonight` answers, for the server and the native interface alike.
+/// Choices shown are recorded, as on the page.
+pub async fn page(
+    meta: &Meta,
+    db: &Db,
+    minutes: i64,
+    mood: &str,
+    offline_only: bool,
+) -> Result<Page, Refused> {
+    if !(15..=600).contains(&minutes) || !MOODS.contains(&mood) {
+        return Err(Refused);
+    }
+    let (watchlist, coverage) = enrich(
+        meta,
+        crate::library::watchlist(db),
+        if offline_only { 0 } else { 36 },
+    )
+    .await;
+    let downloads = offline_downloads(db);
+    let feedback = feedback_state(db);
+    let history = crate::library::history(db);
+    let at = crate::db::now();
+    let choices = choose(
+        &watchlist,
+        &history,
+        minutes,
+        mood,
+        &feedback,
+        at,
+        &downloads,
+        offline_only,
+    );
+    let reason = empty_reason(
+        &watchlist,
+        &history,
+        &feedback,
+        &downloads,
+        offline_only,
+        &choices,
+        at,
+    );
+    record_impressions(db, &choices);
+    let review: Vec<Value> = watchlist
+        .iter()
+        .filter_map(|item| {
+            let id = item["id"].as_str()?;
+            let f = feedback.get(id)?;
+            let decision = f["decision"].as_str().unwrap_or("");
+            let keep = decision == "excluded" || decision == "seen" || (decision == "deferred" && f["until_ts"].as_f64().unwrap_or(0.0) > crate::db::now());
+            let name = if f["name"].as_str().is_some_and(|n| !n.is_empty()) { f["name"].clone() } else { item["name"].clone() };
+            keep.then(|| json!({"id": id, "name": name, "decision": decision, "until_ts": f["until_ts"], "undo_token": f["last_action_id"]}))
+        })
+        .collect();
+    Ok(Page {
+        choices,
+        coverage,
+        empty_reason: reason,
+        review,
+    })
+}
+
 /// The eligible titles with factual reasons; the most fitting first, varied in genre.
 #[allow(clippy::too_many_arguments)] // the inputs of one decision, as the page gives them
 pub fn choose(
@@ -702,6 +777,22 @@ pub fn reset_feedback(db: &Db) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn a_page_needs_a_valid_duration_and_mood_and_says_why_it_is_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = std::sync::Arc::new(Db::open(&dir.path().join("kino.db")).unwrap());
+        let meta = Meta {
+            net: std::sync::Arc::new(crate::net::Net::new(db.clone())),
+            cinemeta: crate::meta::CINEMETA.into(),
+            translate: false,
+        };
+        assert!(page(&meta, &db, 5, "light", false).await.is_err());
+        assert!(page(&meta, &db, 120, "sad", false).await.is_err());
+        let found = page(&meta, &db, 120, "discovery", false).await.unwrap();
+        assert!(found.choices.is_empty());
+        assert_eq!(found.empty_reason, "empty_watchlist");
+    }
 
     #[test]
     fn durations_and_choices() {

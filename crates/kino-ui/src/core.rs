@@ -6,6 +6,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use gpui::SharedString;
 use kino::db::Db;
 use kino::meta::Meta;
 use kino::net::Net;
@@ -179,6 +180,36 @@ impl Core {
                 .items
         });
         async move { task.await.unwrap_or_default() }
+    }
+
+    /// « Ce soir »: up to three titles of Ma Liste for `minutes` and `mood`
+    /// (`kino::tonight::page`, as `/api/tonight` answers).
+    pub fn tonight(
+        &self,
+        minutes: i64,
+        mood: &'static str,
+    ) -> impl Future<Output = Result<kino::tonight::Page, String>> + use<> {
+        let (meta, db) = (self.meta.clone(), self.db.clone());
+        let task = self.runtime.spawn(async move {
+            kino::tonight::page(&meta, &db, minutes, mood, false)
+                .await
+                .map_err(|_| t!("server.choisissez_une_duree_et_une_ambiance").to_string())
+        });
+        async move { task.await.map_err(|e| format!("tonight task: {e}"))? }
+    }
+
+    /// The user's answer about a « Ce soir » idea: "defer", "seen" or
+    /// "exclude" (`kino::tonight::apply_feedback`).
+    pub fn tonight_feedback(
+        &self,
+        id: SharedString,
+        action: &'static str,
+    ) -> impl Future<Output = bool> + use<> {
+        let db = self.db.clone();
+        let task = self.runtime.spawn_blocking(move || {
+            kino::tonight::apply_feedback(&db, &id, &Value::from(action)).is_ok()
+        });
+        async move { task.await.unwrap_or(false) }
     }
 
     /// Films and series matching `query`, films first, as the web's search

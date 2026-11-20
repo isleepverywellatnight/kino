@@ -120,8 +120,11 @@ dans sa base : « À continuer » (avec l'épisode atteint et la progression) et
 « Ma Liste » (ce qui reste à voir), chacune pour le seul type du catalogue,
 avec les règles de la version web, puis « Pour vous » sous Films et Séries
 (les suggestions de KINO et leur raison, la même fonction que la route web ;
-le pool est préparé au lancement comme le fait le serveur). La CI vérifie tout cela sur les 3 systèmes
+le pool est préparé au lancement comme le fait le serveur). L'écran Ce soir :
+jusqu'à trois idées de Ma Liste selon le temps et l'envie, leurs raisons,
+« Voir la fiche » et les retours (Pas ce soir, Déjà vu, Ça ne m'intéresse pas),
+par la même fonction que la route web. La CI vérifie tout cela sur les 3 systèmes
 avec les vraies données.
 
-Reste : « Si vous avez aimé », « Nouveaux épisodes », Ce soir,
-Explorer, et le choix de langue enregistré.
+Reste : « Si vous avez aimé », « Nouveaux épisodes », Ce soir hors ligne et
+« Mes choix », Explorer, et le choix de langue enregistré.
