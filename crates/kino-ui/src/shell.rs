@@ -643,17 +643,37 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
         let executor = cx.background_executor().clone();
         let step = || executor.timer(std::time::Duration::from_millis(150));
         step().await;
+        // Waits until the screen shown has been drawn (3 s at most): a busy
+        // machine can take more than one step to draw a frame.
+        macro_rules! until_drawn {
+            () => {
+                step().await;
+                for _ in 0..20 {
+                    let drawn = shell
+                        .update(cx, |s, _| {
+                            s.drawn
+                                .as_ref()
+                                .is_none_or(|d| d.last() == Some(&s.navigation.current()))
+                        })
+                        .unwrap_or(true);
+                    if drawn {
+                        break;
+                    }
+                    step().await;
+                }
+            };
+        }
         for screen in Screen::ALL.iter().skip(1) {
             if shell.update(cx, |s, cx| s.go(*screen, cx)).is_err() {
                 return;
             }
-            step().await;
+            until_drawn!();
         }
         for _ in 1..Screen::ALL.len() {
             if shell.update(cx, |s, cx| s.back(cx)).is_err() {
                 return;
             }
-            step().await;
+            until_drawn!();
         }
         // Keys as a user presses them: bindings first, then the field.
         let shortcut = if cfg!(target_os = "macos") {
@@ -709,7 +729,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
         step().await;
         // The shared state: Spanish from Settings, then back.
         let _ = shell.update(cx, |s, cx| s.go(Screen::Settings, cx));
-        step().await;
+        until_drawn!();
         let start = cx.update(|_, cx| AppState::language(cx)).ok();
         let _ = cx.update(|_, cx| AppState::set_language(Language::Spanish, cx));
         step().await;
@@ -850,6 +870,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
             .flatten();
         // « Ce soir », from KINO's database (empty on CI: it says why).
         let _ = shell.update(cx, |s, cx| s.go(Screen::Tonight, cx));
+        until_drawn!();
         for _ in 0..200 {
             let loading = shell
                 .update(cx, |s, cx| {
@@ -879,7 +900,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
             .flatten();
         // Explorer: the user's lists (none on CI) and KINO's selections.
         let _ = shell.update(cx, |s, cx| s.go(Screen::Explore, cx));
-        step().await;
+        until_drawn!();
         for _ in 0..200 {
             let loading = shell
                 .update(cx, |s, cx| {
@@ -910,7 +931,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
             .flatten();
         // Manga: the web's three rows, from AniList through KINO's routes.
         let _ = shell.update(cx, |s, cx| s.go(Screen::Manga, cx));
-        step().await;
+        until_drawn!();
         for _ in 0..200 {
             let loading = shell
                 .update(cx, |s, cx| {
@@ -932,7 +953,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
             .flatten();
         // The library: the lists from KINO's database, then the statistics.
         let _ = shell.update(cx, |s, cx| s.go(Screen::Library, cx));
-        step().await;
+        until_drawn!();
         for _ in 0..200 {
             let loading = shell
                 .update(cx, |s, cx| {
