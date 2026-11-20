@@ -160,6 +160,7 @@ pub struct Shell {
     /// The Discover catalogs, or why KINO's core could not start.
     movies: Result<Entity<Discover>, SharedString>,
     series: Result<Entity<Discover>, SharedString>,
+    anime: Result<Entity<Discover>, SharedString>,
     search: Entity<TextInput>,
     /// What the search field holds, as of its last change.
     query: gpui::SharedString,
@@ -171,16 +172,24 @@ pub struct Shell {
 impl Shell {
     pub fn new(check: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         // KINO's core: its database, network and metadata, as the server's.
-        let (movies, series) = match Core::start() {
+        let (movies, series, anime) = match Core::start() {
             Ok(core) => {
                 let images = cx.new(|_| ImageCache::new(core.image_loader(), DEFAULT_BUDGET));
                 let open = |catalog, cx: &mut Context<Self>| {
                     let (core, images) = (core.clone(), images.clone());
                     Ok(cx.new(|cx| Discover::new(catalog, core, images, cx)))
                 };
-                (open(Catalog::Movies, cx), open(Catalog::Series, cx))
+                (
+                    open(Catalog::Movies, cx),
+                    open(Catalog::Series, cx),
+                    open(Catalog::Anime, cx),
+                )
             }
-            Err(error) => (Err(error.clone().into()), Err(error.into())),
+            Err(error) => (
+                Err(error.clone().into()),
+                Err(error.clone().into()),
+                Err(error.into()),
+            ),
         };
         let focus = cx.focus_handle();
         window.focus(&focus);
@@ -197,6 +206,7 @@ impl Shell {
             navigation: Navigation::new(Screen::Movies),
             movies,
             series,
+            anime,
             search,
             query: gpui::SharedString::default(),
             focus,
@@ -325,6 +335,7 @@ impl Shell {
         match self.navigation.current() {
             Screen::Movies => catalog_view(&self.movies),
             Screen::Series => catalog_view(&self.series),
+            Screen::Anime => catalog_view(&self.anime),
             Screen::Settings => settings(cx),
             screen => div()
                 .size_full()
@@ -527,7 +538,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
         for _ in 0..200 {
             let loaded = shell
                 .update(cx, |s, cx| {
-                    [&s.movies, &s.series].iter().all(|c| match c {
+                    [&s.movies, &s.series, &s.anime].iter().all(|c| match c {
                         Ok(d) => !d.read(cx).titles().is_empty() || d.read(cx).error().is_some(),
                         Err(_) => true,
                     })
@@ -551,7 +562,8 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                 }
                 Err(e) => serde_json::json!({ "count": 0, "error": e.to_string() }),
             };
-            let (movies, series) = (catalog(&s.movies), catalog(&s.series));
+            let (movies, series, anime) =
+                (catalog(&s.movies), catalog(&s.series), catalog(&s.anime));
             let drawn: Vec<String> = s
                 .drawn
                 .iter()
@@ -570,6 +582,7 @@ fn run_check(window: &mut Window, cx: &mut Context<Shell>) {
                     "back_loading": t!("anime.chargement"),
                     "movies": movies,
                     "series": series,
+                    "anime": anime,
                 })
             );
             cx.quit();
