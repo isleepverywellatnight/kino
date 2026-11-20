@@ -125,8 +125,15 @@ jobs:
             echo "$out" | grep -q '"click_reached_controls":true' \
               || { echo "::error::A click over mpv's window did not reach gpui's controls"; exit 1; }
           else
-            frames=$(echo "${out#KINO-UI VIDEO }" | python3 -c "import json,sys; print(json.load(sys.stdin)['video_frames'])")
-            [ "$frames" -ge 60 ] || { echo "::error::mpv drew only $frames frames under gpui"; exit 1; }
+            read -r frames accelerated < <(echo "${out#KINO-UI VIDEO }" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r['video_frames'], str(r['gl_accelerated']).lower())")
+            if [ "$accelerated" = true ]; then
+              [ "$frames" -ge 60 ] || { echo "::error::mpv drew only $frames frames under gpui"; exit 1; }
+            else
+              # GitHub's macOS virtual machines have no hardware OpenGL (Metal
+              # only): the path must work, its speed is measured on a real Mac.
+              [ "$frames" -ge 1 ] || { echo "::error::mpv drew nothing under gpui"; exit 1; }
+              echo "::warning title=native video ${{ matrix.os }}::OpenGL is software-only on this runner: $frames frames drawn, speed not measured"
+            fi
           fi
       - uses: actions/upload-artifact@v7
         if: always()
