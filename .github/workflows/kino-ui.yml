@@ -8,10 +8,10 @@ name: Native UI (gpui)
 on:
   push:
     branches: ["**"]
-    paths: ["crates/kino-ui/**", ".github/workflows/kino-ui.yml"]
+    paths: ["crates/kino-ui/**", "web/js/i18n/**", ".github/workflows/kino-ui.yml"]
   pull_request:
     branches: [main]
-    paths: ["crates/kino-ui/**", ".github/workflows/kino-ui.yml"]
+    paths: ["crates/kino-ui/**", "web/js/i18n/**", ".github/workflows/kino-ui.yml"]
   workflow_dispatch:
 
 permissions:
@@ -57,6 +57,9 @@ jobs:
       - name: Build
         working-directory: crates/kino-ui
         run: cargo build --release --locked
+      - name: Tests
+        working-directory: crates/kino-ui
+        run: cargo test --release --locked
       - name: Fast-scroll bench
         working-directory: crates/kino-ui
         run: |

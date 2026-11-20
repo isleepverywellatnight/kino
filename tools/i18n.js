@@ -226,10 +226,15 @@ function sortedFiles(dir, filter) {
   return fs.readdirSync(dir).filter(filter).sort().map(name => path.join(dir, name));
 }
 
+// Build output (crates/kino-ui/target holds the translation table generated
+// from the catalogs) is not code.
+const NOT_CODE_DIRS = new Set(['target', 'node_modules']);
+
 function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
     const full = path.join(dir, entry.name);
-    return entry.isDirectory() ? walk(full) : [full];
+    if (entry.isDirectory()) return NOT_CODE_DIRS.has(entry.name) ? [] : walk(full);
+    return [full];
   });
 }
 

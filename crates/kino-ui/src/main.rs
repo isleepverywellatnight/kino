@@ -14,10 +14,13 @@
 
 use std::sync::{Arc, Mutex};
 
+#[macro_use]
+mod i18n;
 #[cfg(target_os = "macos")]
 mod mac_native;
 #[cfg(windows)]
 mod native;
+mod theme;
 
 /// Where mpv draws on the native path: on Windows, KINO's window and the
 /// child window inside it; on macOS, mpv's OpenGL view under gpui's.
@@ -50,7 +53,7 @@ use gpui::{
     App, Application, Bounds, Context, Image, ImageFormat, MouseButton, MouseDownEvent, ObjectFit,
     RenderImage, SharedString, StyledImage, UniformListScrollHandle, Window,
     WindowBackgroundAppearance, WindowBounds, WindowDecorations, WindowOptions, div, img, point,
-    prelude::*, px, rgb, size, uniform_list,
+    prelude::*, px, size, uniform_list,
 };
 
 const POSTERS: usize = 300;
@@ -58,14 +61,6 @@ const COLUMNS: usize = 6;
 const POSTER_W: f32 = 150.0;
 const POSTER_H: f32 = 225.0;
 const ROW_H: f32 = 290.0;
-
-// KINO's colours (web/css/design.css).
-const BACKGROUND: u32 = 0x09090b;
-const SURFACE: u32 = 0x111113;
-const PLACEHOLDER: u32 = 0x1d1d1d;
-const LINE: u32 = 0x27272a;
-const TEXT: u32 = 0xfafafa;
-const TEXT_2: u32 = 0xa1a1aa;
 
 /// The automatic scroll of `--bench`: 4 s down, 4 s up, at 4,000 px/s.
 const BENCH_LEG: Duration = Duration::from_secs(4);
@@ -215,8 +210,8 @@ fn bar() -> impl IntoElement {
                 .flex()
                 .items_center()
                 .justify_center()
-                .text_color(rgb(TEXT_2))
-                .hover(|style| style.bg(rgb(LINE)).text_color(rgb(TEXT)))
+                .text_color(theme::text_2())
+                .hover(|style| style.bg(theme::line_strong()).text_color(theme::text()))
                 // A press on a button never moves the window.
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .child(label)
@@ -227,9 +222,9 @@ fn bar() -> impl IntoElement {
             .flex()
             .flex_none()
             .items_center()
-            .bg(rgb(SURFACE))
+            .bg(theme::surface_1())
             .border_b_1()
-            .border_color(rgb(LINE))
+            .border_color(theme::line_strong())
             // A press on the bar moves the window; a double press maximizes it.
             .on_mouse_down(MouseButton::Left, |event: &MouseDownEvent, window, _| {
                 if event.click_count >= 2 {
@@ -249,7 +244,7 @@ fn bar() -> impl IntoElement {
             .child(button("maximize", "▢").on_click(|_, window, _| window.zoom_window()))
             .child(
                 button("close", "✕")
-                    .hover(|style| style.bg(rgb(0xc42b1c)).text_color(rgb(TEXT)))
+                    .hover(|style| style.bg(theme::danger()).text_color(theme::text()))
                     .on_click(|_, _, cx| cx.quit()),
             )
     }
@@ -261,7 +256,7 @@ fn poster_card(index: usize, image: Option<Arc<Image>>) -> impl IntoElement {
         .h(px(POSTER_H))
         .rounded_md()
         .overflow_hidden()
-        .bg(rgb(PLACEHOLDER));
+        .bg(theme::surface_2());
     let art = match image {
         Some(image) => art.child(img(image).w(px(POSTER_W)).h(px(POSTER_H))),
         None => art,
@@ -275,13 +270,17 @@ fn poster_card(index: usize, image: Option<Arc<Image>>) -> impl IntoElement {
         .child(
             div()
                 .text_sm()
-                .text_color(rgb(TEXT))
-                .child(SharedString::from(format!("Film {}", index + 1))),
+                .text_color(theme::text())
+                .child(SharedString::from(format!(
+                    "{} {}",
+                    t!("anime.film"),
+                    index + 1
+                ))),
         )
         .child(
             div()
                 .text_xs()
-                .text_color(rgb(TEXT_2))
+                .text_color(theme::text_2())
                 .child("2026 • ★ 7.5"),
         )
 }
@@ -294,8 +293,8 @@ impl Render for Kino {
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(BACKGROUND))
-            .text_color(rgb(TEXT))
+            .bg(theme::bg())
+            .text_color(theme::text())
             .child(bar())
             .child(
                 uniform_list(
@@ -550,7 +549,7 @@ impl Player {
                             .h_full()
                             .w(gpui::relative(done))
                             .rounded_full()
-                            .bg(rgb(0xe50914)),
+                            .bg(theme::progress()),
                     ),
             )
             .child(
@@ -584,7 +583,7 @@ impl Player {
                     .child(
                         div()
                             .text_sm()
-                            .text_color(rgb(TEXT_2))
+                            .text_color(theme::text_2())
                             .child(SharedString::from(format!(
                                 "{} / {}",
                                 clock(position),
@@ -623,7 +622,7 @@ impl Render for Player {
             .size_full()
             .flex()
             .flex_col()
-            .text_color(rgb(TEXT))
+            .text_color(theme::text())
             .capture_any_mouse_down(cx.listener(|player, event: &MouseDownEvent, _, _| {
                 player.root_press =
                     Some((f32::from(event.position.x), f32::from(event.position.y)));
@@ -631,7 +630,7 @@ impl Render for Player {
         let root = if self.host.is_some() {
             root
         } else {
-            root.bg(rgb(BACKGROUND))
+            root.bg(theme::bg())
         };
         root.child(bar()).child(
             div()
@@ -656,6 +655,13 @@ impl Render for Player {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    // KINO_LANG (fr, en, …) wins over the system's language.
+    i18n::set_language(
+        std::env::var("KINO_LANG")
+            .ok()
+            .and_then(|code| i18n::Language::from_code(&code))
+            .unwrap_or_else(i18n::system_language),
+    );
     let bench = args.iter().any(|a| a == "--bench");
     let idle = args.iter().any(|a| a == "--idle");
     let video = args.iter().position(|a| a == "--video").map(|at| {
