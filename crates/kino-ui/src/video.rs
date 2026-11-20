@@ -94,6 +94,8 @@ fn load() -> Result<Lib, String> {
                 continue;
             }
         };
+        // SAFETY: each symbol is read with its C signature from libmpv's
+        // headers (client.h, render.h); `lib` lives in the returned `Lib`.
         unsafe {
             macro_rules! sym {
                 ($name:literal) => {
@@ -140,9 +142,12 @@ pub struct Video {
     ready: Arc<AtomicBool>,
 }
 
-// SAFETY: mpv's client API is thread-safe; the render context is used by one
-// thread at a time (`frame` takes `&mut self` behind the caller's lock).
+// SAFETY: `handle` and `render` are owned by this value and freed once, in
+// `Drop`. mpv's client API is thread-safe, so the handle may move threads.
 unsafe impl Send for Video {}
+// SAFETY: the client API (`&self` methods) is thread-safe; the render API is
+// not, and is only reached through `frame` (`&mut self`) or, on macOS, from the
+// main thread behind the caller's `Mutex`, so never from two threads at once.
 unsafe impl Sync for Video {}
 
 impl Video {
@@ -269,18 +274,21 @@ impl Video {
         }
     }
 
-    /// The size mpv would show the video at, at most 1080p's number of pixels.
-    fn frame_size(&self) -> Option<(i64, i64)> {
-        let w = self.property::<i64>("dwidth", FORMAT_INT64)?;
-        let h = self.property::<i64>("dheight", FORMAT_INT64)?;
-        if w <= 0 || h <= 0 {
+    /// The size mpv would show the video at, at most 1080p's number of
+    /// pixels, in even numbers (what video scalers expect).
+    fn frame_size(&self) -> Option<(u32, u32)> {
+        let w = u32::try_from(self.property::<i64>("dwidth", FORMAT_INT64)?).ok()?;
+        let h = u32::try_from(self.property::<i64>("dheight", FORMAT_INT64)?).ok()?;
+        if w == 0 || h == 0 {
             return None;
         }
-        let scale = ((MAX_PIXELS as f64) / (w * h) as f64).sqrt().min(1.0);
-        Some((
-            ((w as f64) * scale) as i64 & !1,
-            ((h as f64) * scale) as i64 & !1,
-        ))
+        let scale = (MAX_PIXELS as f64 / (f64::from(w) * f64::from(h)))
+            .sqrt()
+            .min(1.0);
+        // `scale` <= 1, so each side stays within its u32 original.
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let fit = |side: u32| ((f64::from(side) * scale) as u32) & !1;
+        Some((fit(w), fit(h))).filter(|&(w, h)| w > 0 && h > 0)
     }
 
     /// The next frame, if mpv has one: drawn into memory, ready for gpui.
@@ -294,9 +302,9 @@ impl Video {
             return None;
         }
         let (w, h) = self.frame_size()?;
-        let mut size: [c_int; 2] = [w as c_int, h as c_int];
-        let mut stride: usize = (w as usize) * 4;
-        let mut pixels = vec![0u8; stride * h as usize];
+        let mut size: [c_int; 2] = [c_int::try_from(w).ok()?, c_int::try_from(h).ok()?];
+        let mut stride = usize::try_from(w).ok()?.checked_mul(4)?;
+        let mut pixels = vec![0u8; stride.checked_mul(usize::try_from(h).ok()?)?];
         let format = c("bgr0");
         let mut params = [
             Param {
@@ -328,7 +336,7 @@ impl Video {
         for pixel in pixels.chunks_exact_mut(4) {
             pixel[3] = 255;
         }
-        let buffer = image::RgbaImage::from_raw(w as u32, h as u32, pixels)?;
+        let buffer = image::RgbaImage::from_raw(w, h, pixels)?;
         Some(RenderImage::new(vec![image::Frame::new(buffer)]))
     }
 }
