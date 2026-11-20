@@ -39,7 +39,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libxkbcommon-x11-dev libxcb1-dev libfontconfig1-dev libfreetype-dev \
-            libwayland-dev libvulkan1 mesa-vulkan-drivers xvfb openbox libmpv2 imagemagick
+            libwayland-dev libvulkan1 mesa-vulkan-drivers xvfb openbox libmpv2 imagemagick \
+            libdbus-1-dev pkg-config
       - name: libmpv (the builds KINO ships)
         if: runner.os != 'Linux'
         run: |
